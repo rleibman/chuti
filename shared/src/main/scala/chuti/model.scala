@@ -80,6 +80,9 @@ case class EstadoDeJuego(
 
   def da(jugador: Jugador, ficha: Ficha): EstadoDeJuego = ???
 
+  //Acuerdate de los regalos
+  def caida: EstadoDeJuego = ???
+
   def resultado(): Option[Seq[Cuenta]] = ???
 }
 
@@ -106,7 +109,11 @@ case class Mesa(
                  usuarios: Array[Usuario]
                ) {
   val juegoActual: EstadoDeJuego = sopa(None)
-  lazy val todaLaFicha: Seq[Ficha] = (0 to 6).flatMap(i => (0 to 6).map(j => Ficha(Numero(i), Numero(j))))
+
+  (0 to 6).combinations(1)
+
+  lazy val todaLaFicha: Seq[Ficha] = ((0 to 6).combinations(2).toSeq.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>Ficha(Numero(i), Numero(i))))
+
   val laMulota = Ficha(Numero6, Numero6)
   val campanita = Ficha(Numero0, Numero1)
 
