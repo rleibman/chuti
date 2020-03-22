@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="500"
+   height="1000"
+   id="svg2"
+   sodipodi:version="0.32"
+   inkscape:version="0.92.4 (5da689c313, 2019-01-14)"
+   sodipodi:docname="0_0.svg"
+   inkscape:output_extension="org.inkscape.output.svg.inkscape"
+   version="1.0">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     gridtolerance="10000"
+     guidetolerance="10"
+     objecttolerance="10"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.71268239"
+     inkscape:cx="315.88618"
+     inkscape:cy="532.24994"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer2"
+     inkscape:window-width="1280"
+     inkscape:window-height="951"
+     inkscape:window-x="456"
+     inkscape:window-y="71"
+     showgrid="false"
+     showguides="false"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>Domino</dc:title>
+        <dc:date>2007-01-15</dc:date>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Daniel Keshet</dc:title>
+          </cc:Agent>
+        </dc:creator>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>Domino</rdf:li>
+            <rdf:li>Games</rdf:li>
+            <rdf:li>Bone</rdf:li>
+            <rdf:li>Tile</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+        <dc:description>A tile for the game &quot;Dominoes&quot;.</dc:description>
+        <cc:license
+           rdf:resource="http://web.resource.org/cc/PublicDomain" />
+      </cc:Work>
+      <cc:License
+         rdf:about="http://web.resource.org/cc/PublicDomain">
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Reproduction" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/Distribution" />
+        <cc:permits
+           rdf:resource="http://web.resource.org/cc/DerivativeWorks" />
+      </cc:License>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Domino"
+     inkscape:groupmode="layer"
+     id="layer1"
+     sodipodi:insensitive="true"
+     transform="translate(0,-52.362152)">
+    <rect
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:27.51737976;stroke-linecap:butt;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       id="rect1872"
+       width="472.4826"
+       height="972.4826"
+       x="13.75869"
+       y="66.120842"
+       ry="50"
+       rx="50" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:10.00032425px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="M 45.000325,552.36218 L 454.99999,552.36218"
+       id="path15666" />
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Pips"
+     transform="translate(0,-52.362152)">
+    <g
+       id="g935"
+       transform="matrix(2.400984,0,0,2.400984,-2.5128293,279.80373)">
+      <rect
+         y="28.126858"
+         x="19.77795"
+         height="170.78522"
+         width="170.78522"
+         id="rect927"
+         style="fill:#b22535;fill-opacity:1;stroke:none;stroke-width:0.34645233" />
+      <g
+         transform="translate(-0.01672694,-2.5241581)"
+         id="g923">
+        <path
+           inkscape:connector-curvature="0"
+           style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.99999994px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           d="m 563.81445,310.44531 c -62.96105,0.58767 -124.87009,34.86955 -130.45898,79.71289 -1.28145,3.96295 -3.03125,12.12305 -3.03125,12.12305 l -1.00977,11.11133 65.66016,-1.00977 V 402.0293 c 4.09213,-83.23121 153.09924,-78.28139 116.16797,10.35351 -66.40082,64.3479 -160.10097,35.36505 -182.83789,118.1875 -2.89712,10.77483 -3.03125,33.33594 -3.03125,33.33594 0,0 0.7061,19.74812 5.05078,28.2832 5.29364,10.3993 14.5371,18.77773 24.24414,25.25391 10.81931,7.21825 23.7443,11.00047 36.36523,14.14258 11.18589,2.78487 22.8381,3.36641 34.34571,4.04101 9.41193,0.55174 18.94477,1.283 28.28515,0 8.66037,-1.18957 17.21036,-3.64903 25.25391,-7.07226 6.11074,-2.60066 11.83941,-6.14315 17.17187,-10.10157 10.14788,-9.66992 19.74113,-17.60522 31.31446,-26.26367 v 39.39649 H 686.9043 V 411.37305 l 1.00976,-18.1836 c 0,0 -3.52184,-14.31094 -6.06054,-21.21289 -25.58944,-44.44564 -72.09451,-61.96008 -118.03907,-61.53125 z m 57.42969,141.33399 -1.00976,79.80078 c 0,0 -7.3545,16.56996 -12.12305,24.24414 -18.16524,38.54653 -70.91713,62.32519 -98.99414,24.24414 -42.69011,-71.64045 66.25407,-104.41405 112.12695,-128.28906 z"
+           transform="scale(0.26458333)"
+           id="path912" />
+        <path
+           style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           d="M 28.831701,105.46797 H 45.16855 v 69.35644 c 3.091211,8.49213 16.252839,5.11146 21.071776,0.7153 V 105.36607 H 84.28869 V 188.9933 H 67.468749 v -3.02381 -0.66146 c -19.16548,2.50929 -35.625146,9.89192 -39.10477,-9.71522 z"
+           id="path97"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="cccccccccccc" />
+        <path
+           style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           d="m 90.06983,64.47551 h 18.4416 v 81.51721 H 90.337099 Z"
+           id="path908"
+           inkscape:connector-curvature="0" />
+        <path
+           style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:0.26458332px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+           d="m 90.337099,59.397389 v -16.30344 h 18.708871 v 16.30344 z"
+           id="path910"
+           inkscape:connector-curvature="0" />
+      </g>
+    </g>
+  </g>
+</svg>
