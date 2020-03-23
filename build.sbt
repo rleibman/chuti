@@ -17,8 +17,10 @@ lazy val root = (project in file("."))
     publish / skip := true
   )
 
+lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
+
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "com.github.julien-truffaut" %% "monocle-core" % monocleVersion withSources(),
@@ -62,8 +64,15 @@ lazy val server: Project = project.in(file("server"))
   .settings(
     name := "chuti-server",
     libraryDependencies ++= Seq(
+      "com.github.pathikrit" %% "better-files" % "3.8.0" withSources(),
+      "de.heikoseeberger" %% "akka-http-circe" % "1.31.0" withSources(),
+      "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion withSources(),
+      "com.typesafe.akka" %% "akka-stream" % akkaVersion withSources(),
+      "com.github.daddykotex" %% "courier" % "2.0.0" withSources(),
+      "com.typesafe.akka" %% "akka-http" % "10.1.11" withSources(),
       "dev.zio" %% "zio" % "1.0.0-RC18-2" withSources(),
-      "com.github.ghostdogpr" %% "caliban" % "0.7.2" withSources()
+      "com.github.ghostdogpr" %% "caliban" % "0.7.2" withSources(),
+      "ch.qos.logback" % "logback-classic" % "1.2.3" withSources()
     )
   )
 

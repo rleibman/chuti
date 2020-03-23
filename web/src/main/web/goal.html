@@ -1,5 +1,8 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <title>Title</title>
     <style>
         .domino {
             height: 150px
@@ -13,76 +16,104 @@
             flex: 50%;
             padding: 10px;
             min-height: 300px;
+            max-width: 550px;
             /*border:1px solid red;*/
         }
 
         .jugador.mano {
             background-color: green;
         }
+
+        .centro {
+            display: flex;
+            width: 100%;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid red;
+            padding: 10px;
+        }
     </style>
 </head>
 <body>
 <h1>Chuti! <a href="">Reglas</a></h1>
-<div style="display:flex;widht:100%">
-    <div class="jugador mano">
-        <h2>Jugador 1</h2>
-        <input type="button" value="Listo... Los Regalos!"/>
-        <input type="button" value="Me rindo... hoyo!"/>
-        Canto <select value="4">
-        <option value="4">Casa</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">TODAS!</option>
-    </select>
-        <div>
-            <div>
-                <img src="images/3_6.svg" class="domino">
-                <img src="images/3_6.svg" class="domino">
-                <img src="images/3_6.svg" class="domino">
-                <img src="images/3_6.svg" class="domino">
-                <img src="images/3_6.svg" class="domino">
-            </div>
+<div style=";border:1px solid green">
+    <div style="display:flex;width:100%;align-items: center;justify-content: center;">
+        <div class="jugador mano">
+            <h2>Jugador 1</h2>
+            <input type="button" value="Listo... Los Regalos!"/>
+            <input type="button" value="Me rindo... hoyo!"/>
+            Canto <select value="4">
+            <option value="4">Casa</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">TODAS!</option>
+        </select>
             <div>
                 <div>
-                    <img src="images/3_6.svg" class="domino_jugado">
-                    <img src="images/3_6.svg" class="domino_jugado">
-                    <img src="images/3_6.svg" class="domino_jugado">
-                    <img src="images/3_6.svg" class="domino_jugado">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
+                    <img src="images/3_6.svg" class="domino">
                 </div>
                 <div>
-                    <img src="images/blank_uia.svg" class="domino_jugado">
-                    <img src="images/blank_uia.svg" class="domino_jugado">
-                    <img src="images/blank_uia.svg" class="domino_jugado">
-                    <img src="images/blank_uia.svg" class="domino_jugado">
+                    <div>
+                        <img src="images/3_6.svg" class="domino_jugado">
+                        <img src="images/3_6.svg" class="domino_jugado">
+                        <img src="images/3_6.svg" class="domino_jugado">
+                        <img src="images/3_6.svg" class="domino_jugado">
+                    </div>
+                    <div>
+                        <img src="images/blank_uia.svg" class="domino_jugado">
+                        <img src="images/blank_uia.svg" class="domino_jugado">
+                        <img src="images/blank_uia.svg" class="domino_jugado">
+                        <img src="images/blank_uia.svg" class="domino_jugado">
+                    </div>
                 </div>
             </div>
         </div>
+        <div class="jugador">
+            <h2>Jugador 2</h2>
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+        </div>
     </div>
-    <div class="jugador">
-        <h2>Jugador 2</h2>
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
+    <div class="centro">
+        <div style="width:340px;display:flex; background-color: blue;align-items: center;justify-content: center;padding:10px">
+            <img src="images/3_6.svg" class="domino">
+            <img src="images/3_6.svg" class="domino">
+            <img src="images/3_6.svg" class="domino">
+            <img src="images/3_6.svg" class="domino">
+        </div>
     </div>
-</div>
-<div style="display:flex;widht:100%">
-    <div class="jugador">
-        <h2>Jugador 3</h2>
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-    </div>
-    <div class="jugador">
-        <h2>Jugador 4</h2>
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
-        <img src="images/blank_uia.svg" class="domino">
+    <div style="display:flex;width:100%;align-items: center;justify-content: center;">
+        <div class="jugador">
+            <h2>Jugador 3</h2>
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+        </div>
+        <div class="jugador">
+            <h2>Jugador 4</h2>
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+            <img src="images/blank_uia.svg" class="domino">
+        </div>
     </div>
 </div>
 </body>

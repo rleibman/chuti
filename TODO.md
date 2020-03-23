@@ -1,0 +1,32 @@
+# TODO 
+
+- DONE. Paint all dominos
+- Finalize wireframe
+    DONE - Where does the "table" go?
+- Database
+    - mongodb 
+- Server
+    - decide server technology.
+        - Zio, akka-http, caliban, circe
+    - 
+- Client
+    - decide client technology
+        - Scalajs, scalablytyped, websockets, caliban, circe
+    - code pages
+        - Set up table
+        - Game page
+        - Cuentas
+- User system
+    - Registration
+    - Login
+    - Lost password
+    - Set up table
+- Code game     
+- Animations
+    - Sopa
+    - Poner ficha
+    - Hoyo
+    - Chuti
+    - El hoyo que camina
+    - Tecnico
+- Chose back logo
