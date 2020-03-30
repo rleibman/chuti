@@ -40,7 +40,7 @@ import scala.util.control.NonFatal
 trait Web extends Config {
   this: Api with CoreActors with Core =>
 
-  val log: LoggingAdapter = Logging.getLogger(actorSystem, this)
+  private val log: LoggingAdapter = Logging.getLogger(actorSystem, this)
 
   val serverSource: Source[Http.IncomingConnection, Future[Http.ServerBinding]] =
     Http()

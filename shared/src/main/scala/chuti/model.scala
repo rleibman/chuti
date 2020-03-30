@@ -16,77 +16,175 @@
 
 package chuti
 
-object Numero extends Enumeration {
-
-  protected case class Val(num: Int) extends super.Val
-
-  type Numero = Value
-
-  val Numero0: Val = Val(0)
-  val Numero1: Val = Val(1)
-  val Numero2: Val = Val(2)
-  val Numero3: Val = Val(3)
-  val Numero4: Val = Val(4)
-  val Numero5: Val = Val(5)
-  val Numero6: Val = Val(6)
+sealed trait Numero {
+  def value: Int = Numero.values.indexOf(this)
 }
 
-import Numero._
+object Numero {
+
+  case object Numero0 extends Numero
+
+  case object Numero1 extends Numero
+
+  case object Numero2 extends Numero
+
+  case object Numero3 extends Numero
+
+  case object Numero4 extends Numero
+
+  case object Numero5 extends Numero
+
+  case object Numero6 extends Numero
+
+  def values = Seq(Numero0, Numero1, Numero2, Numero3, Numero4, Numero5, Numero6)
+
+  def apply(num: Int): Numero = values(num)
+}
+
+import chuti.Numero._
 
 import scala.util.Random
 
 case class Ficha(arriba: Numero, abajo: Numero) {
-  val esMula: Boolean = arriba == abajo
+  lazy val esMula: Boolean = arriba == abajo
+
+  override def toString: String = s"${arriba.value}:${abajo.value}"
 }
 
-case class Usuario(nombre: String, cartera: Double)
+case class UserId(value: Int)
 
-case class Fila(fichas: Seq[Ficha])
+case class User(id: Option[UserId], email: String, name: String, wallet: Double)
 
-case class Jugador(usuario: Usuario,
-                   fichas: Seq[Ficha],
-                   casas: Seq[Fila],
-                   cantador: Boolean,
-                   mano: Boolean)
+case class Fila(fichas: List[Ficha])
+
+case class Jugador(user: User, fichas: List[Ficha] = List.empty, casas: List[Fila] = List.empty, cantador: Boolean = false, mano: Boolean = false)
 
 sealed trait Triunfo
 
-case object TriunfanMulas
-
-case class TriunfoNumero(num: Numero)
-
-object Estado extends Enumeration {
-  type Estado = Value
-  val comienzo, cantando, jugando, terminado = Value
+object Triunfo {
+  case object TriunfanMulas             extends Triunfo
+  case object SinTriunfos               extends Triunfo
+  case class TriunfoNumero(num: Numero) extends Triunfo
 }
 
-import Estado._
+sealed trait Estado
 
-case class EstadoDeJuego(
-                          jugadores: Seq[Jugador],
-                          casaEnMesa: Seq[Ficha] = Seq.empty,
-                          triunfo: Option[Triunfo] = None,
-                          estado: Estado = comienzo
-                        ) {
-  def transform(fn: () => EstadoDeJuego): EstadoDeJuego = {
-    fn()
+object Estado {
+  case object comienzo  extends Estado
+  case object cantando  extends Estado
+  case object jugando   extends Estado
+  case object terminado extends Estado
+}
+
+import chuti.Estado._
+
+sealed trait Borlote
+case object ElNiñoDelCumpleanos extends Borlote
+case object SantaClaus          extends Borlote
+case object CampanitaSeJuega    extends Borlote
+
+sealed trait EventInfo[T <: Event] {
+  def canDo(jugador: Jugador, gameState: GameState): Boolean
+  val values: Seq[EventInfo[_]] = Seq(NoOp)
+}
+
+sealed trait Event {
+  val index: Option[Int]
+  def doEvent(gameState: GameState): (GameState, Event)
+}
+
+object NoOp extends EventInfo[NoOp] {
+  override def canDo(jugador: Jugador, gameState: GameState): Boolean = true //always true
+}
+
+case class NoOp(index: Option[Int] = None) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) =
+    (gameState, copy(index = Option(gameState.currentIndex)))
+}
+
+case class InviteFriend(index: Option[Int], user: User) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class JoinGame(index: Option[Int], user: User) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+//This event ends the game and shuts down the server... it can only be called by god
+case class PoisonPill(index: Option[Int] = None) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) =
+    (gameState, copy(index = Option(gameState.currentIndex)))
+}
+case class TerminaJuego(index: Option[Int]) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class Canta(index: Option[Int] = None, cuantas: Int) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class PideInicial(index: Option[Int] = None, ficha: Ficha, triunfan: Numero, estrictaDerecha: Boolean)
+    extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class Pide(index: Option[Int] = None, ficha: Ficha, estrictaDerecha: Boolean) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class Da(index: Option[Int] = None, ficha: Ficha) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+//Acuerdate de los regalos
+case class DeCaida(index: Option[Int] = None) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class HoyoTecnico(index: Option[Int] = None) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class MeRindo(index: Option[Int] = None) extends Event {
+  override def doEvent(gameState: GameState): (GameState, Event) = ???
+}
+case class EmpiezaJuego(index: Option[Int] = None, turno: Option[User]) extends Event {
+  import Mesa._
+  def sopa = Random.shuffle(todaLaFicha)
+  override def doEvent(gameState: GameState): (GameState, Event) = {
+    val jugadores = gameState.jugadores
+    val newJugadores = sopa
+      .grouped(todaLaFicha.length / jugadores.length)
+      .zip(jugadores)
+      .map {
+        case (fichas, jugador) =>
+          Jugador(
+            user = jugador.user,
+            fichas = fichas,
+            casas = List.empty,
+            cantador = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
+            mano = turno.fold(fichas.contains(laMulota))(_ == jugador.user)
+          )
+      }
+      .toList
+
+    val newState = gameState.copy(
+      jugadores = newJugadores
+    )
+    (newState, this)
   }
 
-  def canta(jugador: Jugador, cuantas: Int): EstadoDeJuego = ???
-
-  def pide(jugador: Jugador, ficha: Ficha, triunfo: Triunfo, estrictaDerecha: Boolean): EstadoDeJuego = ???
-
-  def pide(jugador: Jugador, ficha: Ficha, estrictaDerecha: Boolean): EstadoDeJuego = ???
-
-  def da(jugador: Jugador, ficha: Ficha): EstadoDeJuego = ???
-
-  //Acuerdate de los regalos
-  def caida: EstadoDeJuego = ???
-
-  def resultado(): Option[Seq[Cuenta]] = ???
 }
 
-case class Cuenta(usuario: Usuario, puntos: Int, esHoyo: Boolean)
+case class GameState(
+  id: Option[Int],
+  jugadores: List[Jugador],
+  enJuego: List[Ficha] = List.empty,
+  triunfo: Option[Triunfo] = None,
+  estado: Estado = comienzo,
+  currentIndex: Int = 0
+) {
+  def resultado(): Option[List[Cuenta]] = ???
+  //Returns the newly modified state, and any changes to the event
+  def event(event: Event): (GameState, Event) = {
+    val newIndex  = currentIndex + 1
+    val processed = event.doEvent(gameState = this)
+    (processed._1.copy(currentIndex = newIndex), processed._2)
+  }
+}
+
+case class Cuenta(user: User, puntos: Int, esHoyo: Boolean)
 
 /**
  * Un partido consta de uno o mas juegos, todos los partidos tienen los mismos usuarios
@@ -94,50 +192,32 @@ case class Cuenta(usuario: Usuario, puntos: Int, esHoyo: Boolean)
  * @param cuentas
  */
 case class PartidoArchivo(
-                    cuentas: Seq[(Usuario, Double)]
-                  )
+  cuentas: List[(User, Double)]
+)
+
+object Mesa {
+  lazy val todaLaFicha
+    : List[Ficha] = ((0 to 6).combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(
+      i => Ficha(Numero(i), Numero(i))
+    ))
+
+  val laMulota  = Ficha(Numero6, Numero6)
+  val campanita = Ficha(Numero0, Numero1)
+
+}
 
 /**
  * Cada mesa tiene una serie de usuarios, una serie de partidos y un juego a cada momento.
  * Tambien tiene un historial de juegos, guardado en disco.
  *
  * @param partidos
- * @param usuarios
  */
 case class Mesa(
-                 partidos: Seq[PartidoArchivo],
-                 usuarios: Array[Usuario]
-               ) {
-  val juegoActual: EstadoDeJuego = sopa(None)
-
-  (0 to 6).combinations(1)
-
-  lazy val todaLaFicha: Seq[Ficha] = ((0 to 6).combinations(2).toSeq.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>Ficha(Numero(i), Numero(i))))
-
-  val laMulota = Ficha(Numero6, Numero6)
-  val campanita = Ficha(Numero0, Numero1)
-
-  def sopa(turno: Option[Usuario]): EstadoDeJuego = EstadoDeJuego(
-    Random.shuffle(todaLaFicha)
-      .grouped(todaLaFicha.length / usuarios.length)
-      .zip(usuarios)
-      .map { case (fichas, usuario) =>
-        Jugador(usuario = usuario,
-          fichas = fichas,
-          casas = Seq.empty,
-          cantador = turno.fold(fichas.contains(laMulota))(_ == usuario),
-          mano = turno.fold(fichas.contains(laMulota))(_ == usuario)
-        )
-      }.toSeq)
-
-  def total(costoPorPunto: Double): Seq[(Usuario, Double)] = partidos.flatMap(_.cuentas).groupBy(_._1).map(g => (g._1, g._2.map(_._2).sum)).toSeq
-
-  /**
-   * Imprime todo el asunto
-   *
-   * @return
-   */
-  def godPrint = ???
+  partidos: List[PartidoArchivo] = List.empty,
+  users: List[User] = List.empty
+) {
+  def total(costoPorPunto: Double): List[(User, Double)] =
+    partidos.flatMap(_.cuentas).groupBy(_._1).map(g => (g._1, g._2.map(_._2).sum)).toList
 
   /**
    * Imprime nada mas el asunto que un jugador puede ver

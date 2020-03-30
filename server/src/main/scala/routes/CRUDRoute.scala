@@ -16,15 +16,17 @@
 
 package routes
 
-import akka.http.scaladsl.server.{Directives, Route}
-import api.ZIODirectives
-import dao.{CRUDOperations, Search}
+import akka.http.scaladsl.server.{ Directives, Route }
+import api.{ ChutiSession, ZIODirectives }
+import dao.{ CRUDOperations, DatabaseProvider, RepositoryIO, Search, SessionProvider }
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
-import zio.Task
+import zio._
 import io.circe
 import io.circe.parser.decode
 import io.circe.syntax._
-import io.circe.{Decoder, Encoder, Json, JsonDouble, JsonNumber}
+import io.circe.{ Decoder, Encoder, Json, JsonDouble, JsonNumber }
+import slick.basic.BasicBackend
+import zioslick.RepositoryException
 
 import scala.util.matching.Regex
 
@@ -34,22 +36,22 @@ import scala.util.matching.Regex
  * @tparam E       The model object that is the base of the route
  * @tparam PK      The type of the object's primary key (used for gets/deletes)
  * @tparam SEARCH  A search object (extends Search)
- * @tparam SESSION Sessions are useful if you want to limit the capabalities that people have.
  */
-trait CRUDRoute[E, PK, SEARCH <: Search[_], SESSION] {
-  def crudRoute: CRUDRoute.Service[E, PK, SEARCH, SESSION]
+trait CRUDRoute[E, PK, SEARCH <: Search[E]] {
+  def crudRoute: CRUDRoute.Service[E, PK, SEARCH]
 }
 
 object CRUDRoute {
-
-  abstract class Service[E, PK, SEARCH <: Search[_], SESSION]
-    extends Directives
+  abstract class Service[E, PK, SEARCH <: Search[E]]
+      extends Directives
       with ZIODirectives
       with ErrorAccumulatingCirceSupport {
 
     val url: String
 
-    val ops: CRUDOperations[E, PK, SEARCH, SESSION]
+    val ops: CRUDOperations[E, PK, SEARCH]
+
+    val databaseProvider: DatabaseProvider.Service
 
     val pkRegex: Regex = "^[0-9]*$".r
 
@@ -61,7 +63,7 @@ object CRUDRoute {
      * @param session
      * @return
      */
-    def other(session: SESSION): Route = reject
+    def other(session: ChutiSession): Route = reject
 
     /**
      * Override this to add routes that don't require a session
@@ -77,7 +79,7 @@ object CRUDRoute {
      * @param session
      * @return
      */
-    def childrenRoutes(pk: PK, obj: Task[Option[E]], session: SESSION): Seq[Route] = Seq.empty
+    def childrenRoutes(pk: PK, obj: Task[Option[E]], session: ChutiSession): Seq[Route] = Seq.empty
 
     /**
      * You need to override this method so that the architecture knows how to get a primary key from an object
@@ -87,23 +89,68 @@ object CRUDRoute {
      */
     def getPK(obj: E): PK
 
-    def getOperation(id: PK, session: SESSION): Task[Option[E]] = ops.get(id)(session)
+    def fullLayer(session: ChutiSession): ZLayer[Any, Nothing, SessionProvider with DatabaseProvider] = ZLayer
+      .succeed(SessionProvider.live(session)) ++ ZLayer.succeed(databaseProvider)
 
-    def deleteOperation(objTask: Task[Option[E]], session: SESSION): Task[Boolean] =
+    def getOperation(id: PK, session: ChutiSession): Task[Option[E]] = {
+      ops.get(id).provideLayer(fullLayer(session))
+    }
+
+    def deleteOperation(objTask: Task[Option[E]], session: ChutiSession): Task[Boolean] =
       for {
         objOpt <- objTask
-        deleted <- objOpt.fold(Task.succeed(false): Task[Boolean])(
-          obj => ops.delete(getPK(obj), defaultSoftDelete)(session)
-        )
+        deleted <- objOpt.fold(Task.succeed(false): Task[Boolean])(obj =>
+                    ops.delete(getPK(obj), defaultSoftDelete).provideLayer(fullLayer(session))
+                  )
       } yield deleted
 
-    def upsertOperation(obj: E, session: SESSION): Task[E] = ops.upsert(obj)(session)
+    val me = ZLayer.succeed(1)
 
-    def countOperation(search: Option[SEARCH], session: SESSION): Task[Long] =
-      ops.count(search)(session)
+//    def layer(session: ChutiSessio): ZLayer[Any, Nothing, SessionProvider[_]] = ZLayer.succeed(SessionProvider.live(session))
+//      ++ new DatabaseProvider.Service {
+//      override def db: UIO[BasicBackend#DatabaseDef] = ???
+//    }
 
-    def searchOperation(search: Option[SEARCH], session: SESSION): Task[Seq[E]] =
-      ops.search(search)(session)
+    def upsertOperation(obj: E, session: ChutiSession): Task[E] = {
+//      val zio: ZIO[DatabaseProvider with SessionProvider[SESSION], RepositoryException, E] = ops.upsert(obj)
+//      val sessionProvider: SessionProvider.Session[SESSION] = SessionProvider.live(session)
+//      val dbProvider = new DatabaseProvider.Service {
+//        override def db: UIO[BasicBackend#DatabaseDef] = ???
+//      }
+//      val dbLayer = ZLayer.succeed(dbProvider)
+//      for {
+//        l <- dbLayer.memoize.use
+//      }
+//
+//      val finalZio = zio.provideSomeLayer(dbLayer)
+//      finalZio
+
+      trait DB
+      trait UserSession
+
+      case class LiveDB() extends DB
+      val liveDB: DB = LiveDB()
+      case class LiveUserSession() extends UserSession
+      val liveUserSession: UserSession = LiveUserSession()
+
+      def withLayers(): ZIO[Has[DB] with Has[UserSession], Throwable, String] =
+        for {
+          db          <- ZIO.access[Has[DB]](_.get)
+          userSession <- ZIO.access[Has[UserSession]](_.get)
+          s           <- ZIO.succeed(s"Do something with db $db or with session $userSession")
+        } yield s
+
+      val fullLayer                    = ZLayer.succeed(liveDB) ++ ZLayer.succeed(liveUserSession)
+      def withNoLayers(): Task[String] = withLayers().provideLayer(fullLayer)
+
+      ???
+    }
+
+    def countOperation(search: Option[SEARCH], session: ChutiSession): Task[Long] =
+      ops.count(search).provideLayer(fullLayer(session))
+
+    def searchOperation(search: Option[SEARCH], session: ChutiSession): Task[Seq[E]] =
+      ops.search(search).provideLayer(fullLayer(session))
 
     /**
      * The main route. Note that it takes a pair of upickle ReaderWriter implicits that we need to be able to
@@ -114,55 +161,55 @@ object CRUDRoute {
      * @return
      */
     def route(
-               session: SESSION
-             )(
-               implicit
-               objDecoder: Decoder[E],
-               searchDecoder: Decoder[SEARCH],
-               pkDecoder: Decoder[PK],
-               objEncoder: Encoder[E],
-               searchEncoder: Encoder[SEARCH],
-               pkEncoder: Encoder[PK]
-             ): Route =
+      session: ChutiSession
+    )(
+      implicit
+      objDecoder: Decoder[E],
+      searchDecoder: Decoder[SEARCH],
+      pkDecoder: Decoder[PK],
+      objEncoder: Encoder[E],
+      searchEncoder: Encoder[SEARCH],
+      pkEncoder: Encoder[PK]
+    ): Route =
       pathPrefix(url) {
         other(session) ~
-          pathEndOrSingleSlash {
-            (post | put) {
-              entity(as[E]) { obj =>
-                complete(upsertOperation(obj, session))
-              }
+        pathEndOrSingleSlash {
+          (post | put) {
+            entity(as[E]) { obj =>
+              complete(upsertOperation(obj, session))
             }
-          } ~
-          path("search") {
-            post {
-              entity(as[Option[SEARCH]]) { search =>
-                complete(searchOperation(search, session))
-              }
-            }
-          } ~
-          path("count") {
-            post {
-              entity(as[Option[SEARCH]]) { search =>
-                complete(countOperation(search, session).map(a => Json.fromDouble(a.toDouble)))
-              }
-            }
-          } ~
-          pathPrefix(pkRegex) { id =>
-            childrenRoutes(decode[PK](id).toOption.get, getOperation(decode[PK](id).toOption.get, session), session)
-              .reduceOption(_ ~ _)
-              .getOrElse(reject) ~
-              pathEndOrSingleSlash {
-                get {
-                  complete(
-                    getOperation(decode[PK](id).toOption.get, session)
-                      .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
-                  )
-                } ~
-                  delete {
-                    complete(deleteOperation(getOperation(decode[PK](id).toOption.get, session), session))
-                  }
-              }
           }
+        } ~
+        path("search") {
+          post {
+            entity(as[Option[SEARCH]]) { search =>
+              complete(searchOperation(search, session))
+            }
+          }
+        } ~
+        path("count") {
+          post {
+            entity(as[Option[SEARCH]]) { search =>
+              complete(countOperation(search, session).map(a => Json.fromDouble(a.toDouble)))
+            }
+          }
+        } ~
+        pathPrefix(pkRegex) { id =>
+          childrenRoutes(decode[PK](id).toOption.get, getOperation(decode[PK](id).toOption.get, session), session)
+            .reduceOption(_ ~ _)
+            .getOrElse(reject) ~
+          pathEndOrSingleSlash {
+            get {
+              complete(
+                getOperation(decode[PK](id).toOption.get, session)
+                  .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
+              )
+            } ~
+            delete {
+              complete(deleteOperation(getOperation(decode[PK](id).toOption.get, session), session))
+            }
+          }
+        }
       }
   }
 

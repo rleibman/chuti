@@ -16,6 +16,7 @@
 
 package api
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.{ Directives, Route, RouteConcatenation }
@@ -32,26 +33,27 @@ trait Api
     with LiveEnvironment
     with HTMLRoute
     with ModelRoutes
+    with SessionUtils
+    with HasActorSystem
     with ZIODirectives {
   this: CoreActors with Core =>
 
   private implicit val _ = actorSystem.dispatcher
 
-  //TODO This particular example app doesn't use sessions, look up "com.softwaremill.akka-http-session" if you want sessions
-  val sessionResult = Option("validsession")
-
   val routes: Route = DebuggingDirectives.logRequest("Request") {
     extractLog { log =>
       unauthRoute ~ {
-        extractRequestContext { requestContext =>
-          sessionResult match {
-            case Some(session) =>
-              apiRoute(session)
-            case None =>
-              log.info(
-                s"Unauthorized request of ${requestContext.unmatchedPath}, redirecting to login"
-              )
-              redirect("/loginForm", StatusCodes.Found)
+        ensureSession { sessionResult =>
+          extractRequestContext { requestContext =>
+            sessionResult.toOption match {
+              case Some(session) =>
+                apiRoute(session)
+              case None =>
+                log.info(
+                  s"Unauthorized request of ${requestContext.unmatchedPath}, redirecting to login"
+                )
+                redirect("/loginForm", StatusCodes.Found)
+            }
           }
         }
       } ~

@@ -30,7 +30,7 @@ import scala.util.{Failure, Success}
  * A special set of akka-http directives that take ZIOs, run them and marshalls them.
  */
 trait ZIODirectives {
-  val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   implicit def zioMarshaller[A](
     implicit m1: Marshaller[A, HttpResponse],
