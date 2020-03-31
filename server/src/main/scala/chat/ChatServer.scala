@@ -17,12 +17,14 @@
 package chat
 
 import caliban.GraphQL.graphQL
-import caliban.RootResolver
+import caliban.{ GraphQL, RootResolver }
 import caliban.schema.GenericSchema
 import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{ maxDepth, maxFields, printSlowQueries, timeout }
 import chat.SessionProvider.SessionProvider
 import zio._
+import zio.clock.Clock
+import zio.console.Console
 import zio.duration._
 import zio.stream.ZStream
 
@@ -34,8 +36,8 @@ object SessionProvider {
   trait Session {
     def user: User
   }
-  def live(user: User): Session = new Session {
-    val user: User = user
+  def live(u: User): Session = new Session {
+    val user: User = u
   }
 }
 
@@ -51,7 +53,7 @@ trait ChatServer extends GenericSchema[SessionProvider] {
   implicit val userSchema: Typeclass[User]               = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
-  val api =
+  val api: GraphQL[Console with Clock with SessionProvider] =
     graphQL(
       RootResolver(
         Queries(
@@ -70,16 +72,19 @@ trait ChatServer extends GenericSchema[SessionProvider] {
     printSlowQueries(500.millis) @@ // wrapper that logs slow queries
     apolloTracing                   // wrapper for https://github.com/apollographql/apollo-tracing
 
-  private lazy val chatQueue: ZQueue[SessionProvider, Nothing, SessionProvider, Nothing, ChatMessage, ChatMessage] =
-    ??? //ZQueue.unbounded[ChatMessage]
+  private lazy val chatQueue: ZIO[SessionProvider, Nothing, Queue[ChatMessage]] = Queue.unbounded[ChatMessage]
 
   def say(msg: String): ZIO[SessionProvider, Nothing, ChatMessage] =
     for {
+      q           <- chatQueue
       user        <- ZIO.access[SessionProvider](_.get.user)
       chatMessage <- Task.succeed(ChatMessage(user, msg, System.currentTimeMillis()))
-      _           <- chatQueue.offer(chatMessage)
-    } yield (chatMessage)
+      _           <- q.offer(chatMessage)
+    } yield chatMessage
 
-  def chatStream(): ZStream[SessionProvider, Nothing, ChatMessage] = ZStream.fromQueue(chatQueue)
+  def chatStream(): ZStream[SessionProvider, Nothing, ChatMessage] =
+    ZStream.unwrap(for {
+      q <- chatQueue
+    } yield ZStream.fromQueue(q))
 
 }
