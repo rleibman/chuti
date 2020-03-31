@@ -32,7 +32,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
 
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
     for {
-      session <- ZIO.accessM[SessionProvider](_.get.session)
+      session <- ZIO.access[SessionProvider](_.get.session)
       db      <- ZIO.accessM[DatabaseProvider](_.get.db)
       ret <- ZIO.fromFuture(implicit ec => db.run(dbio)).mapError {
               case e: SlickException => RepositoryException("Slick Repository Error", Some(e))
