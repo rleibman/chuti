@@ -18,13 +18,12 @@ package chat
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives
-import api.ZIODirectives
 import caliban.GraphQL.graphQL
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import caliban.schema.GenericSchema
 import caliban.wrappers.ApolloTracing.apolloTracing
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{GraphQL, GraphQLInterpreter, RootResolver}
+import caliban.wrappers.Wrappers.{ maxDepth, maxFields, printSlowQueries, timeout }
+import caliban.{ CalibanError, GraphQL, GraphQLInterpreter, RootResolver }
 import chat.ChatService.ChatService
 import chat.SessionProvider.SessionProvider
 import zio._
@@ -33,6 +32,15 @@ import zio.console.Console
 import zio.duration._
 import zio.stream.ZStream
 
+/**
+@rleibman ChatApi.api.interpreter should be done only once (for performance reasons)
+you can unsafeRun once to get the interpreter (doesn't require any env)
+and then for each request you can provide your layer
+here you recreate an interpreter at every call, which works but it not efficient at all
+ChatService.live too seems to be recreated every time
+in summary, do an unsafeRun in ChatRoute to get the interpreter and the live layer,
+then for each user you can do another unsafeRun  with provideCustomLayer
+ */
 import scala.concurrent.ExecutionContextExecutor
 
 case class User(name: String)
@@ -52,13 +60,20 @@ case class ChatMessage(user: User, msg: String, date: Long)
 
 object ChatService {
   import SessionProvider._
+  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+
   type ChatService = Has[Service]
   trait Service {
     def say(msg: String): ZIO[SessionProvider, Nothing, ChatMessage]
     def chatStream: ZStream[SessionProvider, Nothing, ChatMessage]
   }
 
-  val live: ZManaged[Any, Nothing, ZLayer[Any, Nothing, ChatService]] = ChatService.make().memoize
+  val interpreter: GraphQLInterpreter[ZEnv with SessionProvider, CalibanError] = runtime.unsafeRun(
+    ChatService
+      .make()
+      .memoize
+      .use(layer => ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer)))
+  )
 
   def say(msg: String): URIO[ChatService with SessionProvider, ChatMessage] = URIO.accessM(_.get.say(msg))
 
@@ -103,7 +118,7 @@ object ChatService {
   }
 }
 
-object ChatApi extends GenericSchema[SessionProvider with ChatService] {
+object ChatApi extends GenericSchema[ChatService with SessionProvider] {
   case class Queries()
   case class Mutations(say: String => URIO[SessionProvider with ChatService, Boolean])
   case class Subscriptions(chatStream: ZStream[SessionProvider with ChatService, Nothing, ChatMessage])
@@ -111,7 +126,7 @@ object ChatApi extends GenericSchema[SessionProvider with ChatService] {
   implicit val userSchema: Typeclass[User]               = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
-  val api: GraphQL[Console with Clock with SessionProvider with ChatService] =
+  val api: GraphQL[Console with Clock with ChatService with SessionProvider] =
     graphQL(
       RootResolver(
         Queries(
@@ -132,24 +147,21 @@ object ChatApi extends GenericSchema[SessionProvider with ChatService] {
 
 }
 
-trait ChatRoute extends ZIODirectives with Directives with AkkaHttpCirceAdapter {
+trait ChatRoute extends Directives with AkkaHttpCirceAdapter {
   implicit val system: ActorSystem                        = ActorSystem()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-
-  def interpreter(user: User): GraphQLInterpreter[zio.ZEnv, Any] = runtime.unsafeRun(
-    ChatService.live.use { layer =>
-      ChatApi.api.interpreter
-        .map(_.provideCustomLayer(layer ++ ZLayer.succeed(SessionProvider.live(user))))
-    }
-  )
+  import ChatService._
+  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   val route =
     path("api" / "graphql") {
-      val user = User("joe") //this will come from the session
-      adapter.makeHttpService(interpreter(user))
+      val user         = User("joe") //this will come from the session
+      val sessionLayer = ZLayer.succeed(SessionProvider.live(user))
+      adapter.makeHttpService(interpreter.provideCustomLayer(sessionLayer))
     } ~ path("ws" / "graphql") {
-      val user = User("joe") //this will come from the session
-      adapter.makeWebSocketService(interpreter(user))
+      val user         = User("joe") //this will come from the session
+      val sessionLayer = ZLayer.succeed(SessionProvider.live(user))
+      adapter.makeWebSocketService(interpreter.provideCustomLayer(sessionLayer))
     } ~ path("graphiql") {
       getFromResource("graphiql.html")
     }
