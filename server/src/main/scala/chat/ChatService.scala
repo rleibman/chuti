@@ -132,7 +132,7 @@ object ChatApi extends GenericSchema[SessionProvider with ChatService] {
 
 }
 
-trait GameRoute extends ZIODirectives with Directives with AkkaHttpCirceAdapter {
+trait ChatRoute extends ZIODirectives with Directives with AkkaHttpCirceAdapter {
   implicit val system: ActorSystem                        = ActorSystem()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
