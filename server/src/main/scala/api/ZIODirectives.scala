@@ -1,17 +1,7 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package api
@@ -27,14 +17,14 @@ import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
 /**
- * A special set of akka-http directives that take ZIOs, run them and marshalls them.
- */
+  * A special set of akka-http directives that take ZIOs, run them and marshalls them.
+  */
 trait ZIODirectives {
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   implicit def zioMarshaller[A](
     implicit m1: Marshaller[A, HttpResponse],
-    m2: Marshaller[Throwable, HttpResponse]
+    m2:          Marshaller[Throwable, HttpResponse]
   ): Marshaller[Task[A], HttpResponse] =
     Marshaller { implicit ec => a =>
       val r = a.foldM(
@@ -70,14 +60,14 @@ trait ZIODirectives {
   }
 
   /**
-   * "Unwraps" a `Task[T]` and runs the inner route when the task has failed
-   * with the task's failure exception as an extraction of type `Throwable`.
-   * If the task succeeds the request is completed using the values marshaller
-   * (This directive therefore requires a marshaller for the task's type to be
-   * implicitly available.)
-   *
-   * @group task
-   */
+    * "Unwraps" a `Task[T]` and runs the inner route when the task has failed
+    * with the task's failure exception as an extraction of type `Throwable`.
+    * If the task succeeds the request is completed using the values marshaller
+    * (This directive therefore requires a marshaller for the task's type to be
+    * implicitly available.)
+    *
+    * @group task
+    */
   def zioCompleteOrRecoverWith(magnet: ZIOCompleteOrRecoverWithMagnet): Directive1[Throwable] =
     magnet.directive
 
@@ -92,7 +82,9 @@ trait ZIOCompleteOrRecoverWithMagnet {
 object ZIOCompleteOrRecoverWithMagnet extends ZIODirectives {
   implicit def apply[T](
     task: => Task[T]
-  )(implicit m: ToResponseMarshaller[T]): ZIOCompleteOrRecoverWithMagnet =
+  )(
+    implicit m: ToResponseMarshaller[T]
+  ): ZIOCompleteOrRecoverWithMagnet =
     new ZIOCompleteOrRecoverWithMagnet {
       override val directive: Directive1[Throwable] = Directive[Tuple1[Throwable]] { inner => ctx =>
         import ctx.executionContext

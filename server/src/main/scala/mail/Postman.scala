@@ -1,29 +1,19 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package mail
 
 import com.typesafe.config.Config
-import courier.{ Envelope, Mailer }
+import courier.{Envelope, Mailer}
 import zio.ZIO
 
 /**
- * A trait that knows how to deliver email, and uses ZIO
- * //TODO Might want to move to a separate project.
- */
+  * A trait that knows how to deliver email, and uses ZIO
+  * //TODO Might want to move to a separate project.
+  */
 trait Postman {
   val postman: Postman.Service[Any]
 }
@@ -35,11 +25,11 @@ object Postman {
 }
 
 /**
- * An instatiation of the Postman that user the courier mailer
- */
+  * An instatiation of the Postman that user the courier mailer
+  */
 trait CourierPostman extends Postman {
   val configKey: String
-  val config: Config
+  val config:    Config
 
   override val postman: Postman.Service[Any] = new Postman.Service[Any] {
     lazy val mailer: Mailer = {

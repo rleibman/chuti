@@ -1,17 +1,7 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package chat
@@ -22,8 +12,8 @@ import caliban.GraphQL.graphQL
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import caliban.schema.GenericSchema
 import caliban.wrappers.ApolloTracing.apolloTracing
-import caliban.wrappers.Wrappers.{ maxDepth, maxFields, printSlowQueries, timeout }
-import caliban.{ CalibanError, GraphQL, GraphQLInterpreter, RootResolver }
+import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
+import caliban.{CalibanError, GraphQL, GraphQLInterpreter, RootResolver}
 import chat.ChatService.ChatService
 import chat.SessionProvider.SessionProvider
 import zio._
@@ -40,7 +30,7 @@ here you recreate an interpreter at every call, which works but it not efficient
 ChatService.live too seems to be recreated every time
 in summary, do an unsafeRun in ChatRoute to get the interpreter and the live layer,
 then for each user you can do another unsafeRun  with provideCustomLayer
- */
+  */
 import scala.concurrent.ExecutionContextExecutor
 
 case class User(name: String)
@@ -54,9 +44,14 @@ object SessionProvider {
   def live(u: User): Session = new Session {
     val user: User = u
   }
+  def layer(u: User): Layer[Nothing, SessionProvider] = ZLayer.succeed(live(u))
 }
 
-case class ChatMessage(user: User, msg: String, date: Long)
+case class ChatMessage(
+  user: User,
+  msg:  String,
+  date: Long
+)
 
 object ChatService {
   import SessionProvider._
@@ -72,15 +67,21 @@ object ChatService {
     ChatService
       .make()
       .memoize
-      .use(layer => ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer)))
+      .use(layer =>
+        ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer))
+      )
   )
 
-  def say(msg: String): URIO[ChatService with SessionProvider, ChatMessage] = URIO.accessM(_.get.say(msg))
+  def say(msg: String): URIO[ChatService with SessionProvider, ChatMessage] =
+    URIO.accessM(_.get.say(msg))
 
   def chatStream: ZStream[ChatService with SessionProvider, Nothing, ChatMessage] =
     ZStream.accessStream(_.get.chatStream)
 
-  case class UserQueue(user: User, queue: Queue[ChatMessage])
+  case class UserQueue(
+    user:  User,
+    queue: Queue[ChatMessage]
+  )
 
   def make(): ZLayer[Any, Nothing, ChatService] = ZLayer.fromEffect {
     for {
@@ -121,9 +122,11 @@ object ChatService {
 object ChatApi extends GenericSchema[ChatService with SessionProvider] {
   case class Queries()
   case class Mutations(say: String => URIO[SessionProvider with ChatService, Boolean])
-  case class Subscriptions(chatStream: ZStream[SessionProvider with ChatService, Nothing, ChatMessage])
+  case class Subscriptions(
+    chatStream: ZStream[SessionProvider with ChatService, Nothing, ChatMessage]
+  )
 
-  implicit val userSchema: Typeclass[User]               = gen[User]
+  implicit val userSchema:        Typeclass[User] = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
   val api: GraphQL[Console with Clock with ChatService with SessionProvider] =
@@ -139,29 +142,27 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider] {
         )
       )
     ) @@
-    maxFields(200) @@               // query analyzer that limit query fields
-    maxDepth(30) @@                 // query analyzer that limit query depth
-    timeout(3.seconds) @@           // wrapper that fails slow queries
-    printSlowQueries(500.millis) @@ // wrapper that logs slow queries
-    apolloTracing                   // wrapper for https://github.com/apollographql/apollo-tracing
+      maxFields(200) @@ // query analyzer that limit query fields
+      maxDepth(30) @@ // query analyzer that limit query depth
+      timeout(3.seconds) @@ // wrapper that fails slow queries
+      printSlowQueries(500.millis) @@ // wrapper that logs slow queries
+      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
 
 }
 
 trait ChatRoute extends Directives with AkkaHttpCirceAdapter {
-  implicit val system: ActorSystem                        = ActorSystem()
+  implicit val system:           ActorSystem = ActorSystem()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
   import ChatService._
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   val route =
     path("api" / "graphql") {
-      val user         = User("joe") //this will come from the session
-      val sessionLayer = ZLayer.succeed(SessionProvider.live(user))
-      adapter.makeHttpService(interpreter.provideCustomLayer(sessionLayer))
+      val user = User("joe") //this will come from the session
+      adapter.makeHttpService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
     } ~ path("ws" / "graphql") {
-      val user         = User("joe") //this will come from the session
-      val sessionLayer = ZLayer.succeed(SessionProvider.live(user))
-      adapter.makeWebSocketService(interpreter.provideCustomLayer(sessionLayer))
+      val user = User("joe") //this will come from the session
+      adapter.makeWebSocketService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
     } ~ path("graphiql") {
       getFromResource("graphiql.html")
     }
