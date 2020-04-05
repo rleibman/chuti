@@ -14,10 +14,21 @@
  * limitations under the License.
  */
 
-package api
+package app
 
-import akka.actor.ActorSystem
+import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom
 
-trait HasActorSystem {
-  implicit val actorSystem: ActorSystem
+import scala.scalajs.js.annotation.JSExport
+
+object LoginApp {
+  @JSExport
+  def main(args: Array[String]): Unit = {
+
+    val component = <.div(LoginController())
+
+    component.renderIntoDOM(dom.document.getElementById("content"))
+    ()
+
+  }
 }

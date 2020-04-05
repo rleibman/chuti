@@ -16,7 +16,12 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 // Web client
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.15.0-0.6")
+addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen" % "0.7.3")
 
 libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.7.30" // Needed by sbt-git
 libraryDependencies += "commons-io" % "commons-io" % "2.6"
 libraryDependencies += "org.vafer" % "jdeb" % "1.4" artifacts Artifact("jdeb", "jar", "jar")
+
+resolvers += Resolver.bintrayRepo("oyvindberg", "converter")
+
+addSbtPlugin("org.scalablytyped.converter" % "sbt-converter06" % "1.0.0-beta8")

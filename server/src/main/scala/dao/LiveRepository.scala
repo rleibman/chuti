@@ -1,21 +1,30 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package dao
 
 import java.sql.SQLException
 
-import api.ChutiSession
 import chuti.{GameState, User, UserId}
 import dao.Repository.{GameStateOperations, UserOperations}
 import slick.SlickException
-import slick.basic.BasicBackend
 import slick.dbio.DBIO
-import zio.{Has, ZIO}
+import zio.ZIO
 import zioslick.RepositoryException
+
 import scala.language.implicitConversions
 
 trait LiveRepository extends Repository with SlickToModelInterop {
@@ -54,6 +63,19 @@ trait LiveRepository extends Repository with SlickToModelInterop {
       override def search(search: Option[EmptySearch[User]]): RepositoryIO[Seq[User]] = ???
 
       override def count(search: Option[EmptySearch[User]]): RepositoryIO[Long] = ???
+
+      override def login(
+        accountname: String,
+        username:    String,
+        password:    String
+      ): RepositoryIO[Option[User]] = ???
+
+      override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
+
+      override def changePassword(
+        user:     User,
+        password: String
+      ): RepositoryIO[Boolean] = ???
     }
     override val gameStateOperations: Repository.GameStateOperations = new GameStateOperations {
       override def upsert(e: GameState): RepositoryIO[GameState] = ???

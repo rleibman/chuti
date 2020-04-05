@@ -1,27 +1,48 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package routes
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
-import api.{ChutiSession, LiveEnvironment}
+import api.{ChutiSession, HasActorSystem, LiveEnvironment}
 import chuti.GameState
+import dao.Repository
+import io.circe.generic.auto._
+import mail.Postman
 
 /**
   * For convenience, this trait aggregates all of the model routes.
   */
 trait ModelRoutes extends Directives {
+  this: LiveEnvironment with HasActorSystem =>
 
-  private val gameRoute = new GameRoute with LiveEnvironment {
-    override val juego:       GameState = ???
-    override val actorSystem: ActorSystem = ???
+  private val gameRoute: GameRoute = new GameRoute {
+    override val juego:       GameState = null
+    override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+  }
+
+  private val authRoute: AuthRoute = new AuthRoute {
+    override def repository:           Repository.Service = ModelRoutes.this.repository
+    implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+    override val postman:              Postman.Service[Any] = ModelRoutes.this.postman
   }
 
   private val crudRoutes: List[CRUDRoute[_, _, _]] = List(
+    authRoute
 //    sampleModelObjectRouteRoute
   )
 
@@ -35,8 +56,8 @@ trait ModelRoutes extends Directives {
   //  }
 
   def apiRoute(session: ChutiSession): Route = pathPrefix("api") {
-    gameRoute.route(session)
+    gameRoute.route(session) ~
+      authRoute.crudRoute.route(session)
 //    sampleModelObjectRouteRoute.crudRoute.route(session)
-    reject
   }
 }

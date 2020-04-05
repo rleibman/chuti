@@ -1,7 +1,17 @@
 /*
  * Copyright 2020 Roberto Leibman
  *
- * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package routes
@@ -70,25 +80,30 @@ object GameApi extends GenericSchema[GameService] {
 }
 
 trait GameRoute extends ZIODirectives with Directives with AkkaHttpCirceAdapter {
-  val juego:       GameState
-  val actorSystem: ActorSystem
-  implicit val materializer: Materializer = Materializer.matFromSystem(actorSystem)
-  import actorSystem.dispatcher
+  def juego:       GameState
+  def actorSystem: ActorSystem
 
-  private val interpreter = runtime.unsafeRun(
+  implicit def materializer: Materializer = Materializer.matFromSystem(actorSystem)
+
+  lazy private val interpreter = runtime.unsafeRun(
     GameService
       .make(juego)
       .memoize
       .use(layer => GameApi.api.interpreter.map(_.provideCustomLayer(layer)))
   )
 
-  def route(session: ChutiSession): Route =
-    path("api" / "graphql") {
-      adapter.makeHttpService(interpreter)
-    } ~ path("ws" / "graphql") {
-      adapter.makeWebSocketService(interpreter)
-    } ~ path("graphiql") {
-      getFromResource("graphiql.html")
-    }
+  def route(session: ChutiSession): Route = reject
+
+//  def route(session: ChutiSession): Route = {
+//    val sys = actorSystem
+//    import sys.dispatcher
+//    path("api" / "graphql") {
+//      adapter.makeHttpService(interpreter)
+//    } ~ path("ws" / "graphql") {
+//      adapter.makeWebSocketService(interpreter)
+//    } ~ path("graphiql") {
+//      getFromResource("graphiql.html")
+//    }
+//  }
 
 }
