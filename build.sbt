@@ -31,7 +31,7 @@ lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
 lazy val calibanVersion = "0.7.3"
-lazy val scalaCacheVersion = "0.28.1-SNAPSHOT"
+lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
   organization     := "leibman.net",
@@ -231,6 +231,7 @@ lazy val commonWeb: Project => Project =
     .settings(
       resolvers += Resolver.bintrayRepo("oyvindberg", "converter"),
       stFlavour := Flavour.Japgolly,
+      stIgnore ++= List("react-dom"),
       libraryDependencies ++= Seq(
         "io.circe" %%% "circe-core",
         "io.circe" %%% "circe-generic",
@@ -335,16 +336,13 @@ lazy val bundlerSettings: Project => Project =
         ((moduleName in fullOptJS).value + "-opt.js")),
       webpackEmitSourceMaps := true,
       Compile / npmDependencies ++= Seq(
-        //        "jsdom"-> "^15.0.0",
-        "typescript"        -> "3.8.3",
-        "react-dom"         -> "16.9",
-        "@types/react-dom"  -> "16.9.1",
-        "react"             -> "16.9",
-        "@types/react"      -> "16.9.5",
-        "semantic-ui-react" -> "0.88.1"
+        "react-dom"         -> "16.13.1",
+        "@types/react-dom"  -> "16.9.6",
+        "react"             -> "16.13.1",
+        "@types/react"      -> "16.9.32",
+        "semantic-ui-react" -> "0.88.2"
       ),
       npmDevDependencies.in(Compile) := Seq(
-        //        "jsdom"-> "^15.0.0",
         "style-loader"               -> "0.23.1",
         "css-loader"                 -> "2.1.0",
         "sass-loader"                -> "7.1.0",

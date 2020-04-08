@@ -19,9 +19,16 @@ package dao
 import zio.{IO, ZIO}
 import zioslick.RepositoryException
 
-trait Search[A]
+trait Search
 
-case class EmptySearch[A]() extends Search[A]
+trait PagedSearch {
+  val pageIndex: Int
+  val pageSize: Int
+}
+
+case class EmptySearch() extends Search
+
+case class PagedStringSearch(text: String, pageIndex: Int = 0, pageSize: Int = 0) extends Search
 
 /**
   * Collects the basic CRUD operations of a single object (or object graph) against a data source.
@@ -29,7 +36,7 @@ case class EmptySearch[A]() extends Search[A]
   * @tparam PK
   * @tparam SEARCH
   */
-trait CRUDOperations[E, PK, SEARCH <: Search[E]] {
+trait CRUDOperations[E, PK, SEARCH <: Search] {
   def upsert(e: E):  RepositoryIO[E]
   def get(pk:   PK): RepositoryIO[Option[E]]
   def delete(

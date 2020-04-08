@@ -32,11 +32,10 @@ trait Repository {
 }
 
 object Repository {
-  trait UserOperations extends CRUDOperations[User, UserId, EmptySearch[User]] {
+  trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
     def login(
-      accountname: String,
-      username:    String,
-      password:    String
+      email:    String,
+      password: String
     ): RepositoryIO[Option[User]]
 
     def userByEmail(email: String): RepositoryIO[Option[User]]
@@ -47,12 +46,14 @@ object Repository {
     ): RepositoryIO[Boolean]
 
     def unfriend(
-      user:  User,
       enemy: User
     ): RepositoryIO[Boolean]
-    def friends(user: User): RepositoryIO[Seq[User]]
+    def friend(
+      friend: User
+    ): RepositoryIO[Boolean]
+    def friends: RepositoryIO[Seq[User]]
   }
-  trait GameStateOperations extends CRUDOperations[GameState, Int, EmptySearch[GameState]] {}
+  trait GameStateOperations extends CRUDOperations[GameState, Int, EmptySearch] {}
 
   trait Service {
     val gameStateOperations: GameStateOperations

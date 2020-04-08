@@ -16,13 +16,17 @@
 
 package routes
 
+import java.time.{Instant, LocalDateTime, ZoneOffset}
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.Materializer
 import api.{ChutiSession, ZIODirectives}
+import caliban.CalibanError.ExecutionError
 import caliban.GraphQL.graphQL
+import caliban.Value.IntValue
 import caliban.interop.circe.AkkaHttpCirceAdapter
-import caliban.schema.GenericSchema
+import caliban.schema._
 import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{AkkaHttpAdapter, GraphQL, RootResolver}
@@ -33,6 +37,8 @@ import zio.console.Console
 import zio.duration._
 import zio.stream.ZStream
 import zio.{Has, URIO, ZLayer}
+
+import scala.util.Try
 
 object GameService {
   type GameService = Has[Service]
@@ -48,15 +54,21 @@ object GameApi extends GenericSchema[GameService] {
   case class Mutations(jugada:      Event => URIO[GameService, GameState])
   case class Subscriptions(jugadas: ZStream[GameService, Nothing, Event])
 
-  implicit val usuarioSchema = gen[User]
-  implicit val numeroTypeSchema = gen[Numero]
-  implicit val estadoSchema = gen[Estado]
-  implicit val triunfoSchema = gen[Triunfo]
-  implicit val fichaSchema = gen[Ficha]
-  implicit val filaSchema = gen[Fila]
-  implicit val jugadorSchema = gen[Jugador]
-  implicit val estadoDeJuegoSchema = gen[GameState]
-  implicit val jugadaSchema = gen[Event]
+  implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
+    Schema.longSchema.contramap(_.toInstant(ZoneOffset.UTC).toEpochMilli)
+  implicit val localDateTimeArgBuilder: ArgBuilder[LocalDateTime] = {
+    case value: IntValue => Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
+    case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
+  }
+  implicit private val usuarioSchema = gen[User]
+  implicit private val numeroTypeSchema = gen[Numero]
+  implicit private val estadoSchema = gen[Estado]
+  implicit private val triunfoSchema = gen[Triunfo]
+  implicit private val fichaSchema = gen[Ficha]
+  implicit private val filaSchema = gen[Fila]
+  implicit private val jugadorSchema = gen[Jugador]
+  implicit private val estadoDeJuegoSchema = gen[GameState]
+  implicit private val jugadaSchema = gen[Event]
 
   val api: GraphQL[Console with Clock with GameService] =
     graphQL(

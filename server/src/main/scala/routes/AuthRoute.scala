@@ -28,7 +28,7 @@ import chuti.{User, UserId}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
-import dao.{DatabaseProvider, EmptySearch, Repository}
+import dao.{DatabaseProvider, EmptySearch, PagedStringSearch, Repository}
 import game.GameServer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
@@ -41,13 +41,14 @@ import zio.{Task, UIO, ZIO}
 import scala.concurrent.duration._
 
 trait AuthRoute
-    extends CRUDRoute[User, UserId, EmptySearch[User]] with Repository with Postman with Config
+    extends CRUDRoute[User, UserId, PagedStringSearch] with Repository with Postman with Config
     with SessionUtils with HasActorSystem {
+  this: DatabaseProvider.Service =>
 
   lazy private val adminSession = ChutiSession(GameServer.god)
 
-  override def crudRoute: CRUDRoute.Service[User, UserId, EmptySearch[User]] =
-    new CRUDRoute.Service[User, UserId, EmptySearch[User]]() with ZIODirectives with Directives {
+  override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
+    new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
 
       private val staticContentDir: String = config.getString("chuti.staticContentDir")
 
@@ -137,15 +138,14 @@ trait AuthRoute
               post {
                 formFields(
                   (
-                    Symbol("accountname").as[String],
-                    Symbol("username").as[String],
+                    Symbol("email").as[String],
                     Symbol("password").as[String]
                   )
-                ) { (accountname, username, password) =>
-                  log.info(s"Logging in $accountname:$username")
+                ) { (email, password) =>
+                  log.info(s"Logging in $email")
 
                   val zio = ops
-                    .login(accountname, username, password).map {
+                    .login(email, password).map {
                       case Some(user) =>
                         mySetSession(ChutiSession(user)) {
                           setNewCsrfToken(checkHeader) { ctx =>

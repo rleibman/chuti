@@ -29,9 +29,12 @@ trait Tables {
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
   import slick.jdbc.{GetResult => GR}
 
+  val hashPassword: (Rep[String], Rep[Int]) => Rep[String] =
+    SimpleFunction.binary[String, Int, String]("SHA2")
+
   /** DDL for all tables. Call .create to execute. */
   lazy val schema
-    : profile.SchemaDescription = Friends.schema ++ Game.schema ++ GameEvent.schema ++ GamePlayers.schema ++ User.schema
+    : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema
   @deprecated("Use .schema instead of .ddl", "3.0")
   def ddl = schema
 
@@ -70,14 +73,14 @@ trait Tables {
     val two: Rep[Int] = column[Int]("two")
 
     /** Foreign key referencing User (database name friends_user_1) */
-    lazy val userFk1 = foreignKey("friends_user_1", one, User)(
+    lazy val userFk1 = foreignKey("friends_user_1", one, UserQuery)(
       r => r.id,
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
 
     /** Foreign key referencing User (database name friends_user_2) */
-    lazy val userFk2 = foreignKey("friends_user_2", two, User)(
+    lazy val userFk2 = foreignKey("friends_user_2", two, UserQuery)(
       r => r.id,
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
@@ -85,7 +88,7 @@ trait Tables {
   }
 
   /** Collection-like TableQuery object for table Friends */
-  lazy val Friends = new TableQuery(tag => new Friends(tag))
+  lazy val FriendsQuery = new TableQuery(tag => new Friends(tag))
 
   /** Entity class storing rows of table Game
     *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey
@@ -103,7 +106,7 @@ trait Tables {
     gameState:    String,
     created:      java.sql.Timestamp,
     lastupdated:  java.sql.Timestamp,
-    deleted:      Byte = 0,
+    deleted:      Boolean = false,
     deleteddate:  Option[java.sql.Timestamp] = None
   )
 
@@ -112,7 +115,7 @@ trait Tables {
     implicit e0: GR[Int],
     e1:          GR[String],
     e2:          GR[java.sql.Timestamp],
-    e3:          GR[Byte],
+    e3:          GR[Boolean],
     e4:          GR[Option[java.sql.Timestamp]]
   ): GR[GameRow] = GR { prs =>
     import prs._
@@ -124,7 +127,7 @@ trait Tables {
         <<[String],
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp],
-        <<[Byte],
+        <<[Boolean],
         <<?[java.sql.Timestamp]
       )
     )
@@ -176,7 +179,7 @@ trait Tables {
     val lastupdated: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("lastUpdated")
 
     /** Database column deleted SqlType(TINYINT), Default(0) */
-    val deleted: Rep[Byte] = column[Byte]("deleted", O.Default(0))
+    val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
 
     /** Database column deletedDate SqlType(TIMESTAMP), Default(None) */
     val deleteddate: Rep[Option[java.sql.Timestamp]] =
@@ -184,7 +187,7 @@ trait Tables {
   }
 
   /** Collection-like TableQuery object for table Game */
-  lazy val Game = new TableQuery(tag => new Game(tag))
+  lazy val GameQuery = new TableQuery(tag => new Game(tag))
 
   /** Entity class storing rows of table GameEvent
     *  @param gameId Database column game_id SqlType(INT)
@@ -232,7 +235,7 @@ trait Tables {
     val pk = primaryKey("game_event_PK", (gameId, currentIndex))
 
     /** Foreign key referencing Game (database name game_event_game) */
-    lazy val gameFk = foreignKey("game_event_game", gameId, Game)(
+    lazy val gameFk = foreignKey("game_event_game", gameId, GameQuery)(
       r => r.id,
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
@@ -240,7 +243,7 @@ trait Tables {
   }
 
   /** Collection-like TableQuery object for table GameEvent */
-  lazy val GameEvent = new TableQuery(tag => new GameEvent(tag))
+  lazy val GameEventQuery = new TableQuery(tag => new GameEvent(tag))
 
   /** Entity class storing rows of table GamePlayers
     *  @param userId Database column user_id SqlType(INT)
@@ -277,14 +280,14 @@ trait Tables {
     val gameId: Rep[Int] = column[Int]("game_id")
 
     /** Foreign key referencing Game (database name game_players_game) */
-    lazy val gameFk = foreignKey("game_players_game", gameId, Game)(
+    lazy val gameFk = foreignKey("game_players_game", gameId, GameQuery)(
       r => r.id,
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
 
     /** Foreign key referencing User (database name game_players_user) */
-    lazy val userFk = foreignKey("game_players_user", userId, User)(
+    lazy val userFk = foreignKey("game_players_user", userId, UserQuery)(
       r => r.id,
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
@@ -292,11 +295,10 @@ trait Tables {
   }
 
   /** Collection-like TableQuery object for table GamePlayers */
-  lazy val GamePlayers = new TableQuery(tag => new GamePlayers(tag))
+  lazy val GamePlayersQuery = new TableQuery(tag => new GamePlayers(tag))
 
   /** Entity class storing rows of table User
     *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey
-    *  @param username Database column username SqlType(TEXT)
     *  @param hashedpassword Database column hashedPassword SqlType(TEXT)
     *  @param name Database column name SqlType(TEXT)
     *  @param created Database column created SqlType(TIMESTAMP)
@@ -307,14 +309,13 @@ trait Tables {
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class UserRow(
     id:             Int,
-    username:       String,
     hashedpassword: String,
     name:           String,
+    email:          String,
     created:        java.sql.Timestamp,
     lastupdated:    java.sql.Timestamp,
     lastloggedin:   Option[java.sql.Timestamp] = None,
-    email:          Option[String] = None,
-    deleted:        Byte = 0,
+    deleted:        Boolean = false,
     deleteddate:    Option[java.sql.Timestamp] = None
   )
 
@@ -324,8 +325,7 @@ trait Tables {
     e1:          GR[String],
     e2:          GR[java.sql.Timestamp],
     e3:          GR[Option[java.sql.Timestamp]],
-    e4:          GR[Option[String]],
-    e5:          GR[Byte]
+    e4:          GR[Boolean]
   ): GR[UserRow] = GR { prs =>
     import prs._
     UserRow.tupled(
@@ -337,8 +337,7 @@ trait Tables {
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp],
         <<?[java.sql.Timestamp],
-        <<?[String],
-        <<[Byte],
+        <<[Boolean],
         <<?[java.sql.Timestamp]
       )
     )
@@ -349,13 +348,12 @@ trait Tables {
     def * =
       (
         id,
-        username,
         hashedpassword,
         name,
+        email,
         created,
         lastupdated,
         lastloggedin,
-        email,
         deleted,
         deleteddate
       ) <> (UserRow.tupled, UserRow.unapply)
@@ -365,13 +363,12 @@ trait Tables {
       (
         (
           Rep.Some(id),
-          Rep.Some(username),
           Rep.Some(hashedpassword),
           Rep.Some(name),
+          Rep.Some(email),
           Rep.Some(created),
           Rep.Some(lastupdated),
           lastloggedin,
-          email,
           Rep.Some(deleted),
           deleteddate
         )
@@ -379,7 +376,7 @@ trait Tables {
         { r =>
           import r._;
           _1.map(_ =>
-            UserRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8, _9.get, _10))
+            UserRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get, _9))
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -388,14 +385,15 @@ trait Tables {
     /** Database column id SqlType(INT), AutoInc, PrimaryKey */
     val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
 
-    /** Database column username SqlType(TEXT) */
-    val username: Rep[String] = column[String]("username")
-
     /** Database column hashedPassword SqlType(TEXT) */
     val hashedpassword: Rep[String] = column[String]("hashedPassword")
 
     /** Database column name SqlType(TEXT) */
     val name: Rep[String] = column[String]("name")
+
+    /** Database column email SqlType(VARCHAR), Length(255,true), Default(None) */
+    val email: Rep[String] =
+      column[String]("email", O.Length(255, varying = true))
 
     /** Database column created SqlType(TIMESTAMP) */
     val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")
@@ -407,12 +405,8 @@ trait Tables {
     val lastloggedin: Rep[Option[java.sql.Timestamp]] =
       column[Option[java.sql.Timestamp]]("lastLoggedIn", O.Default(None))
 
-    /** Database column email SqlType(VARCHAR), Length(255,true), Default(None) */
-    val email: Rep[Option[String]] =
-      column[Option[String]]("email", O.Length(255, varying = true), O.Default(None))
-
     /** Database column deleted SqlType(TINYINT), Default(0) */
-    val deleted: Rep[Byte] = column[Byte]("deleted", O.Default(0))
+    val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
 
     /** Database column deletedDate SqlType(TIMESTAMP), Default(None) */
     val deleteddate: Rep[Option[java.sql.Timestamp]] =
@@ -423,5 +417,5 @@ trait Tables {
   }
 
   /** Collection-like TableQuery object for table User */
-  lazy val User = new TableQuery(tag => new User(tag))
+  lazy val UserQuery = new TableQuery(tag => new User(tag))
 }

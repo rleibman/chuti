@@ -20,22 +20,25 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, HasActorSystem, LiveEnvironment}
 import chuti.GameState
-import dao.Repository
+import dao.{DatabaseProvider, Repository}
 import io.circe.generic.auto._
 import mail.Postman
+import slick.basic.BasicBackend
+import zio.UIO
 
 /**
   * For convenience, this trait aggregates all of the model routes.
   */
 trait ModelRoutes extends Directives {
-  this: LiveEnvironment with HasActorSystem =>
+  this: LiveEnvironment with HasActorSystem with DatabaseProvider.Service =>
 
   private val gameRoute: GameRoute = new GameRoute {
     override val juego:       GameState = null
     override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 
-  private val authRoute: AuthRoute = new AuthRoute {
+  private val authRoute: AuthRoute = new AuthRoute with DatabaseProvider.Service {
+    override def db: UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
     override def repository:           Repository.Service = ModelRoutes.this.repository
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
     override val postman:              Postman.Service[Any] = ModelRoutes.this.postman

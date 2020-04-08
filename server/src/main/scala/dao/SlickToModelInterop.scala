@@ -15,5 +15,29 @@
  */
 
 package dao
+import java.sql.Timestamp
 
-trait SlickToModelInterop {}
+import chuti.{User, UserId}
+import gen.Tables._
+
+trait SlickToModelInterop {
+  def UserRow2User(row: UserRow): User = User(
+    id = Some(UserId(row.id)),
+    email = row.email,
+    name = row.name,
+    created = row.created.toLocalDateTime,
+    lastUpdated = row.created.toLocalDateTime,
+    lastLoggedIn = row.lastloggedin.map(_.toLocalDateTime),
+    wallet = 0.0, //TODO row.wallet,
+    deleted = row.deleted
+  )
+  def User2UserRow(value: User): UserRow = UserRow(
+    id = value.id.fold(0)(_.value),
+    hashedpassword = "",
+    name = value.name,
+    email = value.email,
+    created = Timestamp.valueOf(value.created),
+    lastupdated = new Timestamp(System.currentTimeMillis()),
+    lastloggedin = value.lastLoggedIn.map(Timestamp.valueOf)
+  )
+}

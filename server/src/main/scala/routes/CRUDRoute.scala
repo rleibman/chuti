@@ -37,12 +37,12 @@ import scala.util.matching.Regex
   * @tparam PK      The type of the object's primary key (used for gets/deletes)
   * @tparam SEARCH  A search object (extends Search)
   */
-trait CRUDRoute[E, PK, SEARCH <: Search[E]] {
+trait CRUDRoute[E, PK, SEARCH <: Search] {
   def crudRoute: CRUDRoute.Service[E, PK, SEARCH]
 }
 
 object CRUDRoute {
-  abstract class Service[E, PK, SEARCH <: Search[E]]
+  abstract class Service[E, PK, SEARCH <: Search]
       extends Directives with ZIODirectives with ErrorAccumulatingCirceSupport {
 
     val url: String

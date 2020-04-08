@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-package api
+package dao
 
-import dao.{LiveRepository, MySQLDatabaseProvider}
-import mail.CourierPostman
+import api.Config
+import zio.{UIO, ZIO}
+import slick.basic.BasicBackend
+import slick.jdbc.JdbcBackend._
 
-/**
-  * This Creates a live environment, with actual running stuff (real email, real database, etc)
-  */
-trait LiveEnvironment extends LiveRepository with MySQLDatabaseProvider with CourierPostman with Config {}
+object MySQLDatabaseProvider extends Config {
+
+  private val db = ZIO.effectTotal { Database.forConfig(configKey) }
+
+}
+
+trait MySQLDatabaseProvider extends DatabaseProvider.Service {
+  override def db: UIO[BasicBackend#DatabaseDef] = MySQLDatabaseProvider.db
+}

@@ -41,6 +41,8 @@ object Numero {
   def apply(num: Int): Numero = values(num)
 }
 
+import java.time.LocalDateTime
+
 import chuti.Numero._
 
 import scala.util.Random
@@ -57,11 +59,15 @@ case class Ficha(
 case class UserId(value: Int)
 
 case class User(
-  id:     Option[UserId],
-  email:  String,
-  name:   String,
-  wallet: Double
-)
+  id:           Option[UserId],
+  email:        String,
+  name:         String,
+  created:      LocalDateTime,
+  lastUpdated:  LocalDateTime,
+  lastLoggedIn: Option[LocalDateTime] = None,
+  wallet:       Double = 0.0,
+  deleted:      Boolean = false
+) {}
 
 case class Fila(fichas: List[Ficha])
 

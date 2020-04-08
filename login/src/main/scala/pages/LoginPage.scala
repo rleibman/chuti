@@ -16,7 +16,9 @@
 
 package pages
 
+import app.{LoginControllerState, Mode}
 import japgolly.scalajs.react._
+import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLButtonElement
 import org.scalajs.dom.window
@@ -30,19 +32,14 @@ object LoginPage {
   case class State()
 
   class Backend($ : BackendScope[_, State]) {
-    val query = window.location.search.substring(1)
-    val isBad = query.contains("bad=true")
-    def render(S: State) =
+    val query: String = window.location.search.substring(1)
+    val isBad: Boolean = query.contains("bad=true")
+    def render(S: State): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
-          <.img(
-            ^.src           := "/unauth/images/meal-o-rama-big.png",
-            ^.paddingBottom := 40.px,
-            ^.paddingTop    := 40.px
-          ),
           <.span(
             Message(color = SemanticCOLORS.red)(
-              "Bad Login! Your account, user name or password did not match, please try again!"
+              "Bad Login! Your email or password did not match, please try again!"
             )
           ).when(isBad),
           <.form(
@@ -51,12 +48,8 @@ object LoginPage {
             ^.className := "ui form",
             ^.width     := 800.px,
             FormField()(
-              Label()("Account Name"),
-              Input(required = true, name = "accountname")()
-            ),
-            FormField()(
-              Label()("User Name"),
-              Input(required = true, name = "username")()
+              Label()("Email"),
+              Input(required = true, name = "email",`type` = "email" )()
             ),
             FormField()(
               Label()("Password"),
@@ -65,7 +58,7 @@ object LoginPage {
             Button(`type` = submit)("Login")
           ),
           Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-            context.onModeChanged(Mode.newAccount)
+            context.onModeChanged(Mode.registration)
           })("I'm new to this, create new account"),
           Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
             context.onModeChanged(Mode.passwordRecoveryRequest)
@@ -80,5 +73,5 @@ object LoginPage {
     .renderBackend[Backend]
     .build
 
-  def apply() = component()
+  def apply(): Unmounted[Unit, State, Backend] = component()
 }

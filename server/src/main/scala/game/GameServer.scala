@@ -16,6 +16,8 @@
 
 package game
 
+import java.time.{LocalDateTime, ZoneId, ZoneOffset}
+
 import api.ChutiSession
 import chuti.{Event, GameState, Jugador, User, UserId}
 import dao.{Repository, RepositoryIO, SessionProvider}
@@ -28,6 +30,8 @@ object GameServer {
     id = Some(UserId(-666)),
     email = "god@chuti.fun",
     name = "Un-namable",
+    created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
+    lastUpdated = LocalDateTime.now(),
     wallet = Double.MaxValue
   )
 }
@@ -84,12 +88,12 @@ trait GameServer extends Repository {
     friend: User
   ): RepositoryIO[Boolean] =
     ???
-  def friends(user: User): RepositoryIO[Seq[User]] = repository.userOperations.friends(user)
+  def friends(user: User): RepositoryIO[Seq[User]] = repository.userOperations.friends
   def unfriend(
     user:  User,
     enemy: User
   ): RepositoryIO[Boolean] =
-    repository.userOperations.unfriend(user, enemy)
+    repository.userOperations.unfriend(enemy)
   def newGame(user: User): RepositoryIO[GameState] = {
     val newGame = GameState(id = None, jugadores = List(Jugador(user)))
     repository.gameStateOperations.upsert(newGame)
