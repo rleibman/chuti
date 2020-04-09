@@ -56,14 +56,14 @@ case class Ficha(
   override def toString: String = s"${arriba.value}:${abajo.value}"
 }
 
-case class UserId(value: Int)
+case class UserId(value: Int) extends AnyVal
 
 case class User(
   id:           Option[UserId],
   email:        String,
   name:         String,
   created:      LocalDateTime,
-  lastUpdated:  LocalDateTime,
+  lastUpdated:  LocalDateTime = LocalDateTime.now,
   lastLoggedIn: Option[LocalDateTime] = None,
   wallet:       Double = 0.0,
   deleted:      Boolean = false
@@ -216,8 +216,10 @@ case class EmpiezaJuego(
 
 }
 
+case class GameId(value: Int) extends AnyVal
+
 case class GameState(
-  id:           Option[Int],
+  id:           Option[GameId],
   jugadores:    List[Jugador],
   enJuego:      List[Ficha] = List.empty,
   triunfo:      Option[Triunfo] = None,

@@ -19,7 +19,7 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{GameState, User, UserId}
+import chuti.{GameId, GameState, User, UserId}
 import dao.Repository.{GameStateOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
@@ -27,10 +27,9 @@ import game.GameServer
 import slick.SlickException
 import slick.dbio.DBIO
 import slick.jdbc.MySQLProfile.api._
-import zio.{Task, ZIO}
+import zio.ZIO
 import zioslick.RepositoryException
 
-import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
 
@@ -62,7 +61,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
         val rowOpt = for {
           one <- session.user.id
           two <- enemy.id
-        } yield { FriendsRow(one.value, two.value) }
+        } yield { FriendsRow(one, two) }
         DBIO
           .sequence(
             rowOpt.toSeq
@@ -79,7 +78,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
         val rowOpt = for {
           one <- session.user.id
           two <- friend.id
-        } yield { FriendsRow(one.value, two.value) }
+        } yield { FriendsRow(one, two) }
         DBIO
           .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
             _.headOption.getOrElse(false)
@@ -92,7 +91,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
             session.user.id.toSeq
               .map { id =>
                 UserQuery
-                  .join(FriendsQuery.filter(f => f.one === id.value || f.two === id.value)).on {
+                  .join(FriendsQuery.filter(f => f.one === id || f.two === id)).on {
                     (a, b) =>
                       a.id === b.one || a.id === b.two
                   }.map(_._1).result
@@ -104,7 +103,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
         if (session.user != GameServer.god && session.user.id != user.id) {
           throw RepositoryException(s"${session.user} Not authorized")
         }
-        (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(UserId(id)))))
+        (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
           .insertOrUpdate(User2UserRow(user))
           .map(_.getOrElse(user))
       }
@@ -112,7 +111,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
       def get(pk: UserId): RepositoryIO[Option[User]] =
         fromDBIO {
           UserQuery
-            .filter(u => u.id === pk.value && !u.deleted).result.headOption.map(
+            .filter(u => u.id === pk && !u.deleted).result.headOption.map(
               _.map(UserRow2User)
             )
         }
@@ -126,11 +125,11 @@ trait LiveRepository extends Repository with SlickToModelInterop {
         }
         if (softDelete) {
           val q = for {
-            u <- UserQuery if u.id === pk.value
+            u <- UserQuery if u.id=== pk
           } yield (u.deleted, u.deleteddate)
           q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
         } else {
-          UserQuery.filter(_.id === pk.value).delete.map(_ > 0)
+          UserQuery.filter(_.id === pk).delete.map(_ > 0)
         }
       }
 
@@ -194,10 +193,10 @@ trait LiveRepository extends Repository with SlickToModelInterop {
     override val gameStateOperations: Repository.GameStateOperations = new GameStateOperations {
       override def upsert(e: GameState): RepositoryIO[GameState] = ???
 
-      override def get(pk: Int): RepositoryIO[Option[GameState]] = ???
+      override def get(pk: GameId): RepositoryIO[Option[GameState]] = ???
 
       override def delete(
-        pk:         Int,
+        pk:         GameId,
         softDelete: Boolean
       ): RepositoryIO[Boolean] = ???
 

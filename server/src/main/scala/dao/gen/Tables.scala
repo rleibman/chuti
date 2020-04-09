@@ -15,6 +15,13 @@
  */
 
 package dao.gen
+
+import java.sql.Timestamp
+
+import chuti.{GameId, UserId}
+import slick.ast.BaseTypedType
+import slick.jdbc.JdbcType
+import slick.lifted.{MappedProjection, ProvenShape}
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object Tables extends {
@@ -29,37 +36,40 @@ trait Tables {
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
   import slick.jdbc.{GetResult => GR}
 
+  implicit lazy val userIdColumnType: JdbcType[UserId] with BaseTypedType[UserId] =
+    MappedColumnType.base[UserId, Int](_.value, UserId)
+  implicit lazy val gameIdColumnType: JdbcType[GameId] with BaseTypedType[GameId] =
+    MappedColumnType.base[GameId, Int](_.value, GameId)
+
   val hashPassword: (Rep[String], Rep[Int]) => Rep[String] =
     SimpleFunction.binary[String, Int, String]("SHA2")
 
   /** DDL for all tables. Call .create to execute. */
   lazy val schema
     : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema
-  @deprecated("Use .schema instead of .ddl", "3.0")
-  def ddl = schema
 
   /** Entity class storing rows of table Friends
     *  @param one Database column one SqlType(INT)
     *  @param two Database column two SqlType(INT) */
   case class FriendsRow(
-    one: Int,
-    two: Int
+    one: UserId,
+    two: UserId
   )
 
   /** GetResult implicit for fetching FriendsRow objects using plain SQL queries */
-  implicit def GetResultFriendsRow(implicit e0: GR[Int]): GR[FriendsRow] = GR { prs =>
+  implicit def GetResultFriendsRow(implicit e0: GR[UserId]): GR[FriendsRow] = GR { prs =>
     import prs._
-    FriendsRow.tupled((<<[Int], <<[Int]))
+    FriendsRow.tupled((<<[UserId], <<[UserId]))
   }
 
   /** Table description of table friends. Objects of this class serve as prototypes for rows in queries. */
   class Friends(_tableTag: Tag)
       extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
-    def * = (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
+    def * : ProvenShape[FriendsRow] = (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(one), Rep.Some(two))).shaped.<>(
+    def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
+      (Rep.Some(one), Rep.Some(two)).shaped.<>(
         { r =>
           import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
         },
@@ -67,10 +77,10 @@ trait Tables {
       )
 
     /** Database column one SqlType(INT) */
-    val one: Rep[Int] = column[Int]("one")
+    val one: Rep[UserId] = column[UserId]("one")
 
     /** Database column two SqlType(INT) */
-    val two: Rep[Int] = column[Int]("two")
+    val two: Rep[UserId] = column[UserId]("two")
 
     /** Foreign key referencing User (database name friends_user_1) */
     lazy val userFk1 = foreignKey("friends_user_1", one, UserQuery)(
@@ -100,7 +110,7 @@ trait Tables {
     *  @param deleted Database column deleted SqlType(TINYINT), Default(0)
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class GameRow(
-    id:           Int,
+    id:           GameId,
     currentIndex: Int = 0,
     startState:   String,
     gameState:    String,
@@ -112,7 +122,8 @@ trait Tables {
 
   /** GetResult implicit for fetching GameRow objects using plain SQL queries */
   implicit def GetResultGameRow(
-    implicit e0: GR[Int],
+    implicit e0: GR[GameId],
+    e5:          GR[Int],
     e1:          GR[String],
     e2:          GR[java.sql.Timestamp],
     e3:          GR[Boolean],
@@ -121,7 +132,7 @@ trait Tables {
     import prs._
     GameRow.tupled(
       (
-        <<[Int],
+        <<[GameId],
         <<[Int],
         <<[String],
         <<[String],
@@ -135,32 +146,31 @@ trait Tables {
 
   /** Table description of table game. Objects of this class serve as prototypes for rows in queries. */
   class Game(_tableTag: Tag) extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
-    def * =
+    def * : ProvenShape[GameRow] =
       (id, currentIndex, startState, gameState, created, lastupdated, deleted, deleteddate) <> (GameRow.tupled, GameRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ?
+      : MappedProjection[Option[GameRow], (Option[GameId], Option[Int], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
       (
-        (
-          Rep.Some(id),
-          Rep.Some(currentIndex),
-          Rep.Some(startState),
-          Rep.Some(gameState),
-          Rep.Some(created),
-          Rep.Some(lastupdated),
-          Rep.Some(deleted),
-          deleteddate
-        )
+        Rep.Some(id),
+        Rep.Some(currentIndex),
+        Rep.Some(startState),
+        Rep.Some(gameState),
+        Rep.Some(created),
+        Rep.Some(lastupdated),
+        Rep.Some(deleted),
+        deleteddate
       ).shaped.<>(
         { r =>
-          import r._;
+          import r._
           _1.map(_ => GameRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
     /** Database column id SqlType(INT), AutoInc, PrimaryKey */
-    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    val id: Rep[GameId] = column[GameId]("id", O.AutoInc, O.PrimaryKey)
 
     /** Database column current_index SqlType(INT), Default(0) */
     val currentIndex: Rep[Int] = column[Int]("current_index", O.Default(0))
@@ -194,28 +204,30 @@ trait Tables {
     *  @param currentIndex Database column current_index SqlType(INT), Default(0)
     *  @param eventData Database column event_data SqlType(JSON), Length(1073741824,true) */
   case class GameEventRow(
-    gameId:       Int,
+    gameId:       GameId,
     currentIndex: Int = 0,
     eventData:    String
   )
 
   /** GetResult implicit for fetching GameEventRow objects using plain SQL queries */
   implicit def GetResultGameEventRow(
-    implicit e0: GR[Int],
+    implicit e0: GR[GameId],
+    e3:          GR[Int],
     e1:          GR[String]
   ): GR[GameEventRow] = GR { prs =>
     import prs._
-    GameEventRow.tupled((<<[Int], <<[Int], <<[String]))
+    GameEventRow.tupled((<<[GameId], <<[Int], <<[String]))
   }
 
   /** Table description of table game_event. Objects of this class serve as prototypes for rows in queries. */
   class GameEvent(_tableTag: Tag)
       extends profile.api.Table[GameEventRow](_tableTag, Some("chuti"), "game_event") {
-    def * = (gameId, currentIndex, eventData) <> (GameEventRow.tupled, GameEventRow.unapply)
+    def * : ProvenShape[GameEventRow] =
+      (gameId, currentIndex, eventData) <> (GameEventRow.tupled, GameEventRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(gameId), Rep.Some(currentIndex), Rep.Some(eventData))).shaped.<>(
+    def ? : MappedProjection[Option[GameEventRow], (Option[GameId], Option[Int], Option[String])] =
+      (Rep.Some(gameId), Rep.Some(currentIndex), Rep.Some(eventData)).shaped.<>(
         { r =>
           import r._; _1.map(_ => GameEventRow.tupled((_1.get, _2.get, _3.get)))
         },
@@ -223,7 +235,7 @@ trait Tables {
       )
 
     /** Database column game_id SqlType(INT) */
-    val gameId: Rep[Int] = column[Int]("game_id")
+    val gameId: Rep[GameId] = column[GameId]("game_id")
 
     /** Database column current_index SqlType(INT), Default(0) */
     val currentIndex: Rep[Int] = column[Int]("current_index", O.Default(0))
@@ -249,24 +261,28 @@ trait Tables {
     *  @param userId Database column user_id SqlType(INT)
     *  @param gameId Database column game_id SqlType(INT) */
   case class GamePlayersRow(
-    userId: Int,
-    gameId: Int
+    userId: UserId,
+    gameId: GameId
   )
 
   /** GetResult implicit for fetching GamePlayersRow objects using plain SQL queries */
-  implicit def GetResultGamePlayersRow(implicit e0: GR[Int]): GR[GamePlayersRow] = GR { prs =>
+  implicit def GetResultGamePlayersRow(
+    implicit e0: GR[GameId],
+    e1:          GR[UserId]
+  ): GR[GamePlayersRow] = GR { prs =>
     import prs._
-    GamePlayersRow.tupled((<<[Int], <<[Int]))
+    GamePlayersRow.tupled((<<[UserId], <<[GameId]))
   }
 
   /** Table description of table game_players. Objects of this class serve as prototypes for rows in queries. */
   class GamePlayers(_tableTag: Tag)
       extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
-    def * = (userId, gameId) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
+    def * : ProvenShape[GamePlayersRow] =
+      (userId, gameId) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
-      ((Rep.Some(userId), Rep.Some(gameId))).shaped.<>(
+    def ? : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId])] =
+      (Rep.Some(userId), Rep.Some(gameId)).shaped.<>(
         { r =>
           import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get)))
         },
@@ -274,10 +290,10 @@ trait Tables {
       )
 
     /** Database column user_id SqlType(INT) */
-    val userId: Rep[Int] = column[Int]("user_id")
+    val userId: Rep[UserId] = column[UserId]("user_id")
 
     /** Database column game_id SqlType(INT) */
-    val gameId: Rep[Int] = column[Int]("game_id")
+    val gameId: Rep[GameId] = column[GameId]("game_id")
 
     /** Foreign key referencing Game (database name game_players_game) */
     lazy val gameFk = foreignKey("game_players_game", gameId, GameQuery)(
@@ -308,7 +324,7 @@ trait Tables {
     *  @param deleted Database column deleted SqlType(TINYINT), Default(0)
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class UserRow(
-    id:             Int,
+    id:             UserId,
     hashedpassword: String,
     name:           String,
     email:          String,
@@ -321,7 +337,7 @@ trait Tables {
 
   /** GetResult implicit for fetching UserRow objects using plain SQL queries */
   implicit def GetResultUserRow(
-    implicit e0: GR[Int],
+    implicit e0: GR[UserId],
     e1:          GR[String],
     e2:          GR[java.sql.Timestamp],
     e3:          GR[Option[java.sql.Timestamp]],
@@ -330,7 +346,7 @@ trait Tables {
     import prs._
     UserRow.tupled(
       (
-        <<[Int],
+        <<[UserId],
         <<[String],
         <<[String],
         <<[String],
@@ -345,7 +361,7 @@ trait Tables {
 
   /** Table description of table user. Objects of this class serve as prototypes for rows in queries. */
   class User(_tableTag: Tag) extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
-    def * =
+    def * : ProvenShape[UserRow] =
       (
         id,
         hashedpassword,
@@ -359,22 +375,21 @@ trait Tables {
       ) <> (UserRow.tupled, UserRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? =
+    def ?
+      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
       (
-        (
-          Rep.Some(id),
-          Rep.Some(hashedpassword),
-          Rep.Some(name),
-          Rep.Some(email),
-          Rep.Some(created),
-          Rep.Some(lastupdated),
-          lastloggedin,
-          Rep.Some(deleted),
-          deleteddate
-        )
+        Rep.Some(id),
+        Rep.Some(hashedpassword),
+        Rep.Some(name),
+        Rep.Some(email),
+        Rep.Some(created),
+        Rep.Some(lastupdated),
+        lastloggedin,
+        Rep.Some(deleted),
+        deleteddate
       ).shaped.<>(
         { r =>
-          import r._;
+          import r._
           _1.map(_ =>
             UserRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get, _9))
           )
@@ -383,7 +398,7 @@ trait Tables {
       )
 
     /** Database column id SqlType(INT), AutoInc, PrimaryKey */
-    val id: Rep[Int] = column[Int]("id", O.AutoInc, O.PrimaryKey)
+    val id: Rep[UserId] = column[UserId]("id", O.AutoInc, O.PrimaryKey)
 
     /** Database column hashedPassword SqlType(TEXT) */
     val hashedpassword: Rep[String] = column[String]("hashedPassword")

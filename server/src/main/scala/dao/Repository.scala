@@ -17,7 +17,7 @@
 package dao
 
 import api.ChutiSession
-import chuti.{GameState, User, UserId}
+import chuti.{GameId, GameState, User, UserId}
 import zio.ZIO
 import zioslick.RepositoryException
 
@@ -53,7 +53,7 @@ object Repository {
     ): RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
   }
-  trait GameStateOperations extends CRUDOperations[GameState, Int, EmptySearch] {}
+  trait GameStateOperations extends CRUDOperations[GameState, GameId, EmptySearch] {}
 
   trait Service {
     val gameStateOperations: GameStateOperations

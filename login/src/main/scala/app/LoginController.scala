@@ -19,6 +19,7 @@ import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, React, ScalaComponent}
 import pages.{LoginPage, PasswordRecoveryAfterTokenPage, PasswordRecoveryPage, RegistrationPage}
+import react.Toast
 //import react.Toast
 import org.scalajs.dom.window
 
@@ -53,7 +54,7 @@ object LoginController {
     def render(state: State) =
       LoginControllerState.ctx.provide(state.context) {
         <.div(
-//          Toast.render(),
+          Toast.render(),
           state.context.mode match {
             case Mode.login                      => LoginPage()
             case Mode.registration               => RegistrationPage()
@@ -63,7 +64,7 @@ object LoginController {
         )
       }
   }
-  val component = ScalaComponent
+  private val component = ScalaComponent
     .builder[Unit]("LoginController")
     .initialState(State())
     .renderBackend[Backend]

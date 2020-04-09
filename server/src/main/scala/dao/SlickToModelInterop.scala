@@ -22,7 +22,7 @@ import gen.Tables._
 
 trait SlickToModelInterop {
   def UserRow2User(row: UserRow): User = User(
-    id = Some(UserId(row.id)),
+    id = Some(row.id),
     email = row.email,
     name = row.name,
     created = row.created.toLocalDateTime,
@@ -32,7 +32,7 @@ trait SlickToModelInterop {
     deleted = row.deleted
   )
   def User2UserRow(value: User): UserRow = UserRow(
-    id = value.id.fold(0)(_.value),
+    id = value.id.getOrElse(UserId(0)),
     hashedpassword = "",
     name = value.name,
     email = value.email,

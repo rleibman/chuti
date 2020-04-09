@@ -2,6 +2,9 @@ import org.apache.commons.io.FileUtils
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.Files
 
+import sbtcrossproject.CrossPlugin.autoImport.crossProject
+import sbtcrossproject.CrossProject
+
 lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
@@ -18,8 +21,11 @@ enablePlugins(
   SystemdPlugin
 )
 
+lazy val commonJVM = common.jvm
+lazy val commonJS = common.js
+
 lazy val root = (project in file("."))
-  .aggregate(shared, server, web, login)
+  .aggregate(commonJVM, commonJS, server, web, login)
   .settings(
     name               := "chuti",
     crossScalaVersions := Nil,
@@ -57,8 +63,8 @@ lazy val commonVmSettings = commonSettings ++ Seq(
   ).map(_ % circeVersion)
 )
 
-lazy val shared: Project = project
-  .in(file("shared"))
+lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
+  .in(file("common"))
   .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
@@ -66,12 +72,32 @@ lazy val shared: Project = project
     BuildInfoPlugin
   )
   .settings(
-    name := "chuti-shared"
+    name             := "chuti-common",
+    buildInfoPackage := "chuti"
+  )
+  .jvmSettings(
+    commonVmSettings
+  )
+  .jsSettings(
+    commonSettings ++ Seq(
+      libraryDependencies ++= Seq(
+        "com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion withSources (),
+        "com.github.julien-truffaut" %%% "monocle-macro" % monocleVersion withSources (),
+        "com.github.julien-truffaut" %%% "monocle-law"   % monocleVersion % "test" withSources (),
+        "org.scalatest" %%% "scalatest"                  % "3.1.1" % "test" withSources ()
+      ),
+      libraryDependencies ++= Seq(
+        "io.circe" %%% "circe-core",
+        "io.circe" %%% "circe-generic",
+        "io.circe" %%% "circe-parser",
+        "io.circe" %%% "circe-literal"
+      ).map(_ % circeVersion)
+    )
   )
 
 lazy val server: Project = project
   .in(file("server"))
-  .dependsOn(shared)
+  .dependsOn(commonJVM)
   .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
@@ -110,7 +136,7 @@ lazy val server: Project = project
 
 lazy val login: Project = project
   .in(file("login"))
-  .dependsOn(shared)
+  .dependsOn(commonJS)
   .settings(commonSettings)
   .configure(bundlerSettings)
   .configure(commonWeb)
@@ -169,7 +195,7 @@ lazy val login: Project = project
 
 lazy val web: Project = project
   .in(file("web"))
-  .dependsOn(shared)
+  .dependsOn(commonJS)
   .settings(commonSettings)
   .configure(bundlerSettings)
   .configure(commonWeb)

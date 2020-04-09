@@ -23,12 +23,11 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directives, Route}
 import api._
 import better.files.File
-import buildinfo.BuildInfo
-import chuti.{User, UserId}
+import chuti.{BuildInfo, User, UserId}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
-import dao.{DatabaseProvider, EmptySearch, PagedStringSearch, Repository}
+import dao.{DatabaseProvider, PagedStringSearch, Repository}
 import game.GameServer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
@@ -37,6 +36,7 @@ import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import slick.basic.BasicBackend
 import zio.{Task, UIO, ZIO}
+import zioslick.RepositoryException
 
 import scala.concurrent.duration._
 
@@ -54,12 +54,12 @@ trait AuthRoute
 
       override val url: String = "auth"
 
-      override val ops = repository.userOperations
+      override val ops: Repository.UserOperations = repository.userOperations
 
       override def getPK(obj: User): UserId = obj.id.get
 
       override val databaseProvider: DatabaseProvider.Service = new DatabaseProvider.Service {
-        override def db: UIO[BasicBackend#DatabaseDef] = ???
+        override def db: UIO[BasicBackend#DatabaseDef] = AuthRoute.this.db
       }
 
       import scalacache.ZioEffect.modes._
@@ -82,19 +82,23 @@ trait AuthRoute
                 parameters(Symbol("token").as[String]) { token =>
                   entity(as[String]) { password =>
                     complete {
-                      val z = (for {
+                      val z = for {
                         userOpt <- scalacache.get(token)
                         passwordChanged <- ZIO.foreach(userOpt)(user =>
                           ops.changePassword(user, password)
                         )
                         _ <- ZIO.foreach(userOpt)(user => scalacache.remove(token))
-                      } yield passwordChanged.getOrElse(false))
-
-                      val runtime = zio.Runtime.default
+                      } yield passwordChanged.getOrElse(false)
 
                       z.provideLayer(fullLayer(adminSession)).tapError(e =>
                           Task.succeed(e.printStackTrace())
-                        ).absorb
+                        ).catchSome {
+                          case e: RepositoryException =>
+                            ZIO.succeed {
+                              e.printStackTrace()
+                              throw e: Throwable
+                            }
+                        }
 
                     }
                   }
@@ -129,7 +133,13 @@ trait AuthRoute
                                |</body></html>""".stripMargin))
                         )
                       }
-                    } yield emailed.nonEmpty).provideLayer(fullLayer(adminSession)).absorb
+                    } yield emailed.nonEmpty).provideLayer(fullLayer(adminSession)).catchSome {
+                      case e: RepositoryException =>
+                        ZIO.succeed {
+                          e.printStackTrace()
+                          throw e: Throwable
+                        }
+                    }
                   }
                 }
               }
@@ -155,7 +165,13 @@ trait AuthRoute
                       case None =>
                         redirect("/loginForm?bad=true", StatusCodes.Found)
                     }
-                    .provideLayer(fullLayer(adminSession)).absorb
+                    .provideLayer(fullLayer(adminSession)).catchSome {
+                      case e: RepositoryException =>
+                        ZIO.succeed {
+                          e.printStackTrace()
+                          throw e: Throwable
+                        }
+                    }
                   zio
 
                 //TODO log login
@@ -172,7 +188,10 @@ trait AuthRoute
                   "/chuti-login-opt-bundle.js",
                   "/chuti-login-opt-bundle.js.map",
                   "/css/app.css",
-                  "/images/favicon.png"
+                  "/images/favicon.png",
+                  "/webfonts/fa-solid-900.woff2",
+                  "/webfonts/fa-solid-900.woff",
+                  "/webfonts/fa-solid-900.ttf"
                 )
 
                 extractUnmatchedPath { path =>
