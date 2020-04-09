@@ -26,7 +26,7 @@ object ChutiApp {
   @JSExport
   def main(args: Array[String]): Unit = {
 
-    val component = <.div(ChatComponent())
+    val component = <.div(ChatComponent("Roberto"))
 
     component.renderIntoDOM(dom.document.getElementById("content"))
     ()

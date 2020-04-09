@@ -18,9 +18,19 @@ package components
 
 import java.time.{Instant, LocalDateTime, ZoneId}
 
-import japgolly.scalajs.react.{BackendScope, _}
+import io.circe.generic.auto._
+import io.circe.syntax._
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{ReactMouseEventFrom, _}
+import org.scalajs.dom.raw.HTMLButtonElement
+import org.scalajs.dom.window
+import typings.semanticUiReact.buttonButtonMod.ButtonProps
+import typings.semanticUiReact.components._
+import typings.semanticUiReact.genericMod.SemanticWIDTHS
+import typings.semanticUiReact.inputInputMod.InputOnChangeData
+import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 
 case class User(name: String) //TODO move this to shared
 case class ChatMessage(
@@ -32,60 +42,68 @@ case class ChatMessage(
 object ChatComponent {
   case class State(
     chatMessages: Seq[ChatMessage] = Seq.empty,
-    user:         User = User(""),
     msgInFlux:    String = ""
   )
   class Backend($ : BackendScope[_, State]) {
-    def onUserChange(e: ReactEventFromInput): Callback = {
-      val newVal = e.target.value
-      $.modState(_.copy(user = User(newVal)))
+    private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
+      $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
     }
 
-    def onMessageInFluxChange(e: ReactEventFromInput): Callback = {
-      val newVal = e.target.value
-      $.modState(_.copy(msgInFlux = newVal))
-    }
-
-    def onSend(s: State): Callback = {
-      val msg = ChatMessage(s.user, s.msgInFlux, System.currentTimeMillis())
+    private def onSend(p: Props, s: State) = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+      val msg = ChatMessage(p.user, s.msgInFlux, System.currentTimeMillis())
       Callback.log(s"Sending msg = $msg!") >> $.modState(_.copy(msgInFlux = ""))
     }
 
-    def render(s: State): VdomElement =
-      <.div(
-        "User",
-        <.input.text(^.value := s.user.name, ^.onChange ==> onUserChange),
-        <.h1("Messages"),
-        <.table(
-          <.tbody(
-            s.chatMessages.toVdomArray(msg =>
-              <.tr(
-                <.td(
-                  LocalDateTime
-                    .ofInstant(Instant.ofEpochMilli(msg.date), ZoneId.systemDefault())
-                    .toString
-                ),
-                <.td(msg.user.name),
-                <.td(msg.msg)
+    def render(p: Props, s: State): VdomNode =
+      Form()(
+        FormGroup()(
+          FormField(width = SemanticWIDTHS.`16`)(
+            Label()(s"User: ${p.user.name}")
+          )
+        ),
+        Header()("Messages"),
+        FormGroup()(
+          FormField(width = SemanticWIDTHS.`16`)(
+            Table()(
+              TableBody()(
+                s.chatMessages.toVdomArray(msg =>
+                  TableRow()(
+                    TableCell()(
+                      LocalDateTime
+                        .ofInstant(Instant.ofEpochMilli(msg.date), ZoneId.systemDefault())
+                        .toString
+                    ),
+                    TableCell()(msg.user.name),
+                    TableCell()(msg.msg)
+                  )
+                )
               )
             )
           )
         ),
-        "Message",
-        <.textarea(^.value := s.msgInFlux, ^.onChange ==> onMessageInFluxChange),
-        <.button(^.onClick --> onSend(s), "Send")
+        FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Label()("Message"))),
+        FormGroup()(
+          FormField(width = SemanticWIDTHS.`16`)(
+            TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)()
+          )
+        ),
+        FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Button(onClick = onSend(p, s))("Send")))
       )
 
     def refresh(s: State): Callback = Callback.empty //TODO add ajax initalization stuff here
   }
 
+  case class Props(user: User)
+
   private val component = ScalaComponent
-    .builder[Unit]("content")
+    .builder[Props]("content")
     .initialState(State())
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.refresh($.state))
     .build
 
-  def apply(): Unmounted[Unit, State, Backend] = component()
+
+
+  def apply(user: String): Unmounted[Props, State, Backend] = component(Props(User(user)))
 
 }

@@ -19,6 +19,7 @@ package routes
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, HasActorSystem, LiveEnvironment}
+import chat.ChatRoute
 import chuti.GameState
 import dao.{DatabaseProvider, Repository}
 import io.circe.generic.auto._
@@ -38,10 +39,16 @@ trait ModelRoutes extends Directives {
   }
 
   private val authRoute: AuthRoute = new AuthRoute with DatabaseProvider.Service {
-    override def db: UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
+    override def db:                   UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
     override def repository:           Repository.Service = ModelRoutes.this.repository
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
     override val postman:              Postman.Service[Any] = ModelRoutes.this.postman
+  }
+
+  private val chatRoute: ChatRoute = new ChatRoute with DatabaseProvider.Service {
+    override def db:                   UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
+    override def repository:           Repository.Service = ModelRoutes.this.repository
+    implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 
   private val crudRoutes: List[CRUDRoute[_, _, _]] = List(
@@ -60,7 +67,8 @@ trait ModelRoutes extends Directives {
 
   def apiRoute(session: ChutiSession): Route = pathPrefix("api") {
     gameRoute.route(session) ~
-      authRoute.crudRoute.route(session)
+      authRoute.crudRoute.route(session) ~
+      chatRoute.route
 //    sampleModelObjectRouteRoute.crudRoute.route(session)
   }
 }

@@ -18,6 +18,7 @@ package chat
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives
+import api.{Config, HasActorSystem, SessionUtils}
 import caliban.GraphQL.graphQL
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import caliban.schema.GenericSchema
@@ -26,6 +27,8 @@ import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout
 import caliban.{CalibanError, GraphQL, GraphQLInterpreter, RootResolver}
 import chat.ChatService.ChatService
 import chat.SessionProvider.SessionProvider
+import dao.Repository
+import mail.Postman
 import zio._
 import zio.clock.Clock
 import zio.console.Console
@@ -160,22 +163,27 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider] {
 
 }
 
-trait ChatRoute extends Directives with AkkaHttpCirceAdapter {
-  implicit val system:           ActorSystem = ActorSystem()
-  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+trait ChatRoute
+    extends Directives with AkkaHttpCirceAdapter with Repository with HasActorSystem with Config {
+  implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService._
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  val staticContentDir: String = config.getString("chuti.staticContentDir")
 
-  val route =
-    path("api" / "graphql") {
-      val user = User("joe") //this will come from the session
-      adapter.makeHttpService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
-    } ~ path("ws" / "graphql") {
+  val route = pathPrefix("chat") {
+    path("schema") {
+      get(complete(ChatApi.api.render))
+    } ~
+      path("api" / "graphql") {
+        val user = User("joe") //this will come from the session
+        adapter.makeHttpService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
+      } ~ path("ws" / "graphql") {
       val user = User("joe") //this will come from the session
       adapter.makeWebSocketService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
     } ~ path("graphiql") {
-      getFromResource("graphiql.html")
+      getFromFile(s"$staticContentDir/graphiql.html")
     }
+  }
 }
 /*
 For the client side we'll need:

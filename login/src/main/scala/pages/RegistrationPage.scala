@@ -125,10 +125,7 @@ object RegistrationPage {
               name = "password",
               value = state.passwordPair._1,
               onChange = {
-                (
-                  _:   ReactEventFromInput,
-                  obj: InputOnChangeData
-                ) =>
+                (_, obj) =>
                   $.modState(state =>
                     state.copy(passwordPair =
                       (obj.value.get.asInstanceOf[String], state.passwordPair._2)
@@ -144,10 +141,7 @@ object RegistrationPage {
               name = "password",
               value = state.passwordPair._2,
               onChange = {
-                (
-                  _:   ReactEventFromInput,
-                  obj: InputOnChangeData
-                ) =>
+                (_, obj) =>
                   $.modState(state =>
                     state.copy(passwordPair =
                       (state.passwordPair._1, obj.value.get.asInstanceOf[String])
