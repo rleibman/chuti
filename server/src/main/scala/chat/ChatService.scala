@@ -16,23 +16,10 @@
 
 package chat
 
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.Directives
-import api.{Config, HasActorSystem, SessionUtils}
-import caliban.GraphQL.graphQL
-import caliban.interop.circe.AkkaHttpCirceAdapter
-import caliban.schema.GenericSchema
-import caliban.wrappers.ApolloTracing.apolloTracing
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{CalibanError, GraphQL, GraphQLInterpreter, RootResolver}
-import chat.ChatService.ChatService
-import chat.SessionProvider.SessionProvider
-import dao.Repository
-import mail.Postman
+import caliban.{CalibanError, GraphQLInterpreter}
+import chuti.User
+import dao.SessionProvider
 import zio._
-import zio.clock.Clock
-import zio.console.Console
-import zio.duration._
 import zio.stream.ZStream
 
 /**
@@ -44,21 +31,20 @@ ChatService.live too seems to be recreated every time
 in summary, do an unsafeRun in ChatRoute to get the interpreter and the live layer,
 then for each user you can do another unsafeRun  with provideCustomLayer
   */
-import scala.concurrent.ExecutionContextExecutor
 
-case class User(name: String)
-
-object SessionProvider {
-
-  type SessionProvider = Has[SessionProvider.Session]
-  trait Session {
-    def user: User
-  }
-  def live(u: User): Session = new Session {
-    val user: User = u
-  }
-  def layer(u: User): Layer[Nothing, SessionProvider] = ZLayer.succeed(live(u))
-}
+//case class User(name: String)
+//
+//object SessionProvider {
+//
+//  type SessionProvider = Has[SessionProvider.Session]
+//  trait Session {
+//    def user: User
+//  }
+//  def live(u: User): Session = new Session {
+//    val user: User = u
+//  }
+//  def layer(u: User): Layer[Nothing, SessionProvider] = ZLayer.succeed(live(u))
+//}
 
 case class ChatMessage(
   user: User,
@@ -67,26 +53,27 @@ case class ChatMessage(
 )
 
 object ChatService {
-  import SessionProvider._
+  import dao.SessionProvider._
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   type ChatService = Has[Service]
   trait Service {
-    def say(msg: String): ZIO[SessionProvider, Nothing, ChatMessage]
+    def say(msg: SayRequest): ZIO[SessionProvider, Nothing, ChatMessage]
     def chatStream: ZStream[SessionProvider, Nothing, ChatMessage]
   }
 
-  val interpreter: GraphQLInterpreter[ZEnv with SessionProvider, CalibanError] = runtime.unsafeRun(
-    ChatService
-      .make()
-      .memoize
-      .use(layer =>
-        ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer))
-      )
-  )
+  lazy val interpreter: GraphQLInterpreter[ZEnv with SessionProvider, CalibanError] =
+    runtime.unsafeRun(
+      ChatService
+        .make()
+        .memoize
+        .use(layer =>
+          ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer))
+        )
+    )
 
-  def say(msg: String): URIO[ChatService with SessionProvider, ChatMessage] =
-    URIO.accessM(_.get.say(msg))
+  def say(request: SayRequest): URIO[ChatService with SessionProvider, ChatMessage] =
+    URIO.accessM(_.get.say(request))
 
   def chatStream: ZStream[ChatService with SessionProvider, Nothing, ChatMessage] =
     ZStream.accessStream(_.get.chatStream)
@@ -100,12 +87,13 @@ object ChatService {
     for {
       subscribers <- Ref.make(List.empty[UserQueue])
     } yield new Service {
-      override def say(msg: String): ZIO[SessionProvider, Nothing, ChatMessage] =
+      override def say(request: SayRequest): ZIO[SessionProvider, Nothing, ChatMessage] =
         for {
           sub  <- subscribers.get
-          user <- ZIO.access[SessionProvider](_.get.user)
+          user <- ZIO.access[SessionProvider](_.get.session.user)
           sent <- {
-            val addMe = ChatMessage(user, msg, System.currentTimeMillis())
+            val addMe = ChatMessage(user, request.msg, System.currentTimeMillis())
+            println(addMe)
             UIO
               .foreach(sub)(userQueue =>
                 userQueue.queue
@@ -123,68 +111,19 @@ object ChatService {
 
       override def chatStream: ZStream[SessionProvider, Nothing, ChatMessage] = ZStream.unwrap {
         for {
-          user  <- ZIO.access[SessionProvider](_.get.user)
+          user  <- ZIO.access[SessionProvider](_.get.session.user)
           queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
           _     <- subscribers.update(UserQueue(user, queue) :: _)
         } yield ZStream.fromQueue(queue)
       }
     }
   }
-}
-
-object ChatApi extends GenericSchema[ChatService with SessionProvider] {
-  case class Queries()
-  case class Mutations(say: String => URIO[SessionProvider with ChatService, Boolean])
-  case class Subscriptions(
-    chatStream: ZStream[SessionProvider with ChatService, Nothing, ChatMessage]
-  )
-
-  implicit val userSchema:        Typeclass[User] = gen[User]
-  implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
-
-  val api: GraphQL[Console with Clock with ChatService with SessionProvider] =
-    graphQL(
-      RootResolver(
-        Queries(
-          ),
-        Mutations(
-          say = msg => ChatService.say(msg).as(true)
-        ),
-        Subscriptions(
-          chatStream = ChatService.chatStream
-        )
-      )
-    ) @@
-      maxFields(200) @@ // query analyzer that limit query fields
-      maxDepth(30) @@ // query analyzer that limit query depth
-      timeout(3.seconds) @@ // wrapper that fails slow queries
-      printSlowQueries(500.millis) @@ // wrapper that logs slow queries
-      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
 
 }
 
-trait ChatRoute
-    extends Directives with AkkaHttpCirceAdapter with Repository with HasActorSystem with Config {
-  implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-  import ChatService._
-  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  val staticContentDir: String = config.getString("chuti.staticContentDir")
 
-  val route = pathPrefix("chat") {
-    path("schema") {
-      get(complete(ChatApi.api.render))
-    } ~
-      path("api" / "graphql") {
-        val user = User("joe") //this will come from the session
-        adapter.makeHttpService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
-      } ~ path("ws" / "graphql") {
-      val user = User("joe") //this will come from the session
-      adapter.makeWebSocketService(interpreter.provideCustomLayer(SessionProvider.layer(user)))
-    } ~ path("graphiql") {
-      getFromFile(s"$staticContentDir/graphiql.html")
-    }
-  }
-}
+
+
 /*
 For the client side we'll need:
 https://github.com/rleibman/scalajs-reconnecting-websocket/blob/master/src/main/scala/net/leibman/reconnecting/ReconnectingWebSocket.scala

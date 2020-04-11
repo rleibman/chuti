@@ -68,7 +68,7 @@ trait ModelRoutes extends Directives {
   def apiRoute(session: ChutiSession): Route = pathPrefix("api") {
     gameRoute.route(session) ~
       authRoute.crudRoute.route(session) ~
-      chatRoute.route
+      chatRoute.route(session)
 //    sampleModelObjectRouteRoute.crudRoute.route(session)
   }
 }

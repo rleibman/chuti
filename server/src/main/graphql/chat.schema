@@ -1,0 +1,40 @@
+schema {
+  query: Queries
+  mutation: Mutations
+  subscription: Subscriptions
+}
+
+scalar Long
+
+type ChatMessage {
+  user: User!
+  msg: String!
+  date: Long!
+}
+
+type Mutations {
+  say(msg: String!): Boolean!
+}
+
+type Queries {
+
+}
+
+type Subscriptions {
+  chatStream: ChatMessage!
+}
+
+type User {
+  id: UserId
+  email: String!
+  name: String!
+  created: Long!
+  lastUpdated: Long!
+  lastLoggedIn: Long
+  wallet: Float!
+  deleted: Boolean!
+}
+
+type UserId {
+  value: Int!
+}

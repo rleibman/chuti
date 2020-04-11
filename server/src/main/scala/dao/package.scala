@@ -15,7 +15,6 @@
  */
 
 import api.ChutiSession
-import chat.User
 import slick.basic.BasicBackend
 import zio._
 import zioslick.RepositoryException
