@@ -16,11 +16,11 @@
 
 package app
 
+import chat.ChatComponent
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExport
 import japgolly.scalajs.react.vdom.html_<^._
-import components.ChatComponent
 
 object ChutiApp {
   @JSExport

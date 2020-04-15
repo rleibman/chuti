@@ -16,10 +16,11 @@
 
 package chat
 
-import akka.http.scaladsl.server.Directives
+import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, Config, HasActorSystem}
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import dao.{Repository, SessionProvider}
+import zio.duration._
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -27,18 +28,24 @@ trait ChatRoute
     extends Directives with AkkaHttpCirceAdapter with Repository with HasActorSystem with Config {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService._
-  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
   val staticContentDir: String = config.getString("chuti.staticContentDir")
 
-  def route(session: ChutiSession) = pathPrefix("chat") {
+  def route(session: ChutiSession): Route = pathPrefix("chat") {
     pathEndOrSingleSlash {
-      adapter.makeHttpService(interpreter.provideCustomLayer(zio.ZEnv.live ++ SessionProvider.layer(session)))
+      implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+      adapter.makeHttpService(
+        interpreter.provideCustomLayer(SessionProvider.layer(session))
+      )
     } ~
       path("schema") {
         get(complete(ChatApi.api.render))
       } ~
       path("ws") {
-        adapter.makeWebSocketService(interpreter.provideCustomLayer(zio.ZEnv.live ++ SessionProvider.layer(session)))
+        adapter.makeWebSocketService(
+          interpreter.provideCustomLayer(SessionProvider.layer(session)),
+          skipValidation = false,
+          keepAliveTime = Option(2500.milliseconds)
+        )
       } ~ path("graphiql") {
       getFromFile(s"$staticContentDir/graphiql.html")
     }

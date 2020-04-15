@@ -37,7 +37,7 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.4+0-61f01477+20200410-1754"
+lazy val calibanVersion = "0.7.5"
 lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
@@ -267,8 +267,9 @@ lazy val commonWeb: Project => Project =
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
         "commons-io"                                    % "commons-io" % "2.6" withSources (),
-        "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources(),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.0.7" withSources(),
+        "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
+        "dev.zio" %%% "zio"                             % "1.0.0-RC18-2" withSources (),
+        "com.softwaremill.sttp.client" %%% "core"       % "2.0.7" withSources (),
         "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.0.7",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0-RC3" withSources (),
