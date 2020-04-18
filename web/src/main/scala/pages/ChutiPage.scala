@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
-package pages trait ChutiPage {
+package pages
+
+trait ChutiPage {
 
 }

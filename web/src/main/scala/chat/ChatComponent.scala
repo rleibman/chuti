@@ -18,19 +18,22 @@ package chat
 
 import java.net.URI
 import java.time.{Instant, LocalDateTime, ZoneId}
+import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatClient.{Mutations, Subscriptions, ChatMessage => CalibanChatMessage, User => CalibanUser}
+import chuti.ChatMessage
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.raw.HTMLButtonElement
 import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components.{FormGroup, TableCell, _}
+import typings.semanticUiReact.components.{FormGroup, _}
 import typings.semanticUiReact.genericMod.SemanticWIDTHS
 import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 case class User(name: String) //TODO move this to shared
@@ -44,21 +47,17 @@ object ChatMessage {
     ChatMessage(User(username), date, msg)
 }
 
-case class ChatMessage(
-  user: User,
-  date: Long,
-  msg:  String
-) //TODO move this to shared
-
 object ChatComponent {
   case class State(
     chatMessages: Seq[ChatMessage] = Seq.empty,
     msgInFlux:    String = ""
   )
 
+  val chatId = UUID.randomUUID()
+
   class Backend($ : BackendScope[_, State]) extends ScalaJSClientAdapter {
     val wsHandle = makeWebSocketClient[ChatMessage](
-      uri = new URI("ws://localhost:8079/api/chat/ws"),
+      uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
       query = Subscriptions
         .chatStream(
           (CalibanChatMessage
@@ -67,11 +66,14 @@ object ChatComponent {
               ChatMessage.apply(username, date, msg)
             )
         ),
-      onData = {
-        _.fold(Callback.empty) { msg =>
-          $.modState(s => s.copy(s.chatMessages :+ msg))
-        }.runNow()
-      }
+      onData = { (_, data) =>
+        println(s"got data! $data")
+        data
+          .fold(Callback.empty) { msg =>
+            $.modState(s => s.copy(s.chatMessages :+ msg))
+          }.runNow()
+      },
+      operationId = s"chat$chatId"
     )
 
     private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
@@ -83,7 +85,7 @@ object ChatComponent {
       s: State
     ) = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
       import sttp.client._
-      implicit val backend = FetchBackend()
+      implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
       val mutation = Mutations.say(s.msgInFlux)
       val serverUri = uri"http://localhost:8079/api/chat"
       val request = mutation.toRequest(serverUri)
@@ -114,19 +116,17 @@ object ChatComponent {
         Header()("Messages"),
         FormGroup()(
           FormField(width = SemanticWIDTHS.`16`)(
-            Table()(
-              TableBody()(
-                s.chatMessages.toVdomArray(msg =>
-                  TableRow()(
-                    TableCell()(
-                      LocalDateTime
-                        .ofInstant(Instant.ofEpochMilli(msg.date), ZoneId.systemDefault())
-                        .toString
-                    ),
-                    TableCell()(msg.user.name),
-                    TableCell()(msg.msg)
+            s.chatMessages.toVdomArray(msg =>
+              <.div(
+                <.div(^.fontWeight.bold,
+                  msg.user.name,
+                  <.span(^.fontWeight.lighter,
+                    LocalDateTime
+                      .ofInstant(Instant.ofEpochMilli(msg.date), ZoneId.systemDefault())
+                      .toString
                   )
-                )
+                ),
+                <.div(msg.msg)
               )
             )
           )
@@ -152,6 +152,6 @@ object ChatComponent {
     .componentDidMount($ => $.backend.refresh($.state))
     .build
 
-  def apply(user: String): Unmounted[Props, State, Backend] = component(Props(User(user)))
+  def apply(user: String, channel: ChannelId): Unmounted[Props, State, Backend] = component(Props(User(user)))
 
 }

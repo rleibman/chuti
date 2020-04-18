@@ -21,12 +21,13 @@ import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExport
 import japgolly.scalajs.react.vdom.html_<^._
+import pages.LobbyPage
 
 object ChutiApp {
   @JSExport
   def main(args: Array[String]): Unit = {
 
-    val component = <.div(ChatComponent("Roberto"))
+    val component = <.div(LobbyPage())
 
     component.renderIntoDOM(dom.document.getElementById("content"))
     ()

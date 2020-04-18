@@ -17,18 +17,13 @@
 package pages
 
 import chat.ChatComponent
+import chuti.GameState
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import org.scalajs.dom.raw.HTMLButtonElement
-import org.scalajs.dom.window
-import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components.{Button, FormField, Input, Label, Message}
-import typings.react.reactStrings.submit
-import typings.semanticUiReact.genericMod.SemanticCOLORS
 
-object LobbyPage extends ChutiPage {
-  case class State()
+object GamePage extends ChutiPage {
+  case class State(gameState: Option[GameState] = None)
 
   class Backend($ : BackendScope[_, State]) {
 
@@ -38,7 +33,7 @@ object LobbyPage extends ChutiPage {
   }
 
   val component = ScalaComponent
-    .builder[Unit]("LobbyPage")
+    .builder[Unit]("GamePage")
     .initialState(State())
     .renderBackend[Backend]
     .build
