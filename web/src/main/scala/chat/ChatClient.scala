@@ -16,6 +16,8 @@
 
 package chat
 
+import java.time.LocalDateTime
+
 import caliban.client.FieldBuilder._
 import caliban.client.SelectionBuilder._
 import caliban.client._
@@ -28,7 +30,7 @@ object ChatClient {
     def user[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, A] =
       Field("user", Obj(innerSelection))
     def msg:  SelectionBuilder[ChatMessage, String] = Field("msg", Scalar())
-    def date: SelectionBuilder[ChatMessage, Long] = Field("date", Scalar())
+    def date: SelectionBuilder[ChatMessage, LocalDateTime] = Field("date", Scalar())
   }
 
   type User
@@ -37,9 +39,9 @@ object ChatClient {
       Field("id", OptionOf(Obj(innerSelection)))
     def email:       SelectionBuilder[User, String] = Field("email", Scalar())
     def name:        SelectionBuilder[User, String] = Field("name", Scalar())
-    def created:     SelectionBuilder[User, Long] = Field("created", Scalar())
-    def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
-    def lastLoggedIn: SelectionBuilder[User, Option[Long]] =
+    def created:     SelectionBuilder[User, LocalDateTime] = Field("created", Scalar())
+    def lastUpdated: SelectionBuilder[User, LocalDateTime] = Field("lastUpdated", Scalar())
+    def lastLoggedIn: SelectionBuilder[User, Option[LocalDateTime]] =
       Field("lastLoggedIn", OptionOf(Scalar()))
     def wallet:  SelectionBuilder[User, Double] = Field("wallet", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
