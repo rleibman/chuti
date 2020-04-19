@@ -49,7 +49,7 @@ object LoginPage {
             ^.width     := 800.px,
             FormField()(
               Label()("Email"),
-              Input(required = true, name = "email",`type` = "email" )()
+              Input(required = true, name = "email", `type` = "email")()
             ),
             FormField()(
               Label()("Password"),

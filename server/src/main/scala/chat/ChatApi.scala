@@ -26,28 +26,31 @@ import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
-import chuti.User
+import chuti.{ChannelId, ChatMessage, User}
 import dao.SessionProvider
-import routes.GameApi.Typeclass
 import zio.URIO
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
 import zio.stream.ZStream
 
-case class SayRequest(msg: String)
+case class SayRequest(
+  msg:    String,
+  toUser: Option[User] = None
+)
 
 object ChatApi extends GenericSchema[ChatService with SessionProvider] {
   case class Queries()
   case class Mutations(say: SayRequest => URIO[SessionProvider with ChatService, Boolean])
   case class Subscriptions(
-    chatStream: ZStream[SessionProvider with ChatService, Nothing, ChatMessage]
+    chatStream: ChannelId => ZStream[SessionProvider with ChatService, Nothing, ChatMessage]
   )
 
   implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
     Schema.longSchema.contramap(_.toInstant(ZoneOffset.UTC).toEpochMilli)
   implicit val localDateTimeArgBuilder: ArgBuilder[LocalDateTime] = {
-    case value: IntValue => Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
+    case value: IntValue =>
+      Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
     case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
   }
   implicit val userSchema:        Typeclass[User] = gen[User]
@@ -62,7 +65,7 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider] {
           say = msg => ChatService.say(msg).as(true)
         ),
         Subscriptions(
-          chatStream = ChatService.chatStream
+          chatStream = channelId => ChatService.chatStream(channelId)
         )
       )
     ) @@
@@ -71,7 +74,7 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider] {
       timeout(3.seconds) @@ // wrapper that fails slow queries
       printSlowQueries(500.millis) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
-
-
+  val schema =
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\nunion UserStatus = InLobby | Offline | Playing\n\ninput UserIdInput {\n  value: Int!\n}\n\ninput UserInput {\n  id: UserIdInput\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  toUser: User\n  date: Long!\n}\n\ntype GameId {\n  value: Int!\n}\n\ntype InLobby {\n  _: Boolean\n}\n\ntype Mutations {\n  say(msg: String!, toUser: UserInput): Boolean!\n}\n\ntype Offline {\n  _: Boolean\n}\n\ntype Playing {\n  gameId: GameId!\n}\n\ntype Queries {\n  \n}\n\ntype Subscriptions {\n  chatStream(value: Int!): ChatMessage!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype UserId {\n  value: Int!\n}"
   //Generate client with calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/chat.schema /Volumes/Personal/projects/chuti/web/src/main/scala/chat/ChatClient.scala
 }

@@ -27,7 +27,7 @@ object RulesPage extends ChutiPage {
   class Backend($ : BackendScope[_, State]) {
 
     def render(S: State): VdomElement = {
-      <.div(ChatComponent("roberto"))
+      <.div()
     }
   }
 

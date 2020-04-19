@@ -23,11 +23,11 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directives, Route}
 import api._
 import better.files.File
-import chuti.{BuildInfo, User, UserId}
+import chuti.{BuildInfo, PagedStringSearch, User, UserId}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
-import dao.{DatabaseProvider, PagedStringSearch, Repository}
+import dao.{DatabaseProvider, Repository}
 import game.GameServer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
@@ -214,7 +214,7 @@ trait AuthRoute
         // This should be protected and accessible only when logged in
         path("whoami") {
           get {
-            complete(Seq(session.user))
+            complete(Option(session.user))
           }
         } ~
           path("doLogout") {

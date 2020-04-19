@@ -17,18 +17,69 @@
 package pages
 
 import chat.ChatComponent
-import chuti.{User, UserWithStatus}
+import chuti.{ChannelId, ChatMessage, GameId, GameState, User}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import typings.semanticUiReact.components.{Button, Container, Header, Loader}
+import typings.semanticUiReact.genericMod.SemanticSIZES
 
 object LobbyPage extends ChutiPage {
-  case class State(friends: Seq[UserWithStatus] = Seq.empty)
+  case class State(
+    friends:        Seq[User] = Seq.empty,
+    privateMessage: Option[ChatMessage] = None,
+    gameInProgress: Option[GameState] = None,
+    invites:        Seq[GameState] = Seq.empty
+  )
 
   class Backend($ : BackendScope[_, State]) {
 
-    def render(S: State): VdomElement = {
-      <.div(ChatComponent("roberto"))
+    def render(s: State): VdomElement = {
+      chutiContext.consume { chutiState =>
+        chutiState.user.fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) {
+          user =>
+            <.div(
+              ChatComponent(
+                user,
+                ChannelId.lobbyChannel,
+                onPrivateMessage = Option(msg => $.modState(_.copy(privateMessage = Option(msg))))
+              ),
+              Container()(s.privateMessage.fold("")(_.msg)),
+              Button()("Juega Con Quien sea"),
+              Button()("Empezar Juego Nuevo"),
+              TagMod(
+                Container()(
+                  Header()("Invitaciones"),
+                  s.invites.toVdomArray { game =>
+                    <.div(
+                      ^.key := game.id.fold("")(_.toString),
+                      game.jugadores.map(_.user.name).mkString(","),
+                      Button()("Aceptar")
+                    )
+                  }
+                )
+              ).when(s.invites.nonEmpty),
+              TagMod(
+                Container()(
+                  Header()("Amigos"),
+                  s.friends.toVdomArray { friend =>
+                    <.div(
+                      ^.key := friend.id.fold("")(_.toString),
+                      user.name
+                    )
+                  }
+                )
+              ).when(s.friends.nonEmpty),
+              TagMod(
+                Container()(
+                  Header()("Juego En Progreso"),
+                  Button()("Reanudar Juego"),
+                  Button()("Abandonar Juego") //Que ojete!
+                )
+              ).when(s.gameInProgress.nonEmpty)
+            )
+        }
+      }
     }
   }
 

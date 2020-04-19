@@ -18,7 +18,8 @@ package routes
 
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, ZIODirectives}
-import dao.{CRUDOperations, DatabaseProvider, RepositoryIO, Search, SessionProvider}
+import chuti.Search
+import dao.{CRUDOperations, DatabaseProvider, RepositoryIO, SessionProvider}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import zio._
 import io.circe

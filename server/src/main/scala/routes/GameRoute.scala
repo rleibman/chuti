@@ -57,7 +57,8 @@ object GameApi extends GenericSchema[GameService] {
   implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
     Schema.longSchema.contramap(_.toInstant(ZoneOffset.UTC).toEpochMilli)
   implicit val localDateTimeArgBuilder: ArgBuilder[LocalDateTime] = {
-    case value: IntValue => Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
+    case value: IntValue =>
+      Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
     case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
   }
   implicit private val usuarioSchema = gen[User]

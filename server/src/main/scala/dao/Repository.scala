@@ -17,7 +17,7 @@
 package dao
 
 import api.ChutiSession
-import chuti.{GameId, GameState, User, UserId}
+import chuti.{EmptySearch, GameId, GameState, PagedStringSearch, User, UserId}
 import zio.ZIO
 import zioslick.RepositoryException
 
@@ -45,12 +45,8 @@ object Repository {
       password: String
     ): RepositoryIO[Boolean]
 
-    def unfriend(
-      enemy: User
-    ): RepositoryIO[Boolean]
-    def friend(
-      friend: User
-    ): RepositoryIO[Boolean]
+    def unfriend(enemy: User): RepositoryIO[Boolean]
+    def friend(friend:  User): RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
   }
   trait GameStateOperations extends CRUDOperations[GameState, GameId, EmptySearch] {}

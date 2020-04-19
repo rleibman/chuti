@@ -14,25 +14,13 @@
  * limitations under the License.
  */
 
-package dao
+package util
 
-import chuti.Search
-import zio.{IO, ZIO}
-import zioslick.RepositoryException
+import org.scalajs.dom.window
 
-/**
-  * Collects the basic CRUD operations of a single object (or object graph) against a data source.
-  * @tparam E
-  * @tparam PK
-  * @tparam SEARCH
-  */
-trait CRUDOperations[E, PK, SEARCH <: Search] {
-  def upsert(e: E):  RepositoryIO[E]
-  def get(pk:   PK): RepositoryIO[Option[E]]
-  def delete(
-    pk:         PK,
-    softDelete: Boolean = false
-  ): RepositoryIO[Boolean]
-  def search(search: Option[SEARCH] = None): RepositoryIO[Seq[E]]
-  def count(search:  Option[SEARCH] = None): RepositoryIO[Long]
+trait Config {
+  val chutiHost =
+    s"${window.location.hostname}${if (window.location.port != "" && window.location.port != "80")
+      s":${window.location.port}"
+    else ""}"
 }

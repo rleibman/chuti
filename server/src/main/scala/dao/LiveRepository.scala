@@ -19,7 +19,7 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{GameId, GameState, User, UserId}
+import chuti.{EmptySearch, GameId, GameState, PagedStringSearch, User, UserId}
 import dao.Repository.{GameStateOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
@@ -91,9 +91,8 @@ trait LiveRepository extends Repository with SlickToModelInterop {
             session.user.id.toSeq
               .map { id =>
                 UserQuery
-                  .join(FriendsQuery.filter(f => f.one === id || f.two === id)).on {
-                    (a, b) =>
-                      a.id === b.one || a.id === b.two
+                  .join(FriendsQuery.filter(f => f.one === id || f.two === id)).on { (a, b) =>
+                    a.id === b.one || a.id === b.two
                   }.map(_._1).result
               }
           ).map(_.flatten.map(UserRow2User))
@@ -125,7 +124,7 @@ trait LiveRepository extends Repository with SlickToModelInterop {
         }
         if (softDelete) {
           val q = for {
-            u <- UserQuery if u.id=== pk
+            u <- UserQuery if u.id === pk
           } yield (u.deleted, u.deleteddate)
           q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
         } else {

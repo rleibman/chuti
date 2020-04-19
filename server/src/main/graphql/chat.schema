@@ -6,14 +6,49 @@ schema {
 
 scalar Long
 
+union UserStatus = InLobby | Offline | Playing
+
+input UserIdInput {
+  value: Int!
+}
+
+input UserInput {
+  id: UserIdInput
+  email: String!
+  name: String!
+  userStatus: UserStatus!
+  created: Long!
+  lastUpdated: Long!
+  lastLoggedIn: Long
+  wallet: Float!
+  deleted: Boolean!
+}
+
 type ChatMessage {
-  user: User!
+  fromUser: User!
   msg: String!
+  toUser: User
   date: Long!
 }
 
+type GameId {
+  value: Int!
+}
+
+type InLobby {
+  _: Boolean
+}
+
 type Mutations {
-  say(msg: String!): Boolean!
+  say(msg: String!, toUser: UserInput): Boolean!
+}
+
+type Offline {
+  _: Boolean
+}
+
+type Playing {
+  gameId: GameId!
 }
 
 type Queries {
@@ -21,13 +56,14 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream: ChatMessage!
+  chatStream(value: Int!): ChatMessage!
 }
 
 type User {
   id: UserId
   email: String!
   name: String!
+  userStatus: UserStatus!
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long

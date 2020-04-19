@@ -44,12 +44,10 @@ trait ChatRoute
         adapter.makeWebSocketService(
           interpreter.provideCustomLayer(SessionProvider.layer(session)),
           skipValidation = false,
-          keepAliveTime = Option(2500.milliseconds)
+          keepAliveTime = Option(25.seconds)
         )
       } ~ path("graphiql") {
       getFromFile(s"$staticContentDir/graphiql.html")
     }
   }
-  val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\ntype ChatMessage {\n  user: User!\n  msg: String!\n  date: Long!\n}\n\ntype Mutations {\n  say(msg: String!): Boolean!\n}\n\ntype Queries {\n  \n}\n\ntype Subscriptions {\n  chatStream: ChatMessage!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype UserId {\n  value: Int!\n}"
 }

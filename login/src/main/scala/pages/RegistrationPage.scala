@@ -124,13 +124,12 @@ object RegistrationPage {
               `type` = "password",
               name = "password",
               value = state.passwordPair._1,
-              onChange = {
-                (_, obj) =>
-                  $.modState(state =>
-                    state.copy(passwordPair =
-                      (obj.value.get.asInstanceOf[String], state.passwordPair._2)
-                    )
+              onChange = { (_, obj) =>
+                $.modState(state =>
+                  state.copy(passwordPair =
+                    (obj.value.get.asInstanceOf[String], state.passwordPair._2)
                   )
+                )
               }
             )()
           ),
@@ -140,13 +139,12 @@ object RegistrationPage {
               `type` = "password",
               name = "password",
               value = state.passwordPair._2,
-              onChange = {
-                (_, obj) =>
-                  $.modState(state =>
-                    state.copy(passwordPair =
-                      (state.passwordPair._1, obj.value.get.asInstanceOf[String])
-                    )
+              onChange = { (_, obj) =>
+                $.modState(state =>
+                  state.copy(passwordPair =
+                    (state.passwordPair._1, obj.value.get.asInstanceOf[String])
                   )
+                )
               }
             )()
           )

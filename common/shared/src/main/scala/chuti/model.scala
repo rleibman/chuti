@@ -58,16 +58,31 @@ case class Ficha(
 
 case class UserId(value: Int) extends AnyVal
 
+sealed trait UserStatus
+
+object UserStatus {
+  case class Playing(gameId: GameId) extends UserStatus
+  case object Offline extends UserStatus
+  case object InLobby extends UserStatus
+}
+
 case class User(
   id:           Option[UserId],
   email:        String,
   name:         String,
-  created:      LocalDateTime,
+  userStatus:   UserStatus = UserStatus.Offline,
+  created:      LocalDateTime = LocalDateTime.now,
   lastUpdated:  LocalDateTime = LocalDateTime.now,
   lastLoggedIn: Option[LocalDateTime] = None,
   wallet:       Double = 0.0,
   deleted:      Boolean = false
-) {}
+) {
+  def chatChannel: ChannelId = userStatus match {
+    case UserStatus.InLobby         => ChannelId.lobbyChannel
+    case UserStatus.Offline         => ChannelId.emailChannel
+    case UserStatus.Playing(gameId) => ChannelId(gameId.value)
+  }
+}
 
 case class Fila(fichas: List[Ficha])
 

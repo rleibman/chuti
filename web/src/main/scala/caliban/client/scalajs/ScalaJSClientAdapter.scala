@@ -193,9 +193,9 @@ trait ScalaJSClientAdapter {
         case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
           connectionState = connectionState.copy(reconnectCount = 0)
           for {
-            payload <- payloadOpt
-            data <- payload.asObject.flatMap(_ ("data"))
-            inner <- data.asObject.flatMap(_.values.headOption)
+            payload     <- payloadOpt
+            data        <- payload.asObject.flatMap(_("data"))
+            inner       <- data.asObject.flatMap(_.values.headOption)
             dataOrError <- Option(decoder.decodeJson(inner))
           } yield {
             dataOrError match {

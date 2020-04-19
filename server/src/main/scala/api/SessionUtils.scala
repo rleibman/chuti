@@ -51,10 +51,11 @@ trait SessionUtils extends Directives with Config {
     val dbProv: DatabaseProvider.Service = this
     val fullLayer = SessionProvider.layer(ChutiSession(GameServer.god)) ++ ZLayer.succeed(dbProv)
     repository.userOperations.get(UserId(id)).provideLayer(fullLayer).catchSome {
-      case e:RepositoryException => ZIO.succeed {
-        e.printStackTrace()
-        None
-      }
+      case e: RepositoryException =>
+        ZIO.succeed {
+          e.printStackTrace()
+          None
+        }
     }
   }
 
@@ -66,7 +67,7 @@ trait SessionUtils extends Directives with Config {
           val user = {
             zio.Runtime.default.unsafeRun(getUser(id.toInt))
           }
-          if(user.isEmpty)
+          if (user.isEmpty)
             throw new Exception("The user was not found!")
           ChutiSession(user.get)
         }

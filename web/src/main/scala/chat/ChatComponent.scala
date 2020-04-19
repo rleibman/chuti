@@ -17,12 +17,17 @@
 package chat
 
 import java.net.URI
-import java.time.{Instant, LocalDateTime, ZoneId}
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat.ChatClient.{Mutations, Subscriptions, ChatMessage => CalibanChatMessage, User => CalibanUser}
-import chuti.ChatMessage
+import chat.ChatClient.{
+  Mutations,
+  Subscriptions,
+  ChatMessage => CalibanChatMessage,
+  User => CalibanUser
+}
+import chuti.{ChannelId, ChatMessage, User}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
@@ -36,18 +41,9 @@ import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-case class User(name: String) //TODO move this to shared
-
-object ChatMessage {
-  def apply(
-    username: String,
-    date:     Long,
-    msg:      String
-  ): ChatMessage =
-    ChatMessage(User(username), date, msg)
-}
-
 object ChatComponent {
+  val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
+
   case class State(
     chatMessages: Seq[ChatMessage] = Seq.empty,
     msgInFlux:    String = ""
@@ -55,26 +51,37 @@ object ChatComponent {
 
   val chatId = UUID.randomUUID()
 
-  class Backend($ : BackendScope[_, State]) extends ScalaJSClientAdapter {
-    val wsHandle = makeWebSocketClient[ChatMessage](
-      uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
-      query = Subscriptions
-        .chatStream(
-          (CalibanChatMessage
-            .user(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.msg)
-            .mapN((username: String, date: Long, msg: String) =>
-              ChatMessage.apply(username, date, msg)
-            )
-        ),
-      onData = { (_, data) =>
-        println(s"got data! $data")
-        data
-          .fold(Callback.empty) { msg =>
-            $.modState(s => s.copy(s.chatMessages :+ msg))
-          }.runNow()
-      },
-      operationId = s"chat$chatId"
-    )
+  class Backend($ : BackendScope[Props, State]) extends ScalaJSClientAdapter {
+    $.props.map { props =>
+      val wsHandle = makeWebSocketClient[ChatMessage](
+        uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
+        query = Subscriptions
+          .chatStream(props.channel)(
+            (CalibanChatMessage
+              .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
+              CalibanUser.name
+            ) ~ CalibanChatMessage.msg)
+              .mapN((fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
+                ChatMessage(
+                  fromUser = User(None, "", fromUsername),
+                  msg = msg,
+                  toUser = toUsername.map(name => User(None, "", name))
+                )
+              )
+          ),
+        onData = { (_, data) =>
+          println(s"got data! $data")
+          data
+            .fold(Callback.empty) { msg =>
+              msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
+                $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
+              }
+
+            }.runNow()
+        },
+        operationId = s"chat$chatId"
+      )
+    }.runNow
 
     private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
       $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
@@ -118,13 +125,11 @@ object ChatComponent {
           FormField(width = SemanticWIDTHS.`16`)(
             s.chatMessages.toVdomArray(msg =>
               <.div(
-                <.div(^.fontWeight.bold,
-                  msg.user.name,
-                  <.span(^.fontWeight.lighter,
-                    LocalDateTime
-                      .ofInstant(Instant.ofEpochMilli(msg.date), ZoneId.systemDefault())
-                      .toString
-                  )
+                <.div(
+                  ^.fontWeight.bold,
+                  msg.fromUser.name,
+                  " ",
+                  <.span(^.fontWeight.lighter, df.format(msg.date))
                 ),
                 <.div(msg.msg)
               )
@@ -143,7 +148,11 @@ object ChatComponent {
     def refresh(s: State): Callback = Callback.empty //TODO add ajax initalization stuff here
   }
 
-  case class Props(user: User)
+  case class Props(
+    user:             User,
+    channel:          ChannelId,
+    onPrivateMessage: Option[ChatMessage => Callback] = None
+  )
 
   private val component = ScalaComponent
     .builder[Props]("content")
@@ -152,6 +161,10 @@ object ChatComponent {
     .componentDidMount($ => $.backend.refresh($.state))
     .build
 
-  def apply(user: String, channel: ChannelId): Unmounted[Props, State, Backend] = component(Props(User(user)))
+  def apply(
+    user:             User,
+    channel:          ChannelId,
+    onPrivateMessage: Option[ChatMessage => Callback] = None
+  ): Unmounted[Props, State, Backend] = component(Props(user, channel, onPrivateMessage))
 
 }

@@ -16,6 +16,6 @@
 
 package pages
 
-trait ChutiPage {
+import components.components.ChutiComponent
 
-}
+trait ChutiPage extends ChutiComponent {}

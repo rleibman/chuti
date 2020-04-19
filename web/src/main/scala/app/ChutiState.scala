@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package dao
+package app
 
-import chuti.Search
-import zio.{IO, ZIO}
-import zioslick.RepositoryException
+import chuti.User
+import japgolly.scalajs.react.React.Context
+import japgolly.scalajs.react.{Callback, React}
 
-/**
-  * Collects the basic CRUD operations of a single object (or object graph) against a data source.
-  * @tparam E
-  * @tparam PK
-  * @tparam SEARCH
-  */
-trait CRUDOperations[E, PK, SEARCH <: Search] {
-  def upsert(e: E):  RepositoryIO[E]
-  def get(pk:   PK): RepositoryIO[Option[E]]
-  def delete(
-    pk:         PK,
-    softDelete: Boolean = false
-  ): RepositoryIO[Boolean]
-  def search(search: Option[SEARCH] = None): RepositoryIO[Seq[E]]
-  def count(search:  Option[SEARCH] = None): RepositoryIO[Long]
+case class ChutiState(
+  onUserChanged:   Option[Option[User] => Callback] = None,
+  user:            Option[User] = None,
+  serverVersion:   Option[String] = None,
+  sidebarVisible:  Boolean = false,
+  onToggleSidebar: Option[Callback] = None
+) {}
+
+object ChutiState {
+  val ctx: Context[ChutiState] = React.createContext(ChutiState())
 }

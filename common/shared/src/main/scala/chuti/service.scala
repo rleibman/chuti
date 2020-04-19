@@ -16,5 +16,22 @@
 
 package chuti
 
-case class UserCreationRequest(user: User, password: String)
+case class UserCreationRequest(
+  user:     User,
+  password: String
+)
 
+trait Search
+
+trait PagedSearch {
+  val pageIndex: Int
+  val pageSize:  Int
+}
+
+case class EmptySearch() extends Search
+
+case class PagedStringSearch(
+  text:      String,
+  pageIndex: Int = 0,
+  pageSize:  Int = 0
+) extends Search
