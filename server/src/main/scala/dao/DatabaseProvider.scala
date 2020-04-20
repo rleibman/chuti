@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-import api.ChutiSession
+package dao
+
 import slick.basic.BasicBackend
-import zio.{Has, Layer, UIO, ZIO, ZLayer}
-import zioslick.RepositoryException
+import zio.UIO
 
-package object dao {
-  type Repository = Has[Repository.Service]
-
-  type DatabaseProvider = Has[DatabaseProvider.Service]
-
-  type SessionProvider = Has[SessionProvider.Session]
-
-  type RepositoryIO[E] = ZIO[DatabaseProvider with SessionProvider, RepositoryException, E]
+object DatabaseProvider {
+  trait Service {
+    def db: UIO[BasicBackend#DatabaseDef]
+  }
 }
+
+

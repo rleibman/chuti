@@ -1,0 +1,200 @@
+schema {
+  query: Queries
+  mutation: Mutations
+  subscription: Subscriptions
+}
+
+scalar Long
+
+union GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego
+
+union Triunfo = SinTriunfos | TriunfanMulas | TriunfoNumero
+
+enum Estado {
+  cantando
+  comienzo
+  jugando
+  terminado
+}
+
+enum Numero {
+  Numero0
+  Numero1
+  Numero2
+  Numero3
+  Numero4
+  Numero5
+  Numero6
+}
+
+enum UserEventType {
+  Connected
+  Disconnected
+  Modified
+}
+
+enum UserStatus {
+  InLobby
+  Offline
+  Playing
+}
+
+type Canta {
+  gameId: GameId!
+  index: Int
+  cuantas: Int!
+}
+
+type ChannelId {
+  value: Int!
+}
+
+type Da {
+  gameId: GameId!
+  index: Int
+  ficha: Ficha!
+}
+
+type DeCaida {
+  gameId: GameId!
+  index: Int
+}
+
+type EmpiezaJuego {
+  gameId: GameId!
+  index: Int
+  turno: User
+}
+
+type Ficha {
+  arriba: Numero!
+  abajo: Numero!
+}
+
+type Fila {
+  fichas: [Ficha!]!
+}
+
+type GameId {
+  value: Int!
+}
+
+type GameState {
+  id: GameId
+  jugadores: [Jugador!]!
+  enJuego: [Ficha!]!
+  triunfo: Triunfo
+  estado: Estado!
+  currentIndex: Int!
+}
+
+type HoyoTecnico {
+  gameId: GameId!
+  index: Int
+}
+
+type InviteFriend {
+  gameId: GameId!
+  index: Int
+  user: User!
+}
+
+type JoinGame {
+  gameId: GameId!
+  index: Int
+  user: User!
+}
+
+type Jugador {
+  user: User!
+  fichas: [Ficha!]!
+  casas: [Fila!]!
+  cantador: Boolean!
+  mano: Boolean!
+}
+
+type MeRindo {
+  gameId: GameId!
+  index: Int
+}
+
+type Mutations {
+  newGame: GameState
+  joinRandomGame: GameState
+  abandonGame(value: Int!): Boolean
+  play: GameState
+}
+
+type NoOp {
+  gameId: GameId!
+  index: Int
+}
+
+type Pide {
+  gameId: GameId!
+  index: Int
+  ficha: Ficha!
+  estrictaDerecha: Boolean!
+}
+
+type PideInicial {
+  gameId: GameId!
+  index: Int
+  ficha: Ficha!
+  triunfan: Numero!
+  estrictaDerecha: Boolean!
+}
+
+type PoisonPill {
+  gameId: GameId!
+  index: Int
+}
+
+type Queries {
+  getGame(value: Int!): GameState
+}
+
+type SinTriunfos {
+  _: Boolean
+}
+
+type Subscriptions {
+  gameStream(value: Int!): GameEvent!
+  userStream: UserEvent!
+}
+
+type TerminaJuego {
+  gameId: GameId!
+  index: Int
+}
+
+type TriunfanMulas {
+  _: Boolean
+}
+
+type TriunfoNumero {
+  num: Numero!
+}
+
+type User {
+  id: UserId
+  email: String!
+  name: String!
+  userStatus: UserStatus!
+  currentChannelId: ChannelId
+  created: Long!
+  lastUpdated: Long!
+  lastLoggedIn: Long
+  wallet: Float!
+  deleted: Boolean!
+}
+
+type UserEvent {
+  user: User!
+  isFriendOfCurrent: Boolean!
+  userEventType: UserEventType!
+}
+
+type UserId {
+  value: Int!
+}

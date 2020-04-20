@@ -43,6 +43,7 @@ object Numero {
 
 import java.time.LocalDateTime
 
+import caliban.schema.Annotations.GQLInterface
 import chuti.Numero._
 
 import scala.util.Random
@@ -54,34 +55,6 @@ case class Ficha(
   lazy val esMula: Boolean = arriba == abajo
 
   override def toString: String = s"${arriba.value}:${abajo.value}"
-}
-
-case class UserId(value: Int) extends AnyVal
-
-sealed trait UserStatus
-
-object UserStatus {
-  case class Playing(gameId: GameId) extends UserStatus
-  case object Offline extends UserStatus
-  case object InLobby extends UserStatus
-}
-
-case class User(
-  id:           Option[UserId],
-  email:        String,
-  name:         String,
-  userStatus:   UserStatus = UserStatus.Offline,
-  created:      LocalDateTime = LocalDateTime.now,
-  lastUpdated:  LocalDateTime = LocalDateTime.now,
-  lastLoggedIn: Option[LocalDateTime] = None,
-  wallet:       Double = 0.0,
-  deleted:      Boolean = false
-) {
-  def chatChannel: ChannelId = userStatus match {
-    case UserStatus.InLobby         => ChannelId.lobbyChannel
-    case UserStatus.Offline         => ChannelId.emailChannel
-    case UserStatus.Playing(gameId) => ChannelId(gameId.value)
-  }
 }
 
 case class Fila(fichas: List[Ficha])
@@ -118,7 +91,7 @@ case object ElNiñoDelCumpleanos extends Borlote
 case object SantaClaus extends Borlote
 case object CampanitaSeJuega extends Borlote
 
-sealed trait EventInfo[T <: Event] {
+sealed trait EventInfo[T <: GameEvent] {
   def canDo(
     jugador:   Jugador,
     gameState: GameState
@@ -126,9 +99,10 @@ sealed trait EventInfo[T <: Event] {
   val values: Seq[EventInfo[_]] = Seq(NoOp)
 }
 
-sealed trait Event {
-  val index: Option[Int]
-  def doEvent(gameState: GameState): (GameState, Event)
+sealed trait GameEvent {
+  val gameId: GameId
+  val index:  Option[Int]
+  def doEvent(gameState: GameState): (GameState, GameEvent)
 }
 
 object NoOp extends EventInfo[NoOp] {
@@ -138,75 +112,100 @@ object NoOp extends EventInfo[NoOp] {
   ): Boolean = true //always true
 }
 
-case class NoOp(index: Option[Int] = None) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) =
+case class NoOp(
+  gameId: GameId,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) =
     (gameState, copy(index = Option(gameState.currentIndex)))
 }
 
 case class InviteFriend(
-  index: Option[Int],
-  user:  User
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+  gameId: GameId,
+  index:  Option[Int],
+  user:   User
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class JoinGame(
-  index: Option[Int],
-  user:  User
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+  gameId: GameId,
+  index:  Option[Int],
+  user:   User
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 //This event ends the game and shuts down the server... it can only be called by god
-case class PoisonPill(index: Option[Int] = None) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) =
+case class PoisonPill(
+  gameId: GameId,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) =
     (gameState, copy(index = Option(gameState.currentIndex)))
 }
-case class TerminaJuego(index: Option[Int]) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+case class TerminaJuego(
+  gameId: GameId,
+  index:  Option[Int]
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Canta(
+  gameId:  GameId,
   index:   Option[Int] = None,
   cuantas: Int
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class PideInicial(
+  gameId:          GameId,
   index:           Option[Int] = None,
   ficha:           Ficha,
   triunfan:        Numero,
   estrictaDerecha: Boolean
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Pide(
+  gameId:          GameId,
   index:           Option[Int] = None,
   ficha:           Ficha,
   estrictaDerecha: Boolean
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Da(
-  index: Option[Int] = None,
-  ficha: Ficha
-) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+  gameId: GameId,
+  index:  Option[Int] = None,
+  ficha:  Ficha
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 //Acuerdate de los regalos
-case class DeCaida(index: Option[Int] = None) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+case class DeCaida(
+  gameId: GameId,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
-case class HoyoTecnico(index: Option[Int] = None) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+case class HoyoTecnico(
+  gameId: GameId,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
-case class MeRindo(index: Option[Int] = None) extends Event {
-  override def doEvent(gameState: GameState): (GameState, Event) = ???
+case class MeRindo(
+  gameId: GameId,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class EmpiezaJuego(
-  index: Option[Int] = None,
-  turno: Option[User]
-) extends Event {
+  gameId: GameId,
+  index:  Option[Int] = None,
+  turno:  Option[User]
+) extends GameEvent {
   import Mesa._
   def sopa = Random.shuffle(todaLaFicha)
-  override def doEvent(gameState: GameState): (GameState, Event) = {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = {
     val jugadores = gameState.jugadores
     val newJugadores = sopa
       .grouped(todaLaFicha.length / jugadores.length)
@@ -243,7 +242,7 @@ case class GameState(
 ) {
   def resultado(): Option[List[Cuenta]] = ???
   //Returns the newly modified state, and any changes to the event
-  def event(event: Event): (GameState, Event) = {
+  def event(event: GameEvent): (GameState, GameEvent) = {
     val newIndex = currentIndex + 1
     val processed = event.doEvent(gameState = this)
     (processed._1.copy(currentIndex = newIndex), processed._2)

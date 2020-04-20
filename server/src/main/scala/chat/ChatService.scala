@@ -27,7 +27,7 @@ object ChatService {
 
   type ChatService = Has[Service]
   trait Service {
-    def say(msg:              SayRequest): ZIO[SessionProvider, Nothing, ChatMessage]
+    def say(msg:              SayRequest): URIO[SessionProvider, ChatMessage]
     def chatStream(channelId: ChannelId):  ZStream[SessionProvider, Nothing, ChatMessage]
   }
 
@@ -49,18 +49,18 @@ object ChatService {
   ): ZStream[ChatService with SessionProvider, Nothing, ChatMessage] =
     ZStream.accessStream(_.get.chatStream(channelId))
 
-  case class UserQueue(
+  case class MessageQueue(
     user:  User,
     queue: Queue[ChatMessage]
   )
 
   def make(): ZLayer[Any, Nothing, ChatService] = ZLayer.fromEffect {
     for {
-      subscribers <- Ref.make(List.empty[UserQueue])
+      chatMessageQueue <- Ref.make(List.empty[MessageQueue])
     } yield new Service {
       override def say(request: SayRequest): ZIO[SessionProvider, Nothing, ChatMessage] =
         for {
-          sub  <- subscribers.get
+          sub  <- chatMessageQueue.get
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sent <- {
             val addMe = ChatMessage(user, request.msg)
@@ -71,7 +71,7 @@ object ChatService {
                   .offer(addMe)
                   .onInterrupt(
                     //If it was shutdown, remove from subscribers
-                    subscribers.update(_.filterNot(_ == userQueue))
+                    chatMessageQueue.update(_.filterNot(_ == userQueue))
                   )
               )
               .as(addMe)
@@ -86,8 +86,8 @@ object ChatService {
         for {
           user  <- ZIO.access[SessionProvider](_.get.session.user)
           queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
-          _     <- subscribers.update(UserQueue(user, queue) :: _)
-        } yield ZStream.fromQueue(queue).filter(_.fromUser.chatChannel == channelId)
+          _     <- chatMessageQueue.update(MessageQueue(user, queue) :: _)
+        } yield ZStream.fromQueue(queue).filter(_.fromUser.chatChannel == Option(channelId))
       }
     }
   }

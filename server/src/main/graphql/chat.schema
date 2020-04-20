@@ -6,7 +6,15 @@ schema {
 
 scalar Long
 
-union UserStatus = InLobby | Offline | Playing
+enum UserStatus {
+  InLobby
+  Offline
+  Playing
+}
+
+input ChannelIdInput {
+  value: Int!
+}
 
 input UserIdInput {
   value: Int!
@@ -17,11 +25,16 @@ input UserInput {
   email: String!
   name: String!
   userStatus: UserStatus!
+  currentChannelId: ChannelIdInput
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long
   wallet: Float!
   deleted: Boolean!
+}
+
+type ChannelId {
+  value: Int!
 }
 
 type ChatMessage {
@@ -31,24 +44,8 @@ type ChatMessage {
   date: Long!
 }
 
-type GameId {
-  value: Int!
-}
-
-type InLobby {
-  _: Boolean
-}
-
 type Mutations {
   say(msg: String!, toUser: UserInput): Boolean!
-}
-
-type Offline {
-  _: Boolean
-}
-
-type Playing {
-  gameId: GameId!
 }
 
 type Queries {
@@ -64,6 +61,7 @@ type User {
   email: String!
   name: String!
   userStatus: UserStatus!
+  currentChannelId: ChannelId
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long

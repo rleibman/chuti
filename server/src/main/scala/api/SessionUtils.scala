@@ -37,7 +37,7 @@ object SessionUtils {
 }
 
 trait SessionUtils extends Directives with Config {
-  this: HasActorSystem with Repository with DatabaseProvider.Service =>
+  this: HasActorSystem with Repository.Service with DatabaseProvider.Service =>
   import scalacache._
   import scalacache.memoization._
   import scalacache.caffeine.CaffeineCache
@@ -50,7 +50,7 @@ trait SessionUtils extends Directives with Config {
   def getUser(id: Int): Task[Option[User]] = memoizeF(Option(1.hour)) {
     val dbProv: DatabaseProvider.Service = this
     val fullLayer = SessionProvider.layer(ChutiSession(GameServer.god)) ++ ZLayer.succeed(dbProv)
-    repository.userOperations.get(UserId(id)).provideLayer(fullLayer).catchSome {
+    userOperations.get(UserId(id)).provideLayer(fullLayer).catchSome {
       case e: RepositoryException =>
         ZIO.succeed {
           e.printStackTrace()

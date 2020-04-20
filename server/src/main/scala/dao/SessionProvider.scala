@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
+package dao
+
 import api.ChutiSession
-import slick.basic.BasicBackend
-import zio.{Has, Layer, UIO, ZIO, ZLayer}
-import zioslick.RepositoryException
+import zio.{Has, Layer, ZLayer}
 
-package object dao {
-  type Repository = Has[Repository.Service]
-
-  type DatabaseProvider = Has[DatabaseProvider.Service]
-
-  type SessionProvider = Has[SessionProvider.Session]
-
-  type RepositoryIO[E] = ZIO[DatabaseProvider with SessionProvider, RepositoryException, E]
+object SessionProvider {
+  trait Session {
+    def session: ChutiSession
+  }
+  def live(s: ChutiSession): Session = {
+    new Session {
+      val session: ChutiSession = s
+    }
+  }
+  def layer(session: ChutiSession): Layer[Nothing, Has[Session]] = ZLayer.succeed(live(session))
 }

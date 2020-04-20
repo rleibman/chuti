@@ -26,6 +26,8 @@ import scala.concurrent.ExecutionContext
 object Chuti
     extends App //To run it
     with BootedCore //For stop and start
-    with CoreActors with Api // The api
+    with CoreActors
+      with Api // The api
     with Web // As a web service
-    with LiveEnvironment {}
+    with LiveEnvironment {
+}

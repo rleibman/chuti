@@ -37,7 +37,7 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.5"
+lazy val calibanVersion = "0.7.8"
 lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
@@ -51,6 +51,7 @@ lazy val commonSettings = Seq(
 
 lazy val commonVmSettings = commonSettings ++ Seq(
   libraryDependencies ++= Seq(
+    "com.github.ghostdogpr"      %% "caliban"       % calibanVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-core"  % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % "test" withSources (),
@@ -111,7 +112,7 @@ lazy val server: Project = project
       "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion withSources (),
       "com.typesafe.akka" %% "akka-stream"      % akkaVersion withSources (),
       "com.typesafe.akka" %% "akka-http"        % "10.1.11" withSources (),
-      "de.heikoseeberger" %% "akka-http-circe"  % "1.31.0" withSources (),
+      "de.heikoseeberger" %% "akka-http-circe"  % "1.32.0" withSources (),
       //DB
       "com.typesafe.slick" %% "slick"               % "3.3.2",
       "com.typesafe.slick" %% "slick-hikaricp"      % "3.3.2",
@@ -269,8 +270,8 @@ lazy val commonWeb: Project => Project =
         "commons-io"                                    % "commons-io" % "2.6" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % "1.0.0-RC18-2" withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.0.7" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.0.7",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.0.9" withSources (),
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.0.9",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0-RC3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0-RC3_2019a" withSources (),
@@ -278,7 +279,7 @@ lazy val commonWeb: Project => Project =
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
         "com.github.japgolly.scalajs-react" %%% "core"  % "1.6.0" withSources (),
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.6.0" withSources (),
-        "com.lihaoyi" %%% "scalatags"                   % "0.8.6" withSources (),
+        "com.lihaoyi" %%% "scalatags"                   % "0.9.0" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.0" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.0" withSources (),
         "com.github.pathikrit"                          %% "better-files" % "3.8.0",

@@ -14,39 +14,47 @@
  * limitations under the License.
  */
 
-package chat
+package game
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, Config, HasActorSystem}
 import caliban.interop.circe.AkkaHttpCirceAdapter
-import dao.{Repository, SessionProvider}
+import chuti._
+import dao.{DatabaseProvider, Repository, SessionProvider}
+import game.GameService.GameLayer
+import zio.{Layer, ZLayer}
 import zio.duration._
 
 import scala.concurrent.ExecutionContextExecutor
 
-trait ChatRoute
-    extends Directives
-      with AkkaHttpCirceAdapter
-      with Repository.Service
-      with HasActorSystem
-      with Config {
+case class GameArgs()
+
+trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem with Config {
+  this: Repository.Service with DatabaseProvider.Service =>
+
+  def repositoryLayer: Layer[Nothing, Repository] = ZLayer.succeed(this)
+  def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
+
+  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] = SessionProvider.layer(session) ++ repositoryLayer ++ databaseProviderLayer
+
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-  import ChatService._
+  import GameService._
   val staticContentDir: String = config.getString("chuti.staticContentDir")
 
-  def route(session: ChutiSession): Route = pathPrefix("chat") {
+  def route(session: ChutiSession): Route = pathPrefix("game") {
     pathEndOrSingleSlash {
       implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
       adapter.makeHttpService(
-        interpreter.provideCustomLayer(SessionProvider.layer(session))
+        interpreter.provideCustomLayer(gameLayer(session))
       )
     } ~
       path("schema") {
-        get(complete(ChatApi.api.render))
+        get(complete(GameApi.api.render))
       } ~
       path("ws") {
         adapter.makeWebSocketService(
-          interpreter.provideCustomLayer(SessionProvider.layer(session)),
+          interpreter.provideCustomLayer(gameLayer(session)),
           skipValidation = false,
           keepAliveTime = Option(25.seconds)
         )

@@ -66,7 +66,9 @@ object Content extends ChutiComponent {
       }
 
     def refresh(s: State): Callback =
-      $.modState(s => s.copy(chutiState = s.chutiState.copy(onToggleSidebar = Some(onToggleSidebar)))) >>
+      $.modState(s =>
+        s.copy(chutiState = s.chutiState.copy(onToggleSidebar = Some(onToggleSidebar)))
+      ) >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
             $.modState(s =>

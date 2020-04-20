@@ -27,23 +27,29 @@ import chuti.{BuildInfo, PagedStringSearch, User, UserId}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
-import dao.{DatabaseProvider, Repository}
+import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameServer
+import game.GameService.GameLayer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
 import mail.Postman
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import slick.basic.BasicBackend
-import zio.{Task, UIO, ZIO}
+import zio.{Layer, Task, UIO, ZIO, ZLayer}
 import zioslick.RepositoryException
 
 import scala.concurrent.duration._
 
 trait AuthRoute
-    extends CRUDRoute[User, UserId, PagedStringSearch] with Repository with Postman with Config
+    extends CRUDRoute[User, UserId, PagedStringSearch] with Postman with Config
     with SessionUtils with HasActorSystem {
-  this: DatabaseProvider.Service =>
+  this: Repository.Service with DatabaseProvider.Service =>
+
+  def repositoryLayer: Layer[Nothing, Repository] = ZLayer.succeed(this)
+  def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
+
+  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] = SessionProvider.layer(session) ++ repositoryLayer ++ databaseProviderLayer
 
   lazy private val adminSession = ChutiSession(GameServer.god)
 
@@ -54,7 +60,7 @@ trait AuthRoute
 
       override val url: String = "auth"
 
-      override val ops: Repository.UserOperations = repository.userOperations
+      override val ops: Repository.UserOperations = userOperations
 
       override def getPK(obj: User): UserId = obj.id.get
 

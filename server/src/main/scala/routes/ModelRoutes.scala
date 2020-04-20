@@ -22,6 +22,7 @@ import api.{ChutiSession, HasActorSystem, LiveEnvironment}
 import chat.ChatRoute
 import chuti.GameState
 import dao.{DatabaseProvider, Repository}
+import game.GameRoute
 import io.circe.generic.auto._
 import mail.Postman
 import slick.basic.BasicBackend
@@ -31,23 +32,27 @@ import zio.UIO
   * For convenience, this trait aggregates all of the model routes.
   */
 trait ModelRoutes extends Directives {
-  this: LiveEnvironment with HasActorSystem with DatabaseProvider.Service =>
+  this: LiveEnvironment with HasActorSystem with Repository.Service with DatabaseProvider.Service =>
 
-  private val gameRoute: GameRoute = new GameRoute {
-    override val juego:       GameState = null
+  private val gameRoute: GameRoute = new GameRoute with DatabaseProvider.Service with Repository.Service {
+    override def db:          UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
     override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+    override val gameStateOperations: Repository.GameStateOperations = ModelRoutes.this.gameStateOperations
+    override val userOperations: Repository.UserOperations = ModelRoutes.this.userOperations
   }
 
-  private val authRoute: AuthRoute = new AuthRoute with DatabaseProvider.Service {
+  private val authRoute: AuthRoute = new AuthRoute with DatabaseProvider.Service with Repository.Service {
     override def db:                   UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
-    override def repository:           Repository.Service = ModelRoutes.this.repository
+    override val gameStateOperations: Repository.GameStateOperations = ModelRoutes.this.gameStateOperations
+    override val userOperations: Repository.UserOperations = ModelRoutes.this.userOperations
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
     override val postman:              Postman.Service[Any] = ModelRoutes.this.postman
   }
 
-  private val chatRoute: ChatRoute = new ChatRoute with DatabaseProvider.Service {
+  private val chatRoute: ChatRoute = new ChatRoute with DatabaseProvider.Service with Repository.Service {
     override def db:                   UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
-    override def repository:           Repository.Service = ModelRoutes.this.repository
+    override val gameStateOperations: Repository.GameStateOperations = ModelRoutes.this.gameStateOperations
+    override val userOperations: Repository.UserOperations = ModelRoutes.this.userOperations
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 

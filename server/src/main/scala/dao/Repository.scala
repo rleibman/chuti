@@ -16,20 +16,7 @@
 
 package dao
 
-import api.ChutiSession
-import chuti.{EmptySearch, GameId, GameState, PagedStringSearch, User, UserId}
-import zio.ZIO
-import zioslick.RepositoryException
-
-/**
-  * This trait defines all of the Model's database methods.
-  */
-//@accessible
-//@mockable
-trait Repository {
-
-  def repository: Repository.Service
-}
+import chuti._
 
 object Repository {
   trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {

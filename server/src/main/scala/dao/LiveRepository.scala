@@ -33,7 +33,7 @@ import zioslick.RepositoryException
 import scala.concurrent.ExecutionContext
 import scala.language.implicitConversions
 
-trait LiveRepository extends Repository with SlickToModelInterop {
+trait LiveRepository extends Repository.Service with SlickToModelInterop {
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
@@ -55,155 +55,153 @@ trait LiveRepository extends Repository with SlickToModelInterop {
       }
     } yield ret
 
-  override def repository: Repository.Service = new Repository.Service {
-    override val userOperations: Repository.UserOperations = new UserOperations {
-      override def unfriend(enemy: User): RepositoryIO[Boolean] = { session: ChutiSession =>
-        val rowOpt = for {
-          one <- session.user.id
-          two <- enemy.id
-        } yield { FriendsRow(one, two) }
-        DBIO
-          .sequence(
-            rowOpt.toSeq
-              .map(row =>
-                FriendsQuery
-                  .filter(r =>
-                    (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one)
-                  ).delete
-              ).map(_.map(_ > 0))
-          ).map(_.headOption.getOrElse(false))
-      }
+  override val userOperations: Repository.UserOperations = new UserOperations {
+    override def unfriend(enemy: User): RepositoryIO[Boolean] = { session: ChutiSession =>
+      val rowOpt = for {
+        one <- session.user.id
+        two <- enemy.id
+      } yield { FriendsRow(one, two) }
+      DBIO
+        .sequence(
+          rowOpt.toSeq
+            .map(row =>
+              FriendsQuery
+                .filter(r =>
+                  (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one)
+                ).delete
+            ).map(_.map(_ > 0))
+        ).map(_.headOption.getOrElse(false))
+    }
 
-      override def friend(friend: User): RepositoryIO[Boolean] = { session: ChutiSession =>
-        val rowOpt = for {
-          one <- session.user.id
-          two <- friend.id
-        } yield { FriendsRow(one, two) }
-        DBIO
-          .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
-            _.headOption.getOrElse(false)
+    override def friend(friend: User): RepositoryIO[Boolean] = { session: ChutiSession =>
+      val rowOpt = for {
+        one <- session.user.id
+        two <- friend.id
+      } yield { FriendsRow(one, two) }
+      DBIO
+        .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
+          _.headOption.getOrElse(false)
+        )
+    }
+
+    override def friends: RepositoryIO[Seq[User]] = { session: ChutiSession =>
+      DBIO
+        .sequence(
+          session.user.id.toSeq
+            .map { id =>
+              UserQuery
+                .join(FriendsQuery.filter(f => f.one === id || f.two === id)).on { (a, b) =>
+                  a.id === b.one || a.id === b.two
+                }.map(_._1).result
+            }
+        ).map(_.flatten.map(UserRow2User))
+    }
+
+    override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
+      if (session.user != GameServer.god && session.user.id != user.id) {
+        throw RepositoryException(s"${session.user} Not authorized")
+      }
+      (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
+        .insertOrUpdate(User2UserRow(user))
+        .map(_.getOrElse(user))
+    }
+
+    def get(pk: UserId): RepositoryIO[Option[User]] =
+      fromDBIO {
+        UserQuery
+          .filter(u => u.id === pk && !u.deleted).result.headOption.map(
+            _.map(UserRow2User)
           )
       }
 
-      override def friends: RepositoryIO[Seq[User]] = { session: ChutiSession =>
-        DBIO
-          .sequence(
-            session.user.id.toSeq
-              .map { id =>
-                UserQuery
-                  .join(FriendsQuery.filter(f => f.one === id || f.two === id)).on { (a, b) =>
-                    a.id === b.one || a.id === b.two
-                  }.map(_._1).result
-              }
-          ).map(_.flatten.map(UserRow2User))
+    override def delete(
+      pk:         UserId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = { session: ChutiSession =>
+      if (session.user != GameServer.god && session.user.id.fold(false)(_ != pk)) {
+        throw RepositoryException(s"${session.user} Not authorized")
       }
-
-      override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
-        if (session.user != GameServer.god && session.user.id != user.id) {
-          throw RepositoryException(s"${session.user} Not authorized")
-        }
-        (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
-          .insertOrUpdate(User2UserRow(user))
-          .map(_.getOrElse(user))
+      if (softDelete) {
+        val q = for {
+          u <- UserQuery if u.id === pk
+        } yield (u.deleted, u.deleteddate)
+        q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
+      } else {
+        UserQuery.filter(_.id === pk).delete.map(_ > 0)
       }
+    }
 
-      def get(pk: UserId): RepositoryIO[Option[User]] =
-        fromDBIO {
+    override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
+      search
+        .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
           UserQuery
-            .filter(u => u.id === pk && !u.deleted).result.headOption.map(
-              _.map(UserRow2User)
-            )
-        }
+            .filter(u => u.email.like(s"%${s.text}%"))
+            .drop(s.pageSize * s.pageIndex)
+            .take(s.pageSize)
+        }.result.map(_.map(UserRow2User))
+    }
 
-      override def delete(
-        pk:         UserId,
-        softDelete: Boolean
-      ): RepositoryIO[Boolean] = { session: ChutiSession =>
-        if (session.user != GameServer.god && session.user.id.fold(false)(_ != pk)) {
-          throw RepositoryException(s"${session.user} Not authorized")
-        }
-        if (softDelete) {
+    override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
+      search
+        .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
+          UserQuery
+            .filter(u => u.email.like(s"%${s.text}%"))
+        }.length.result.map(_.toLong)
+
+    override def login(
+      email:    String,
+      password: String
+    ): RepositoryIO[Option[User]] = {
+      (for {
+        userOpt <- UserQuery
+          .filter(user =>
+            !user.deleted && user.email === email && user.hashedpassword === hashPassword(
+              password,
+              512
+            )
+          )
+          .result
+          .headOption
+        _ <- DBIO.sequence(userOpt.toSeq.map { user =>
           val q = for {
-            u <- UserQuery if u.id === pk
-          } yield (u.deleted, u.deleteddate)
-          q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
-        } else {
-          UserQuery.filter(_.id === pk).delete.map(_ > 0)
-        }
-      }
-
-      override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
-        search
-          .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
-            UserQuery
-              .filter(u => u.email.like(s"%${s.text}%"))
-              .drop(s.pageSize * s.pageIndex)
-              .take(s.pageSize)
-          }.result.map(_.map(UserRow2User))
-      }
-
-      override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
-        search
-          .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
-            UserQuery
-              .filter(u => u.email.like(s"%${s.text}%"))
-          }.length.result.map(_.toLong)
-
-      override def login(
-        email:    String,
-        password: String
-      ): RepositoryIO[Option[User]] = {
-        (for {
-          userOpt <- UserQuery
-            .filter(user =>
-              !user.deleted && user.email === email && user.hashedpassword === hashPassword(
-                password,
-                512
-              )
-            )
-            .result
-            .headOption
-          _ <- DBIO.sequence(userOpt.toSeq.map { user =>
-            val q = for {
-              u <- UserQuery if u.id === user.id && !u.deleted
-            } yield u.lastloggedin
-            q.update(Option(new Timestamp(System.currentTimeMillis())))
-          })
-        } yield userOpt.map(UserRow2User)).transactionally
-      }
-
-      override def userByEmail(email: String): RepositoryIO[Option[User]] =
-        UserQuery
-          .filter(u => u.email === email && !u.deleted).result.headOption.map(_.map(UserRow2User))
-
-      override def changePassword(
-        user:        User,
-        newPassword: String
-      ): RepositoryIO[Boolean] = { session: ChutiSession =>
-        if (session.user != GameServer.god && session.user.id != user.id) {
-          throw RepositoryException(s"${session.user} Not authorized")
-        }
-        user.id.fold(DBIO.successful(false))(id =>
-          sqlu"UPDATE user SET hashedPassword=SHA2($newPassword, 512) WHERE id = ${id.value}"
-            .map(_ > 0)
-        )
-      }
+            u <- UserQuery if u.id === user.id && !u.deleted
+          } yield u.lastloggedin
+          q.update(Option(new Timestamp(System.currentTimeMillis())))
+        })
+      } yield userOpt.map(UserRow2User)).transactionally
     }
-    override val gameStateOperations: Repository.GameStateOperations = new GameStateOperations {
-      override def upsert(e: GameState): RepositoryIO[GameState] = ???
 
-      override def get(pk: GameId): RepositoryIO[Option[GameState]] = ???
+    override def userByEmail(email: String): RepositoryIO[Option[User]] =
+      UserQuery
+        .filter(u => u.email === email && !u.deleted).result.headOption.map(_.map(UserRow2User))
 
-      override def delete(
-        pk:         GameId,
-        softDelete: Boolean
-      ): RepositoryIO[Boolean] = ???
-
-      override def search(search: Option[EmptySearch]): RepositoryIO[Seq[GameState]] =
-        ???
-
-      override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
-
+    override def changePassword(
+      user:        User,
+      newPassword: String
+    ): RepositoryIO[Boolean] = { session: ChutiSession =>
+      if (session.user != GameServer.god && session.user.id != user.id) {
+        throw RepositoryException(s"${session.user} Not authorized")
+      }
+      user.id.fold(DBIO.successful(false))(id =>
+        sqlu"UPDATE user SET hashedPassword=SHA2($newPassword, 512) WHERE id = ${id.value}"
+          .map(_ > 0)
+      )
     }
+  }
+  override val gameStateOperations: Repository.GameStateOperations = new GameStateOperations {
+    override def upsert(e: GameState): RepositoryIO[GameState] = ???
+
+    override def get(pk: GameId): RepositoryIO[Option[GameState]] = ???
+
+    override def delete(
+      pk:         GameId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = ???
+
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[GameState]] =
+      ???
+
+    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
+
   }
 }
