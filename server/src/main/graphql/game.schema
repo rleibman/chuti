@@ -10,17 +10,6 @@ scalar Long
 
 union GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego
 
-union Triunfo = SinTriunfos | TriunfanMulas | TriunfoNumero
-
-enum Estado {
-  cantando
-  comienzo
-  esperandoJugadoresAzar
-  esperandoJugadoresInvitados
-  jugando
-  terminado
-}
-
 enum Numero {
   Numero0
   Numero1
@@ -77,21 +66,8 @@ type Ficha {
   abajo: Numero!
 }
 
-type Fila {
-  fichas: [Ficha!]!
-}
-
 type GameId {
   value: Int!
-}
-
-type GameState {
-  id: GameId
-  jugadores: [Jugador!]!
-  enJuego: [Ficha!]!
-  triunfo: Triunfo
-  gameStatus: Estado!
-  currentIndex: Int!
 }
 
 type HoyoTecnico {
@@ -111,24 +87,16 @@ type JoinGame {
   user: User!
 }
 
-type Jugador {
-  user: User!
-  fichas: [Ficha!]!
-  casas: [Fila!]!
-  cantador: Boolean!
-  mano: Boolean!
-}
-
 type MeRindo {
   gameId: GameId
   index: Int
 }
 
 type Mutations {
-  newGame: GameState
-  joinRandomGame: GameState
+  newGame: Json
+  joinRandomGame: Json
   abandonGame(value: Int!): Boolean
-  play(json: Json!): GameState
+  play(gameEvent: Json!): Boolean
 }
 
 type NoOp {
@@ -157,12 +125,8 @@ type PoisonPill {
 }
 
 type Queries {
-  getGame(value: Int!): GameState
-  getGameForUser(value: Int!): GameState
-}
-
-type SinTriunfos {
-  _: Boolean
+  getGame(value: Int!): Json
+  getGameForUser: Json
 }
 
 type Subscriptions {
@@ -173,14 +137,6 @@ type Subscriptions {
 type TerminaJuego {
   gameId: GameId
   index: Int
-}
-
-type TriunfanMulas {
-  _: Boolean
-}
-
-type TriunfoNumero {
-  num: Numero!
 }
 
 type User {

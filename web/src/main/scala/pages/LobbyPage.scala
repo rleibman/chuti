@@ -18,21 +18,21 @@ package pages
 
 import java.net.URI
 
+import caliban.client.Operations.RootMutation
+import caliban.client.SelectionBuilder
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatComponent
 import chuti.{ChannelId, ChatMessage, GameId, GameState, User}
-import game.GameClient.Subscriptions
+import game.GameClient.{Mutations, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import typings.semanticUiReact.components.{Button, Container, Header, Loader}
 import typings.semanticUiReact.genericMod.SemanticSIZES
-import game.GameClient.{
-  UserEvent => CalibanUserEvent,
-  User => CalibanUser,
-  UserEventType => CalibanUserEventType
-}
 import io.circe.generic.auto._
+
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object LobbyPage extends ChutiPage {
   case class State(
@@ -59,6 +59,29 @@ object LobbyPage extends ChutiPage {
       operationId = "-"
     )
 
+    import sttp.client._
+    val serverUri = uri"http://localhost:8079/api/game"
+    implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
+
+    def onNewGame(): Callback = {
+      Callback.empty
+//      val selectionBuilder = CalibanGameState
+//      val mutation = Mutations.newGame(selectionBuilder)
+//      val request = mutation.toRequest(serverUri)
+//      //TODO add headers as necessary
+//      import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+//
+//      Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(_.copy(msgInFlux = "")) >> AsyncCallback
+//        .fromFuture(request.send())
+//        .completeWith {
+//          case Success(response) if response.code.isSuccess || response.code.isInformational =>
+//            Callback.log("Message sent")
+//          case Failure(exception) => Callback.error(exception) //TODO handle error responses better
+//          case Success(response) =>
+//            Callback.log(s"Error: ${response.statusText}") //TODO handle error responses better
+//        }
+    }
+
     def render(s: State): VdomElement = {
       chutiContext.consume { chutiState =>
         chutiState.user.fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) {
@@ -71,7 +94,7 @@ object LobbyPage extends ChutiPage {
               ),
               Container()(s.privateMessage.fold("")(_.msg)),
               Button()("Juega Con Quien sea"),
-              Button()("Empezar Juego Nuevo"),
+              Button(onClick = (_, _) => onNewGame())("Empezar Juego Nuevo"),
               TagMod(
                 Container()(
                   Header()("Invitaciones"),

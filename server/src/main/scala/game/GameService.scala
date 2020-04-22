@@ -82,14 +82,14 @@ object GameService {
     URIO.accessM(_.get.abandonGame(gameId))
   def newGame(): ZIO[GameService with GameLayer, GameException, GameState] =
     URIO.accessM(_.get.newGame())
-  def play(gameEvent: Json): ZIO[GameService with GameLayer, GameException, GameState] =
+  def play(gameEvent: Json): ZIO[GameService with GameLayer, GameException, Boolean] =
     URIO.accessM(_.get.play {
       val decoder = implicitly[Decoder[GameEvent]]
       decoder.decodeJson(gameEvent) match {
         case Right(event) => event
         case Left(error)  => throw GameException(error)
       }
-    })
+    }.map(_ => true))
   def getGameForUser: ZIO[GameService with GameLayer, GameException, Option[GameState]] =
     URIO.accessM(_.get.getGameForUser)
   def getGame(gameId: GameId): ZIO[GameService with GameLayer, GameException, Option[GameState]] =
