@@ -2,48 +2,14 @@ package game
 
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.FieldBuilder._
-import caliban.client.Operations._
 import caliban.client.SelectionBuilder._
-import caliban.client.Value._
 import caliban.client._
+import caliban.client.Operations._
+import caliban.client.Value._
 
 object GameClient {
 
   type Json = String
-
-  sealed trait Numero extends scala.Product with scala.Serializable
-  object Numero {
-    case object Numero0 extends Numero
-    case object Numero1 extends Numero
-    case object Numero2 extends Numero
-    case object Numero3 extends Numero
-    case object Numero4 extends Numero
-    case object Numero5 extends Numero
-    case object Numero6 extends Numero
-
-    implicit val decoder: ScalarDecoder[Numero] = {
-      case StringValue("Numero0") => Right(Numero.Numero0)
-      case StringValue("Numero1") => Right(Numero.Numero1)
-      case StringValue("Numero2") => Right(Numero.Numero2)
-      case StringValue("Numero3") => Right(Numero.Numero3)
-      case StringValue("Numero4") => Right(Numero.Numero4)
-      case StringValue("Numero5") => Right(Numero.Numero5)
-      case StringValue("Numero6") => Right(Numero.Numero6)
-      case other                  => Left(DecodingError(s"Can't build Numero from input $other"))
-    }
-    implicit val encoder: ArgEncoder[Numero] = new ArgEncoder[Numero] {
-      override def encode(value: Numero): Value = value match {
-        case Numero.Numero0 => EnumValue("Numero0")
-        case Numero.Numero1 => EnumValue("Numero1")
-        case Numero.Numero2 => EnumValue("Numero2")
-        case Numero.Numero3 => EnumValue("Numero3")
-        case Numero.Numero4 => EnumValue("Numero4")
-        case Numero.Numero5 => EnumValue("Numero5")
-        case Numero.Numero6 => EnumValue("Numero6")
-      }
-      override def typeName: String = "Numero"
-    }
-  }
 
   sealed trait UserEventType extends scala.Product with scala.Serializable
   object UserEventType {
@@ -95,137 +61,9 @@ object GameClient {
     }
   }
 
-  type Canta
-  object Canta {
-    def gameId[A](innerSelection: SelectionBuilder[GameId, A]): SelectionBuilder[Canta, Option[A]] =
-      Field("gameId", OptionOf(Obj(innerSelection)))
-    def index:   SelectionBuilder[Canta, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def cuantas: SelectionBuilder[Canta, Int] = Field("cuantas", Scalar())
-  }
-
   type ChannelId
   object ChannelId {
     def value: SelectionBuilder[ChannelId, Int] = Field("value", Scalar())
-  }
-
-  type Da
-  object Da {
-    def gameId[A](innerSelection: SelectionBuilder[GameId, A]): SelectionBuilder[Da, Option[A]] =
-      Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[Da, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def ficha[A](innerSelection: SelectionBuilder[Ficha, A]): SelectionBuilder[Da, A] =
-      Field("ficha", Obj(innerSelection))
-  }
-
-  type DeCaida
-  object DeCaida {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[DeCaida, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[DeCaida, Option[Int]] = Field("index", OptionOf(Scalar()))
-  }
-
-  type EmpiezaJuego
-  object EmpiezaJuego {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[EmpiezaJuego, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[EmpiezaJuego, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def turno[A](
-      innerSelection: SelectionBuilder[User, A]
-    ): SelectionBuilder[EmpiezaJuego, Option[A]] = Field("turno", OptionOf(Obj(innerSelection)))
-  }
-
-  type Ficha
-  object Ficha {
-    def arriba: SelectionBuilder[Ficha, Numero] = Field("arriba", Scalar())
-    def abajo:  SelectionBuilder[Ficha, Numero] = Field("abajo", Scalar())
-  }
-
-  type GameId
-  object GameId {
-    def value: SelectionBuilder[GameId, Int] = Field("value", Scalar())
-  }
-
-  type HoyoTecnico
-  object HoyoTecnico {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[HoyoTecnico, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[HoyoTecnico, Option[Int]] = Field("index", OptionOf(Scalar()))
-  }
-
-  type InviteFriend
-  object InviteFriend {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[InviteFriend, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[InviteFriend, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def user[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[InviteFriend, A] =
-      Field("user", Obj(innerSelection))
-  }
-
-  type JoinGame
-  object JoinGame {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[JoinGame, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[JoinGame, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def user[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[JoinGame, A] =
-      Field("user", Obj(innerSelection))
-  }
-
-  type MeRindo
-  object MeRindo {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[MeRindo, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[MeRindo, Option[Int]] = Field("index", OptionOf(Scalar()))
-  }
-
-  type NoOp
-  object NoOp {
-    def gameId[A](innerSelection: SelectionBuilder[GameId, A]): SelectionBuilder[NoOp, Option[A]] =
-      Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[NoOp, Option[Int]] = Field("index", OptionOf(Scalar()))
-  }
-
-  type Pide
-  object Pide {
-    def gameId[A](innerSelection: SelectionBuilder[GameId, A]): SelectionBuilder[Pide, Option[A]] =
-      Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[Pide, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def ficha[A](innerSelection: SelectionBuilder[Ficha, A]): SelectionBuilder[Pide, A] =
-      Field("ficha", Obj(innerSelection))
-    def estrictaDerecha: SelectionBuilder[Pide, Boolean] = Field("estrictaDerecha", Scalar())
-  }
-
-  type PideInicial
-  object PideInicial {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[PideInicial, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[PideInicial, Option[Int]] = Field("index", OptionOf(Scalar()))
-    def ficha[A](innerSelection: SelectionBuilder[Ficha, A]): SelectionBuilder[PideInicial, A] =
-      Field("ficha", Obj(innerSelection))
-    def triunfan:        SelectionBuilder[PideInicial, Numero] = Field("triunfan", Scalar())
-    def estrictaDerecha: SelectionBuilder[PideInicial, Boolean] = Field("estrictaDerecha", Scalar())
-  }
-
-  type PoisonPill
-  object PoisonPill {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[PoisonPill, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[PoisonPill, Option[Int]] = Field("index", OptionOf(Scalar()))
-  }
-
-  type TerminaJuego
-  object TerminaJuego {
-    def gameId[A](
-      innerSelection: SelectionBuilder[GameId, A]
-    ):         SelectionBuilder[TerminaJuego, Option[A]] = Field("gameId", OptionOf(Obj(innerSelection)))
-    def index: SelectionBuilder[TerminaJuego, Option[Int]] = Field("index", OptionOf(Scalar()))
   }
 
   type User

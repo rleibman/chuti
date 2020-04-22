@@ -8,18 +8,6 @@ scalar Json
 
 scalar Long
 
-union GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego
-
-enum Numero {
-  Numero0
-  Numero1
-  Numero2
-  Numero3
-  Numero4
-  Numero5
-  Numero6
-}
-
 enum UserEventType {
   AbandonedGame
   Connected
@@ -34,62 +22,8 @@ enum UserStatus {
   Playing
 }
 
-type Canta {
-  gameId: GameId
-  index: Int
-  cuantas: Int!
-}
-
 type ChannelId {
   value: Int!
-}
-
-type Da {
-  gameId: GameId
-  index: Int
-  ficha: Ficha!
-}
-
-type DeCaida {
-  gameId: GameId
-  index: Int
-}
-
-type EmpiezaJuego {
-  gameId: GameId
-  index: Int
-  turno: User
-}
-
-type Ficha {
-  arriba: Numero!
-  abajo: Numero!
-}
-
-type GameId {
-  value: Int!
-}
-
-type HoyoTecnico {
-  gameId: GameId
-  index: Int
-}
-
-type InviteFriend {
-  gameId: GameId
-  index: Int
-  user: User!
-}
-
-type JoinGame {
-  gameId: GameId
-  index: Int
-  user: User!
-}
-
-type MeRindo {
-  gameId: GameId
-  index: Int
 }
 
 type Mutations {
@@ -99,44 +33,14 @@ type Mutations {
   play(gameEvent: Json!): Boolean
 }
 
-type NoOp {
-  gameId: GameId
-  index: Int
-}
-
-type Pide {
-  gameId: GameId
-  index: Int
-  ficha: Ficha!
-  estrictaDerecha: Boolean!
-}
-
-type PideInicial {
-  gameId: GameId
-  index: Int
-  ficha: Ficha!
-  triunfan: Numero!
-  estrictaDerecha: Boolean!
-}
-
-type PoisonPill {
-  gameId: GameId
-  index: Int
-}
-
 type Queries {
   getGame(value: Int!): Json
   getGameForUser: Json
 }
 
 type Subscriptions {
-  gameStream(value: Int!): GameEvent!
+  gameStream(value: Int!): Json!
   userStream: UserEvent!
-}
-
-type TerminaJuego {
-  gameId: GameId
-  index: Int
 }
 
 type User {
