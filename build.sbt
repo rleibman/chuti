@@ -37,7 +37,7 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.8"
+lazy val calibanVersion = "0.7.5+18-628a9bfe"
 lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
@@ -51,7 +51,6 @@ lazy val commonSettings = Seq(
 
 lazy val commonVmSettings = commonSettings ++ Seq(
   libraryDependencies ++= Seq(
-    "com.github.ghostdogpr"      %% "caliban"       % calibanVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-core"  % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % "test" withSources (),
@@ -109,10 +108,11 @@ lazy val server: Project = project
     name := "chuti-server",
     libraryDependencies ++= Seq(
       //Akka
-      "com.typesafe.akka" %% "akka-actor-typed" % akkaVersion withSources (),
-      "com.typesafe.akka" %% "akka-stream"      % akkaVersion withSources (),
-      "com.typesafe.akka" %% "akka-http"        % "10.1.11" withSources (),
-      "de.heikoseeberger" %% "akka-http-circe"  % "1.32.0" withSources (),
+      "com.typesafe.akka"                  %% "akka-actor-typed" % akkaVersion withSources (),
+      "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
+      "com.typesafe.akka"                  %% "akka-http"        % "10.1.11" withSources (),
+      "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
+      "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
       "com.typesafe.slick" %% "slick"               % "3.3.2",
       "com.typesafe.slick" %% "slick-hikaricp"      % "3.3.2",
@@ -127,12 +127,10 @@ lazy val server: Project = project
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       //Util
-      "com.github.pathikrit"               %% "better-files"    % "3.8.0" withSources (),
-      "de.heikoseeberger"                  %% "akka-http-circe" % "1.31.0" withSources (),
-      "com.softwaremill.akka-http-session" %% "core"            % "0.5.11" withSources (),
-      "com.github.daddykotex"              %% "courier"         % "2.0.0" withSources (),
-      "ch.qos.logback"                     % "logback-classic"  % "1.2.3" withSources (),
-      "org.slf4j"                          % "slf4j-nop"        % "1.7.30" withSources ()
+      "com.github.pathikrit"  %% "better-files"   % "3.8.0" withSources (),
+      "com.github.daddykotex" %% "courier"        % "2.0.0" withSources (),
+      "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
+      "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources ()
     )
   )
 

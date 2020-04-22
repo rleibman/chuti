@@ -52,10 +52,11 @@ object UserEventType {
   case object Disconnected extends UserEventType
   case object Connected extends UserEventType
   case object Modified extends UserEventType
+  case object JoinedGame extends UserEventType
+  case object AbandonedGame extends UserEventType
 }
 
 case class UserEvent(
   user:              User,
-  isFriendOfCurrent: Boolean,
   userEventType:     UserEventType
 )

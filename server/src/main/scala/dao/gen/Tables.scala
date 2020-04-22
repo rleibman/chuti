@@ -18,7 +18,7 @@ package dao.gen
 
 import java.sql.Timestamp
 
-import chuti.{GameId, UserId}
+import chuti.{Estado, GameId, UserId}
 import slick.ast.BaseTypedType
 import slick.jdbc.JdbcType
 import slick.lifted.{MappedProjection, ProvenShape}
@@ -35,6 +35,15 @@ trait Tables {
   import slick.model.ForeignKeyAction
   // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
   import slick.jdbc.{GetResult => GR}
+
+  implicit val estadoType: JdbcType[Estado] with BaseTypedType[Estado] =
+    profile.MappedColumnType.base[Estado, String](
+      { estado =>
+        if (estado == null) null else estado.value
+      }, { str =>
+        if (str == null) null else Estado.withName(str)
+      }
+    )
 
   implicit lazy val userIdColumnType: JdbcType[UserId] with BaseTypedType[UserId] =
     MappedColumnType.base[UserId, Int](_.value, UserId)
@@ -104,7 +113,7 @@ trait Tables {
     *  @param id Database column id SqlType(INT), AutoInc, PrimaryKey
     *  @param currentIndex Database column current_index SqlType(INT), Default(0)
     *  @param startState Database column start_state SqlType(JSON), Length(1073741824,true)
-    *  @param gameState Database column game_state SqlType(JSON), Length(1073741824,true)
+    *  @param gameStatus Database column game_state SqlType(JSON), Length(1073741824,true)
     *  @param created Database column created SqlType(TIMESTAMP)
     *  @param lastupdated Database column lastUpdated SqlType(TIMESTAMP)
     *  @param deleted Database column deleted SqlType(TINYINT), Default(0)
@@ -113,7 +122,7 @@ trait Tables {
     id:           GameId,
     currentIndex: Int = 0,
     startState:   String,
-    gameState:    String,
+    gameStatus:   Estado,
     created:      java.sql.Timestamp,
     lastupdated:  java.sql.Timestamp,
     deleted:      Boolean = false,
@@ -125,6 +134,7 @@ trait Tables {
     implicit e0: GR[GameId],
     e5:          GR[Int],
     e1:          GR[String],
+    e6:          GR[Estado],
     e2:          GR[java.sql.Timestamp],
     e3:          GR[Boolean],
     e4:          GR[Option[java.sql.Timestamp]]
@@ -135,7 +145,7 @@ trait Tables {
         <<[GameId],
         <<[Int],
         <<[String],
-        <<[String],
+        <<[Estado],
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp],
         <<[Boolean],
@@ -151,7 +161,7 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ?
-      : MappedProjection[Option[GameRow], (Option[GameId], Option[Int], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[GameRow], (Option[GameId], Option[Int], Option[String], Option[Estado], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
         Rep.Some(currentIndex),
@@ -180,7 +190,7 @@ trait Tables {
       column[String]("start_state", O.Length(1073741824, varying = true))
 
     /** Database column game_state SqlType(JSON), Length(1073741824,true) */
-    val gameState: Rep[String] = column[String]("game_state", O.Length(1073741824, varying = true))
+    val gameState: Rep[Estado] = column[Estado]("game_state", O.Length(1073741824, varying = true))
 
     /** Database column created SqlType(TIMESTAMP) */
     val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")
@@ -262,29 +272,32 @@ trait Tables {
     *  @param gameId Database column game_id SqlType(INT) */
   case class GamePlayersRow(
     userId: UserId,
-    gameId: GameId
+    gameId: GameId,
+    order:  Int
   )
 
   /** GetResult implicit for fetching GamePlayersRow objects using plain SQL queries */
   implicit def GetResultGamePlayersRow(
     implicit e0: GR[GameId],
-    e1:          GR[UserId]
+    e1:          GR[UserId],
+    e2:          GR[Int]
   ): GR[GamePlayersRow] = GR { prs =>
     import prs._
-    GamePlayersRow.tupled((<<[UserId], <<[GameId]))
+    GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int]))
   }
 
   /** Table description of table game_players. Objects of this class serve as prototypes for rows in queries. */
   class GamePlayers(_tableTag: Tag)
       extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
     def * : ProvenShape[GamePlayersRow] =
-      (userId, gameId) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
+      (userId, gameId, order) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId])] =
-      (Rep.Some(userId), Rep.Some(gameId)).shaped.<>(
+    def ?
+      : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId], Option[Int])] =
+      (Rep.Some(userId), Rep.Some(gameId), Rep.Some(order)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get)))
+          import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -294,6 +307,8 @@ trait Tables {
 
     /** Database column game_id SqlType(INT) */
     val gameId: Rep[GameId] = column[GameId]("game_id")
+
+    val order: Rep[Int] = column[Int]("order")
 
     /** Foreign key referencing Game (database name game_players_game) */
     lazy val gameFk = foreignKey("game_players_game", gameId, GameQuery)(

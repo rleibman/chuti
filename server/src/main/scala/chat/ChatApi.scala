@@ -39,8 +39,7 @@ case class SayRequest(
   toUser: Option[User] = None
 )
 
-object ChatApi
-  extends GenericSchema[ChatService with SessionProvider] {
+object ChatApi extends GenericSchema[ChatService with SessionProvider] {
 
   case class Queries()
   case class Mutations(say: SayRequest => URIO[ChatService with SessionProvider, Boolean])

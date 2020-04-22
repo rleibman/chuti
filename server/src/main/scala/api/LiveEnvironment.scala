@@ -23,5 +23,4 @@ import mail.CourierPostman
   * This Creates a live environment, with actual running stuff (real email, real database, etc)
   */
 trait LiveEnvironment
-    extends LiveRepository with MySQLDatabaseProvider with CourierPostman with Config {
-}
+    extends LiveRepository with MySQLDatabaseProvider with CourierPostman with Config {}

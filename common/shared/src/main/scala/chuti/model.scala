@@ -16,6 +16,15 @@
 
 package chuti
 
+object GameException {
+  def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
+}
+
+case class GameException(
+  msg:   String = "",
+  cause: Option[Throwable] = None
+) extends Exception(msg, cause.orNull)
+
 sealed trait Numero {
   def value: Int = Numero.values.indexOf(this)
 }
@@ -41,9 +50,6 @@ object Numero {
   def apply(num: Int): Numero = values(num)
 }
 
-import java.time.LocalDateTime
-
-import caliban.schema.Annotations.GQLInterface
 import chuti.Numero._
 
 import scala.util.Random
@@ -75,13 +81,38 @@ object Triunfo {
   case class TriunfoNumero(num: Numero) extends Triunfo
 }
 
-sealed trait Estado
+sealed trait Estado {
+  def value: String
+}
 
 object Estado {
-  case object comienzo extends Estado
-  case object cantando extends Estado
-  case object jugando extends Estado
-  case object terminado extends Estado
+  case object esperandoJugadoresInvitados extends Estado {
+    override def value: String = "esperandoJugadoresInvitados"
+  }
+  case object esperandoJugadoresAzar extends Estado {
+    override def value: String = "esperandoJugadoresAzar"
+  }
+  case object comienzo extends Estado {
+    override def value: String = "comienzo"
+  }
+  case object cantando extends Estado {
+    override def value: String = "cantando"
+  }
+  case object jugando extends Estado {
+    override def value: String = "jugando"
+  }
+  case object terminado extends Estado {
+    override def value: String = "terminado"
+  }
+  def withName(str: String): Estado = str match {
+    case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
+    case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
+    case "comienzo"                    => comienzo
+    case "cantando"                    => cantando
+    case "jugando"                     => jugando
+    case "terminado"                   => terminado
+    case other                         => throw GameException(s"Unknown game exception e")
+  }
 }
 
 import chuti.Estado._
@@ -100,7 +131,7 @@ sealed trait EventInfo[T <: GameEvent] {
 }
 
 sealed trait GameEvent {
-  val gameId: GameId
+  val gameId: Option[GameId]
   val index:  Option[Int]
   def doEvent(gameState: GameState): (GameState, GameEvent)
 }
@@ -113,7 +144,7 @@ object NoOp extends EventInfo[NoOp] {
 }
 
 case class NoOp(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) =
@@ -121,14 +152,7 @@ case class NoOp(
 }
 
 case class InviteFriend(
-  gameId: GameId,
-  index:  Option[Int],
-  user:   User
-) extends GameEvent {
-  override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
-}
-case class JoinGame(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int],
   user:   User
 ) extends GameEvent {
@@ -136,27 +160,27 @@ case class JoinGame(
 }
 //This event ends the game and shuts down the server... it can only be called by god
 case class PoisonPill(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) =
     (gameState, copy(index = Option(gameState.currentIndex)))
 }
 case class TerminaJuego(
-  gameId: GameId,
-  index:  Option[Int]
+  gameId: Option[GameId] = None,
+  index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Canta(
-  gameId:  GameId,
+  gameId:  Option[GameId] = None,
   index:   Option[Int] = None,
   cuantas: Int
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class PideInicial(
-  gameId:          GameId,
+  gameId:          Option[GameId] = None,
   index:           Option[Int] = None,
   ficha:           Ficha,
   triunfan:        Numero,
@@ -165,7 +189,7 @@ case class PideInicial(
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Pide(
-  gameId:          GameId,
+  gameId:          Option[GameId] = None,
   index:           Option[Int] = None,
   ficha:           Ficha,
   estrictaDerecha: Boolean
@@ -173,7 +197,7 @@ case class Pide(
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class Da(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None,
   ficha:  Ficha
 ) extends GameEvent {
@@ -181,27 +205,36 @@ case class Da(
 }
 //Acuerdate de los regalos
 case class DeCaida(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class HoyoTecnico(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
 case class MeRindo(
-  gameId: GameId,
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(gameState: GameState): (GameState, GameEvent) = ???
 }
-case class EmpiezaJuego(
-  gameId: GameId,
+case class JoinGame(
+  gameId: Option[GameId] = None,
   index:  Option[Int] = None,
-  turno:  Option[User]
+  user:   User
+) extends GameEvent {
+  override def doEvent(gameState: GameState): (GameState, GameEvent) = {
+    (gameState.copy(jugadores = (gameState.jugadores :+ Jugador(user))), this)
+  }
+}
+case class EmpiezaJuego(
+  gameId: Option[GameId] = None,
+  index:  Option[Int] = None,
+  turno:  Option[User] = None
 ) extends GameEvent {
   import Mesa._
   def sopa = Random.shuffle(todaLaFicha)
@@ -223,7 +256,8 @@ case class EmpiezaJuego(
       .toList
 
     val newState = gameState.copy(
-      jugadores = newJugadores
+      jugadores = newJugadores,
+      gameStatus = Estado.jugando
     )
     (newState, this)
   }
@@ -234,12 +268,20 @@ case class GameId(value: Int) extends AnyVal
 
 case class GameState(
   id:           Option[GameId],
-  jugadores:    List[Jugador],
+  jugadores:    List[Jugador] = List.empty,
   enJuego:      List[Ficha] = List.empty,
   triunfo:      Option[Triunfo] = None,
-  estado:       Estado = comienzo,
+  gameStatus:   Estado = comienzo,
   currentIndex: Int = 0
 ) {
+  def canTransition(estado: Estado): Boolean = {
+    estado match {
+      case Estado.jugando =>
+        jugadores.length == 4 && (gameStatus == Estado.esperandoJugadoresAzar || gameStatus == Estado.esperandoJugadoresInvitados)
+      case _ => false
+    }
+  }
+
   def resultado(): Option[List[Cuenta]] = ???
   //Returns the newly modified state, and any changes to the event
   def event(event: GameEvent): (GameState, GameEvent) = {

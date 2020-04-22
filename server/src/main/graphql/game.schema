@@ -4,6 +4,8 @@ schema {
   subscription: Subscriptions
 }
 
+scalar Json
+
 scalar Long
 
 union GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego
@@ -13,6 +15,8 @@ union Triunfo = SinTriunfos | TriunfanMulas | TriunfoNumero
 enum Estado {
   cantando
   comienzo
+  esperandoJugadoresAzar
+  esperandoJugadoresInvitados
   jugando
   terminado
 }
@@ -28,8 +32,10 @@ enum Numero {
 }
 
 enum UserEventType {
+  AbandonedGame
   Connected
   Disconnected
+  JoinedGame
   Modified
 }
 
@@ -40,7 +46,7 @@ enum UserStatus {
 }
 
 type Canta {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   cuantas: Int!
 }
@@ -50,18 +56,18 @@ type ChannelId {
 }
 
 type Da {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   ficha: Ficha!
 }
 
 type DeCaida {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
 type EmpiezaJuego {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   turno: User
 }
@@ -84,23 +90,23 @@ type GameState {
   jugadores: [Jugador!]!
   enJuego: [Ficha!]!
   triunfo: Triunfo
-  estado: Estado!
+  gameStatus: Estado!
   currentIndex: Int!
 }
 
 type HoyoTecnico {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
 type InviteFriend {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   user: User!
 }
 
 type JoinGame {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   user: User!
 }
@@ -114,7 +120,7 @@ type Jugador {
 }
 
 type MeRindo {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
@@ -122,23 +128,23 @@ type Mutations {
   newGame: GameState
   joinRandomGame: GameState
   abandonGame(value: Int!): Boolean
-  play: GameState
+  play(json: Json!): GameState
 }
 
 type NoOp {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
 type Pide {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   ficha: Ficha!
   estrictaDerecha: Boolean!
 }
 
 type PideInicial {
-  gameId: GameId!
+  gameId: GameId
   index: Int
   ficha: Ficha!
   triunfan: Numero!
@@ -146,12 +152,13 @@ type PideInicial {
 }
 
 type PoisonPill {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
 type Queries {
   getGame(value: Int!): GameState
+  getGameForUser(value: Int!): GameState
 }
 
 type SinTriunfos {
@@ -164,7 +171,7 @@ type Subscriptions {
 }
 
 type TerminaJuego {
-  gameId: GameId!
+  gameId: GameId
   index: Int
 }
 
@@ -191,7 +198,6 @@ type User {
 
 type UserEvent {
   user: User!
-  isFriendOfCurrent: Boolean!
   userEventType: UserEventType!
 }
 

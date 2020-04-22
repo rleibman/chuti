@@ -16,23 +16,48 @@
 
 package pages
 
+import java.net.URI
+
+import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatComponent
 import chuti.{ChannelId, ChatMessage, GameId, GameState, User}
+import game.GameClient.Subscriptions
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import typings.semanticUiReact.components.{Button, Container, Header, Loader}
 import typings.semanticUiReact.genericMod.SemanticSIZES
+import game.GameClient.{
+  UserEvent => CalibanUserEvent,
+  User => CalibanUser,
+  UserEventType => CalibanUserEventType
+}
+import io.circe.generic.auto._
 
 object LobbyPage extends ChutiPage {
   case class State(
     friends:        Seq[User] = Seq.empty,
+    loggedInUsers:  Seq[User] = Seq.empty,
     privateMessage: Option[ChatMessage] = None,
     gameInProgress: Option[GameState] = None,
     invites:        Seq[GameState] = Seq.empty
   )
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[_, State]) extends ScalaJSClientAdapter {
+
+    val wsHandle = makeWebSocketClient[(String, CalibanUserEventType)](
+      uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+      query = Subscriptions
+        .userStream(
+          CalibanUserEvent.user(CalibanUser.name) ~ CalibanUserEvent.userEventType
+        ),
+      onData = { (_, data) =>
+        Callback
+          .log(s"got data! $data")
+          .runNow()
+      },
+      operationId = "-"
+    )
 
     def render(s: State): VdomElement = {
       chutiContext.consume { chutiState =>

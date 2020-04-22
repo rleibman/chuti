@@ -36,7 +36,10 @@ object Repository {
     def friend(friend:  User): RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
   }
-  trait GameStateOperations extends CRUDOperations[GameState, GameId, EmptySearch] {}
+  trait GameStateOperations extends CRUDOperations[GameState, GameId, EmptySearch] {
+    def gamesWaitingForPlayers(): RepositoryIO[Seq[GameState]]
+    def getGameForUser: RepositoryIO[Option[GameState]]
+  }
 
   trait Service {
     val gameStateOperations: GameStateOperations

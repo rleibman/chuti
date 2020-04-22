@@ -25,11 +25,8 @@ import zio.duration._
 import scala.concurrent.ExecutionContextExecutor
 
 trait ChatRoute
-    extends Directives
-      with AkkaHttpCirceAdapter
-      with Repository.Service
-      with HasActorSystem
-      with Config {
+    extends Directives with AkkaHttpCirceAdapter with Repository.Service with HasActorSystem
+    with Config {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService._
   val staticContentDir: String = config.getString("chuti.staticContentDir")
@@ -48,7 +45,7 @@ trait ChatRoute
         adapter.makeWebSocketService(
           interpreter.provideCustomLayer(SessionProvider.layer(session)),
           skipValidation = false,
-          keepAliveTime = Option(25.seconds)
+          keepAliveTime = Option(58.seconds)
         )
       } ~ path("graphiql") {
       getFromFile(s"$staticContentDir/graphiql.html")

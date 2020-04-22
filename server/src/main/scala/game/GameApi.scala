@@ -25,28 +25,32 @@ import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
-import game.GameService.{GameLayer, GameService}
 import chuti._
-import dao.SessionProvider
-import zio.{URIO, ZIO}
+import game.GameService.{GameLayer, GameService}
+import io.circe.Json
+import zio.ZIO
+import caliban.interop.circe.json._
 import zio.clock.Clock
 import zio.console.Console
-import zio.stream.ZStream
 import zio.duration._
-import zioslick.RepositoryException
+import zio.stream.ZStream
 
 object GameApi extends GenericSchema[GameService with GameLayer] {
+  case class PlayArgs(json: Json)
 
-  case class Queries(getGame: GameId => ZIO[GameService with GameLayer, RepositoryException, GameState])
+  case class Queries(
+    getGame: GameId => ZIO[GameService with GameLayer, GameException, Option[GameState]],
+    getGameForUser: UserId => ZIO[GameService with GameLayer, GameException, Option[GameState]]
+  )
   case class Mutations(
-    newGame:        ZIO[GameService with GameLayer, RepositoryException, GameState],
-    joinRandomGame: ZIO[GameService with GameLayer, RepositoryException, GameState],
-    abandonGame:    GameId => ZIO[GameService with GameLayer, RepositoryException, Boolean],
-    play:           GameEvent => ZIO[GameService with GameLayer, RepositoryException, GameState]
+    newGame:        ZIO[GameService with GameLayer, GameException, GameState],
+    joinRandomGame: ZIO[GameService with GameLayer, GameException, GameState],
+    abandonGame:    GameId => ZIO[GameService with GameLayer, GameException, Boolean],
+    play:           PlayArgs => ZIO[GameService with GameLayer, GameException, GameState] //TODO change to Json
   )
   case class Subscriptions(
-    gameStream: GameId => ZStream[GameService with GameLayer, RepositoryException, GameEvent],
-    userStream: ZStream[GameService with GameLayer, RepositoryException, UserEvent]
+    gameStream: GameId => ZStream[GameService with GameLayer, GameException, GameEvent],
+    userStream: ZStream[GameService with GameLayer, GameException, UserEvent]
   )
 
   implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
@@ -56,27 +60,28 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
       Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
     case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
   }
-  implicit private val userSchema = gen[User]
-  implicit private val numeroTypeSchema = gen[Numero]
-  implicit private val estadoSchema = gen[Estado]
-  implicit private val triunfoSchema = gen[Triunfo]
-  implicit private val fichaSchema = gen[Ficha]
-  implicit private val filaSchema = gen[Fila]
-  implicit private val jugadorSchema = gen[Jugador]
-  implicit private val gameStateSchema = gen[GameState]
-  implicit private val jugadaSchema = gen[GameEvent]
+  implicit private val userSchema:       GameApi.Typeclass[User] = gen[User]
+  implicit private val numeroTypeSchema: GameApi.Typeclass[Numero] = gen[Numero]
+  implicit private val estadoSchema:     GameApi.Typeclass[Estado] = gen[Estado]
+  implicit private val triunfoSchema:    GameApi.Typeclass[Triunfo] = gen[Triunfo]
+  implicit private val fichaSchema:      GameApi.Typeclass[Ficha] = gen[Ficha]
+  implicit private val filaSchema:       GameApi.Typeclass[Fila] = gen[Fila]
+  implicit private val jugadorSchema:    GameApi.Typeclass[Jugador] = gen[Jugador]
+  implicit private val gameStateSchema:  GameApi.Typeclass[GameState] = gen[GameState]
+  implicit private val jugadaSchema:     GameApi.Typeclass[GameEvent] = gen[GameEvent]
 
   val api: GraphQL[Console with Clock with GameService with GameLayer] =
     graphQL(
       RootResolver(
         Queries(
-          getGame = gameId => GameService.getGame(gameId)
+          getGame = gameId => GameService.getGame(gameId),
+          getGameForUser = userId => GameService.getGameForUser
         ),
         Mutations(
           newGame = GameService.newGame(),
           joinRandomGame = GameService.joinRandomGame(),
           abandonGame = gameId => GameService.abandonGame(gameId),
-          play = gameEvent => GameService.play(gameEvent)
+          play = gameEvent => GameService.play(gameEvent.json)
         ),
         Subscriptions(
           gameStream = gameId => GameService.gameStream(gameId),
@@ -90,7 +95,8 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
       printSlowQueries(500.millis) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\nunion GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego\n\nunion Triunfo = SinTriunfos | TriunfanMulas | TriunfoNumero\n\nenum Estado {\n  cantando\n  comienzo\n  jugando\n  terminado\n}\n\nenum Numero {\n  Numero0\n  Numero1\n  Numero2\n  Numero3\n  Numero4\n  Numero5\n  Numero6\n}\n\nenum UserEventType {\n  Connected\n  Disconnected\n  Modified\n}\n\nenum UserStatus {\n  InLobby\n  Offline\n  Playing\n}\n\ntype Canta {\n  gameId: GameId!\n  index: Int\n  cuantas: Int!\n}\n\ntype ChannelId {\n  value: Int!\n}\n\ntype Da {\n  gameId: GameId!\n  index: Int\n  ficha: Ficha!\n}\n\ntype DeCaida {\n  gameId: GameId!\n  index: Int\n}\n\ntype EmpiezaJuego {\n  gameId: GameId!\n  index: Int\n  turno: User\n}\n\ntype Ficha {\n  arriba: Numero!\n  abajo: Numero!\n}\n\ntype Fila {\n  fichas: [Ficha!]!\n}\n\ntype GameId {\n  value: Int!\n}\n\ntype GameState {\n  id: GameId\n  jugadores: [Jugador!]!\n  enJuego: [Ficha!]!\n  triunfo: Triunfo\n  estado: Estado!\n  currentIndex: Int!\n}\n\ntype HoyoTecnico {\n  gameId: GameId!\n  index: Int\n}\n\ntype InviteFriend {\n  gameId: GameId!\n  index: Int\n  user: User!\n}\n\ntype JoinGame {\n  gameId: GameId!\n  index: Int\n  user: User!\n}\n\ntype Jugador {\n  user: User!\n  fichas: [Ficha!]!\n  casas: [Fila!]!\n  cantador: Boolean!\n  mano: Boolean!\n}\n\ntype MeRindo {\n  gameId: GameId!\n  index: Int\n}\n\ntype Mutations {\n  newGame: GameState\n  joinRandomGame: GameState\n  abandonGame(value: Int!): Boolean\n  play: GameState\n}\n\ntype NoOp {\n  gameId: GameId!\n  index: Int\n}\n\ntype Pide {\n  gameId: GameId!\n  index: Int\n  ficha: Ficha!\n  estrictaDerecha: Boolean!\n}\n\ntype PideInicial {\n  gameId: GameId!\n  index: Int\n  ficha: Ficha!\n  triunfan: Numero!\n  estrictaDerecha: Boolean!\n}\n\ntype PoisonPill {\n  gameId: GameId!\n  index: Int\n}\n\ntype Queries {\n  getGame(value: Int!): GameState\n}\n\ntype SinTriunfos {\n  _: Boolean\n}\n\ntype Subscriptions {\n  gameStream(value: Int!): GameEvent!\n  userStream: UserEvent!\n}\n\ntype TerminaJuego {\n  gameId: GameId!\n  index: Int\n}\n\ntype TriunfanMulas {\n  _: Boolean\n}\n\ntype TriunfoNumero {\n  num: Numero!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  currentChannelId: ChannelId\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  isFriendOfCurrent: Boolean!\n  userEventType: UserEventType!\n}\n\ntype UserId {\n  value: Int!\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nunion GameEvent = Canta | Da | DeCaida | EmpiezaJuego | HoyoTecnico | InviteFriend | JoinGame | MeRindo | NoOp | Pide | PideInicial | PoisonPill | TerminaJuego\n\nunion Triunfo = SinTriunfos | TriunfanMulas | TriunfoNumero\n\nenum Estado {\n  cantando\n  comienzo\n  esperandoJugadoresAzar\n  esperandoJugadoresInvitados\n  jugando\n  terminado\n}\n\nenum Numero {\n  Numero0\n  Numero1\n  Numero2\n  Numero3\n  Numero4\n  Numero5\n  Numero6\n}\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  InLobby\n  Offline\n  Playing\n}\n\ntype Canta {\n  gameId: GameId\n  index: Int\n  cuantas: Int!\n}\n\ntype ChannelId {\n  value: Int!\n}\n\ntype Da {\n  gameId: GameId\n  index: Int\n  ficha: Ficha!\n}\n\ntype DeCaida {\n  gameId: GameId\n  index: Int\n}\n\ntype EmpiezaJuego {\n  gameId: GameId\n  index: Int\n  turno: User\n}\n\ntype Ficha {\n  arriba: Numero!\n  abajo: Numero!\n}\n\ntype Fila {\n  fichas: [Ficha!]!\n}\n\ntype GameId {\n  value: Int!\n}\n\ntype GameState {\n  id: GameId\n  jugadores: [Jugador!]!\n  enJuego: [Ficha!]!\n  triunfo: Triunfo\n  gameStatus: Estado!\n  currentIndex: Int!\n}\n\ntype HoyoTecnico {\n  gameId: GameId\n  index: Int\n}\n\ntype InviteFriend {\n  gameId: GameId\n  index: Int\n  user: User!\n}\n\ntype JoinGame {\n  gameId: GameId\n  index: Int\n  user: User!\n}\n\ntype Jugador {\n  user: User!\n  fichas: [Ficha!]!\n  casas: [Fila!]!\n  cantador: Boolean!\n  mano: Boolean!\n}\n\ntype MeRindo {\n  gameId: GameId\n  index: Int\n}\n\ntype Mutations {\n  newGame: GameState\n  joinRandomGame: GameState\n  abandonGame(value: Int!): Boolean\n  play(json: Json!): GameState\n}\n\ntype NoOp {\n  gameId: GameId\n  index: Int\n}\n\ntype Pide {\n  gameId: GameId\n  index: Int\n  ficha: Ficha!\n  estrictaDerecha: Boolean!\n}\n\ntype PideInicial {\n  gameId: GameId\n  index: Int\n  ficha: Ficha!\n  triunfan: Numero!\n  estrictaDerecha: Boolean!\n}\n\ntype PoisonPill {\n  gameId: GameId\n  index: Int\n}\n\ntype Queries {\n  getGame(value: Int!): GameState\n  getGameForUser(value: Int!): GameState\n}\n\ntype SinTriunfos {\n  _: Boolean\n}\n\ntype Subscriptions {\n  gameStream(value: Int!): GameEvent!\n  userStream: UserEvent!\n}\n\ntype TerminaJuego {\n  gameId: GameId\n  index: Int\n}\n\ntype TriunfanMulas {\n  _: Boolean\n}\n\ntype TriunfoNumero {\n  num: Numero!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  currentChannelId: ChannelId\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}\n\ntype UserId {\n  value: Int!\n}"
+
 
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala

@@ -17,8 +17,13 @@
 package dao
 import java.sql.Timestamp
 
-import chuti.{User, UserId}
+import chuti.Estado.comienzo
+import chuti.{Estado, Ficha, GameException, GameId, GameState, Jugador, Triunfo, User, UserId}
 import gen.Tables._
+import io.circe
+import io.circe.parser._
+import io.circe.syntax._
+import io.circe.generic.auto._
 
 trait SlickToModelInterop {
   def UserRow2User(row: UserRow): User = User(
@@ -40,4 +45,14 @@ trait SlickToModelInterop {
     lastupdated = new Timestamp(System.currentTimeMillis()),
     lastloggedin = value.lastLoggedIn.map(Timestamp.valueOf)
   )
+  def GameRow2GameState(row: GameRow): GameState =
+    decode[GameState](row.startState).map {
+      _.copy(
+        currentIndex = row.currentIndex,
+        gameStatus = row.gameStatus
+      )
+    } match {
+      case Right(state) => state
+      case Left(error)  => throw GameException(error)
+    }
 }

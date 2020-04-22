@@ -28,7 +28,7 @@ import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.GameServer
+import game.{GameServer, LoggedInUserRepo}
 import game.GameService.GameLayer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
@@ -42,14 +42,18 @@ import zioslick.RepositoryException
 import scala.concurrent.duration._
 
 trait AuthRoute
-    extends CRUDRoute[User, UserId, PagedStringSearch] with Postman with Config
-    with SessionUtils with HasActorSystem {
+    extends CRUDRoute[User, UserId, PagedStringSearch] with Postman with Config with SessionUtils
+    with HasActorSystem {
   this: Repository.Service with DatabaseProvider.Service =>
 
-  def repositoryLayer: Layer[Nothing, Repository] = ZLayer.succeed(this)
+  def repositoryLayer:       Layer[Nothing, Repository] = ZLayer.succeed(this)
   def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
 
-  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] = SessionProvider.layer(session) ++ repositoryLayer ++ databaseProviderLayer
+  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
+    SessionProvider.layer(session) ++
+      databaseProviderLayer ++
+      repositoryLayer ++
+      ZLayer.succeed(LoggedInUserRepo.live)
 
   lazy private val adminSession = ChutiSession(GameServer.god)
 

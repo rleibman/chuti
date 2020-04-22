@@ -60,21 +60,21 @@ object ChatService {
     } yield new Service {
       override def say(request: SayRequest): ZIO[SessionProvider, Nothing, ChatMessage] =
         for {
-          sub  <- chatMessageQueue.get
-          user <- ZIO.access[SessionProvider](_.get.session.user)
+          allSubscriptions <- chatMessageQueue.get
+          user             <- ZIO.access[SessionProvider](_.get.session.user)
           sent <- {
-            val addMe = ChatMessage(user, request.msg)
-            println(addMe) //TODO move to log
+            val sendMe = ChatMessage(user, request.msg)
+            println(sendMe) //TODO move to log
             UIO
-              .foreach(sub)(userQueue =>
+              .foreach(allSubscriptions)(userQueue =>
                 userQueue.queue
-                  .offer(addMe)
+                  .offer(sendMe)
                   .onInterrupt(
                     //If it was shutdown, remove from subscribers
                     chatMessageQueue.update(_.filterNot(_ == userQueue))
                   )
               )
-              .as(addMe)
+              .as(sendMe)
           }
         } yield {
           sent

@@ -33,10 +33,14 @@ case class GameArgs()
 trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem with Config {
   this: Repository.Service with DatabaseProvider.Service =>
 
-  def repositoryLayer: Layer[Nothing, Repository] = ZLayer.succeed(this)
+  def repositoryLayer:       Layer[Nothing, Repository] = ZLayer.succeed(this)
   def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
 
-  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] = SessionProvider.layer(session) ++ repositoryLayer ++ databaseProviderLayer
+  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
+    SessionProvider.layer(session) ++
+      databaseProviderLayer ++
+      repositoryLayer ++
+      ZLayer.succeed(LoggedInUserRepo.live)
 
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import GameService._
@@ -56,7 +60,7 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
         adapter.makeWebSocketService(
           interpreter.provideCustomLayer(gameLayer(session)),
           skipValidation = false,
-          keepAliveTime = Option(25.seconds)
+          keepAliveTime = Option(58.seconds)
         )
       } ~ path("graphiql") {
       getFromFile(s"$staticContentDir/graphiql.html")

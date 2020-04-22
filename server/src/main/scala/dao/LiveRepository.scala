@@ -19,7 +19,7 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{EmptySearch, GameId, GameState, PagedStringSearch, User, UserId}
+import chuti.{EmptySearch, Estado, GameId, GameState, PagedStringSearch, User, UserId}
 import dao.Repository.{GameStateOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
@@ -196,12 +196,38 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     override def delete(
       pk:         GameId,
       softDelete: Boolean
-    ): RepositoryIO[Boolean] = ???
+    ): RepositoryIO[Boolean] = { session: ChutiSession =>
+      if (session.user != GameServer.god) {
+        throw RepositoryException(s"${session.user} Not authorized")
+      }
+      if (softDelete) {
+        val q = for {
+          g <- GameQuery if g.id === pk
+        } yield (g.deleted, g.deleteddate)
+        q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
+      } else {
+        GameQuery.filter(_.id === pk).delete.map(_ > 0)
+      }
+
+    }
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[GameState]] =
       ???
 
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
 
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[GameState]] =
+      GameQuery
+        .filter(g => g.gameState === (Estado.esperandoJugadoresAzar: Estado) && !g.deleted)
+        .result
+        .map(_.map(row => GameRow2GameState(row)))
+
+    override def getGameForUser: RepositoryIO[Option[GameState]] = { session: ChutiSession =>
+        GamePlayersQuery
+          .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
+          .join(GameQuery.filter(!_.deleted)).on(_.gameId === _.id)
+          .result
+          .map(_.map(row => GameRow2GameState(row._2)).headOption)
+    }
   }
 }

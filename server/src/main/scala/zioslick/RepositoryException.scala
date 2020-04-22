@@ -16,7 +16,6 @@
 
 package zioslick
 
-//TODO mapError all RepositoryExceptions to GameExceptions
 case class RepositoryException(
   msg:   String = "",
   cause: Option[Throwable] = None

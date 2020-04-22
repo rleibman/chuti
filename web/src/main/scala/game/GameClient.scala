@@ -1,14 +1,32 @@
+/*
+ * Copyright 2020 Roberto Leibman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package game
 
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.FieldBuilder._
-import caliban.client.Operations._
 import caliban.client.SelectionBuilder._
-import caliban.client.Value._
 import caliban.client._
+import caliban.client.Operations._
+import caliban.client.Value._
 import chuti.GameEvent
 
 object GameClient {
+
+  type Json = String
 
   sealed trait Estado extends scala.Product with scala.Serializable
   object Estado {
@@ -355,24 +373,27 @@ object GameClient {
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("abandonGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def play[A](
+      json: Json
+    )(
       innerSelection: SelectionBuilder[GameState, A]
-    ): SelectionBuilder[RootMutation, Option[A]] = Field("play", OptionOf(Obj(innerSelection)))
+    ): SelectionBuilder[RootMutation, Option[A]] =
+      Field("play", OptionOf(Obj(innerSelection)), arguments = List(Argument("json", json)))
   }
 
   type Subscriptions = RootSubscription
-  object Subscritpnios {
+  object Subscriptions {
     def userStream[A](
-                       innerSelection: SelectionBuilder[UserEvent, A]
-                     ): SelectionBuilder[RootSubscription, A] =
+      innerSelection: SelectionBuilder[UserEvent, A]
+    ): SelectionBuilder[RootSubscription, A] =
       Field(
         name = "userStream",
         builder = Obj(innerSelection)
       )
     def gameStream[A](
-                       gameId: chuti.GameId
-                     )(
-                       innerSelection: SelectionBuilder[GameEvent, A]
-                     ): SelectionBuilder[RootSubscription, A] =
+      gameId: chuti.GameId
+    )(
+      innerSelection: SelectionBuilder[GameEvent, A]
+    ): SelectionBuilder[RootSubscription, A] =
       Field(
         name = "gameStream",
         builder = Obj(innerSelection),
