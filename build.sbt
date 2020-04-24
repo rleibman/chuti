@@ -5,6 +5,10 @@ import java.nio.file.Files
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossProject
 
+resolvers += Resolver.mavenLocal
+resolvers += Resolver.sonatypeRepo("snapshots")
+resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
+
 lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
@@ -114,10 +118,11 @@ lazy val server: Project = project
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
-      "com.typesafe.slick" %% "slick"               % "3.3.2",
-      "com.typesafe.slick" %% "slick-hikaricp"      % "3.3.2",
-      "com.typesafe.slick" %% "slick-codegen"       % "3.3.2",
-      "mysql"              % "mysql-connector-java" % "8.0.19",
+      "com.typesafe.slick" %% "slick"               % "3.3.2" withSources(),
+      "com.typesafe.slick" %% "slick-hikaricp"      % "3.3.2" withSources(),
+      "com.typesafe.slick" %% "slick-codegen"       % "3.3.2" withSources(),
+      "mysql"              % "mysql-connector-java" % "8.0.19" withSources(),
+      "com.foerster-technologies" %% "slick-mysql" % "0.6.0-SNAPSHOT" withSources(),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),

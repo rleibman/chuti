@@ -20,7 +20,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{ChutiSession, HasActorSystem, LiveEnvironment}
 import chat.ChatRoute
-import chuti.GameState
+import chuti.Game
 import dao.{DatabaseProvider, Repository}
 import game.GameRoute
 import io.circe.generic.auto._
@@ -38,16 +38,16 @@ trait ModelRoutes extends Directives {
     with DatabaseProvider.Service with Repository.Service {
     override def db:          UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
     override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
-    override val gameStateOperations: Repository.GameStateOperations =
-      ModelRoutes.this.gameStateOperations
+    override val gameOperations: Repository.GameOperations =
+      ModelRoutes.this.gameOperations
     override val userOperations: Repository.UserOperations = ModelRoutes.this.userOperations
   }
 
   private val authRoute: AuthRoute = new AuthRoute
     with DatabaseProvider.Service with Repository.Service {
     override def db: UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
-    override val gameStateOperations: Repository.GameStateOperations =
-      ModelRoutes.this.gameStateOperations
+    override val gameOperations: Repository.GameOperations =
+      ModelRoutes.this.gameOperations
     override val userOperations:       Repository.UserOperations = ModelRoutes.this.userOperations
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
     override val postman:              Postman.Service[Any] = ModelRoutes.this.postman
@@ -56,8 +56,8 @@ trait ModelRoutes extends Directives {
   private val chatRoute: ChatRoute = new ChatRoute
     with DatabaseProvider.Service with Repository.Service {
     override def db: UIO[BasicBackend#DatabaseDef] = ModelRoutes.this.db
-    override val gameStateOperations: Repository.GameStateOperations =
-      ModelRoutes.this.gameStateOperations
+    override val gameOperations: Repository.GameOperations =
+      ModelRoutes.this.gameOperations
     override val userOperations:       Repository.UserOperations = ModelRoutes.this.userOperations
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }

@@ -17,10 +17,13 @@
 package dao
 
 import api.ChutiSession
-import zio.{Has, Layer, ZLayer}
+import chuti.{Game, GameException}
+import game.GameService.{GameLayer, GameService}
+import zio.{Has, Layer, ZIO, ZLayer}
 
 object SessionProvider {
   trait Session {
+
     def session: ChutiSession
   }
   def live(s: ChutiSession): Session = {

@@ -42,14 +42,17 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
   case class PlayArgs(gameEvent: Json)
 
   case class Queries(
-    getGame: GameId => ZIO[GameService with GameLayer, GameException, Option[Json]],
-    getGameForUser: ZIO[GameService with GameLayer, GameException, Option[Json]]
+    getGame:          GameId => ZIO[GameService with GameLayer, GameException, Option[Json]],
+    getGameForUser:   ZIO[GameService with GameLayer, GameException, Option[Json]],
+    getFriends:       ZIO[GameService with GameLayer, GameException, Seq[UserId]],
+    getInvites:       ZIO[GameService with GameLayer, GameException, Seq[Json]],
+    getLoggedInUsers: ZIO[GameService with GameLayer, GameException, Seq[User]]
   )
   case class Mutations(
     newGame:        ZIO[GameService with GameLayer, GameException, Json],
     joinRandomGame: ZIO[GameService with GameLayer, GameException, Json],
     abandonGame:    GameId => ZIO[GameService with GameLayer, GameException, Boolean],
-    play:           PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean] //TODO change to Json
+    play:           PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
   )
   case class Subscriptions(
     gameStream: GameId => ZStream[GameService with GameLayer, GameException, Json],
@@ -63,7 +66,7 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
       Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
     case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
   }
-  implicit private val userSchema:       GameApi.Typeclass[User] = gen[User]
+  implicit private val userSchema: GameApi.Typeclass[User] = gen[User]
 //  implicit private val numeroTypeSchema: GameApi.Typeclass[Numero] = gen[Numero]
 //  implicit private val estadoSchema:     GameApi.Typeclass[Estado] = gen[Estado]
 //  implicit private val triunfoSchema:    GameApi.Typeclass[Triunfo] = gen[Triunfo]
@@ -78,13 +81,16 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
       RootResolver(
         Queries(
           getGame = gameId => GameService.getGame(gameId).map(_.map(_.asJson)),
-          getGameForUser = GameService.getGameForUser.map(_.map(_.asJson))
+          getGameForUser = GameService.getGameForUser.map(_.map(_.asJson)),
+            getFriends = GameService.getFriends,
+          getInvites = GameService.getInvites.map(_.map(_.asJson)),
+          getLoggedInUsers = GameService.getLoggedInUsers
         ),
         Mutations(
           newGame = GameService.newGame().map(_.asJson),
           joinRandomGame = GameService.joinRandomGame().map(_.asJson),
           abandonGame = gameId => GameService.abandonGame(gameId),
-          play = gameEvent => GameService.play(gameEvent.gameEvent)
+          play = gameEvent => GameService.play(gameEvent.gameEvent.asJson)
         ),
         Subscriptions(
           gameStream = gameId => GameService.gameStream(gameId).map(_.asJson),
@@ -94,14 +100,11 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
     ) @@
       maxFields(200) @@ // query analyzer that limit query fields
       maxDepth(30) @@ // query analyzer that limit query depth
-      timeout(3.seconds) @@ // wrapper that fails slow queries
-      printSlowQueries(500.millis) @@ // wrapper that logs slow queries
+      timeout(15.seconds) @@ // wrapper that fails slow queries
+      printSlowQueries(3.seconds) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
     "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  InLobby\n  Offline\n  Playing\n}\n\ntype ChannelId {\n  value: Int!\n}\n\ntype Mutations {\n  newGame: Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  play(gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n}\n\ntype Subscriptions {\n  gameStream(value: Int!): Json!\n  userStream: UserEvent!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  currentChannelId: ChannelId\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  wallet: Float!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}\n\ntype UserId {\n  value: Int!\n}"
-
-
-
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala
 }

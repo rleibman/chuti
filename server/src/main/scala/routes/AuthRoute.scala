@@ -28,7 +28,7 @@ import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import courier.{Envelope, Multipart}
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.{GameServer, LoggedInUserRepo}
+import game.{GameService, LoggedInUserRepo}
 import game.GameService.GameLayer
 import io.circe.generic.auto._
 import javax.mail.internet.InternetAddress
@@ -55,7 +55,7 @@ trait AuthRoute
       repositoryLayer ++
       ZLayer.succeed(LoggedInUserRepo.live)
 
-  lazy private val adminSession = ChutiSession(GameServer.god)
+  lazy private val adminSession = ChutiSession(GameService.god)
 
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
@@ -199,6 +199,7 @@ trait AuthRoute
                   "/chuti-login-opt-bundle.js.map",
                   "/css/app.css",
                   "/images/favicon.png",
+                  "/images/favicon.svg",
                   "/webfonts/fa-solid-900.woff2",
                   "/webfonts/fa-solid-900.woff",
                   "/webfonts/fa-solid-900.ttf"

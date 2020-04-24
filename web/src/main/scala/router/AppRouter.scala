@@ -70,7 +70,11 @@ object AppRouter extends ChutiComponent {
     import dsl._
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
-      | staticRoute("#lobby", LobbyAppPage) ~> renderR(_ => LobbyPage())
+      | staticRoute("#lobby", LobbyAppPage) ~> renderR(_ =>
+        chutiContext.consume { chutiState =>
+          LobbyPage(chutiState)
+        }
+      )
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
       .notFound(redirectToPage(LobbyAppPage)(SetRouteVia.HistoryReplace))

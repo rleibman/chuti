@@ -17,13 +17,13 @@
 package pages
 
 import chat.ChatComponent
-import chuti.GameState
+import chuti.Game
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 
 object GamePage extends ChutiPage {
-  case class State(gameState: Option[GameState] = None)
+  case class State(game: Option[Game] = None)
 
   class Backend($ : BackendScope[_, State]) {
 

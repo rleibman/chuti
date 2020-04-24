@@ -16,7 +16,7 @@
 
 package dao
 
-import chuti.{GameException, GameState, UserId}
+import chuti.{GameException, Game, UserId}
 import game.GameService.{GameLayer, GameService}
 import slick.basic.BasicBackend
 import zio.{UIO, ZIO}

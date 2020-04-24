@@ -19,22 +19,30 @@ package dao.gen
 import java.sql.Timestamp
 
 import chuti.{Estado, GameId, UserId}
+import com.foerstertechnologies.slickmysql.{ExMySQLProfile, MySQLCirceJsonSupport}
+import io.circe.Json
 import slick.ast.BaseTypedType
+import slick.driver.JdbcProfile
 import slick.jdbc.JdbcType
 import slick.lifted.{MappedProjection, ProvenShape}
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
+object ChutiProfile extends ExMySQLProfile with MySQLCirceJsonSupport
+
 object Tables extends {
-  val profile = slick.jdbc.MySQLProfile
+  val profile = ChutiProfile
 } with Tables
 
 /** Slick data model trait for extension, choice of backend or usage in the cake pattern. (Make sure to initialize this late.) */
 trait Tables {
-  val profile: slick.jdbc.JdbcProfile
-  import profile.api._
+  val profile: ExMySQLProfile with MySQLCirceJsonSupport
+
   import slick.model.ForeignKeyAction
-  // NOTE: GetResult mappers for plain SQL are only generated for tables where Slick knows how to map the types of all columns.
+
   import slick.jdbc.{GetResult => GR}
+
+  object MyApi extends profile.API with profile.CirceJsonImplicits
+  import MyApi._
 
   implicit val estadoType: JdbcType[Estado] with BaseTypedType[Estado] =
     profile.MappedColumnType.base[Estado, String](
@@ -120,11 +128,11 @@ trait Tables {
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class GameRow(
     id:           GameId,
-    currentIndex: Int = 0,
-    startState:   String,
+    startState:   Json,
     gameStatus:   Estado,
     created:      java.sql.Timestamp,
     lastupdated:  java.sql.Timestamp,
+    currentIndex: Int = 0,
     deleted:      Boolean = false,
     deleteddate:  Option[java.sql.Timestamp] = None
   )
@@ -133,7 +141,7 @@ trait Tables {
   implicit def GetResultGameRow(
     implicit e0: GR[GameId],
     e5:          GR[Int],
-    e1:          GR[String],
+    e1:          GR[Json],
     e6:          GR[Estado],
     e2:          GR[java.sql.Timestamp],
     e3:          GR[Boolean],
@@ -143,11 +151,11 @@ trait Tables {
     GameRow.tupled(
       (
         <<[GameId],
-        <<[Int],
-        <<[String],
+        <<[Json],
         <<[Estado],
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp],
+        <<[Int],
         <<[Boolean],
         <<?[java.sql.Timestamp]
       )
@@ -157,18 +165,18 @@ trait Tables {
   /** Table description of table game. Objects of this class serve as prototypes for rows in queries. */
   class Game(_tableTag: Tag) extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
     def * : ProvenShape[GameRow] =
-      (id, currentIndex, startState, gameState, created, lastupdated, deleted, deleteddate) <> (GameRow.tupled, GameRow.unapply)
+      (id, startState, gameStatus, created, lastupdated, currentIndex, deleted, deleteddate) <> (GameRow.tupled, GameRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ?
-      : MappedProjection[Option[GameRow], (Option[GameId], Option[Int], Option[String], Option[Estado], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[Estado], Option[Timestamp], Option[Timestamp], Option[Int], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
-        Rep.Some(currentIndex),
         Rep.Some(startState),
-        Rep.Some(gameState),
+        Rep.Some(gameStatus),
         Rep.Some(created),
         Rep.Some(lastupdated),
+        Rep.Some(currentIndex),
         Rep.Some(deleted),
         deleteddate
       ).shaped.<>(
@@ -186,11 +194,16 @@ trait Tables {
     val currentIndex: Rep[Int] = column[Int]("current_index", O.Default(0))
 
     /** Database column start_state SqlType(JSON), Length(1073741824,true) */
-    val startState: Rep[String] =
-      column[String]("start_state", O.Length(1073741824, varying = true))
+    val startState: Rep[Json] =
+      column[Json](
+        "start_state",
+        O.Length(1073741824, varying = true),
+        O.SqlType(typeName = "JSON")
+      )
 
-    /** Database column game_state SqlType(JSON), Length(1073741824,true) */
-    val gameState: Rep[Estado] = column[Estado]("game_state", O.Length(1073741824, varying = true))
+    /** Database column game_state SqlType(TEXT), Length(1073741824,true) */
+    val gameStatus
+      : Rep[Estado] = column[Estado]("game_state", O.Length(1073741824, varying = true)) //TODO rename to status
 
     /** Database column created SqlType(TIMESTAMP) */
     val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")
@@ -309,6 +322,9 @@ trait Tables {
     val gameId: Rep[GameId] = column[GameId]("game_id")
 
     val order: Rep[Int] = column[Int]("order")
+
+    /** Primary key of GameEvent (database name game_event_PK) */
+    val pk = primaryKey("game_players_PK", (userId, gameId))
 
     /** Foreign key referencing Game (database name game_players_game) */
     lazy val gameFk = foreignKey("game_players_game", gameId, GameQuery)(

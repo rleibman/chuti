@@ -18,9 +18,10 @@ package dao
 import java.sql.Timestamp
 
 import chuti.Estado.comienzo
-import chuti.{Estado, Ficha, GameException, GameId, GameState, Jugador, Triunfo, User, UserId}
+import chuti.{Estado, Ficha, GameException, GameId, Game, Jugador, Triunfo, User, UserId}
 import gen.Tables._
 import io.circe
+import io.circe.Decoder
 import io.circe.parser._
 import io.circe.syntax._
 import io.circe.generic.auto._
@@ -45,9 +46,11 @@ trait SlickToModelInterop {
     lastupdated = new Timestamp(System.currentTimeMillis()),
     lastloggedin = value.lastLoggedIn.map(Timestamp.valueOf)
   )
-  def GameRow2GameState(row: GameRow): GameState =
-    decode[GameState](row.startState).map {
+  def GameRow2Game(row: GameRow): Game = {
+    val decoder = implicitly(Decoder[Game])
+    decoder.decodeJson(row.startState).map {
       _.copy(
+        id = Option(row.id),
         currentIndex = row.currentIndex,
         gameStatus = row.gameStatus
       )
@@ -55,4 +58,25 @@ trait SlickToModelInterop {
       case Right(state) => state
       case Left(error)  => throw GameException(error)
     }
+  }
+
+  def Game2GameRow(value: Game): GameRow = {
+//    id:           GameId,
+//    startState:   String,
+//    gameStatus:   Estado,
+//    created:      java.sql.Timestamp,
+//    lastupdated:  java.sql.Timestamp,
+//    currentIndex: Int = 0,
+//    deleted:      Boolean = false,
+//    deleteddate:  Option[java.sql.Timestamp] = None
+    val ret = GameRow(
+      id = value.id.getOrElse(GameId(0)),
+      currentIndex = value.currentIndex,
+      startState = value.asJson,
+      gameStatus = value.gameStatus,
+      created = Timestamp.valueOf(value.created),
+      lastupdated = new Timestamp(System.currentTimeMillis())
+    )
+    ret
+  }
 }

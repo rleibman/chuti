@@ -23,7 +23,7 @@ import com.softwaremill.session.SessionDirectives._
 import com.softwaremill.session.SessionOptions._
 import com.softwaremill.session._
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.GameServer
+import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import zio.{Task, ZIO, ZLayer}
@@ -49,7 +49,7 @@ trait SessionUtils extends Directives with Config {
 
   def getUser(id: Int): Task[Option[User]] = memoizeF(Option(1.hour)) {
     val dbProv: DatabaseProvider.Service = this
-    val fullLayer = SessionProvider.layer(ChutiSession(GameServer.god)) ++ ZLayer.succeed(dbProv)
+    val fullLayer = SessionProvider.layer(ChutiSession(GameService.god)) ++ ZLayer.succeed(dbProv)
     userOperations.get(UserId(id)).provideLayer(fullLayer).catchSome {
       case e: RepositoryException =>
         ZIO.succeed {

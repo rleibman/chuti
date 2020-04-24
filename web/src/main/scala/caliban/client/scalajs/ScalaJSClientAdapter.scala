@@ -141,6 +141,14 @@ trait ScalaJSClientAdapter {
         case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
           connectionState.kaIntervalOpt.foreach(id => dom.window.clearInterval(id))
           onDisconnected(id.getOrElse(""), payload)
+//          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
+//            connectionState =
+//              connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
+//            onReconnecting(id.getOrElse(""))
+//            doConnect()
+//          } else if (connectionState.reconnectCount > reconnectionAttempts) {
+//            println("Maximum number of connection retries exceeded")
+//          }
         //Nothing else to do, really
         case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
           //We should only do this the first time

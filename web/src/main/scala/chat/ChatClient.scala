@@ -22,6 +22,7 @@ import caliban.client.SelectionBuilder._
 import caliban.client._
 import caliban.client.Operations._
 import caliban.client.Value._
+import io.circe.Json
 
 object ChatClient {
 
@@ -162,7 +163,7 @@ object ChatClient {
       Field(
         name = "chatStream",
         builder = Obj(innerSelection),
-        arguments = List(Argument("channelId", channelId.value))
+        arguments = List(Argument("value", channelId.value))
       )
   }
 
