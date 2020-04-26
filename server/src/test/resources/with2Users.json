@@ -1,0 +1,71 @@
+{
+  "id" : {
+    "value" : 1
+  },
+  "jugadores" : [
+    {
+      "user" : {
+        "id" : {
+          "value" : 1
+        },
+        "email" : "yoyo1@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Offline" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T16:23:33.99754",
+        "lastUpdated" : "2020-04-26T16:23:33.999578",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+      ],
+      "casas" : [
+      ],
+      "cantador" : false,
+      "mano" : false
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 2
+        },
+        "email" : "yoyo2@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Offline" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T16:23:33.999619",
+        "lastUpdated" : "2020-04-26T16:23:33.999626",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+      ],
+      "casas" : [
+      ],
+      "cantador" : false,
+      "mano" : false
+    }
+  ],
+  "enJuego" : [
+  ],
+  "triunfo" : null,
+  "gameStatus" : {
+    "esperandoJugadoresInvitados" : {
+      
+    }
+  },
+  "currentIndex" : 2,
+  "created" : "2020-04-26T16:23:37.500073"
+}
