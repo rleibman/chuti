@@ -36,6 +36,9 @@ type Mutations {
 type Queries {
   getGame(value: Int!): Json
   getGameForUser: Json
+  getFriends: [UserId!]
+  getInvites: [Json!]
+  getLoggedInUsers: [User!]
 }
 
 type Subscriptions {

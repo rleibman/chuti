@@ -37,7 +37,8 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
   def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
 
   def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
-    SessionProvider.layer(session) ++
+    zio.console.Console.live ++
+      SessionProvider.layer(session) ++
       databaseProviderLayer ++
       repositoryLayer ++
       ZLayer.succeed(LoggedInUserRepo.live)

@@ -19,7 +19,7 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{EmptySearch, Estado, GameId, Game, PagedStringSearch, User, UserId}
+import chuti.{EmptySearch, Estado, Game, GameId, PagedStringSearch, User, UserId}
 import dao.Repository.{GameOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
@@ -68,7 +68,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       val rowOpt = for {
         one <- session.user.id
         two <- enemy.id
-      } yield { FriendsRow(one, two) }
+      } yield { FriendsRow(one, two, confirmed = true) }
       DBIO
         .sequence(
           rowOpt.toSeq
@@ -81,11 +81,14 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         ).map(_.headOption.getOrElse(false))
     }
 
-    override def friend(friend: User): RepositoryIO[Boolean] = { session: ChutiSession =>
+    override def friend(
+      friend:    User,
+      confirmed: Boolean
+    ): RepositoryIO[Boolean] = { session: ChutiSession =>
       val rowOpt = for {
         one <- session.user.id
         two <- friend.id
-      } yield { FriendsRow(one, two) }
+      } yield { FriendsRow(one, two, confirmed) }
       DBIO
         .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
           _.headOption.getOrElse(false)
@@ -213,16 +216,17 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
           case (player, index) =>
             GamePlayersQuery.insertOrUpdate(
               GamePlayersRow(
-                player.user.id.getOrElse(UserId(0)),
-                upserted.id.getOrElse(GameId(0)),
-                index
+                userId = player.user.id.getOrElse(UserId(0)),
+                gameId = upserted.id.getOrElse(GameId(0)),
+                order = index,
+                invited = player.invited
               )
             )
         })
       } yield game
     }
 
-    override def get(pk: GameId): RepositoryIO[Option[Game]] =
+    override def get(pk: GameId): RepositoryIO[Option[Game]] = //Memoize this
       GameQuery
         .filter(_.id === pk)
         .result
@@ -247,22 +251,38 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     }
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-      ???
+      GameQuery
+        .filter(!_.deleted).result
+        .map(_.map(row => GameRow2Game(row)))
 
-    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
+    override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
+      GameQuery
+        .filter(!_.deleted).length.result.map(_.toLong)
 
-    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
+    override def gamesWaitingForPlayers(
+    ): RepositoryIO[Seq[Game]] = //TODO implement in terms of search
       GameQuery
         .filter(g => g.gameStatus === (Estado.esperandoJugadoresAzar: Estado) && !g.deleted)
         .result
         .map(_.map(row => GameRow2Game(row)))
 
-    override def getGameForUser: RepositoryIO[Option[Game]] = { session: ChutiSession =>
+    override def getGameForUser
+      : RepositoryIO[Option[Game]] = { session: ChutiSession => //TODO implement in terms of search
       GamePlayersQuery
         .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
         .join(GameQuery.filter(!_.deleted)).on(_.gameId === _.id)
         .result
         .map(_.headOption.map(row => GameRow2Game(row._2)))
     }
+
+    override def gameInvites
+      : RepositoryIO[Seq[Game]] = { session: ChutiSession => //TODO implement in terms of search
+      GamePlayersQuery
+        .filter(player => player.userId === session.user.id.getOrElse(UserId(-1)) && player.invited)
+        .join(GameQuery.filter(!_.deleted)).on(_.gameId === _.id)
+        .result
+        .map(_.map(row => GameRow2Game(row._2)))
+    }
+
   }
 }

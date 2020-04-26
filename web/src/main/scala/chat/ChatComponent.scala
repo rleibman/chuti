@@ -17,16 +17,12 @@
 package chat
 
 import java.net.URI
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat.ChatClient.{
-  Mutations,
-  Subscriptions,
-  ChatMessage => CalibanChatMessage,
-  User => CalibanUser
-}
+import chat.ChatClient.{Mutations, Subscriptions, ChatMessage => CalibanChatMessage, User => CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -42,14 +38,14 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object ChatComponent {
-  val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
+  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(
     chatMessages: Seq[ChatMessage] = Seq.empty,
     msgInFlux:    String = ""
   )
 
-  val chatId = UUID.randomUUID()
+  private val chatId = UUID.randomUUID()
 
   class Backend($ : BackendScope[Props, State]) extends ScalaJSClientAdapter {
     $.props.map { props =>
@@ -65,6 +61,7 @@ object ChatComponent {
                 ChatMessage(
                   fromUser = User(None, "", fromUsername),
                   msg = msg,
+                  date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
                   toUser = toUsername.map(name => User(None, "", name))
                 )
               )

@@ -69,6 +69,7 @@ case class Fila(fichas: List[Ficha])
 
 case class Jugador(
   user:     User,
+  invited:  Boolean = false,
   fichas:   List[Ficha] = List.empty,
   casas:    List[Fila] = List.empty,
   cantador: Boolean = false,
@@ -111,6 +112,9 @@ object Estado {
   case object terminado extends Estado {
     override def value: String = "terminado"
   }
+  object abandonado extends Estado {
+    override def value: String = "abandonado"
+  }
   def withName(str: String): Estado = str match {
     case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
     case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
@@ -118,21 +122,23 @@ object Estado {
     case "cantando"                    => cantando
     case "jugando"                     => jugando
     case "terminado"                   => terminado
+    case "abandonado"                  => abandonado
     case other                         => throw GameException(s"Unknown game exception e")
   }
+
 }
 
 import chuti.Estado._
 
 sealed trait Borlote
-case object ElNiñoDelCumpleanos extends Borlote
+case object ElNiñoDelCumpleaños extends Borlote
 case object SantaClaus extends Borlote
 case object CampanitaSeJuega extends Borlote
 
 sealed trait EventInfo[T <: GameEvent] {
   def canDo(
-    jugador:   Jugador,
-    game: Game
+    jugador: Jugador,
+    game:    Game
   ): Boolean
   val values: Seq[EventInfo[_]] = Seq(NoOp)
 }
@@ -145,8 +151,8 @@ sealed trait GameEvent {
 
 object NoOp extends EventInfo[NoOp] {
   override def canDo(
-    jugador:   Jugador,
-    game: Game
+    jugador: Jugador,
+    game:    Game
   ): Boolean = true //always true
 }
 
@@ -163,7 +169,7 @@ case class InviteFriend(
   index:  Option[Int],
   user:   User
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 //This event ends the game and shuts down the server... it can only be called by god
 case class PoisonPill(
@@ -177,14 +183,14 @@ case class TerminaJuego(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class Canta(
   gameId:  Option[GameId] = None,
   index:   Option[Int] = None,
   cuantas: Int
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class PideInicial(
   gameId:          Option[GameId] = None,
@@ -193,7 +199,7 @@ case class PideInicial(
   triunfan:        Numero,
   estrictaDerecha: Boolean
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class Pide(
   gameId:          Option[GameId] = None,
@@ -201,33 +207,42 @@ case class Pide(
   ficha:           Ficha,
   estrictaDerecha: Boolean
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class Da(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None,
   ficha:  Ficha
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 //Acuerdate de los regalos
 case class DeCaida(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class HoyoTecnico(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
 }
 case class MeRindo(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ???
+  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+}
+case class AbandonGame(
+  user:   User,
+  gameId: Option[GameId] = None,
+  index:  Option[Int] = None
+) extends GameEvent {
+  override def doEvent(game: Game): (Game, GameEvent) = {
+    (game.copy(gameStatus = Estado.abandonado), this)
+  }
 }
 case class JoinGame(
   gameId: Option[GameId] = None,
@@ -257,7 +272,8 @@ case class EmpiezaJuego(
             fichas = fichas,
             casas = List.empty,
             cantador = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
-            mano = turno.fold(fichas.contains(laMulota))(_ == jugador.user)
+            mano = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
+            invited = false
           )
       }
       .toList
@@ -282,21 +298,31 @@ case class Game(
   currentIndex: Int = 0,
   created:      LocalDateTime = LocalDateTime.now
 ) {
+  val size = 4
 
   def canTransition(estado: Estado): Boolean = {
     estado match {
       case Estado.jugando =>
-        jugadores.length == 4 && (gameStatus == Estado.esperandoJugadoresAzar || gameStatus == Estado.esperandoJugadoresInvitados)
+        jugadores.length == size && (gameStatus == Estado.esperandoJugadoresAzar || gameStatus == Estado.esperandoJugadoresInvitados)
       case _ => false
     }
   }
 
-  def resultado(): Option[List[Cuenta]] = ???
+  def resultado(): Option[List[Cuenta]] = ??? //TODO write this
+
   //Returns the newly modified state, and any changes to the event
-  def event(event: GameEvent): (Game, GameEvent) = {
+  def applyEvent(event: GameEvent): (Game, GameEvent) = {
+    //TODO make sure the event index matches the next event we need
+    //TODO make sure the event *can* be applied "legally"
     val newIndex = currentIndex + 1
     val processed = event.doEvent(game = this)
     (processed._1.copy(currentIndex = newIndex), processed._2)
+  }
+
+  //very similar to apply event, but for the client, this re-applies an event that the server has already processed
+  def reapplyEvent(event: GameEvent): (Game, GameEvent) = {
+    //TODO write
+    ??? //TODO write this
   }
 }
 
@@ -342,5 +368,5 @@ case class Mesa(
     *
     * @return
     */
-  def jugadorPrint(jugador: Jugador) = ???
+  def jugadorPrint(jugador: Jugador) = ??? //TODO write this
 }

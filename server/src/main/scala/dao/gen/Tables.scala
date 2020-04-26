@@ -70,25 +70,26 @@ trait Tables {
     *  @param two Database column two SqlType(INT) */
   case class FriendsRow(
     one: UserId,
-    two: UserId
+    two: UserId,
+    confirmed: Boolean
   )
 
   /** GetResult implicit for fetching FriendsRow objects using plain SQL queries */
-  implicit def GetResultFriendsRow(implicit e0: GR[UserId]): GR[FriendsRow] = GR { prs =>
+  implicit def GetResultFriendsRow(implicit e0: GR[UserId], e1: GR[Boolean]): GR[FriendsRow] = GR { prs =>
     import prs._
-    FriendsRow.tupled((<<[UserId], <<[UserId]))
+    FriendsRow.tupled((<<[UserId], <<[UserId], << [Boolean]))
   }
 
   /** Table description of table friends. Objects of this class serve as prototypes for rows in queries. */
   class Friends(_tableTag: Tag)
       extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
-    def * : ProvenShape[FriendsRow] = (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
+    def * : ProvenShape[FriendsRow] = (one, two, confirmed) <> (FriendsRow.tupled, FriendsRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
-    def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
-      (Rep.Some(one), Rep.Some(two)).shaped.<>(
+    def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId], Option[Boolean])] =
+      (Rep.Some(one), Rep.Some(two), Rep.Some(confirmed)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
+          import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get, _3.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -98,6 +99,9 @@ trait Tables {
 
     /** Database column two SqlType(INT) */
     val two: Rep[UserId] = column[UserId]("two")
+
+    /** Database column confirmed SqlType(TINYINT), Default(0) */
+    val confirmed: Rep[Boolean] = column[Boolean]("confirmed", O.Default(false))
 
     /** Foreign key referencing User (database name friends_user_1) */
     lazy val userFk1 = foreignKey("friends_user_1", one, UserQuery)(
@@ -128,13 +132,13 @@ trait Tables {
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class GameRow(
     id:           GameId,
-    startState:   Json,
+    startState:   Json, //TODO rename startState to lastSnapshot
     gameStatus:   Estado,
     created:      java.sql.Timestamp,
     lastupdated:  java.sql.Timestamp,
     currentIndex: Int = 0,
-    deleted:      Boolean = false,
-    deleteddate:  Option[java.sql.Timestamp] = None
+    deleted:      Boolean = false, //TODO Remove this, gameStatus takes care of it
+    deleteddate:  Option[java.sql.Timestamp] = None //TODO remove, lastUpdated will take care of it.
   )
 
   /** GetResult implicit for fetching GameRow objects using plain SQL queries */
@@ -286,31 +290,33 @@ trait Tables {
   case class GamePlayersRow(
     userId: UserId,
     gameId: GameId,
-    order:  Int
+    order:  Int,
+    invited: Boolean
   )
 
   /** GetResult implicit for fetching GamePlayersRow objects using plain SQL queries */
   implicit def GetResultGamePlayersRow(
     implicit e0: GR[GameId],
     e1:          GR[UserId],
-    e2:          GR[Int]
+    e2:          GR[Int],
+    e3: GR[Boolean]
   ): GR[GamePlayersRow] = GR { prs =>
     import prs._
-    GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int]))
+    GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int], <<[Boolean]))
   }
 
   /** Table description of table game_players. Objects of this class serve as prototypes for rows in queries. */
   class GamePlayers(_tableTag: Tag)
       extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
     def * : ProvenShape[GamePlayersRow] =
-      (userId, gameId, order) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
+      (userId, gameId, order, invited) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ?
-      : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId], Option[Int])] =
-      (Rep.Some(userId), Rep.Some(gameId), Rep.Some(order)).shaped.<>(
+      : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId], Option[Int], Option[Boolean])] =
+      (Rep.Some(userId), Rep.Some(gameId), Rep.Some(order), Rep.Some(invited)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get)))
+          import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get, _4.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -322,6 +328,9 @@ trait Tables {
     val gameId: Rep[GameId] = column[GameId]("game_id")
 
     val order: Rep[Int] = column[Int]("order")
+
+    /** Database column invited SqlType(TINYINT), Default(0) */
+    val invited: Rep[Boolean] = column[Boolean]("invited", O.Default(false))
 
     /** Primary key of GameEvent (database name game_event_PK) */
     val pk = primaryKey("game_players_PK", (userId, gameId))

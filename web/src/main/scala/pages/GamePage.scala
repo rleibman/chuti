@@ -17,13 +17,23 @@
 package pages
 
 import chat.ChatComponent
-import chuti.Game
+import chuti.{Game, GameEvent}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 
+import scala.collection.SortedSet
+
 object GamePage extends ChutiPage {
-  case class State(game: Option[Game] = None)
+
+  case class State(
+    game: Option[Game] = None,
+    //TODO events have to get applied to the local copy of the game in order, if we receive
+    //TODO an event out of order we need to wait until we have it's match, and if a timeout passes
+    //TODO without receiving it, we need to ask the server for the full state of the game again
+    gameEventQueue: SortedSet[GameEvent] =
+      SortedSet.empty(Ordering.by[GameEvent, Option[Int]](_.index))
+  )
 
   class Backend($ : BackendScope[_, State]) {
 
@@ -31,6 +41,7 @@ object GamePage extends ChutiPage {
       <.div()
     }
   }
+
 
   val component = ScalaComponent
     .builder[Unit]("GamePage")

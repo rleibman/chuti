@@ -117,11 +117,6 @@ object CRUDRoute {
 
     val me = ZLayer.succeed(1)
 
-//    def layer(session: ChutiSessio): ZLayer[Any, Nothing, SessionProvider[_]] = ZLayer.succeed(SessionProvider.live(session))
-//      ++ new DatabaseProvider.Service {
-//      override def db: UIO[BasicBackend#DatabaseDef] = ???
-//    }
-
     def upsertOperation(
       obj:     E,
       session: ChutiSession
@@ -157,7 +152,7 @@ object CRUDRoute {
       val fullLayer = ZLayer.succeed(liveDB) ++ ZLayer.succeed(liveUserSession)
       def withNoLayers(): Task[String] = withLayers().provideLayer(fullLayer)
 
-      ???
+      ??? //TODO write this
     }
 
     def countOperation(

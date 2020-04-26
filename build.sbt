@@ -55,10 +55,11 @@ lazy val commonSettings = Seq(
 
 lazy val commonVmSettings = commonSettings ++ Seq(
   libraryDependencies ++= Seq(
-    "com.github.julien-truffaut" %% "monocle-core"  % monocleVersion withSources (),
-    "com.github.julien-truffaut" %% "monocle-macro" % monocleVersion withSources (),
-    "com.github.julien-truffaut" %% "monocle-law"   % monocleVersion % "test" withSources (),
-    "org.scalatest"              %% "scalatest"     % "3.1.1" % "test" withSources ()
+    "com.github.julien-truffaut" %% "monocle-core"            % monocleVersion withSources (),
+    "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
+    "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
+    "org.scalatest"              %% "scalatest"               % "3.1.1" % "test" withSources (),
+    "org.mockito"                %% "mockito-scala-scalatest" % "1.13.9" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -118,11 +119,11 @@ lazy val server: Project = project
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
-      "com.typesafe.slick" %% "slick"               % "3.3.2" withSources(),
-      "com.typesafe.slick" %% "slick-hikaricp"      % "3.3.2" withSources(),
-      "com.typesafe.slick" %% "slick-codegen"       % "3.3.2" withSources(),
-      "mysql"              % "mysql-connector-java" % "8.0.19" withSources(),
-      "com.foerster-technologies" %% "slick-mysql" % "0.6.0-SNAPSHOT" withSources(),
+      "com.typesafe.slick"        %% "slick"               % "3.3.2" withSources (),
+      "com.typesafe.slick"        %% "slick-hikaricp"      % "3.3.2" withSources (),
+      "com.typesafe.slick"        %% "slick-codegen"       % "3.3.2" withSources (),
+      "mysql"                     % "mysql-connector-java" % "8.0.19" withSources (),
+      "com.foerster-technologies" %% "slick-mysql"         % "0.6.0-SNAPSHOT" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),

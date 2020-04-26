@@ -23,6 +23,13 @@ case class UserId(value: Int) extends AnyVal
 sealed trait UserStatus
 
 object UserStatus {
+  def fromString(str: String): UserStatus = str match {
+    case "Playing" => Playing
+    case "Offline" => Offline
+    case "InLobby" => InLobby
+    case _ => throw new Exception(s"Can't build UserStatus out of $str")
+  }
+
   case object Playing extends UserStatus
   case object Offline extends UserStatus
   case object InLobby extends UserStatus

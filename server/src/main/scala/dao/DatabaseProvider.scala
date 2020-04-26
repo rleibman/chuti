@@ -16,13 +16,15 @@
 
 package dao
 
-import chuti.{GameException, Game, UserId}
+import chuti.{Game, GameException, GameId, UserId}
 import game.GameService.{GameLayer, GameService}
+import io.circe.Json
 import slick.basic.BasicBackend
 import zio.{UIO, ZIO}
 
 object DatabaseProvider {
   trait Service {
+
     def db: UIO[BasicBackend#DatabaseDef]
   }
 }

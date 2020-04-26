@@ -20,6 +20,9 @@ import chuti.Estado.comienzo
 import org.scalatest.flatspec.AnyFlatSpec
 
 class EstadoDeJuegoSpec extends AnyFlatSpec {
+  "Creating a new game" should "create a new game" in {
+
+  }
 //  private def mesa() = Mesa(
 //    partidos = List.empty,
 //    usuarios = List(

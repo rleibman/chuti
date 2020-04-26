@@ -20,14 +20,19 @@ import caliban.client.CalibanClientError.DecodingError
 import caliban.client.FieldBuilder._
 import caliban.client.Operations._
 import caliban.client.SelectionBuilder._
-import caliban.client.Value._
+import caliban.client.Value.{jsonToValue, _}
 import caliban.client._
-import io.circe.Json
+import io.circe.{Decoder, Json}
 
 object GameClient {
 
   implicit val jsonDecoder: ScalarDecoder[Json] = (value: Value) => {
     Right(valueEncoder(value))
+  }
+
+  implicit val jsonEncoder: ArgEncoder[Json] = new ArgEncoder[Json] {
+    override def encode(json: Json): Value = valueDecoder.decodeJson(json).toOption.get
+    override def typeName: String = "Json"
   }
 
   sealed trait UserEventType extends scala.Product with scala.Serializable
@@ -121,6 +126,16 @@ object GameClient {
       Field("getGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def getGameForUser: SelectionBuilder[RootQuery, Option[Json]] =
       Field("getGameForUser", OptionOf(Scalar()))
+    def getFriends[A](
+      innerSelection: SelectionBuilder[UserId, A]
+    ): SelectionBuilder[RootQuery, Option[List[A]]] =
+      Field("getFriends", OptionOf(ListOf(Obj(innerSelection))))
+    def getInvites: SelectionBuilder[RootQuery, Option[List[Json]]] =
+      Field("getInvites", OptionOf(ListOf(Scalar())))
+    def getLoggedInUsers[A](
+      innerSelection: SelectionBuilder[User, A]
+    ): SelectionBuilder[RootQuery, Option[List[A]]] =
+      Field("getLoggedInUsers", OptionOf(ListOf(Obj(innerSelection))))
   }
 
   type Mutations = RootMutation
@@ -130,7 +145,11 @@ object GameClient {
       Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("abandonGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
-    def play(gameEvent: String): SelectionBuilder[RootMutation, Option[Boolean]] =
+    def acceptInvitation(value: Int): SelectionBuilder[RootMutation, Option[Json]] =
+      Field("acceptInvitation", OptionOf(Scalar()))
+    def declineInvitation(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field("declineInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def play(gameEvent: Json): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("play", OptionOf(Scalar()), arguments = List(Argument("gameEvent", gameEvent)))
   }
 
@@ -152,7 +171,7 @@ object GameClient {
       Field(
         name = "gameStream",
         builder = Obj(innerSelection),
-        arguments = List(Argument("gameId", gameId.value))
+        arguments = List(Argument("value", gameId.value))
       )
   }
 

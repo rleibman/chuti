@@ -33,10 +33,11 @@ object Repository {
     ): RepositoryIO[Boolean]
 
     def unfriend(enemy: User): RepositoryIO[Boolean]
-    def friend(friend:  User): RepositoryIO[Boolean]
+    def friend(friend:  User, confirmed: Boolean): RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
   }
   trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {
+    def gameInvites: RepositoryIO[Seq[Game]]
     def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]]
     def getGameForUser: RepositoryIO[Option[Game]]
   }

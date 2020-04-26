@@ -19,17 +19,23 @@ package pages
 import java.net.URI
 
 import app.ChutiState
+import caliban.client.CalibanClientError.DecodingError
 import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
+import caliban.client.Value.StringValue
 import caliban.client.scalajs.ScalaJSClientAdapter
+import chat.ChatComponent
 import chuti._
 import game.GameClient.{
   Mutations,
   Queries,
   Subscriptions,
+  ChannelId => CalibanChannelId,
   User => CalibanUser,
   UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType
+  UserEventType => CalibanUserEventType,
+  UserId => CalibanUserId,
+  UserStatus => CalibanUserStatus
 }
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
@@ -44,11 +50,11 @@ import scala.util.{Failure, Success}
 
 object LobbyPage extends ChutiPage {
   case class State(
-                    friends:        Seq[UserId] = Seq.empty,
-                    loggedInUsers:  Seq[User] = Seq.empty,
-                    privateMessage: Option[ChatMessage] = None,
-                    gameInProgress: Option[Game] = None,
-                    invites:        Seq[Game] = Seq.empty
+    friends:        Seq[UserId] = Seq.empty,
+    loggedInUsers:  Seq[User] = Seq.empty,
+    privateMessage: Option[ChatMessage] = None,
+    gameInProgress: Option[Game] = None,
+    invites:        Seq[Game] = Seq.empty
   )
 
   //TODO Move to common area
@@ -137,22 +143,56 @@ object LobbyPage extends ChutiPage {
       props: Props,
       state: State
     ): Callback = {
+      val gameDecoder = implicitly[Decoder[Game]]
+
       Callback.log(s"Initializing ${props.chutiState.user}") >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
           game => $.modState(_.copy(gameInProgress = Option(game)))
         ) >>
-        calibanCallThroughJson[Queries, Seq[UserId]](
-          Queries.getFriends,
-          friends => $.modState(_.copy(friends = friends))
+        calibanCall[Queries, Option[List[UserId]]](
+          Queries.getFriends(CalibanUserId.value.map(UserId.apply)),
+          friendsOpt => $.modState(_.copy(friends = friendsOpt.toSeq.flatten))
         ) >>
-        calibanCallThroughJson[Queries, Seq[Game]](
+        calibanCall[Queries, Option[List[Json]]](
           Queries.getInvites,
-          invites => $.modState(_.copy(invites = invites))
+          jsonInvites => {
+            $.modState(
+              _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
+                gameDecoder.decodeJson(json) match {
+                  case Right(game) => game
+                  case Left(error) => throw error
+                }
+              )
+              )
+            )
+          }
         ) >>
-        calibanCallThroughJson[Queries, Seq[User]](
-          Queries.getLoggedInUsers,
-          loggedInUsers => $.modState(_.copy(loggedInUsers = loggedInUsers))
+        calibanCall[Queries, Option[List[User]]](
+          Queries.getLoggedInUsers(
+            (CalibanUser
+              .id(CalibanUserId.value) ~ CalibanUser.name ~ CalibanUser.userStatus ~ CalibanUser
+              .currentChannelId(CalibanChannelId.value)).mapN(
+              (
+                id:        Option[Int],
+                name:      String,
+                status:    CalibanUserStatus,
+                channelId: Option[Int]
+              ) => {
+                val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
+                  case StringValue(str) => UserStatus.fromString(str)
+                  case other            => throw DecodingError(s"Can't build UserStatus from input $other")
+                }
+                User(
+                  id = id.map(UserId.apply),
+                  email = "",
+                  name = name,
+                  userStatus = userStatus,
+                  currentChannelId = channelId.map(ChannelId.apply)
+                )
+              })
+          ),
+          loggedInUsersOpt => $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten))
         )
     }
 
@@ -191,11 +231,17 @@ object LobbyPage extends ChutiPage {
                     ^.key := game.id.fold("")(_.toString),
                     game.jugadores.map(_.user.name).mkString(","),
                     Button(onClick = (_, _) => {
-                      calibanCallThroughJson[Mutations, Game](
-                        Mutations.acceptGame(game.id.getOrElse(0)),
+                      calibanCallThroughJsonOpt[Mutations, Game](
+                        Mutations.acceptInvitation(game.id.fold(0)(_.value)),
                         game => $.modState(_.copy(gameInProgress = Option(game)))
                       )
-                    })("Aceptar")
+                    })("Aceptar"),
+                    Button(onClick = (_, _) => {
+                      calibanCall[Mutations, Option[Boolean]](
+                        Mutations.declineInvitation(game.id.fold(0)(_.value)),
+                        _ => Callback.alert("Invitacion rechazada")
+                      )
+                    })("Rechazar")
                   )
                 }
               )
@@ -203,11 +249,13 @@ object LobbyPage extends ChutiPage {
             TagMod(
               Container()(
                 Header()("Jugadores"),
-                s.friends.toVdomArray { friend =>
+                s.loggedInUsers.toVdomArray { player =>
                   <.div(
-                    ^.key := friend.id.fold("")(_.toString),
-                    user.name
+                    ^.key := user.id.fold("")(_.toString),
+                    player.name
                   )
+                  //TODO add flags: isFriend, isPlaying
+                  //TODO make table, add context menu: invite, friend, unfriend,
                 }
               )
             ).when(s.friends.nonEmpty),
