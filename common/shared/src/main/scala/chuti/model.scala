@@ -250,7 +250,10 @@ case class JoinGame(
   user:   User
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) = {
-    (game.copy(jugadores = (game.jugadores :+ Jugador(user))), this)
+    if(game.jugadores.exists(j => j.user.id == user.id)) {
+      throw GameException("A player can't join a game twice")
+    }
+    (game.copy(jugadores = (game.jugadores :+ Jugador(user.copy(userStatus = UserStatus.Playing)))), this)
   }
 }
 case class EmpiezaJuego(

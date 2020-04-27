@@ -11,13 +11,13 @@
         "email" : "yoyo1@example.com",
         "name" : "yoyo",
         "userStatus" : {
-          "Offline" : {
+          "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-26T16:23:33.99754",
-        "lastUpdated" : "2020-04-26T16:23:33.999578",
+        "created" : "2020-04-26T22:47:44.353703",
+        "lastUpdated" : "2020-04-26T22:47:44.355756",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -40,5 +40,5 @@
     }
   },
   "currentIndex" : 1,
-  "created" : "2020-04-26T16:23:37.500073"
+  "created" : "2020-04-26T22:47:47.209847"
 }

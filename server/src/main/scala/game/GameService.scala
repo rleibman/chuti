@@ -65,7 +65,8 @@ object GameService {
     wallet = Double.MaxValue
   )
 
-  type GameLayer = Console with SessionProvider with DatabaseProvider with Repository with LoggedInUserRepo
+  type GameLayer = Console
+    with SessionProvider with DatabaseProvider with Repository with LoggedInUserRepo
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
@@ -162,7 +163,7 @@ object GameService {
     event:        EventType
   ): ZIO[Console, Nothing, EventType] = {
     for {
-      _ <- console.putStrLn(s"Broadcasting event $event")
+      _         <- console.putStrLn(s"Broadcasting event $event")
       allQueues <- allQueuesRef.get
       sent <- UIO
         .foreach(allQueues) { queue =>
@@ -211,11 +212,15 @@ object GameService {
             val (joined, joinGame) = newOrRetrieved.applyEvent(JoinGame(user = user))
             val (started, startGame: GameEvent) = if (joined.canTransition(Estado.jugando)) {
               joined.applyEvent(EmpiezaJuego())
+              //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
               (joined, NoOp())
             }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
+          _ <- ZIO.foreach(afterApply._1.jugadores.find(_.user.id == user.id))(j =>
+            repository.userOperations.upsert(j.user)
+          )
           _ <- broadcast(gameEventQueues, afterApply._2)
           _ <- broadcast(gameEventQueues, afterApply._3)
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
@@ -233,6 +238,9 @@ object GameService {
             val (game2, _) = newGame.applyEvent(JoinGame(user = user))
             repository.gameOperations.upsert(game2)
           }
+          savedUsers <- ZIO.foreach(upserted.jugadores.find(_.user.id == user.id))(j =>
+            repository.userOperations.upsert(j.user)
+          )
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
         } yield upserted).mapError(GameException.apply)
 
@@ -328,11 +336,13 @@ object GameService {
             val (joined, joinGame) = newOrRetrieved.applyEvent(JoinGame(user = user))
             val (started, startGame: GameEvent) = if (joined.canTransition(Estado.jugando)) {
               joined.applyEvent(EmpiezaJuego())
+              //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
               (joined, NoOp)
             }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
+          _ <- ZIO.foreach(afterApply._1.jugadores.find(_.user.id == user.id))(j => repository.userOperations.upsert(j.user))
           _ <- broadcast(gameEventQueues, afterApply._2)
           _ <- broadcast(gameEventQueues, afterApply._3)
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
@@ -377,8 +387,8 @@ object GameService {
             queue <- Queue.sliding[GameEvent](requestedCapacity = 100)
             _     <- gameEventQueues.update(EventQueue(user, queue) :: _)
             after <- gameEventQueues.get
-            _ <- console.putStrLn(s"GameStream started, queues have ${after.length} entries")
-          } yield ZStream.fromQueueWithShutdown(queue) //.filter(a=> a.gameId == Option(gameId))
+            _     <- console.putStrLn(s"GameStream started, queues have ${after.length} entries")
+          } yield ZStream.fromQueue(queue).filter(a=> a.gameId == Option(gameId))
         }
 
       override def userStream: ZStream[GameLayer, Nothing, UserEvent] = ZStream.unwrap {
@@ -396,8 +406,8 @@ object GameService {
           queue <- Queue.sliding[UserEvent](requestedCapacity = 100)
           _     <- userEventQueues.update(EventQueue(user, queue) :: _)
           after <- userEventQueues.get
-          _ <- console.putStrLn(s"UserStream started, queues have ${after.length} entries")
-        } yield ZStream.fromQueueWithShutdown(queue).ensuring {
+          _     <- console.putStrLn(s"UserStream started, queues have ${after.length} entries")
+        } yield ZStream.fromQueue(queue).ensuring {
           UIO.foreach(user.id)(id => loggedInUserRepo.removeUser(id)) *>
             broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected))
         }
@@ -407,5 +417,3 @@ object GameService {
   }
 
 }
-
-

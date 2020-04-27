@@ -26,13 +26,13 @@ object UserStatus {
   def fromString(str: String): UserStatus = str match {
     case "Playing" => Playing
     case "Offline" => Offline
-    case "InLobby" => InLobby
+    case "Idle" => Idle
     case _ => throw new Exception(s"Can't build UserStatus out of $str")
   }
 
   case object Playing extends UserStatus
   case object Offline extends UserStatus
-  case object InLobby extends UserStatus
+  case object Idle extends UserStatus
 }
 
 case class User(
@@ -48,7 +48,7 @@ case class User(
   deleted:          Boolean = false
 ) {
   def chatChannel: Option[ChannelId] = userStatus match {
-    case UserStatus.InLobby => Option(ChannelId.lobbyChannel)
+    case UserStatus.Idle => Option(ChannelId.lobbyChannel)
     case UserStatus.Offline => Option(ChannelId.emailChannel)
     case UserStatus.Playing => currentChannelId
   }

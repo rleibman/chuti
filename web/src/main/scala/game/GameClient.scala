@@ -65,19 +65,19 @@ object GameClient {
 
   sealed trait UserStatus extends scala.Product with scala.Serializable
   object UserStatus {
-    case object InLobby extends UserStatus
+    case object Idle extends UserStatus
     case object Offline extends UserStatus
     case object Playing extends UserStatus
 
     implicit val decoder: ScalarDecoder[UserStatus] = {
-      case StringValue("InLobby") => Right(UserStatus.InLobby)
+      case StringValue("Idle") => Right(UserStatus.Idle)
       case StringValue("Offline") => Right(UserStatus.Offline)
       case StringValue("Playing") => Right(UserStatus.Playing)
       case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
     }
     implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
       override def encode(value: UserStatus): Value = value match {
-        case UserStatus.InLobby => EnumValue("InLobby")
+        case UserStatus.Idle => EnumValue("Idle")
         case UserStatus.Offline => EnumValue("Offline")
         case UserStatus.Playing => EnumValue("Playing")
       }

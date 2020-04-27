@@ -1,0 +1,461 @@
+{
+  "id" : {
+    "value" : 1
+  },
+  "jugadores" : [
+    {
+      "user" : {
+        "id" : {
+          "value" : 1
+        },
+        "email" : "yoyo1@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T22:47:44.353703",
+        "lastUpdated" : "2020-04-26T22:47:44.355756",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero6" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero1" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero2" : {
+              
+            }
+          }
+        }
+      ],
+      "casas" : [
+      ],
+      "cantador" : true,
+      "mano" : true
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 2
+        },
+        "email" : "yoyo2@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T22:47:44.355803",
+        "lastUpdated" : "2020-04-26T22:47:44.355813",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero5" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero5" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        }
+      ],
+      "casas" : [
+      ],
+      "cantador" : false,
+      "mano" : false
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 3
+        },
+        "email" : "yoyo3@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T22:47:44.355823",
+        "lastUpdated" : "2020-04-26T22:47:44.355829",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero2" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero0" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        }
+      ],
+      "casas" : [
+      ],
+      "cantador" : false,
+      "mano" : false
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 4
+        },
+        "email" : "yoyo4@example.com",
+        "name" : "yoyo",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-04-26T22:47:44.355838",
+        "lastUpdated" : "2020-04-26T22:47:44.355844",
+        "lastLoggedIn" : null,
+        "wallet" : 0.0,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero1" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero2" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        }
+      ],
+      "casas" : [
+      ],
+      "cantador" : false,
+      "mano" : false
+    }
+  ],
+  "enJuego" : [
+  ],
+  "triunfo" : null,
+  "gameStatus" : {
+    "jugando" : {
+      
+    }
+  },
+  "currentIndex" : 5,
+  "created" : "2020-04-26T22:47:47.209847"
+}
