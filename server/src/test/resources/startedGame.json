@@ -9,15 +9,15 @@
           "value" : 1
         },
         "email" : "yoyo1@example.com",
-        "name" : "yoyo",
+        "name" : "yoyo1",
         "userStatus" : {
           "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T17:09:11.701868",
-        "lastUpdated" : "2020-04-27T17:09:11.70501",
+        "created" : "2020-04-27T21:10:48.1414",
+        "lastUpdated" : "2020-04-27T21:10:48.143711",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -26,7 +26,7 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero5" : {
+            "Numero0" : {
               
             }
           },
@@ -43,55 +43,7 @@
             }
           },
           "abajo" : {
-            "Numero0" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero4" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero4" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero4" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
+            "Numero2" : {
               
             }
           }
@@ -103,7 +55,55 @@
             }
           },
           "abajo" : {
+            "Numero2" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
             "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
               
             }
           }
@@ -120,15 +120,15 @@
           "value" : 2
         },
         "email" : "yoyo2@example.com",
-        "name" : "yoyo",
+        "name" : "yoyo2",
         "userStatus" : {
           "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T17:09:11.705144",
-        "lastUpdated" : "2020-04-27T17:09:11.705158",
+        "created" : "2020-04-27T21:10:48.143762",
+        "lastUpdated" : "2020-04-27T21:10:48.143771",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -137,12 +137,24 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero2" : {
+            "Numero1" : {
               
             }
           },
           "abajo" : {
-            "Numero2" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
               
             }
           }
@@ -154,7 +166,19 @@
             }
           },
           "abajo" : {
-            "Numero2" : {
+            "Numero1" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
               
             }
           }
@@ -173,48 +197,24 @@
         },
         {
           "arriba" : {
-            "Numero3" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero2" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero3" : {
-              
-            }
-          },
-          "abajo" : {
             "Numero4" : {
               
             }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
           }
         },
         {
           "arriba" : {
-            "Numero1" : {
+            "Numero4" : {
               
             }
           },
           "abajo" : {
-            "Numero6" : {
+            "Numero5" : {
               
             }
           }
@@ -231,15 +231,15 @@
           "value" : 3
         },
         "email" : "yoyo3@example.com",
-        "name" : "yoyo",
+        "name" : "yoyo3",
         "userStatus" : {
           "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T17:09:11.70517",
-        "lastUpdated" : "2020-04-27T17:09:11.705177",
+        "created" : "2020-04-27T21:10:48.143783",
+        "lastUpdated" : "2020-04-27T21:10:48.143789",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -248,48 +248,12 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero4" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero4" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero0" : {
+            "Numero6" : {
               
             }
           },
           "abajo" : {
             "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero2" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero4" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero5" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
               
             }
           }
@@ -308,7 +272,7 @@
         },
         {
           "arriba" : {
-            "Numero6" : {
+            "Numero5" : {
               
             }
           },
@@ -320,12 +284,48 @@
         },
         {
           "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
             "Numero2" : {
               
             }
           },
           "abajo" : {
-            "Numero6" : {
+            "Numero2" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero0" : {
               
             }
           }
@@ -342,15 +342,15 @@
           "value" : 4
         },
         "email" : "yoyo4@example.com",
-        "name" : "yoyo",
+        "name" : "yoyo4",
         "userStatus" : {
           "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T17:09:11.705187",
-        "lastUpdated" : "2020-04-27T17:09:11.705193",
+        "created" : "2020-04-27T21:10:48.143803",
+        "lastUpdated" : "2020-04-27T21:10:48.143809",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -364,19 +364,7 @@
             }
           },
           "abajo" : {
-            "Numero2" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero2" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero3" : {
+            "Numero5" : {
               
             }
           }
@@ -388,6 +376,30 @@
             }
           },
           "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
             "Numero3" : {
               
             }
@@ -395,36 +407,24 @@
         },
         {
           "arriba" : {
-            "Numero1" : {
+            "Numero3" : {
               
             }
           },
           "abajo" : {
-            "Numero1" : {
+            "Numero4" : {
               
             }
           }
         },
         {
           "arriba" : {
-            "Numero1" : {
+            "Numero5" : {
               
             }
           },
           "abajo" : {
             "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero3" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero3" : {
               
             }
           }
@@ -457,5 +457,5 @@
     }
   },
   "currentIndex" : 7,
-  "created" : "2020-04-27T17:09:14.529139"
+  "created" : "2020-04-27T21:10:49.055158"
 }

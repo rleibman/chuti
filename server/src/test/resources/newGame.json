@@ -9,15 +9,15 @@
           "value" : 1
         },
         "email" : "yoyo1@example.com",
-        "name" : "yoyo",
+        "name" : "yoyo1",
         "userStatus" : {
           "Playing" : {
             
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T17:09:11.701868",
-        "lastUpdated" : "2020-04-27T17:09:11.70501",
+        "created" : "2020-04-27T21:10:48.1414",
+        "lastUpdated" : "2020-04-27T21:10:48.143711",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -40,5 +40,5 @@
     }
   },
   "currentIndex" : 1,
-  "created" : "2020-04-27T17:09:14.529139"
+  "created" : "2020-04-27T21:10:49.055158"
 }

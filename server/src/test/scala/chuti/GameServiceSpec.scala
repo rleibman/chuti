@@ -32,75 +32,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import zio._
 import zio.duration._
 
-class GameServiceSpec extends AnyFlatSpec with MockitoSugar {
-  val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo", userStatus = UserStatus.Idle)
-  val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo", userStatus = UserStatus.Idle)
-  val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo", userStatus = UserStatus.Idle)
-  val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo", userStatus = UserStatus.Idle)
-
-  private val testRuntime = zio.Runtime.default
-  val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  val loggedInUserRepo: LoggedInUserRepo.Service = mock[LoggedInUserRepo.Service]
-  def createUserOperations: Repository.UserOperations = {
-    val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
-//    when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
-//    when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
-//    when(userOperations.get(UserId(3))).thenReturn(ZIO.succeed(Option(user3)))
-//    when(userOperations.get(UserId(4))).thenReturn(ZIO.succeed(Option(user4)))
-    userOperations
-  }
-  when(loggedInUserRepo.addUser(*[User])).thenAnswer { user: User =>
-    console
-      .putStrLn(s"User ${user.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-        zio.console.Console.live
-      )
-  }
-  when(loggedInUserRepo.removeUser(*[UserId])).thenAnswer { userId: Int =>
-    console
-      .putStrLn(s"User $userId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
-        zio.console.Console.live
-      )
-  }
-
-  private def fullLayer(
-    gameOps: Repository.GameOperations,
-    userOps: Repository.UserOperations
-  ): ZLayer[
-    Any,
-    Nothing,
-    DatabaseProvider with Repository with LoggedInUserRepo.LoggedInUserRepo
-  ] = {
-    ZLayer.succeed(databaseProvider) ++
-      ZLayer.succeed(new Repository.Service {
-        override val gameOperations: GameOperations = gameOps
-        override val userOperations: Repository.UserOperations = userOps
-      }) ++
-      ZLayer.succeed(loggedInUserRepo)
-  }
-
-  def writeGame(
-    game:     Game,
-    filename: String
-  ): Task[Unit] = ZIO.effect {
-    val file = File(filename)
-    file.write(game.asJson.printWith(Printer.spaces2))
-  }
-
-  def readGame(filename: String): Task[Game] =
-    ZIO.effect {
-      val file = File(filename)
-      decode[Game](file.contentAsString)
-    }.absolve
-
-  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
-  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
-  val GAME_WITH_2USERS =
-    "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
-
+class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   "Creating a new Game" should "create a game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
@@ -551,7 +483,110 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar {
   }
 
   "Invite to game 3 people, and one of them declining" should "add two to the game, and then remove one" in {
-    pending
-    //TODO write this
+    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game.copy(Some(GameId(1))))
+    )
+    val userOperations = createUserOperations
+    //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
+    when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
+    when(userOperations.get(UserId(3))).thenReturn(ZIO.succeed(Option(user3)))
+    when(userOperations.get(UserId(4))).thenReturn(ZIO.succeed(Option(user4)))
+    when(userOperations.upsert(*[User])).thenAnswer { u: User =>
+      ZIO.succeed(u)
+    }
+    val layer = fullLayer(gameOperations, userOperations)
+
+    val (
+      game:       Game,
+      gameEvents: Option[List[GameEvent]],
+      userEvents: Option[List[UserEvent]]
+      ) =
+      testRuntime.unsafeRun {
+        for {
+          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameStream = gameService
+            .gameStream(GameId(1)).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          userStream = gameService.userStream.provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          gameEventsFiber <- gameStream.take(8).runCollect.timeout(3.second).fork
+          userEventsFiber <- userStream.take(2).runCollect.timeout(3.second).fork
+          _               <- clock.sleep(1.second)
+          game            <- readGame(GAME_NEW)
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
+          )
+          invited2 <- gameService
+            .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          _ <- ZIO.succeed {
+            val gameCaptor = ArgCaptor[Game]
+            verify(gameOperations, times(1)).upsert(gameCaptor)
+            val game = gameCaptor.value
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
+          }
+          invited3 <- gameService
+            .inviteToGame(user3.id.get, game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          _ <- ZIO.succeed {
+            val gameCaptor = ArgCaptor[Game]
+            verify(gameOperations, times(2)).upsert(gameCaptor)
+            val game = gameCaptor.value
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
+          }
+          invited4 <- gameService
+            .inviteToGame(user4.id.get, game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          _ <- ZIO.succeed {
+            val gameCaptor = ArgCaptor[Game]
+            verify(gameOperations, times(3)).upsert(gameCaptor)
+            val game = gameCaptor.value
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
+          }
+          accepted2 <- gameService
+            .acceptGameInvitation(game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user2))
+          )
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(accepted2)))
+          )
+          declined3 <- gameService
+            .declineGameInvitation(game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user3))
+          )
+          _ <- ZIO.succeed{
+            val gameCaptor = ArgCaptor[Game]
+            verify(gameOperations, times(5)).upsert(gameCaptor)
+            val game = gameCaptor.value
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
+          }
+          accepted4 <- gameService
+            .acceptGameInvitation(game.id.get).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user4))
+          )
+          gameEvents <- gameEventsFiber.join
+          userEvents <- userEventsFiber.join
+        } yield (accepted4, gameEvents, userEvents)
+      }
+
+    val gameCaptor = ArgCaptor[Game]
+    verify(gameOperations, times(6)).upsert(gameCaptor)
+    val gameCapt = gameCaptor.value
+    assert(gameCapt === game)
+
+    assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
+    assert(game.currentIndex === 9)
+    assert(game.id === Option(GameId(1)))
+    assert(game.jugadores.length == 3)
+    assert(game.jugadores.forall(!_.invited))
+    assert(game.jugadores.forall(_.user.userStatus === UserStatus.Playing))
+    assert(gameEvents.toSeq.flatten.size === 8)
+    assert(userEvents.toSeq.flatten.size === 2)
   }
 }

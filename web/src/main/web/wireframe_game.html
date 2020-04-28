@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chuti!</title>
+    <style>
+        .content {
+            border: 1px solid green;
+            display: flex;
+        }
+
+        .chatSection {
+            border: 1px solid black;
+            width: 300px;
+            float: right;
+            flex: 20%;
+        }
+
+        .chatBox {
+            border: 1px solid black;
+            width: 200px;
+            min-height: 100px;
+            max-height: 200px;
+        }
+
+        .chatEntryText {
+        }
+
+        .game {
+            flex: 80%;
+        }
+
+        .domino {
+            height: 7em;
+        }
+
+        .domino_jugado {
+            height: 4em;
+        }
+
+        .jugador {
+            flex: 50%;
+            padding: 10px;
+            min-height: 300px;
+            max-width: 550px;
+            /*border:1px solid red;*/
+        }
+
+        .jugador.mano {
+            background-color: green;
+        }
+
+        .centro {
+            display: flex;
+            flex: 100%;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid red;
+            padding: 10px;
+        }
+
+        .actionBar {
+        }
+
+        .navigation {
+            border: 1px solid black;
+            width: 100%;
+            min-height: 100px;
+            max-height: 200px;
+        }
+
+        .topBar {
+            background-color: darkblue;
+            color: white;
+        }
+
+    </style>
+</head>
+<body>
+<div class="topBar">
+    <h1>Chuti!</h1>
+</div>
+<div class="navigation">
+    <h2>Navegacion</h2>
+    <span>Bienvenido Roberto</span> <span>Tienes 123 pesos del banco de la alegria!</span>
+    <a href="">Administracion de usuario</a>
+    <a href="wireframe_reglas.html">Reglas</a>
+    <a href="">Log out</a>
+</div>
+<div class="content">
+    <div class="game">
+        <div style="display:flex;width:100%;align-items: center;justify-content: center;">
+            <div class="jugador mano">
+                <h2>Jugador 1</h2>
+                <div class="actionBar">
+                    <input type="button" value="Listo... Los Regalos!"/>
+                    <input type="button" value="Me rindo... hoyo!"/>
+                    Canto <select value="4">
+                    <option value="4">Casa</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">TODAS!</option>
+                </select>
+                </div>
+                <div>
+                    <div>
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                        <img src="images/3_6.svg" class="domino">
+                    </div>
+                    <div>
+                        <div>
+                            <img src="images/3_6.svg" class="domino_jugado">
+                            <img src="images/3_6.svg" class="domino_jugado">
+                            <img src="images/3_6.svg" class="domino_jugado">
+                            <img src="images/3_6.svg" class="domino_jugado">
+                        </div>
+                        <div>
+                            <img src="images/blank_uia.svg" class="domino_jugado">
+                            <img src="images/blank_uia.svg" class="domino_jugado">
+                            <img src="images/blank_uia.svg" class="domino_jugado">
+                            <img src="images/blank_uia.svg" class="domino_jugado">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="jugador">
+                <h2>Jugador 2</h2>
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+            </div>
+        </div>
+        <div class="centro">
+            <div style="width:340px;display:flex; background-color: blue;align-items: center;justify-content: center;padding:10px">
+                <img src="images/3_6.svg" class="domino">
+                <img src="images/3_6.svg" class="domino">
+                <img src="images/3_6.svg" class="domino">
+                <img src="images/3_6.svg" class="domino">
+            </div>
+        </div>
+        <div style="display:flex;width:100%;align-items: center;justify-content: center;">
+            <div class="jugador">
+                <h2>Jugador 3</h2>
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+            </div>
+            <div class="jugador">
+                <h2>Jugador 4</h2>
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+                <img src="images/blank_uia.svg" class="domino">
+            </div>
+        </div>
+    </div>
+    <div class="chatSection">
+        <h2>Chat o Video</h2>
+        <div class="chatBox"></div>
+        <textarea class="chatEntryText"></textarea>
+        <button>Send</button>
+    </div>
+</div>
+</body>
+</html>
