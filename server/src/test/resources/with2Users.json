@@ -16,8 +16,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-26T22:47:44.353703",
-        "lastUpdated" : "2020-04-26T22:47:44.355756",
+        "created" : "2020-04-27T17:09:11.701868",
+        "lastUpdated" : "2020-04-27T17:09:11.70501",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -43,8 +43,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-26T22:47:44.355803",
-        "lastUpdated" : "2020-04-26T22:47:44.355813",
+        "created" : "2020-04-27T17:09:11.705144",
+        "lastUpdated" : "2020-04-27T17:09:11.705158",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -66,6 +66,6 @@
       
     }
   },
-  "currentIndex" : 2,
-  "created" : "2020-04-26T22:47:47.209847"
+  "currentIndex" : 3,
+  "created" : "2020-04-27T17:09:14.529139"
 }

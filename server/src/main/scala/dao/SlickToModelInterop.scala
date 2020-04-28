@@ -17,8 +17,8 @@
 package dao
 import java.sql.Timestamp
 
-import chuti.Estado.comienzo
-import chuti.{Estado, Ficha, GameException, GameId, Game, Jugador, Triunfo, User, UserId}
+import chuti.GameStatus.comienzo
+import chuti.{GameStatus, Ficha, GameException, GameId, Game, Jugador, Triunfo, User, UserId}
 import gen.Tables._
 import io.circe
 import io.circe.Decoder

@@ -18,7 +18,7 @@ package dao.gen
 
 import java.sql.Timestamp
 
-import chuti.{Estado, GameId, UserId}
+import chuti.{GameStatus, GameId, UserId}
 import com.foerstertechnologies.slickmysql.{ExMySQLProfile, MySQLCirceJsonSupport}
 import io.circe.Json
 import slick.ast.BaseTypedType
@@ -44,12 +44,12 @@ trait Tables {
   object MyApi extends profile.API with profile.CirceJsonImplicits
   import MyApi._
 
-  implicit val estadoType: JdbcType[Estado] with BaseTypedType[Estado] =
-    profile.MappedColumnType.base[Estado, String](
+  implicit val estadoType: JdbcType[GameStatus] with BaseTypedType[GameStatus] =
+    profile.MappedColumnType.base[GameStatus, String](
       { estado =>
         if (estado == null) null else estado.value
       }, { str =>
-        if (str == null) null else Estado.withName(str)
+        if (str == null) null else GameStatus.withName(str)
       }
     )
 
@@ -131,32 +131,32 @@ trait Tables {
     *  @param deleted Database column deleted SqlType(TINYINT), Default(0)
     *  @param deleteddate Database column deletedDate SqlType(TIMESTAMP), Default(None) */
   case class GameRow(
-    id:           GameId,
-    startState:   Json, //TODO rename startState to lastSnapshot
-    gameStatus:   Estado,
-    created:      java.sql.Timestamp,
-    lastupdated:  java.sql.Timestamp,
-    currentIndex: Int = 0,
-    deleted:      Boolean = false, //TODO Remove this, gameStatus takes care of it
-    deleteddate:  Option[java.sql.Timestamp] = None //TODO remove, lastUpdated will take care of it.
+                      id:           GameId,
+                      startState:   Json, //TODO rename startState to lastSnapshot
+                      gameStatus:   GameStatus,
+                      created:      java.sql.Timestamp,
+                      lastupdated:  java.sql.Timestamp,
+                      currentIndex: Int = 0,
+                      deleted:      Boolean = false, //TODO Remove this, gameStatus takes care of it
+                      deleteddate:  Option[java.sql.Timestamp] = None //TODO remove, lastUpdated will take care of it.
   )
 
   /** GetResult implicit for fetching GameRow objects using plain SQL queries */
   implicit def GetResultGameRow(
-    implicit e0: GR[GameId],
-    e5:          GR[Int],
-    e1:          GR[Json],
-    e6:          GR[Estado],
-    e2:          GR[java.sql.Timestamp],
-    e3:          GR[Boolean],
-    e4:          GR[Option[java.sql.Timestamp]]
+                                 implicit e0: GR[GameId],
+                                 e5:          GR[Int],
+                                 e1:          GR[Json],
+                                 e6:          GR[GameStatus],
+                                 e2:          GR[java.sql.Timestamp],
+                                 e3:          GR[Boolean],
+                                 e4:          GR[Option[java.sql.Timestamp]]
   ): GR[GameRow] = GR { prs =>
     import prs._
     GameRow.tupled(
       (
         <<[GameId],
         <<[Json],
-        <<[Estado],
+        <<[GameStatus],
         <<[java.sql.Timestamp],
         <<[java.sql.Timestamp],
         <<[Int],
@@ -173,7 +173,7 @@ trait Tables {
 
     /** Maps whole row to an option. Useful for outer joins. */
     def ?
-      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[Estado], Option[Timestamp], Option[Timestamp], Option[Int], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
         Rep.Some(startState),
@@ -207,7 +207,7 @@ trait Tables {
 
     /** Database column game_state SqlType(TEXT), Length(1073741824,true) */
     val gameStatus
-      : Rep[Estado] = column[Estado]("game_state", O.Length(1073741824, varying = true)) //TODO rename to status
+      : Rep[GameStatus] = column[GameStatus]("game_state", O.Length(1073741824, varying = true)) //TODO rename to status
 
     /** Database column created SqlType(TIMESTAMP) */
     val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")

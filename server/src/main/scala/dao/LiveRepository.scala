@@ -19,7 +19,7 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{EmptySearch, Estado, Game, GameId, PagedStringSearch, User, UserId}
+import chuti.{EmptySearch, GameStatus, Game, GameId, PagedStringSearch, User, UserId}
 import dao.Repository.{GameOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
@@ -262,7 +262,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     override def gamesWaitingForPlayers(
     ): RepositoryIO[Seq[Game]] = //TODO implement in terms of search
       GameQuery
-        .filter(g => g.gameStatus === (Estado.esperandoJugadoresAzar: Estado) && !g.deleted)
+        .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
         .result
         .map(_.map(row => GameRow2Game(row)))
 

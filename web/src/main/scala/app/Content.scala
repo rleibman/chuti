@@ -17,13 +17,11 @@
 package app
 
 import chuti.User
-import components.{Confirm, Toast}
 import components.components.ChutiComponent
+import components.{Confirm, Toast}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
-import org.scalajs.dom
 import router.AppRouter
 import service.UserRESTClient
 

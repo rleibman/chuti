@@ -41,13 +41,13 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.4"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.5+18-628a9bfe"
+lazy val calibanVersion = "0.7.6"
 lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
   organization     := "leibman.net",
   version          := "0.1",
-  scalaVersion     := "2.13.1",
+  scalaVersion     := "2.13.2",
   startYear        := Some(2020),
   organizationName := "Roberto Leibman",
   headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
@@ -122,7 +122,7 @@ lazy val server: Project = project
       "com.typesafe.slick"        %% "slick"               % "3.3.2" withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"      % "3.3.2" withSources (),
       "com.typesafe.slick"        %% "slick-codegen"       % "3.3.2" withSources (),
-      "mysql"                     % "mysql-connector-java" % "8.0.19" withSources (),
+      "mysql"                     % "mysql-connector-java" % "8.0.20" withSources (),
       "com.foerster-technologies" %% "slick-mysql"         % "0.6.0-SNAPSHOT" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),

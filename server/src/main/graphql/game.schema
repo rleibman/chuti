@@ -17,9 +17,17 @@ enum UserEventType {
 }
 
 enum UserStatus {
-  InLobby
+  Idle
   Offline
   Playing
+}
+
+input GameIdInput {
+  value: Int!
+}
+
+input UserIdInput {
+  value: Int!
 }
 
 type ChannelId {
@@ -30,6 +38,9 @@ type Mutations {
   newGame: Json
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
+  inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean
+  acceptGameInvitation(value: Int!): Json
+  declineGameInvitation(value: Int!): Boolean
   play(gameEvent: Json!): Boolean
 }
 
@@ -37,7 +48,7 @@ type Queries {
   getGame(value: Int!): Json
   getGameForUser: Json
   getFriends: [UserId!]
-  getInvites: [Json!]
+  getGameInvites: [Json!]
   getLoggedInUsers: [User!]
 }
 

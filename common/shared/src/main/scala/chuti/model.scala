@@ -84,38 +84,38 @@ object Triunfo {
   case class TriunfoNumero(num: Numero) extends Triunfo
 }
 
-sealed trait Estado {
+sealed trait GameStatus {
   def value: String
   def enJuego: Boolean = false
 }
 
-object Estado {
+object GameStatus {
 
-  case object esperandoJugadoresInvitados extends Estado {
+  case object esperandoJugadoresInvitados extends GameStatus {
     override def value: String = "esperandoJugadoresInvitados"
   }
-  case object esperandoJugadoresAzar extends Estado {
+  case object esperandoJugadoresAzar extends GameStatus {
     override def value: String = "esperandoJugadoresAzar"
   }
-  case object comienzo extends Estado {
+  case object comienzo extends GameStatus {
     override def value:   String = "comienzo"
     override def enJuego: Boolean = true
   }
-  case object cantando extends Estado {
+  case object cantando extends GameStatus {
     override def value:   String = "cantando"
     override def enJuego: Boolean = true
   }
-  case object jugando extends Estado {
+  case object jugando extends GameStatus {
     override def value:   String = "jugando"
     override def enJuego: Boolean = true
   }
-  case object terminado extends Estado {
+  case object terminado extends GameStatus {
     override def value: String = "terminado"
   }
-  object abandonado extends Estado {
+  object abandonado extends GameStatus {
     override def value: String = "abandonado"
   }
-  def withName(str: String): Estado = str match {
+  def withName(str: String): GameStatus = str match {
     case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
     case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
     case "comienzo"                    => comienzo
@@ -128,7 +128,7 @@ object Estado {
 
 }
 
-import chuti.Estado._
+import chuti.GameStatus._
 
 sealed trait Borlote
 case object ElNiñoDelCumpleaños extends Borlote
@@ -161,12 +161,12 @@ case class NoOp(
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) =
-    (game, copy(index = Option(game.currentIndex)))
+    (game, copy(index = Option(game.currentIndex), gameId = game.id))
 }
 
 case class InviteFriend(
   gameId: Option[GameId] = None,
-  index:  Option[Int],
+  index:  Option[Int] = None,
   user:   User
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
@@ -177,7 +177,7 @@ case class PoisonPill(
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) =
-    (game, copy(index = Option(game.currentIndex)))
+    (game, copy(index = Option(game.currentIndex), gameId = game.id))
 }
 case class TerminaJuego(
   gameId: Option[GameId] = None,
@@ -241,19 +241,70 @@ case class AbandonGame(
   index:  Option[Int] = None
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) = {
-    (game.copy(gameStatus = Estado.abandonado), this)
+    (
+      game.copy(
+        gameStatus =
+          if (game.gameStatus != GameStatus.esperandoJugadoresInvitados && game.gameStatus != GameStatus.esperandoJugadoresAzar)
+            GameStatus.abandonado
+          else game.gameStatus,
+        jugadores = game.jugadores.filter(_.user.id != user.id)
+      ),
+      copy(index = Option(game.currentIndex), gameId = game.id)
+    )
   }
 }
+
+case class DeclineInvite(
+  gameId: Option[GameId] = None,
+  index:  Option[Int] = None,
+  user:   User
+) extends GameEvent {
+  override def doEvent(game: Game): (Game, GameEvent) = {
+    (
+      game.copy(jugadores = game.jugadores.filter(_.user.id != user.id)),
+      copy(index = Option(game.currentIndex), gameId = game.id)
+    )
+  }
+}
+
+case class InviteToGame(
+  gameId:  Option[GameId] = None,
+  index:   Option[Int] = None,
+  invited: User
+) extends GameEvent {
+  override def doEvent(game: Game): (Game, GameEvent) = {
+    if (game.jugadores.exists(j => j.user.id == invited.id))
+      throw GameException("A player can't join a game twice")
+    if (game.jugadores.exists(_.user.id == invited.id))
+      throw GameException(s"User ${invited.id} is already in game")
+    if (game.jugadores.length == game.size)
+      throw GameException("The game is already full")
+    (
+      game.copy(jugadores = game.jugadores :+ Jugador(invited, invited = true)),
+      copy(index = Option(game.currentIndex), gameId = game.id)
+    )
+  }
+}
+
 case class JoinGame(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None,
   user:   User
 ) extends GameEvent {
   override def doEvent(game: Game): (Game, GameEvent) = {
-    if(game.jugadores.exists(j => j.user.id == user.id)) {
+    if (game.jugadores.exists(j => j.user.id == user.id && !j.invited)) {
       throw GameException("A player can't join a game twice")
     }
-    (game.copy(jugadores = (game.jugadores :+ Jugador(user.copy(userStatus = UserStatus.Playing)))), this)
+
+    val newPlayer = game.jugadores
+      .find(_.user.id == user.id).fold(Jugador(user.copy(userStatus = UserStatus.Playing))) { j =>
+        j.copy(invited = false, user = j.user.copy(userStatus = UserStatus.Playing))
+      }
+
+    (
+      game.copy(jugadores = game.jugadores.filter(_.user.id != user.id) :+ newPlayer),
+      copy(index = Option(game.currentIndex), gameId = game.id)
+    )
   }
 }
 case class EmpiezaJuego(
@@ -283,9 +334,9 @@ case class EmpiezaJuego(
 
     val newState = game.copy(
       jugadores = newJugadores,
-      gameStatus = Estado.jugando
+      gameStatus = GameStatus.jugando
     )
-    (newState, this)
+    (newState, copy(index = Option(game.currentIndex), gameId = game.id))
   }
 
 }
@@ -297,16 +348,20 @@ case class Game(
   jugadores:    List[Jugador] = List.empty,
   enJuego:      List[Ficha] = List.empty,
   triunfo:      Option[Triunfo] = None,
-  gameStatus:   Estado = comienzo,
+  gameStatus:   GameStatus = comienzo,
   currentIndex: Int = 0,
   created:      LocalDateTime = LocalDateTime.now
 ) {
-  val size = 4
+  def nextIndex: Int = currentIndex + 1
 
-  def canTransition(estado: Estado): Boolean = {
+  val abandonedPenalty = 10 //TODO get from config
+  val size = 4 // TODO get from config
+
+  def canTransition(estado: GameStatus): Boolean = {
     estado match {
-      case Estado.jugando =>
-        jugadores.length == size && (gameStatus == Estado.esperandoJugadoresAzar || gameStatus == Estado.esperandoJugadoresInvitados)
+      case GameStatus.jugando =>
+        jugadores.length == size && (gameStatus == GameStatus.esperandoJugadoresAzar || gameStatus == GameStatus.esperandoJugadoresInvitados) &&
+        jugadores.forall(_.invited == false) //Not everyone has accepted
       case _ => false
     }
   }
@@ -317,9 +372,8 @@ case class Game(
   def applyEvent(event: GameEvent): (Game, GameEvent) = {
     //TODO make sure the event index matches the next event we need
     //TODO make sure the event *can* be applied "legally"
-    val newIndex = currentIndex + 1
     val processed = event.doEvent(game = this)
-    (processed._1.copy(currentIndex = newIndex), processed._2)
+    (processed._1.copy(currentIndex = nextIndex), processed._2)
   }
 
   //very similar to apply event, but for the client, this re-applies an event that the server has already processed

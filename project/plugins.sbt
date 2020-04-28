@@ -16,7 +16,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 // Web client
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.15.0-0.6")
-addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen" % "0.7.3")
+addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "0.7.6")
 
 libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.7.30" // Needed by sbt-git
 libraryDependencies += "commons-io" % "commons-io" % "2.6"

@@ -16,7 +16,6 @@
 
 package app
 
-import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExport

@@ -155,7 +155,7 @@ object LobbyPage extends ChutiPage {
           friendsOpt => $.modState(_.copy(friends = friendsOpt.toSeq.flatten))
         ) >>
         calibanCall[Queries, Option[List[Json]]](
-          Queries.getInvites,
+          Queries.getGameInvites,
           jsonInvites => {
             $.modState(
               _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
@@ -232,13 +232,13 @@ object LobbyPage extends ChutiPage {
                     game.jugadores.map(_.user.name).mkString(","),
                     Button(onClick = (_, _) => {
                       calibanCallThroughJsonOpt[Mutations, Game](
-                        Mutations.acceptInvitation(game.id.fold(0)(_.value)),
+                        Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
                         game => $.modState(_.copy(gameInProgress = Option(game)))
                       )
                     })("Aceptar"),
                     Button(onClick = (_, _) => {
                       calibanCall[Mutations, Option[Boolean]](
-                        Mutations.declineInvitation(game.id.fold(0)(_.value)),
+                        Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
                         _ => Callback.alert("Invitacion rechazada")
                       )
                     })("Rechazar")
@@ -271,14 +271,14 @@ object LobbyPage extends ChutiPage {
                     Button()("Abandonar Juego") //Que ojete!
                   )
                  */
-                case Estado.esperandoJugadoresInvitados | Estado.esperandoJugadoresAzar =>
+                case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
                   Container()(
                     <.p(
                       "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
                     ),
                     <.p(s"Hasta ahorita van: ${game.jugadores.map(_.user.name).mkString(",")}")
                   )
-                case Estado.terminado => EmptyVdom //I don't even know how we got here
+                case GameStatus.terminado => EmptyVdom //I don't even know how we got here
               }
             }
           )

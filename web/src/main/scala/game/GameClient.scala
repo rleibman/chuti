@@ -1,40 +1,15 @@
-/*
- * Copyright 2020 Roberto Leibman
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package game
 
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.FieldBuilder._
-import caliban.client.Operations._
 import caliban.client.SelectionBuilder._
-import caliban.client.Value.{jsonToValue, _}
 import caliban.client._
-import io.circe.{Decoder, Json}
+import caliban.client.Operations._
+import caliban.client.Value._
 
 object GameClient {
 
-  implicit val jsonDecoder: ScalarDecoder[Json] = (value: Value) => {
-    Right(valueEncoder(value))
-  }
-
-  implicit val jsonEncoder: ArgEncoder[Json] = new ArgEncoder[Json] {
-    override def encode(json: Json): Value = valueDecoder.decodeJson(json).toOption.get
-    override def typeName: String = "Json"
-  }
-
+  type Json = io.circe.Json
   sealed trait UserEventType extends scala.Product with scala.Serializable
   object UserEventType {
     case object AbandonedGame extends UserEventType
@@ -70,14 +45,14 @@ object GameClient {
     case object Playing extends UserStatus
 
     implicit val decoder: ScalarDecoder[UserStatus] = {
-      case StringValue("Idle") => Right(UserStatus.Idle)
+      case StringValue("Idle")    => Right(UserStatus.Idle)
       case StringValue("Offline") => Right(UserStatus.Offline)
       case StringValue("Playing") => Right(UserStatus.Playing)
       case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
     }
     implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
       override def encode(value: UserStatus): Value = value match {
-        case UserStatus.Idle => EnumValue("Idle")
+        case UserStatus.Idle    => EnumValue("Idle")
         case UserStatus.Offline => EnumValue("Offline")
         case UserStatus.Playing => EnumValue("Playing")
       }
@@ -120,6 +95,22 @@ object GameClient {
     def value: SelectionBuilder[UserId, Int] = Field("value", Scalar())
   }
 
+  case class GameIdInput(value: Int)
+  object GameIdInput {
+    implicit val encoder: ArgEncoder[GameIdInput] = new ArgEncoder[GameIdInput] {
+      override def encode(value: GameIdInput): Value =
+        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
+      override def typeName: String = "GameIdInput"
+    }
+  }
+  case class UserIdInput(value: Int)
+  object UserIdInput {
+    implicit val encoder: ArgEncoder[UserIdInput] = new ArgEncoder[UserIdInput] {
+      override def encode(value: UserIdInput): Value =
+        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
+      override def typeName: String = "UserIdInput"
+    }
+  }
   type Queries = RootQuery
   object Queries {
     def getGame(value: Int): SelectionBuilder[RootQuery, Option[Json]] =
@@ -130,8 +121,8 @@ object GameClient {
       innerSelection: SelectionBuilder[UserId, A]
     ): SelectionBuilder[RootQuery, Option[List[A]]] =
       Field("getFriends", OptionOf(ListOf(Obj(innerSelection))))
-    def getInvites: SelectionBuilder[RootQuery, Option[List[Json]]] =
-      Field("getInvites", OptionOf(ListOf(Scalar())))
+    def getGameInvites: SelectionBuilder[RootQuery, Option[List[Json]]] =
+      Field("getGameInvites", OptionOf(ListOf(Scalar())))
     def getLoggedInUsers[A](
       innerSelection: SelectionBuilder[User, A]
     ): SelectionBuilder[RootQuery, Option[List[A]]] =
@@ -145,34 +136,30 @@ object GameClient {
       Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("abandonGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
-    def acceptInvitation(value: Int): SelectionBuilder[RootMutation, Option[Json]] =
-      Field("acceptInvitation", OptionOf(Scalar()))
-    def declineInvitation(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
-      Field("declineInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def inviteToGame(
+      userId: UserIdInput,
+      gameId: GameIdInput
+    ): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field(
+        "inviteToGame",
+        OptionOf(Scalar()),
+        arguments = List(Argument("userId", userId), Argument("gameId", gameId))
+      )
+    def acceptGameInvitation(value: Int): SelectionBuilder[RootMutation, Option[Json]] =
+      Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def declineGameInvitation(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field("declineGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def play(gameEvent: Json): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("play", OptionOf(Scalar()), arguments = List(Argument("gameEvent", gameEvent)))
   }
 
   type Subscriptions = RootSubscription
   object Subscriptions {
+    def gameStream(value: Int): SelectionBuilder[RootSubscription, Json] =
+      Field("gameStream", Scalar(), arguments = List(Argument("value", value)))
     def userStream[A](
       innerSelection: SelectionBuilder[UserEvent, A]
-    ): SelectionBuilder[RootSubscription, A] =
-      Field(
-        name = "userStream",
-        builder = Obj(innerSelection)
-      )
-
-    def gameStream[A](
-      gameId: chuti.GameId
-    )(
-      innerSelection: SelectionBuilder[Json, A]
-    ): SelectionBuilder[RootSubscription, A] =
-      Field(
-        name = "gameStream",
-        builder = Obj(innerSelection),
-        arguments = List(Argument("value", gameId.value))
-      )
+    ): SelectionBuilder[RootSubscription, A] = Field("userStream", Obj(innerSelection))
   }
 
 }
