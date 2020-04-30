@@ -39,7 +39,7 @@ import zio.stream.ZStream
 object GameApi extends GenericSchema[GameService with GameLayer] {
   import caliban.interop.circe.json._
 
-  case class PlayArgs(gameEvent: Json)
+  case class PlayArgs(gameId: GameId, gameEvent: Json)
   case class GameInviteArgs(
     userId: UserId,
     gameId: GameId
@@ -105,7 +105,7 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
           acceptGameInvitation =
             gameId => GameService.acceptGameInvitation(gameId).map(filterSecretKnowledge(_).asJson),
           declineGameInvitation = gameId => GameService.declineGameInvitation(gameId),
-          play = gameEvent => GameService.play(gameEvent.gameEvent.asJson)
+          play = playArgs => GameService.play(playArgs.gameId, playArgs.gameEvent.asJson)
         ),
         Subscriptions(
           gameStream = gameId => GameService.gameStream(gameId).map(_.asJson),

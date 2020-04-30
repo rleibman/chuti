@@ -16,8 +16,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T21:10:48.1414",
-        "lastUpdated" : "2020-04-27T21:10:48.143711",
+        "created" : "2020-04-29T22:20:18.015963",
+        "lastUpdated" : "2020-04-29T22:20:18.018134",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -27,8 +27,10 @@
       ],
       "casas" : [
       ],
-      "cantador" : false,
-      "mano" : false
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null
     }
   ],
   "enJuego" : [
@@ -40,5 +42,5 @@
     }
   },
   "currentIndex" : 1,
-  "created" : "2020-04-27T21:10:49.055158"
+  "created" : "2020-04-29T22:20:20.951903"
 }

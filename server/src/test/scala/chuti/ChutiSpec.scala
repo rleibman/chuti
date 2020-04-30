@@ -44,39 +44,82 @@ class ChutiSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   }
   "Cantando casa sin salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-//    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-//      ZIO.succeed(game.copy(Some(GameId(1))))
-//    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game.copy(Some(GameId(1))))
+    )
     val userOperations = createUserOperations
+//    when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
 //    when(userOperations.upsert(*[User])).thenAnswer { u: User =>
 //      ZIO.succeed(u)
 //    }
 
     val layer = fullLayer(gameOperations, userOperations)
-    for {
-      gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-      gameStream = gameService
-        .gameStream(GameId(1)).provideCustomLayer(
-          layer ++ SessionProvider.layer(ChutiSession(user1))
-        )
-      userStream = gameService.userStream.provideCustomLayer(
-        layer ++ SessionProvider.layer(ChutiSession(user1))
-      )
-      gameEventsFiber <- gameStream.take(2).runCollect.timeout(3.second).fork
-      userEventsFiber <- userStream.take(1).runCollect.timeout(3.second).fork
-      game1           <- readGame(GAME_STARTED)
-      _ <- ZIO.succeed(
-        when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-      )
-      quienCanta = game1.jugadores.find(_.mano).map(_.user).get
-      game2 <- gameService
-        .play(Canta(quienCanta, CuantasCantas.Canto4)).provideCustomLayer(
-          layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-        )
-      gameEvents <- gameEventsFiber.join
-      userEvents <- userEventsFiber.join
-    } yield (game2, gameEvents, userEvents)
-    pending
+    val (
+      game:       Game,
+      gameEvents: Option[List[GameEvent]],
+      userEvents: Option[List[UserEvent]]
+    ) =
+      testRuntime.unsafeRun {
+        for {
+          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameStream = gameService
+            .gameStream(GameId(1)).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          userStream = gameService.userStream.provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
+          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
+          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          _               <- clock.sleep(1.second)
+          game1           <- readGame(GAME_STARTED)
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
+          )
+          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+          game2 <- gameService
+            .play(GameId(1), Canta(CuantasCantas.Canto4)).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+            )
+          jugador2 = game2.nextPlayer(quienCanta).user
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
+          )
+          game3 <- gameService
+            .play(GameId(1), Canta(CuantasCantas.Canto4)).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador2))
+            )
+          jugador3 = game3.nextPlayer(jugador2).user
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
+          )
+          game4 <- gameService
+            .play(GameId(1), Canta(CuantasCantas.Canto4)).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador3))
+            )
+          jugador4 = game4.nextPlayer(jugador3).user
+          _ <- ZIO.succeed(
+            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
+          )
+          game5 <- gameService
+            .play(GameId(1), Canta(CuantasCantas.Canto4)).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador4))
+            )
+          gameEvents <- gameEventsFiber.join
+          userEvents <- userEventsFiber.join
+        } yield (game5, gameEvents, userEvents)
+      }
+
+    assert(game.id === Option(GameId(1)))
+    assert(game.jugadores.length == 4)
+    assert(game.gameStatus === GameStatus.jugando)
+    assert(game.currentIndex === 11)
+    val cantante = game.jugadores.find(_.cantante).get
+    assert(cantante.mano)
+    assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
+    assert(gameEvents.toSeq.flatten.size === 4)
+    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando cinco sin salve" should "get it done" in {
     pending

@@ -59,7 +59,7 @@ lazy val commonVmSettings = commonSettings ++ Seq(
     "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
     "org.scalatest"              %% "scalatest"               % "3.1.1" % "test" withSources (),
-    "org.mockito"                %% "mockito-scala-scalatest" % "1.13.9" % Test withSources ()
+    "org.mockito"                %% "mockito-scala-scalatest" % "1.13.10" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -101,6 +101,8 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
     )
   )
 
+//resolvers += Resolver.sonatypeRepo()
+
 lazy val server: Project = project
   .in(file("server"))
   .dependsOn(commonJVM)
@@ -123,7 +125,7 @@ lazy val server: Project = project
       "com.typesafe.slick"        %% "slick-hikaricp"      % "3.3.2" withSources (),
       "com.typesafe.slick"        %% "slick-codegen"       % "3.3.2" withSources (),
       "mysql"                     % "mysql-connector-java" % "8.0.20" withSources (),
-      "com.foerster-technologies" %% "slick-mysql"         % "0.6.0-SNAPSHOT" withSources (),
+      "com.foerster-technologies" %% "slick-mysql"         % "1.0.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
@@ -344,9 +346,9 @@ lazy val bundlerSettings: Project => Project =
   _.enablePlugins(ScalaJSBundlerPlugin)
     .settings(
       scalaJSUseMainModuleInitializer := true,
-      /* disabled because it somehow triggers many warnings */
-      emitSourceMaps    := false,
-      scalaJSModuleKind := ModuleKind.CommonJSModule,
+//      /* disabled because it somehow triggers many warnings */
+//      emitSourceMaps    := false,
+//      scalaJSModuleKind := ModuleKind.CommonJSModule,
       /* Specify current versions and modes */
       startWebpackDevServer / version := "3.1.10",
       webpack / version               := "4.28.3",
@@ -360,7 +362,7 @@ lazy val bundlerSettings: Project => Project =
       scalaJSStage in Global                     := FastOptStage,
       scalaJSUseMainModuleInitializer in Compile := true,
       scalaJSUseMainModuleInitializer in Test    := false,
-      skip in packageJSDependencies              := false,
+//      skip in packageJSDependencies              := false,
       artifactPath
         .in(Compile, fastOptJS) := ((crossTarget in (Compile, fastOptJS)).value /
         ((moduleName in fastOptJS).value + "-opt.js")),

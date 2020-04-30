@@ -67,13 +67,15 @@ case class Ficha(
 
 case class Fila(fichas: List[Ficha])
 
+import CuantasCantas._
+
 case class Jugador(
   user:          User,
   invited:       Boolean = false,
   fichas:        List[Ficha] = List.empty,
   casas:         List[Fila] = List.empty,
   turno:         Boolean = false, //A quien le tocaba cantar este juego
-  cantador:      Boolean = false, //Quien esta cantando este juego
+  cantante:      Boolean = false, //Quien esta cantando este juego
   mano:          Boolean = false, //Quien tiene la mano en este momento
   cuantasCantas: Option[CuantasCantas] = None
 ) {}
@@ -148,6 +150,18 @@ case class Game(
   currentIndex: Int = 0,
   created:      LocalDateTime = LocalDateTime.now
 ) {
+  def modifyPlayers(
+    filter:       Jugador => Boolean,
+    ifMatches:    Jugador => Jugador,
+    ifNotMatches: Jugador => Jugador = identity
+  ): List[Jugador] =
+    jugadores.map { jugador =>
+      if (filter(jugador))
+        ifMatches(jugador)
+      else
+        ifNotMatches(jugador)
+    }
+
   def prevPlayer(jugador: Jugador): Jugador = {
     val index = jugadores.indexOf(jugador)
     if (index == 0) {
@@ -156,8 +170,24 @@ case class Game(
       jugadores(index - 1)
     }
   }
+  def prevPlayer(user: User): Jugador = {
+    val index = jugadores.indexWhere(_.user.id == user.id)
+    if (index == 0) {
+      jugadores.last
+    } else {
+      jugadores(index - 1)
+    }
+  }
   def nextPlayer(jugador: Jugador): Jugador = {
     val index = jugadores.indexOf(jugador)
+    if (index == numPlayers - 1) {
+      jugadores.head
+    } else {
+      jugadores(index + 1)
+    }
+  }
+  def nextPlayer(user: User): Jugador = {
+    val index = jugadores.indexWhere(_.user.id == user.id)
     if (index == numPlayers - 1) {
       jugadores.head
     } else {
@@ -182,10 +212,13 @@ case class Game(
   def resultado(): Option[List[Cuenta]] = ??? //TODO write this
 
   //Returns the newly modified state, and any changes to the event
-  def applyEvent(event: GameEvent): (Game, GameEvent) = {
+  def applyEvent(
+    userOpt: Option[User],
+    event:   GameEvent
+  ): (Game, GameEvent) = {
     //TODO make sure the event index matches the next event we need
     //TODO make sure the event *can* be applied "legally"
-    val processed = event.doEvent(game = this)
+    val processed = event.doEvent(userOpt, game = this)
     (processed._1.copy(currentIndex = nextIndex), processed._2)
   }
 
@@ -256,4 +289,3 @@ case class Mesa(
     */
   def jugadorPrint(jugador: Jugador) = ??? //TODO write this
 }
-

@@ -16,6 +16,9 @@
 
 package chuti
 
+import monocle.{Lens, Traversal}
+import monocle.macros.GenLens
+
 import scala.util.Random
 
 sealed trait EventInfo[T <: GameEvent] {
@@ -29,7 +32,10 @@ sealed trait EventInfo[T <: GameEvent] {
 sealed trait GameEvent {
   val gameId: Option[GameId]
   val index:  Option[Int]
-  def doEvent(game: Game): (Game, GameEvent)
+  def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent)
 }
 
 object NoOp extends EventInfo[NoOp] {
@@ -43,38 +49,39 @@ case class NoOp(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) =
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) =
     (game, copy(index = Option(game.currentIndex), gameId = game.id))
 }
 
-case class InviteFriend(
-  gameId: Option[GameId] = None,
-  index:  Option[Int] = None,
-  user:   User
-) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
-}
 //This event ends the game and shuts down the server... it can only be called by god
 case class PoisonPill(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) =
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
     (game, copy(index = Option(game.currentIndex), gameId = game.id))
+  }
 }
 case class TerminaJuego(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
-}
-
-sealed abstract class CuantasCantas(val num: Int) {
-  def <=(cuantasCanto: CuantasCantas) = num <= cuantasCanto.num
-
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 
 object CuantasCantas {
+  sealed abstract class CuantasCantas(val num: Int) {
+    def <=(cuantasCanto: CuantasCantas) = num <= cuantasCanto.num
+  }
 
   object Canto4 extends CuantasCantas(4)
 
@@ -83,50 +90,58 @@ object CuantasCantas {
   object Canto6 extends CuantasCantas(6)
 
   object CantoTodas extends CuantasCantas(7)
-
 }
+import CuantasCantas._
+
 case class Canta(
-  user:          User, //All events shold have an initiating Option[User]
   cuantasCantas: CuantasCantas,
   gameId:        Option[GameId] = None,
   index:         Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = {
-    val jugadorOpt = game.jugadores.find(_.mano)
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
+    val user = userOpt.getOrElse(throw GameException("User required for this move"))
+
+    val jugadorOpt = game.jugadores.find(_.user.id == user.id)
     if (jugadorOpt.isEmpty) {
       throw GameException("Este jugador no esta jugando aqui!")
     }
     val jugador = jugadorOpt.get
-    if (jugador.user.id != user.id) {
+    if (jugador.mano) {
       throw GameException("No te adelantes")
     }
     val nextPlayer = game.nextPlayer(jugador)
-    val cantadorActual = game.jugadores.find(_.mano).getOrElse(jugador)
-    val nuevaMano = cantadorActual.cuantasCantas.fold {
+    val cantanteActual = game.jugadores.find(_.mano).getOrElse(jugador)
+    val nuevoCantante = cantanteActual.cuantasCantas.fold {
       //primer jugador cantando
       jugador
     } { cuantasCanto =>
       if (cuantasCantas <= cuantasCanto || cuantasCanto == CuantasCantas.CantoTodas) {
         //No es suficiente para salvarlo
-        cantadorActual
+        cantanteActual
       } else {
         //Lo salvaste, te llevas la mano
         jugador
       }
-
-      //Nota: al final de este evento, el turno no cambia y el cantador y la mano son iguales
-      //cantador = false,
-      //mano = false,
     }
 
-    val newGameStatus = if (nextPlayer.cuantasCantas.nonEmpty || cuantasCantas == CuantasCantas.CantoTodas) {
-      //jugador es el ultimo en cantar, juego listo para empezar
-      GameStatus.jugando
-    } else {
-      GameStatus.cantando
-    }
+    //El turno no cambia,
+    val jugadoresNuevos = game.modifyPlayers(_.user.id == nuevoCantante.user.id,
+      _.copy(cantante = true, mano = true, cuantasCantas = Option(cuantasCantas)),
+      _.copy(cantante = false, mano = false, cuantasCantas = None)
+    )
 
-    val modified = game
+    val (newGameStatus) =
+      if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas) {
+        //jugador es el ultimo en cantar, juego listo para empezar
+        GameStatus.jugando
+      } else {
+        GameStatus.cantando
+      }
+
+    val modified = game.copy(jugadores = jugadoresNuevos, gameStatus = newGameStatus)
     (modified, copy(index = Option(game.currentIndex), gameId = game.id))
   }
 }
@@ -137,7 +152,10 @@ case class PideInicial(
   triunfan:        Numero,
   estrictaDerecha: Boolean
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 case class Pide(
   gameId:          Option[GameId] = None,
@@ -145,40 +163,58 @@ case class Pide(
   ficha:           Ficha,
   estrictaDerecha: Boolean
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 case class Da(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None,
   ficha:  Ficha
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 //Acuerdate de los regalos
 case class DeCaida(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 case class HoyoTecnico(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 case class MeRindo(
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = ??? //TODO write this
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = ??? //TODO write this
 }
 case class AbandonGame(
-  user:   User,
   gameId: Option[GameId] = None,
   index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = {
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
+    val user = userOpt.getOrElse(throw GameException("User required for this move"))
     (
       //TODO if it's the last user in the game the game is finished
       game.copy(
@@ -195,10 +231,13 @@ case class AbandonGame(
 
 case class DeclineInvite(
   gameId: Option[GameId] = None,
-  index:  Option[Int] = None,
-  user:   User
+  index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = {
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
+    val user = userOpt.getOrElse(throw GameException("User required for this move"))
     (
       game.copy(jugadores = game.jugadores.filter(_.user.id != user.id)),
       copy(index = Option(game.currentIndex), gameId = game.id)
@@ -211,7 +250,10 @@ case class InviteToGame(
   index:   Option[Int] = None,
   invited: User
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = {
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
     if (game.jugadores.exists(j => j.user.id == invited.id))
       throw GameException("A player can't join a game twice")
     if (game.jugadores.exists(_.user.id == invited.id))
@@ -227,10 +269,13 @@ case class InviteToGame(
 
 case class JoinGame(
   gameId: Option[GameId] = None,
-  index:  Option[Int] = None,
-  user:   User
+  index:  Option[Int] = None
 ) extends GameEvent {
-  override def doEvent(game: Game): (Game, GameEvent) = {
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
+    val user = userOpt.getOrElse(throw GameException("User required for this move"))
     if (game.jugadores.exists(j => j.user.id == user.id && !j.invited)) {
       throw GameException("A player can't join a game twice")
     }
@@ -253,8 +298,11 @@ case class EmpiezaJuego(
   turno:  Option[User] = None
 ) extends GameEvent {
   import Mesa._
-  def sopa = Random.shuffle(todaLaFicha)
-  override def doEvent(game: Game): (Game, GameEvent) = {
+  def sopa: List[Ficha] = Random.shuffle(todaLaFicha)
+  override def doEvent(
+    userOpt: Option[User],
+    game:    Game
+  ): (Game, GameEvent) = {
     val jugadores = game.jugadores
     val newJugadores = sopa
       .grouped(todaLaFicha.length / jugadores.length)
@@ -265,7 +313,7 @@ case class EmpiezaJuego(
             user = jugador.user,
             fichas = fichas,
             casas = List.empty,
-            cantador = false,
+            cantante = false,
             turno = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
             mano = false,
             invited = false

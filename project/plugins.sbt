@@ -2,8 +2,8 @@
 // Common stuff
 addSbtPlugin("com.dwijnand"      % "sbt-travisci"    % "1.2.0")
 addSbtPlugin("com.typesafe.sbt"  % "sbt-git"         % "1.0.0")
-addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "5.2.0")
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager"  % "1.4.1")
+addSbtPlugin("de.heikoseeberger" % "sbt-header"      % "5.6.0")
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager"  % "1.7.0")
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.9.0")
 addSbtPlugin("org.portable-scala" % "sbt-crossproject"         % "0.6.0")  // (1)
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "0.6.0")  // (2)
@@ -15,7 +15,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 ////////////////////////////////////////////////////////////////////////////////////
 // Web client
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
-addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler" % "0.15.0-0.6")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler-sjs06" % "0.17.0")
 addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "0.7.6")
 
 libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.7.30" // Needed by sbt-git
@@ -24,4 +24,4 @@ libraryDependencies += "org.vafer" % "jdeb" % "1.4" artifacts Artifact("jdeb", "
 
 resolvers += Resolver.bintrayRepo("oyvindberg", "converter")
 
-addSbtPlugin("org.scalablytyped.converter" % "sbt-converter06" % "1.0.0-beta9")
+addSbtPlugin("org.scalablytyped.converter" % "sbt-converter06" % "1.0.0-beta12")

@@ -64,7 +64,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     verify(userOperations, times(1)).upsert(*[User])
   }
 
-  "Loading a started game and having 1 more random users join" should "keep the game open" in {
+  "Loading a new game and having 1 more random users join" should "keep the game open" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
@@ -117,7 +117,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     verify(userOperations, times(1)).upsert(*[User])
   }
 
-  "Loading a started game and having 3 more random users join" should "start the game" in {
+  "Loading a new game and having 3 more random users join" should "start the game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
@@ -174,7 +174,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
 
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
-    assert(game.gameStatus === GameStatus.jugando)
+    assert(game.gameStatus === GameStatus.cantando)
     assert(game.currentIndex === 7)
     assert(game.jugadores.head.user.id === user1.id)
     assert(game.jugadores.drop(1).head.user.id === user2.id)
@@ -472,7 +472,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     val gameCapt = gameCaptor.value
     assert(gameCapt === game)
 
-    assert(game.gameStatus === GameStatus.jugando)
+    assert(game.gameStatus === GameStatus.cantando)
     assert(game.currentIndex === 10)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)

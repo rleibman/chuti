@@ -16,8 +16,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T21:10:48.1414",
-        "lastUpdated" : "2020-04-27T21:10:48.143711",
+        "created" : "2020-04-29T22:20:18.015963",
+        "lastUpdated" : "2020-04-29T22:20:18.018134",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -26,43 +26,19 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero2" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero1" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero2" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
             "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
               
             }
           },
@@ -74,24 +50,24 @@
         },
         {
           "arriba" : {
-            "Numero1" : {
+            "Numero0" : {
               
             }
           },
           "abajo" : {
-            "Numero6" : {
+            "Numero1" : {
               
             }
           }
         },
         {
           "arriba" : {
-            "Numero2" : {
+            "Numero1" : {
               
             }
           },
           "abajo" : {
-            "Numero4" : {
+            "Numero5" : {
               
             }
           }
@@ -107,12 +83,38 @@
               
             }
           }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero5" : {
+              
+            }
+          }
         }
       ],
       "casas" : [
       ],
-      "cantador" : false,
-      "mano" : false
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null
     },
     {
       "user" : {
@@ -127,8 +129,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T21:10:48.143762",
-        "lastUpdated" : "2020-04-27T21:10:48.143771",
+        "created" : "2020-04-29T22:20:18.0182",
+        "lastUpdated" : "2020-04-29T22:20:18.018211",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -137,7 +139,67 @@
       "fichas" : [
         {
           "arriba" : {
+            "Numero3" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
             "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero6" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero2" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero4" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero4" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero3" : {
               
             }
           },
@@ -149,67 +211,7 @@
         },
         {
           "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero3" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero1" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero1" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero1" : {
-              
-            }
-          },
-          "abajo" : {
             "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero3" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero4" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero4" : {
               
             }
           },
@@ -222,8 +224,10 @@
       ],
       "casas" : [
       ],
-      "cantador" : false,
-      "mano" : false
+      "turno" : true,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null
     },
     {
       "user" : {
@@ -238,8 +242,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T21:10:48.143783",
-        "lastUpdated" : "2020-04-27T21:10:48.143789",
+        "created" : "2020-04-29T22:20:18.018225",
+        "lastUpdated" : "2020-04-29T22:20:18.018236",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -248,31 +252,7 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero6" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero6" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero1" : {
-              
-            }
-          },
-          "abajo" : {
             "Numero4" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero5" : {
               
             }
           },
@@ -284,24 +264,36 @@
         },
         {
           "arriba" : {
-            "Numero4" : {
+            "Numero2" : {
               
             }
           },
           "abajo" : {
-            "Numero4" : {
+            "Numero6" : {
               
             }
           }
         },
         {
           "arriba" : {
+            "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
             "Numero3" : {
               
             }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero0" : {
+              
+            }
           },
           "abajo" : {
-            "Numero5" : {
+            "Numero4" : {
               
             }
           }
@@ -325,7 +317,19 @@
             }
           },
           "abajo" : {
+            "Numero6" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
             "Numero0" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero2" : {
               
             }
           }
@@ -333,8 +337,10 @@
       ],
       "casas" : [
       ],
-      "cantador" : true,
-      "mano" : true
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null
     },
     {
       "user" : {
@@ -349,8 +355,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-27T21:10:48.143803",
-        "lastUpdated" : "2020-04-27T21:10:48.143809",
+        "created" : "2020-04-29T22:20:18.018247",
+        "lastUpdated" : "2020-04-29T22:20:18.018253",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -359,19 +365,7 @@
       "fichas" : [
         {
           "arriba" : {
-            "Numero0" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero0" : {
+            "Numero3" : {
               
             }
           },
@@ -383,7 +377,19 @@
         },
         {
           "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
             "Numero2" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero5" : {
               
             }
           },
@@ -395,36 +401,12 @@
         },
         {
           "arriba" : {
-            "Numero2" : {
+            "Numero1" : {
               
             }
           },
           "abajo" : {
-            "Numero3" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero3" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero4" : {
-              
-            }
-          }
-        },
-        {
-          "arriba" : {
-            "Numero5" : {
-              
-            }
-          },
-          "abajo" : {
-            "Numero5" : {
+            "Numero1" : {
               
             }
           }
@@ -436,7 +418,31 @@
             }
           },
           "abajo" : {
+            "Numero0" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
             "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero3" : {
+              
+            }
+          }
+        },
+        {
+          "arriba" : {
+            "Numero1" : {
+              
+            }
+          },
+          "abajo" : {
+            "Numero6" : {
               
             }
           }
@@ -444,18 +450,20 @@
       ],
       "casas" : [
       ],
-      "cantador" : false,
-      "mano" : false
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null
     }
   ],
   "enJuego" : [
   ],
   "triunfo" : null,
   "gameStatus" : {
-    "jugando" : {
+    "cantando" : {
       
     }
   },
   "currentIndex" : 7,
-  "created" : "2020-04-27T21:10:49.055158"
+  "created" : "2020-04-29T22:20:20.951903"
 }

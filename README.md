@@ -44,7 +44,7 @@ Terminado         Abandonado
 Juego - Una partida, desde que se canta hasta los regalos.
 Partido - Una coleccion de juegos con los mismos jugadores que se juega a 21 
 Turno - El jugador que le tocaba cantar este juego
-Cantador - El jugador que le tocaba cantar, o el guey que lo salvo
+Cantante - El jugador que le tocaba cantar, o el guey que lo salvo
 Mano - El jugador que tiene la batuta en un momento dado
 
 ## Heuristicas
@@ -54,10 +54,10 @@ Mano - El jugador que tiene la batuta en un momento dado
  - Las cuatro mas altas de una y 3 mulas
  
 ### Hoyos tecnicos
-1. Si eres el cantador: Cuando sigues corriende el juego a pesar de que ya estas hecho.
+1. Si eres el cantante: Cuando sigues corriende el juego a pesar de que ya estas hecho.
 Dado un triunfo, cual es el minimo numero de filas que puedes hacer, Nota: siempre se puede correr la primera.
 Es decir Si llevas la mano, y el minimo es igual o mayor a lo que cantaste, y vuelves a pedir... es hoyo tecnico!
-2. Si no eres el cantador, pero llevas la mano si sigues corriendo el juego a pesar de que el hoyo ya esta hecho
+2. Si no eres el cantante, pero llevas la mano si sigues corriendo el juego a pesar de que el hoyo ya esta hecho
 3. Si piden triunfos, tienes y das otra cosa (el juego podria facilmente evitar esto) 
 
 ### El juego se acaba
@@ -99,3 +99,11 @@ Repeat Password
 - Chat lateral (en versiones futuras video de los jugadores) 
 - Ver cuentas
 - Regreso al Lobby
+
+#Technology
+- ZIO
+- akka-http
+- Caliban GraphQL library
+- Circe
+- Scala.js
+- Semantic UI
