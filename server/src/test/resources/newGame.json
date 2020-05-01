@@ -16,8 +16,8 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-29T22:20:18.015963",
-        "lastUpdated" : "2020-04-29T22:20:18.018134",
+        "created" : "2020-04-30T08:44:33.295765",
+        "lastUpdated" : "2020-04-30T08:44:33.298167",
         "lastLoggedIn" : null,
         "wallet" : 0.0,
         "deleted" : false
@@ -42,5 +42,5 @@
     }
   },
   "currentIndex" : 1,
-  "created" : "2020-04-29T22:20:20.951903"
+  "created" : "2020-04-30T08:44:36.125743"
 }

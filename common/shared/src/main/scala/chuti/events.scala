@@ -79,17 +79,25 @@ case class TerminaJuego(
 }
 
 object CuantasCantas {
-  sealed abstract class CuantasCantas(val num: Int) {
-    def <=(cuantasCanto: CuantasCantas) = num <= cuantasCanto.num
+  sealed abstract class CuantasCantas(
+    val numFilas:  Int,
+    val prioridad: Int
+  ) {
+    def <=(cuantasCanto: CuantasCantas) = prioridad <= cuantasCanto.prioridad
+    def >(cuantasCanto:  CuantasCantas) = prioridad > cuantasCanto.prioridad
   }
 
-  object Canto4 extends CuantasCantas(4)
+  case object Casa extends CuantasCantas(4, 4)
 
-  object Canto5 extends CuantasCantas(5)
+  case object Canto5 extends CuantasCantas(5, 5)
 
-  object Canto6 extends CuantasCantas(6)
+  case object Canto6 extends CuantasCantas(6, 6)
 
-  object CantoTodas extends CuantasCantas(7)
+  case object Canto7 extends CuantasCantas(7, 7)
+
+  case object CantoTodas extends CuantasCantas(7, 8)
+
+  case object Buenas extends CuantasCantas(-1, -1)
 }
 import CuantasCantas._
 
@@ -102,6 +110,8 @@ case class Canta(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
+    if (game.gameStatus != GameStatus.cantando)
+      throw GameException("No es el momento de cantar, que onda?")
     val user = userOpt.getOrElse(throw GameException("User required for this move"))
 
     val jugadorOpt = game.jugadores.find(_.user.id == user.id)
@@ -113,25 +123,27 @@ case class Canta(
       throw GameException("No te adelantes")
     }
     val nextPlayer = game.nextPlayer(jugador)
-    val cantanteActual = game.jugadores.find(_.mano).getOrElse(jugador)
+    val cantanteActual = game.jugadores.find(_.cantante).getOrElse(jugador)
     val nuevoCantante = cantanteActual.cuantasCantas.fold {
       //primer jugador cantando
-      jugador
+      jugador.copy(cantante = true, mano = true, cuantasCantas = Option(cuantasCantas))
     } { cuantasCanto =>
       if (cuantasCantas <= cuantasCanto || cuantasCanto == CuantasCantas.CantoTodas) {
-        //No es suficiente para salvarlo
+        //No es suficiente para salvarlo, dejalo como esta
         cantanteActual
       } else {
         //Lo salvaste, te llevas la mano
-        jugador
+        jugador.copy(cantante = true, mano = true, cuantasCantas = Option(cuantasCantas))
       }
     }
 
     //El turno no cambia,
-    val jugadoresNuevos = game.modifyPlayers(_.user.id == nuevoCantante.user.id,
-      _.copy(cantante = true, mano = true, cuantasCantas = Option(cuantasCantas)),
-      _.copy(cantante = false, mano = false, cuantasCantas = None)
-    )
+    val jugadoresNuevos =
+      game.modifyPlayers(
+        _.user.id == nuevoCantante.user.id,
+        _ => nuevoCantante,
+        _.copy(cantante = false, mano = false, cuantasCantas = None)
+      )
 
     val (newGameStatus) =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas) {
@@ -313,7 +325,7 @@ case class EmpiezaJuego(
             user = jugador.user,
             fichas = fichas,
             casas = List.empty,
-            cantante = false,
+            cantante = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
             turno = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
             mano = false,
             invited = false
