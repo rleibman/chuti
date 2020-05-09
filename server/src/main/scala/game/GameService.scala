@@ -18,18 +18,18 @@ package game
 
 import java.time.{LocalDateTime, ZoneOffset}
 
+import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
-import chat.ChatService.ChatService
-import chat.{ChatService, SayRequest}
 import chuti._
-import dao.{DatabaseProvider, Repository, RepositoryIO, SessionProvider}
+import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.LoggedInUserRepo.LoggedInUserRepo
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
-import zio.stream.ZStream
+import mail.Postman.Postman
 import zio._
 import zio.console.Console
-import zioslick.RepositoryException
+import zio.logging.{Logging, log}
+import zio.stream.ZStream
 
 object LoggedInUserRepo {
   type LoggedInUserRepo = Has[Service]
@@ -56,19 +56,17 @@ object LoggedInUserRepo {
 }
 
 object GameService {
-  //TODO filter hidden data from the game, we should never send to a user game information from the other users (e.g. the value of their tiles)
-
   val god: User = User(
     id = Some(UserId(-666)),
     email = "god@chuti.fun",
     name = "Un-namable",
     created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
-    lastUpdated = LocalDateTime.now(),
-    wallet = Double.MaxValue
+    lastUpdated = LocalDateTime.now()
   )
 
   type GameLayer = Console
-    with SessionProvider with DatabaseProvider with Repository with LoggedInUserRepo
+    with SessionProvider with DatabaseProvider with Repository with LoggedInUserRepo with Postman
+    with Logging with TokenHolder
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
@@ -82,7 +80,7 @@ object GameService {
     def newGame():        ZIO[GameLayer, GameException, Game]
     def play(
       gameId:    GameId,
-      gameEvent: GameEvent
+      playEvent: PlayEvent
     ):                  ZIO[GameLayer, GameException, Game]
     def getGameForUser: ZIO[GameLayer, GameException, Option[Game]]
     def getGame(gameId:     GameId): ZIO[GameLayer, GameException, Option[Game]]
@@ -120,14 +118,14 @@ object GameService {
     URIO.accessM(_.get.newGame())
   def play(
     gameId:    GameId,
-    gameEvent: Json
+    playEvent: Json
   ): ZIO[GameService with GameLayer, GameException, Boolean] =
     URIO.accessM(
       _.get
         .play(
           gameId, {
-            val decoder = implicitly[Decoder[GameEvent]]
-            decoder.decodeJson(gameEvent) match {
+            val decoder = implicitly[Decoder[PlayEvent]]
+            decoder.decodeJson(playEvent) match {
               case Right(event) => event
               case Left(error)  => throw GameException(error)
             }
@@ -208,14 +206,18 @@ object GameService {
               .upsert(
                 user
                   .copy(
-                    userStatus = UserStatus.Idle,
-                    wallet = user.wallet - (if (game.gameStatus.enJuego) {
-                                              game.abandonedPenalty
-                                            } else {
-                                              0
-                                            })
+                    userStatus = UserStatus.Idle
                   )
               )
+          }
+          walletOpt <- repository.userOperations.getWallet
+          _ <- ZIO.foreach(gameOpt.flatMap(g => walletOpt.map(w => (g, w)))) {
+            case (game, wallet)
+                if game.gameStatus == GameStatus.jugando | game.gameStatus == GameStatus.cantando =>
+              repository.userOperations.updateWallet(
+                wallet.copy(amount = wallet.amount - (game.abandonedPenalty / game.pointsPerDollar))
+              )
+            case _ => ZIO.succeed(true)
           }
           _ <- ZIO.foreach(savedOpt) {
             case (_, appliedEvent) =>
@@ -237,7 +239,7 @@ object GameService {
           afterApply <- {
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
             val (started, startGame: GameEvent) = if (joined.canTransition(GameStatus.cantando)) {
-              joined.applyEvent(None, EmpiezaJuego())
+              joined.applyEvent(None, Sopa())
               //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
               joined.applyEvent(None, NoOp())
@@ -308,7 +310,9 @@ object GameService {
 
       def inviteFriend(friend: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
+          user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.access[Repository](_.get)
+          postman    <- ZIO.access[Postman](_.get)
           //See if the friend exists
           friendOpt <- repository.userOperations.userByEmail(friend.email)
           //If the friend does not exist
@@ -316,8 +320,11 @@ object GameService {
           savedFriend <- friendOpt.fold(repository.userOperations.upsert(friend))(f =>
             ZIO.succeed(f)
           )
-          //  TODO Send an invite to the friend to join the server, or just to become friends if the user already exists
-          emailSent <- ZIO.succeed(true)
+          // Send an invite to the friend to join the server, or just to become friends if the user already exists
+          envelope <- friendOpt.fold(postman.inviteNewFriendEmail(user, savedFriend))(f =>
+            postman.inviteExistingUserFriendEmail(user, f)
+          )
+          _ <- postman.deliver(envelope)
           //Add a temporary record in the friends table
           friendRecord <- repository.userOperations.friend(savedFriend, confirmed = false)
         } yield friendRecord).mapError(GameException.apply)
@@ -335,6 +342,7 @@ object GameService {
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.access[Repository](_.get)
+          postman    <- ZIO.access[Postman](_.get)
           gameOpt    <- repository.gameOperations.get(gameId)
           invitedOpt <- repository.userOperations.get(userId)
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
@@ -346,8 +354,11 @@ object GameService {
               game.applyEvent(Option(user), InviteToGame(invited = invitedOpt.get))
             repository.gameOperations.upsert(withInvite).map((_, invitation))
           }
-          //TODO Send by email too
-          //TODO Note... why would the new user be observing this game, we still need to make 'em aware of the invitation somehow
+          envelopeOpt <- ZIO.foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
+            case (invited, game) =>
+              postman.inviteToGameEmail(user, invited, game)
+          }
+          _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope))
           _ <- ZIO.foreach(afterInvitation) {
             case (_, event) =>
               broadcast(gameEventQueues, event)
@@ -368,7 +379,7 @@ object GameService {
           afterApply <- {
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
             val (started, startGame: GameEvent) = if (joined.canTransition(GameStatus.cantando)) {
-              joined.applyEvent(None, EmpiezaJuego())
+              joined.applyEvent(None, Sopa())
               //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
               joined.applyEvent(None, NoOp())
@@ -406,7 +417,7 @@ object GameService {
 
       override def play(
         gameId:    GameId,
-        gameEvent: GameEvent
+        playEvent: PlayEvent
       ): ZIO[GameLayer, GameException, Game] = {
         (for {
           repository <- ZIO.access[Repository](_.get)
@@ -414,15 +425,23 @@ object GameService {
           gameOpt    <- repository.gameOperations.get(gameId)
           afterPlayed <- gameOpt.fold(throw GameException("Game not found")) { game =>
             //TODO Check if the move is allowed
-            if(!game.jugadores.exists(_.user.id == user.id)) {
+            if (!game.jugadores.exists(_.user.id == user.id)) {
               throw GameException("This user isn't playing in this game!!")
             }
-            val (afterPlayed, event) = game.applyEvent(Option(user), gameEvent)
-            repository.gameOperations.upsert(afterPlayed).map((_, event))
+            val (afterPlayed, event) = game.applyEvent(Option(user), playEvent)
+
+            if ((game.quienCanta.filas.size + game.quienCanta.fichas.size) < game.quienCanta.cuantasCantas
+                  .fold(0)(_.numFilas)) {
+              //Ya fue hoyo!
+            } else if (game.quienCanta.filas.size >= game.quienCanta.cuantasCantas
+                         .fold(0)(_.numFilas)) {
+              //Ya se hizo
+            }
             //TODO check change to game status? if it's transitioned we may need more stuff
+            repository.gameOperations.upsert(afterPlayed).map((_, event))
           }
           _ <- broadcast(gameEventQueues, afterPlayed._2)
-        } yield afterPlayed._1).mapError(GameException.apply) //TODO write this
+        } yield afterPlayed._1).mapError(GameException.apply)
       }
 
       override def gameStream(gameId: GameId): ZStream[GameLayer, Nothing, GameEvent] =
@@ -433,11 +452,14 @@ object GameService {
             _     <- gameEventQueues.update(EventQueue(user, queue) :: _)
             after <- gameEventQueues.get
             _     <- console.putStrLn(s"GameStream started, queues have ${after.length} entries")
-          } yield ZStream.fromQueue(queue).tap(e => ZIO.succeed(println(e))).filter {
-            case InviteToGame(eventGameId, _, invited) =>
-              (eventGameId == Option(gameId)) || invited.id == user.id
-            case event => (event.gameId == Option(gameId))
-          }
+          } yield ZStream
+            .fromQueue(queue)
+            .tap(event => log.debug(event.toString))
+            .filter {
+              case InviteToGame(invited, eventGameId, _, _) =>
+                (eventGameId == Option(gameId)) || invited.id == user.id
+              case event => (event.gameId == Option(gameId))
+            }
         }
 
       override def userStream: ZStream[GameLayer, Nothing, UserEvent] = ZStream.unwrap {

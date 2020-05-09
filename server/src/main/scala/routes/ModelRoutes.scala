@@ -50,7 +50,6 @@ trait ModelRoutes extends Directives {
       ModelRoutes.this.gameOperations
     override val userOperations:       Repository.UserOperations = ModelRoutes.this.userOperations
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
-    override val postman:              Postman.Service[Any] = ModelRoutes.this.postman
   }
 
   private val chatRoute: ChatRoute = new ChatRoute
@@ -70,7 +69,7 @@ trait ModelRoutes extends Directives {
   def unauthRoute: Route =
     crudRoutes.map(_.crudRoute.unauthRoute).reduceOption(_ ~ _).getOrElse(reject)
 
-  //TODO: it would be nice to be able to do this, but it's hard to define the readers and writers for marshalling
+  //it would be nice to be able to do this, but it's hard to define the readers and writers for marshalling
   //  def apiRoute(session: Any): Route =
   //    pathPrefix("api") {
   //    crudRoutes.map(_.crudRoute.route(session)).reduceOption(_ ~ _).getOrElse(reject)

@@ -17,16 +17,9 @@
 package chuti
 
 import api.ChutiSession
-import better.files.File
-import dao.Repository.GameOperations
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
+import game.GameService
 import game.GameService.GameService
-import game.{GameService, LoggedInUserRepo}
-import io.circe.Printer
-import io.circe.generic.auto._
-import io.circe.parser._
-import io.circe.syntax._
-import org.mockito.captor.ArgCaptor
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
@@ -114,6 +107,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(jugador4))
             )
+          _          <- writeGame(game5, GAME_CANTO4)
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game5, gameEvents, userEvents)
@@ -122,7 +116,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 11)
+    assert(game.currentEventIndex === 11)
     val cantante = game.jugadores.find(_.cantante).get
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
@@ -198,7 +192,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 11)
+    assert(game.currentEventIndex === 11)
     val cantante = game.jugadores.find(_.cantante).get
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
@@ -251,7 +245,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 8)
+    assert(game.currentEventIndex === 8)
     val cantante = game.jugadores.find(_.cantante).get
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
@@ -327,7 +321,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 11)
+    assert(game.currentEventIndex === 11)
     val cantante = game.jugadores.find(_.cantante).get
     val turno = game.jugadores.find(_.turno).get
     val salvador = game.nextPlayer(turno)
@@ -352,14 +346,14 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       game:       Game,
       gameEvents: Option[List[GameEvent]],
       userEvents: Option[List[UserEvent]]
-      ) =
+    ) =
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
             .gameStream(GameId(1)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
@@ -373,16 +367,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <- gameService
             .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+            )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
           game3 <- gameService
             .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador2))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(jugador2))
+            )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game3, gameEvents, userEvents)
@@ -391,7 +385,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 9)
+    assert(game.currentEventIndex === 9)
     val cantante = game.jugadores.find(_.cantante).get
     val turno = game.jugadores.find(_.turno).get
     val salvador = game.nextPlayer(turno)
@@ -416,14 +410,14 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       game:       Game,
       gameEvents: Option[List[GameEvent]],
       userEvents: Option[List[UserEvent]]
-      ) =
+    ) =
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
             .gameStream(GameId(1)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
@@ -437,32 +431,32 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <- gameService
             .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+            )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
           game3 <- gameService
             .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador2))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(jugador2))
+            )
           jugador3 = game3.nextPlayer(jugador2).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
           )
           game4 <- gameService
             .play(GameId(1), Canta(CuantasCantas.Canto6)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador3))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(jugador3))
+            )
           jugador4 = game4.nextPlayer(jugador3).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
           )
           game5 <- gameService
             .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador4))
-          )
+              layer ++ SessionProvider.layer(ChutiSession(jugador4))
+            )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game5, gameEvents, userEvents)
@@ -471,7 +465,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.jugando)
-    assert(game.currentIndex === 11)
+    assert(game.currentEventIndex === 11)
     val cantante = game.jugadores.find(_.cantante).get
     val turno = game.jugadores.find(_.turno).get
     val salvador = game.prevPlayer(turno) //Nota esto, es el que da la vuelta

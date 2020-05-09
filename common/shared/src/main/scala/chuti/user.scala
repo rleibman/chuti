@@ -26,8 +26,8 @@ object UserStatus {
   def fromString(str: String): UserStatus = str match {
     case "Playing" => Playing
     case "Offline" => Offline
-    case "Idle" => Idle
-    case _ => throw new Exception(s"Can't build UserStatus out of $str")
+    case "Idle"    => Idle
+    case _         => throw new Exception(s"Can't build UserStatus out of $str")
   }
 
   case object Playing extends UserStatus
@@ -44,15 +44,19 @@ case class User(
   created:          LocalDateTime = LocalDateTime.now,
   lastUpdated:      LocalDateTime = LocalDateTime.now,
   lastLoggedIn:     Option[LocalDateTime] = None,
-  wallet:           Double = 0.0,
   deleted:          Boolean = false
 ) {
   def chatChannel: Option[ChannelId] = userStatus match {
-    case UserStatus.Idle => Option(ChannelId.lobbyChannel)
+    case UserStatus.Idle    => Option(ChannelId.lobbyChannel)
     case UserStatus.Offline => Option(ChannelId.emailChannel)
     case UserStatus.Playing => currentChannelId
   }
 }
+
+case class UserWallet(
+  userId: UserId,
+  amount: BigDecimal = 0.0
+)
 
 sealed trait UserEventType
 object UserEventType {
@@ -64,6 +68,6 @@ object UserEventType {
 }
 
 case class UserEvent(
-  user:              User,
-  userEventType:     UserEventType
+  user:          User,
+  userEventType: UserEventType
 )

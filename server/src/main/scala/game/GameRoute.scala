@@ -16,36 +16,47 @@
 
 package game
 
-import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
-import api.{ChutiSession, Config, HasActorSystem}
+import api.token.TokenHolder
+import api.{ChutiSession, HasActorSystem, config}
 import caliban.interop.circe.AkkaHttpCirceAdapter
-import chuti._
 import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameService.GameLayer
-import zio.{Layer, ZLayer}
+import mail.CourierPostman
+import mail.Postman.Postman
 import zio.duration._
+import zio.logging.slf4j.Slf4jLogger
+import zio.{Layer, ULayer, ZLayer}
 
 import scala.concurrent.ExecutionContextExecutor
 
 case class GameArgs()
 
-trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem with Config {
+object GameRoute {
+  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
+}
+
+trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
   this: Repository.Service with DatabaseProvider.Service =>
 
-  def repositoryLayer:       Layer[Nothing, Repository] = ZLayer.succeed(this)
-  def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
+  def repositoryLayer:       ULayer[Repository] = ZLayer.succeed(this)
+  def databaseProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(this)
+  def postmanLayer:          ULayer[Postman] = GameRoute.postman
 
   def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
     zio.console.Console.live ++
       SessionProvider.layer(session) ++
       databaseProviderLayer ++
       repositoryLayer ++
+      postmanLayer ++
+      Slf4jLogger.make((_, b) => b) ++
+      ZLayer.succeed(TokenHolder.live) ++
       ZLayer.succeed(LoggedInUserRepo.live)
 
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import GameService._
-  val staticContentDir: String = config.getString("chuti.staticContentDir")
+  val staticContentDir: String =
+    config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
   def route(session: ChutiSession): Route = pathPrefix("game") {
     pathEndOrSingleSlash {

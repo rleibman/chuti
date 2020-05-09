@@ -17,17 +17,16 @@
 package routes
 
 import akka.http.scaladsl.server.{Directives, Route}
+import api.token.TokenHolder
 import api.{ChutiSession, ZIODirectives}
 import chuti.Search
-import dao.{CRUDOperations, DatabaseProvider, RepositoryIO, SessionProvider}
+import dao.{CRUDOperations, DatabaseProvider, SessionProvider}
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
-import zio._
-import io.circe
 import io.circe.parser.decode
-import io.circe.syntax._
-import io.circe.{Decoder, Encoder, Json, JsonDouble, JsonNumber}
-import slick.basic.BasicBackend
-import zioslick.RepositoryException
+import io.circe.{Decoder, Encoder, Json}
+import zio._
+import zio.logging.Logging
+import zio.logging.slf4j.Slf4jLogger
 
 import scala.util.matching.Regex
 
@@ -94,8 +93,10 @@ object CRUDRoute {
 
     def fullLayer(
       session: ChutiSession
-    ): ZLayer[Any, Nothing, SessionProvider with DatabaseProvider] =
-      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider)
+    ): ULayer[SessionProvider with DatabaseProvider with Logging with TokenHolder] =
+      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
+        (_, b) => b
+      ) ++ ZLayer.succeed(TokenHolder.live)
 
     def getOperation(
       id:      PK,
@@ -115,45 +116,11 @@ object CRUDRoute {
         )
       } yield deleted
 
-    val me = ZLayer.succeed(1)
-
     def upsertOperation(
       obj:     E,
       session: ChutiSession
-    ): Task[E] = {
-//      val zio: ZIO[DatabaseProvider with SessionProvider[SESSION], RepositoryException, E] = ops.upsert(obj)
-//      val sessionProvider: SessionProvider.Session[SESSION] = SessionProvider.live(session)
-//      val dbProvider = new DatabaseProvider.Service {
-//        override def db: UIO[BasicBackend#DatabaseDef] = ???
-//      }
-//      val dbLayer = ZLayer.succeed(dbProvider)
-//      for {
-//        l <- dbLayer.memoize.use
-//      }
-//
-//      val finalZio = zio.provideSomeLayer(dbLayer)
-//      finalZio
-
-      trait DB
-      trait UserSession
-
-      case class LiveDB() extends DB
-      val liveDB: DB = LiveDB()
-      case class LiveUserSession() extends UserSession
-      val liveUserSession: UserSession = LiveUserSession()
-
-      def withLayers(): ZIO[Has[DB] with Has[UserSession], Throwable, String] =
-        for {
-          db          <- ZIO.access[Has[DB]](_.get)
-          userSession <- ZIO.access[Has[UserSession]](_.get)
-          s           <- ZIO.succeed(s"Do something with db $db or with session $userSession")
-        } yield s
-
-      val fullLayer = ZLayer.succeed(liveDB) ++ ZLayer.succeed(liveUserSession)
-      def withNoLayers(): Task[String] = withLayers().provideLayer(fullLayer)
-
-      ??? //TODO write this
-    }
+    ): Task[E] =
+      ops.upsert(obj).provideLayer(fullLayer(session))
 
     def countOperation(
       search:  Option[SEARCH],

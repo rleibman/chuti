@@ -42,7 +42,6 @@ object GamePage extends ChutiPage {
     }
   }
 
-
   val component = ScalaComponent
     .builder[Unit]("GamePage")
     .initialState(State())

@@ -16,9 +16,9 @@
 
 package api
 
-import akka.http.scaladsl.marshalling.{Marshaller, Marshalling, ToResponseMarshaller}
+import akka.http.scaladsl.marshalling.{Marshaller, ToResponseMarshaller}
 import akka.http.scaladsl.model.HttpResponse
-import akka.http.scaladsl.server.{Directive, Directive1, Route, RouteResult}
+import akka.http.scaladsl.server.{Directive, Directive1, Route}
 import akka.http.scaladsl.util.FastFuture._
 import zio.{Task, ZIO}
 
@@ -30,25 +30,28 @@ import scala.util.{Failure, Success}
   * A special set of akka-http directives that take ZIOs, run them and marshalls them.
   */
 trait ZIODirectives {
-  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  lazy val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+
+  private def toFuture[T](t: Task[T]): Future[T] = {
+    val p = Promise[T]()
+
+    runtime.unsafeRunAsync(t) { exit =>
+      exit.fold(e => p.failure(e.squash), s => p.success(s))
+    }
+
+    p.future
+  }
 
   implicit def zioMarshaller[A](
     implicit m1: Marshaller[A, HttpResponse],
     m2:          Marshaller[Throwable, HttpResponse]
   ): Marshaller[Task[A], HttpResponse] =
-    Marshaller { implicit ec => a =>
+    Marshaller { _ => a =>
       val r = a.foldM(
         e => Task.fromFuture(implicit ec => m2(e)),
         a => Task.fromFuture(implicit ec => m1(a))
       )
-
-      val p = Promise[List[Marshalling[HttpResponse]]]()
-
-      runtime.unsafeRunAsync(r) { exit =>
-        exit.fold(e => p.failure(e.squash), s => p.success(s))
-      }
-
-      p.future
+      toFuture(r)
     }
 
   private def fromFunction[A, B](f: A => Future[B]): ZIO[A, Throwable, B] =
@@ -58,15 +61,7 @@ trait ZIODirectives {
     } yield b
 
   implicit def zioRoute(z: ZIO[Any, Throwable, Route]): Route = ctx => {
-    val p = Promise[RouteResult]()
-
-    val f = z.flatMap(r => fromFunction(r)).provide(ctx)
-
-    runtime.unsafeRunAsync(f) { exit =>
-      exit.fold(e => p.failure(e.squash), s => p.success(s))
-    }
-
-    p.future
+    toFuture(z.flatMap(r => fromFunction(r)).provide(ctx))
   }
 
   /**

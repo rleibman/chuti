@@ -19,7 +19,7 @@ package web
 import akka.event.{Logging, LoggingAdapter}
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl._
-import api.{Api, Config}
+import api.Api
 import core.{Core, CoreActors}
 
 import scala.concurrent.Future
@@ -37,16 +37,18 @@ import scala.util.control.NonFatal
   * Benefits of separate ``ActorSystem`` include the ability to use completely different
   * configuration, especially when it comes to the threading model.
   */
-trait Web extends Config {
+trait Web {
   this: Api with CoreActors with Core =>
 
   private val log: LoggingAdapter = Logging.getLogger(actorSystem, this)
 
+  val config = api.config.live
+
   val serverSource: Source[Http.IncomingConnection, Future[Http.ServerBinding]] =
     Http()
       .bind(
-        interface = config.getString(s"$configKey.host"),
-        port = config.getInt(s"$configKey.port")
+        interface = config.config.getString(s"${config.configKey}.host"),
+        port = config.config.getInt(s"${config.configKey}.port")
       )
 
   val bindingFuture: Future[Http.ServerBinding] =

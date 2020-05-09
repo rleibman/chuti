@@ -16,6 +16,12 @@
 
 package chuti
 
+import java.time.LocalDateTime
+
+import chuti.Numero._
+import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
+import io.circe.{Decoder, Encoder}
+
 object GameException {
   def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
 }
@@ -25,65 +31,135 @@ case class GameException(
   cause: Option[Throwable] = None
 ) extends Exception(msg, cause.orNull)
 
-sealed trait Numero {
-  def value: Int = Numero.values.indexOf(this)
-}
+sealed class Numero(val value: Int)
 
 object Numero {
+  def max(
+    arriba: Numero,
+    abajo:  Numero
+  ): Numero = Numero(Math.max(arriba.value, abajo.value))
+  def min(
+    arriba: Numero,
+    abajo:  Numero
+  ): Numero = Numero(Math.min(arriba.value, abajo.value))
 
-  case object Numero0 extends Numero
+  case object Numero0 extends Numero(0)
 
-  case object Numero1 extends Numero
+  case object Numero1 extends Numero(1)
 
-  case object Numero2 extends Numero
+  case object Numero2 extends Numero(2)
 
-  case object Numero3 extends Numero
+  case object Numero3 extends Numero(3)
 
-  case object Numero4 extends Numero
+  case object Numero4 extends Numero(4)
 
-  case object Numero5 extends Numero
+  case object Numero5 extends Numero(5)
 
-  case object Numero6 extends Numero
+  case object Numero6 extends Numero(6)
 
   def values = Seq(Numero0, Numero1, Numero2, Numero3, Numero4, Numero5, Numero6)
 
   def apply(num: Int): Numero = values(num)
+
+  implicit val decodeNumero: Decoder[Numero] =
+    Decoder.forProduct1("value")(apply)
+
+  implicit val encodeNumero: Encoder[Numero] =
+    Encoder.forProduct1("value")(_.value)
+
 }
 
-import java.time.LocalDateTime
+object Ficha {
+  def apply(
+    a: Numero,
+    b: Numero
+  ): Ficha = {
+    val max = Numero.max(a, b)
+    val min = Numero.min(a, b)
+    FichaConocida(max, min)
+  }
 
-import chuti.Numero._
+  def fromString(str: String): Ficha = {
+    val splitted = str.split(":").map(s => Numero(s.toInt))
+    Ficha(splitted(0), splitted(1))
+  }
 
-import scala.util.Random
+  implicit val decodeFicha: Decoder[Ficha] =
+    Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
+      case ("tapada", _, _) => FichaTapada
+      case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
+    }
 
-case class Ficha(
+  implicit val encodeFicha: Encoder[Ficha] =
+    Encoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
+      case FichaTapada                  => ("tapada", Numero0, Numero0)
+      case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
+    }
+}
+
+sealed trait Ficha {
+  def arriba: Numero
+  def abajo:  Numero
+  def esMula: Boolean
+  def value:  Int
+  def es(num:    Numero): Boolean
+  def other(num: Numero): Numero
+}
+
+case object FichaTapada extends Ficha {
+  override def arriba: Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def abajo:  Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def esMula: Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def value:  Int = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def es(num: Numero): Boolean =
+    throw GameException("No puedes hacer esto con una ficha tapada")
+  override def other(num: Numero): Numero =
+    throw GameException("No puedes hacer esto con una ficha tapada")
+  override def toString: String = "?:?"
+}
+
+case class FichaConocida private[chuti] (
   arriba: Numero,
   abajo:  Numero
-) {
-  lazy val esMula: Boolean = arriba == abajo
-
+) extends Ficha {
+  lazy override val esMula: Boolean = arriba == abajo
+  lazy override val value:  Int = arriba.value + abajo.value
+  override def es(num:    Numero): Boolean = arriba == num || abajo == num
+  override def other(num: Numero): Numero = { if (arriba == num) abajo else arriba }
   override def toString: String = s"${arriba.value}:${abajo.value}"
 }
 
-case class Fila(fichas: List[Ficha])
+case class Fila(
+  fichas:  List[Ficha],
+  abierta: Boolean = false
+)
 
-import CuantasCantas._
+import chuti.CuantasCantas._
 
 case class Jugador(
   user:          User,
   invited:       Boolean = false,
   fichas:        List[Ficha] = List.empty,
-  casas:         List[Fila] = List.empty,
+  filas:         List[Fila] = List.empty,
   turno:         Boolean = false, //A quien le tocaba cantar este juego
   cantante:      Boolean = false, //Quien esta cantando este juego
   mano:          Boolean = false, //Quien tiene la mano en este momento
-  cuantasCantas: Option[CuantasCantas] = None
-) {}
+  cuantasCantas: Option[CuantasCantas] = None,
+  cuenta:        Seq[Cuenta] = Seq.empty
+) {
+  def dropFicha(ficha: Ficha): List[Ficha] = {
+    fichas.headOption match {
+      case None              => fichas
+      case Some(FichaTapada) => fichas.drop(1)
+      case _                 => fichas.filter(_ != ficha)
+    }
+  }
 
-sealed trait Triunfo
+}
+
+sealed trait Triunfo extends Product with Serializable
 
 object Triunfo {
-  case object TriunfanMulas extends Triunfo
   case object SinTriunfos extends Triunfo
   case class TriunfoNumero(num: Numero) extends Triunfo
 }
@@ -127,7 +203,7 @@ object GameStatus {
     case "jugando"                     => jugando
     case "terminado"                   => terminado
     case "abandonado"                  => abandonado
-    case other                         => throw GameException(s"Unknown game exception e")
+    case other                         => throw GameException(s"Unknown game state $other")
   }
 
 }
@@ -135,22 +211,88 @@ object GameStatus {
 import chuti.GameStatus._
 
 sealed trait Borlote
+case object Hoyo extends Borlote
 case object ElNiñoDelCumpleaños extends Borlote
 case object SantaClaus extends Borlote
 case object CampanitaSeJuega extends Borlote
+case object Helecho extends Borlote
 
 case class GameId(value: Int) extends AnyVal
 
+object Game {
+  val laMulota:  Ficha = Ficha(Numero6, Numero6)
+  val campanita: Ficha = Ficha(Numero0, Numero1)
+
+  lazy val todaLaFicha: List[Ficha] = (0 to 6)
+    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>
+    Ficha(Numero(i), Numero(i))
+  )
+
+  def calculaFichaGanadora(
+    fichas:   Seq[Ficha],
+    pidiendo: Ficha,
+    triunfo:  Triunfo
+  ): Ficha = {
+    triunfo match {
+      case SinTriunfos =>
+        if (pidiendo.esMula) pidiendo
+        else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
+      case TriunfoNumero(triunfoVal) =>
+        val triunfos = fichas.filter(_.es(triunfoVal))
+        if (triunfos.isEmpty) {
+          if (pidiendo.esMula) pidiendo
+          else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
+        } else {
+          if (pidiendo.esMula && pidiendo.es(triunfoVal)) pidiendo
+          else triunfos.maxBy(f => if (f.arriba == triunfoVal) f.abajo.value else f.arriba.value)
+        }
+    }
+  }
+  def calculaJugadorGanador(
+    fichas:   Seq[(UserId, Ficha)],
+    pidiendo: Ficha,
+    triunfo:  Triunfo
+  ): (UserId, Ficha) = {
+    triunfo match {
+      case SinTriunfos =>
+        if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get
+        else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.arriba.value)
+      case TriunfoNumero(triunfoVal) =>
+        val triunfos = fichas.filter(_._2.es(triunfoVal))
+        if (triunfos.isEmpty) {
+          if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get
+          else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.arriba.value)
+        } else {
+          if (pidiendo.esMula && pidiendo.es(triunfoVal)) fichas.find(_._2 == pidiendo).get
+          else
+            triunfos.maxBy(f =>
+              if (f._2.arriba == triunfoVal) f._2.abajo.value else f._2.arriba.value
+            )
+        }
+    }
+  }
+
+}
+
 case class Game(
-  id:           Option[GameId],
-  jugadores:    List[Jugador] = List.empty,
-  enJuego:      List[Ficha] = List.empty,
-  triunfo:      Option[Triunfo] = None,
-  gameStatus:   GameStatus = comienzo,
-  currentIndex: Int = 0,
-  created:      LocalDateTime = LocalDateTime.now
+  id:                Option[GameId],
+  gameStatus:        GameStatus = comienzo,
+  currentEventIndex: Int = 0,
+  created:           LocalDateTime = LocalDateTime.now,
+  //Game State
+  triunfo:         Option[Triunfo] = None,
+  enJuego:         List[(UserId, Ficha)] = List.empty,
+  estrictaDerecha: Boolean = false,
+  jugadores:       List[Jugador] = List.empty,
+  pointsPerDollar: Double = 100.0
 ) {
-  def modifyPlayers(
+  lazy val mano: Jugador = {
+    jugadores.find(_.mano).get
+  }
+
+  lazy val quienCanta: Jugador = jugadores.find(_.cantante).get
+
+  def modifiedPlayers(
     filter:       Jugador => Boolean,
     ifMatches:    Jugador => Jugador,
     ifNotMatches: Jugador => Jugador = identity
@@ -195,10 +337,10 @@ case class Game(
     }
   }
 
-  def nextIndex: Int = currentIndex + 1
+  def nextIndex: Int = currentEventIndex + 1
 
-  val abandonedPenalty = 10 //TODO get from config
-  val numPlayers = 4 // TODO get from config
+  val abandonedPenalty = 10.0
+  val numPlayers = 4
 
   def canTransition(estado: GameStatus): Boolean = {
     estado match {
@@ -209,23 +351,24 @@ case class Game(
     }
   }
 
-  def resultado(): Option[List[Cuenta]] = ??? //TODO write this
-
   //Returns the newly modified state, and any changes to the event
   def applyEvent(
     userOpt: Option[User],
     event:   GameEvent
   ): (Game, GameEvent) = {
-    //TODO make sure the event index matches the next event we need
     //TODO make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
-    (processed._1.copy(currentIndex = nextIndex), processed._2)
+    if (processed._2.index.getOrElse(-1) != currentEventIndex) {
+      throw GameException("Error! the event did not gather the correct index")
+    }
+    (processed._1.copy(currentEventIndex = nextIndex), processed._2)
   }
 
   //very similar to apply event, but for the client, this re-applies an event that the server has already processed
   def reapplyEvent(event: GameEvent): (Game, GameEvent) = {
-    //TODO write
-    ??? //TODO write this
+    //TODO: Write this
+    // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
+    ???
   }
 
   override def toString: String = {
@@ -246,46 +389,6 @@ case class Game(
 }
 
 case class Cuenta(
-  user:   User,
   puntos: Int,
   esHoyo: Boolean
 )
-
-/**
-  * Un partido consta de uno o mas juegos, todos los partidos tienen los mismos usuarios
-  *
-  * @param cuentas
-  */
-case class PartidoArchivo(cuentas: List[(User, Double)])
-
-object Mesa {
-  lazy val todaLaFicha: List[Ficha] = ((0 to 6)
-    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>
-    Ficha(Numero(i), Numero(i))
-  ))
-
-  val laMulota = Ficha(Numero6, Numero6)
-  val campanita = Ficha(Numero0, Numero1)
-
-}
-
-/**
-  * Cada mesa tiene una serie de usuarios, una serie de partidos y un juego a cada momento.
-  * Tambien tiene un historial de juegos, guardado en disco.
-  *
-  * @param partidos
-  */
-case class Mesa(
-  partidos: List[PartidoArchivo] = List.empty,
-  users:    List[User] = List.empty
-) {
-  def total(costoPorPunto: Double): List[(User, Double)] =
-    partidos.flatMap(_.cuentas).groupBy(_._1).map(g => (g._1, g._2.map(_._2).sum)).toList
-
-  /**
-    * Imprime nada mas el asunto que un jugador puede ver
-    *
-    * @return
-    */
-  def jugadorPrint(jugador: Jugador) = ??? //TODO write this
-}

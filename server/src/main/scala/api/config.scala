@@ -18,19 +18,28 @@ package api
 
 import better.files.File
 import com.typesafe.config.ConfigFactory
+import zio.Has
 
 /**
   * A trait to keep app configuration
   */
-trait Config {
-  val configKey = "chuti"
-  val config: com.typesafe.config.Config = {
-    val confFileName =
-      System.getProperty("application.conf", "./src/main/resources/application.conf")
-    val confFile = File(confFileName)
-    val config = ConfigFactory
-      .parseFile(confFile.toJava)
-      .withFallback(ConfigFactory.load())
-    config
+package object config {
+  type Config = Has[Config.Service]
+
+  object Config {
+    trait Service {
+      val configKey = "chuti"
+      val config: com.typesafe.config.Config = {
+        val confFileName =
+          System.getProperty("application.conf", "./src/main/resources/application.conf")
+        val confFile = File(confFileName)
+        val config = ConfigFactory
+          .parseFile(confFile.toJava)
+          .withFallback(ConfigFactory.load())
+        config
+      }
+    }
   }
+
+  val live: Config.Service = new Config.Service {}
 }

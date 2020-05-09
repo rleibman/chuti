@@ -33,14 +33,14 @@ object ChatClient {
     case object Playing extends UserStatus
 
     implicit val decoder: ScalarDecoder[UserStatus] = {
-      case StringValue("Idle") => Right(UserStatus.Idle)
+      case StringValue("Idle")    => Right(UserStatus.Idle)
       case StringValue("Offline") => Right(UserStatus.Offline)
       case StringValue("Playing") => Right(UserStatus.Playing)
       case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
     }
     implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
       override def encode(value: UserStatus): Value = value match {
-        case UserStatus.Idle => EnumValue("Idle")
+        case UserStatus.Idle    => EnumValue("Idle")
         case UserStatus.Offline => EnumValue("Offline")
         case UserStatus.Playing => EnumValue("Playing")
       }

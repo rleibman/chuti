@@ -20,6 +20,8 @@ import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.{ChannelId, ChatMessage, User}
 import dao.SessionProvider
 import zio._
+import zio.logging.slf4j.Slf4jLogger
+import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
 object ChatService {
@@ -27,26 +29,52 @@ object ChatService {
 
   type ChatService = Has[Service]
   trait Service {
-    def say(msg:              SayRequest): URIO[SessionProvider, ChatMessage]
-    def chatStream(channelId: ChannelId):  ZStream[SessionProvider, Nothing, ChatMessage]
+    def say(msg: SayRequest): URIO[SessionProvider with Logging, ChatMessage]
+    def chatStream(
+      channelId: ChannelId
+    ): ZStream[SessionProvider with Logging, Nothing, ChatMessage]
   }
 
-  lazy val interpreter: GraphQLInterpreter[ZEnv with SessionProvider, CalibanError] =
+//  dapperwareYesterday at 8:39 PM
+//    What I tend to do (since I use play a lot and it’s difficult to live in the effect) is to shove shared services into my runtime, especially if they are supposed to last the lifetime of the service.
+//  ghostdogprYesterday at 9:55 PM
+//    yeah that's good too, there's Runtime.unsafeFromLayer that makes it convenient
+  lazy val TheChatService: ZManaged[Any, Nothing, ZLayer[Any, Nothing, ChatService]] = {
+    println("You should only see this message once")
+    ChatService.make().memoize
+  }
+
+  private val logLayer: ZLayer[Any, Nothing, Logging] = Slf4jLogger.make((_, str) => str)
+
+  lazy val interpreter: GraphQLInterpreter[ZEnv with SessionProvider with Logging, CalibanError] =
     runtime.unsafeRun(
-      ChatService
-        .make()
-        .memoize
+      TheChatService
         .use(layer =>
-          ChatApi.api.interpreter.map(_.provideSomeLayer[ZEnv with SessionProvider](layer))
+          ChatApi.api.interpreter
+            .map(_.provideSomeLayer[ZEnv with SessionProvider with Logging](layer))
         )
     )
 
-  def say(request: SayRequest): URIO[ChatService with SessionProvider, ChatMessage] =
+  def sendMessage(
+    msg:    String,
+    toUser: Option[User]
+  ): ZIO[SessionProvider, Nothing, ChatMessage] = {
+    TheChatService.use(layer =>
+      (
+        for {
+          chat <- ZIO.access[ChatService](_.get)
+          sent <- chat.say(SayRequest(msg, toUser))
+        } yield sent
+      ).provideSomeLayer[SessionProvider](layer ++ logLayer)
+    )
+  }
+
+  def say(request: SayRequest): URIO[ChatService with SessionProvider with Logging, ChatMessage] =
     URIO.accessM(_.get.say(request))
 
   def chatStream(
     channelId: ChannelId
-  ): ZStream[ChatService with SessionProvider, Nothing, ChatMessage] =
+  ): ZStream[ChatService with SessionProvider with Logging, Nothing, ChatMessage] =
     ZStream.accessStream(_.get.chatStream(channelId))
 
   case class MessageQueue(
@@ -58,13 +86,15 @@ object ChatService {
     for {
       chatMessageQueue <- Ref.make(List.empty[MessageQueue])
     } yield new Service {
-      override def say(request: SayRequest): ZIO[SessionProvider, Nothing, ChatMessage] =
+      override def say(
+        request: SayRequest
+      ): ZIO[SessionProvider with Logging, Nothing, ChatMessage] =
         for {
           allSubscriptions <- chatMessageQueue.get
           user             <- ZIO.access[SessionProvider](_.get.session.user)
+          _                <- log.debug(s"Sending ${request.msg}")
           sent <- {
             val sendMe = ChatMessage(user, request.msg)
-            println(sendMe) //TODO move to log
             UIO
               .foreach(allSubscriptions)(userQueue =>
                 userQueue.queue
@@ -82,9 +112,9 @@ object ChatService {
 
       override def chatStream(
         channelId: ChannelId
-      ): ZStream[SessionProvider, Nothing, ChatMessage] = ZStream.unwrap {
+      ): ZStream[SessionProvider with Logging, Nothing, ChatMessage] = ZStream.unwrap {
         for {
-          user  <- ZIO.access[SessionProvider](_.get.session.user)
+          user  <- ZIO.access[SessionProvider with Logging](_.get.session.user)
           queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
           _     <- chatMessageQueue.update(MessageQueue(user, queue) :: _)
         } yield ZStream.fromQueue(queue).filter(_.fromUser.chatChannel == Option(channelId))

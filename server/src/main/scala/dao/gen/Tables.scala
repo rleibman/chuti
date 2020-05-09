@@ -22,7 +22,6 @@ import chuti.{GameId, GameStatus, UserId}
 import com.foerstertechnologies.slickmysql.{ExMySQLProfile, MySQLCirceJsonSupport}
 import io.circe.Json
 import slick.ast.BaseTypedType
-import slick.driver.JdbcProfile
 import slick.jdbc.JdbcType
 import slick.lifted.{MappedProjection, ProvenShape}
 // AUTO-GENERATED Slick data model
@@ -37,9 +36,8 @@ object Tables extends {
 trait Tables {
   val profile: ExMySQLProfile with MySQLCirceJsonSupport
 
-  import slick.model.ForeignKeyAction
-
   import slick.jdbc.{GetResult => GR}
+  import slick.model.ForeignKeyAction
 
   object MyApi extends profile.API with profile.CirceJsonImplicits
   import MyApi._
@@ -63,7 +61,7 @@ trait Tables {
 
   /** DDL for all tables. Call .create to execute. */
   lazy val schema
-    : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema
+    : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema ++ UserWalletQuery.schema
 
   case class FriendsRow(
     one:       UserId,
@@ -116,13 +114,11 @@ trait Tables {
 
   case class GameRow(
     id:           GameId,
-    startState:   Json, //TODO rename startState to lastSnapshot
+    lastSnapshot: Json,
     gameStatus:   GameStatus,
-    created:      java.sql.Timestamp,
-    lastupdated:  java.sql.Timestamp,
-    currentIndex: Int = 0,
-    deleted:      Boolean = false, //TODO Remove this, gameStatus takes care of it
-    deleteddate:  Option[java.sql.Timestamp] = None //TODO remove, lastUpdated will take care of it.
+    created:      Timestamp,
+    lastupdated:  Timestamp,
+    currentIndex: Int = 0
   )
 
   implicit def GetResultGameRow(
@@ -130,9 +126,7 @@ trait Tables {
     e5:          GR[Int],
     e1:          GR[Json],
     e6:          GR[GameStatus],
-    e2:          GR[java.sql.Timestamp],
-    e3:          GR[Boolean],
-    e4:          GR[Option[java.sql.Timestamp]]
+    e2:          GR[Timestamp]
   ): GR[GameRow] = GR { prs =>
     import prs._
     GameRow.tupled(
@@ -140,34 +134,31 @@ trait Tables {
         <<[GameId],
         <<[Json],
         <<[GameStatus],
-        <<[java.sql.Timestamp],
-        <<[java.sql.Timestamp],
-        <<[Int],
-        <<[Boolean],
-        <<?[java.sql.Timestamp]
+        <<[Timestamp],
+        <<[Timestamp],
+        <<[Int]
       )
     )
   }
 
-  class Game(_tableTag: Tag) extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
+  class GameTable(_tableTag: Tag)
+      extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
     def * : ProvenShape[GameRow] =
-      (id, startState, gameStatus, created, lastupdated, currentIndex, deleted, deleteddate) <> (GameRow.tupled, GameRow.unapply)
+      (id, lastSnapshot, gameStatus, created, lastupdated, currentIndex) <> (GameRow.tupled, GameRow.unapply)
 
     def ?
-      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int])] =
       (
         Rep.Some(id),
-        Rep.Some(startState),
+        Rep.Some(lastSnapshot),
         Rep.Some(gameStatus),
         Rep.Some(created),
         Rep.Some(lastupdated),
-        Rep.Some(currentIndex),
-        Rep.Some(deleted),
-        deleteddate
+        Rep.Some(currentIndex)
       ).shaped.<>(
         { r =>
           import r._
-          _1.map(_ => GameRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8)))
+          _1.map(_ => GameRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -176,27 +167,22 @@ trait Tables {
 
     val currentIndex: Rep[Int] = column[Int]("current_index", O.Default(0))
 
-    val startState: Rep[Json] =
+    val lastSnapshot: Rep[Json] =
       column[Json](
-        "start_state",
+        "lastSnapshot",
         O.Length(1073741824, varying = true),
         O.SqlType(typeName = "JSON")
       )
 
     val gameStatus: Rep[GameStatus] =
-      column[GameStatus]("game_state", O.Length(1073741824, varying = true)) //TODO rename to status
+      column[GameStatus]("status", O.Length(1073741824, varying = true))
 
-    val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")
+    val created: Rep[Timestamp] = column[Timestamp]("created")
 
-    val lastupdated: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("lastUpdated")
-
-    val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
-
-    val deleteddate: Rep[Option[java.sql.Timestamp]] =
-      column[Option[java.sql.Timestamp]]("deletedDate", O.Default(None))
+    val lastupdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
   }
 
-  lazy val GameQuery = new TableQuery(tag => new Game(tag))
+  lazy val GameQuery = new TableQuery(tag => new GameTable(tag))
 
   case class GameEventRow(
     gameId:       GameId,
@@ -304,18 +290,18 @@ trait Tables {
     hashedpassword: String,
     name:           String,
     email:          String,
-    created:        java.sql.Timestamp,
-    lastupdated:    java.sql.Timestamp,
-    lastloggedin:   Option[java.sql.Timestamp] = None,
+    created:        Timestamp,
+    lastupdated:    Timestamp,
+    lastloggedin:   Option[Timestamp] = None,
     deleted:        Boolean = false,
-    deleteddate:    Option[java.sql.Timestamp] = None
+    deleteddate:    Option[Timestamp] = None
   )
 
   implicit def GetResultUserRow(
     implicit e0: GR[UserId],
     e1:          GR[String],
-    e2:          GR[java.sql.Timestamp],
-    e3:          GR[Option[java.sql.Timestamp]],
+    e2:          GR[Timestamp],
+    e3:          GR[Option[Timestamp]],
     e4:          GR[Boolean]
   ): GR[UserRow] = GR { prs =>
     import prs._
@@ -325,16 +311,17 @@ trait Tables {
         <<[String],
         <<[String],
         <<[String],
-        <<[java.sql.Timestamp],
-        <<[java.sql.Timestamp],
-        <<?[java.sql.Timestamp],
+        <<[Timestamp],
+        <<[Timestamp],
+        <<?[Timestamp],
         <<[Boolean],
-        <<?[java.sql.Timestamp]
+        <<?[Timestamp]
       )
     )
   }
 
-  class User(_tableTag: Tag) extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
+  class UserTable(_tableTag: Tag)
+      extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
     def * : ProvenShape[UserRow] =
       (
         id,
@@ -379,20 +366,101 @@ trait Tables {
     val email: Rep[String] =
       column[String]("email", O.Length(255, varying = true))
 
-    val created: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("created")
+    val created: Rep[Timestamp] = column[Timestamp]("created")
 
-    val lastupdated: Rep[java.sql.Timestamp] = column[java.sql.Timestamp]("lastUpdated")
+    val lastupdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
 
-    val lastloggedin: Rep[Option[java.sql.Timestamp]] =
-      column[Option[java.sql.Timestamp]]("lastLoggedIn", O.Default(None))
+    val lastloggedin: Rep[Option[Timestamp]] =
+      column[Option[Timestamp]]("lastLoggedIn", O.Default(None))
 
     val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
 
-    val deleteddate: Rep[Option[java.sql.Timestamp]] =
-      column[Option[java.sql.Timestamp]]("deletedDate", O.Default(None))
+    val deleteddate: Rep[Option[Timestamp]] =
+      column[Option[Timestamp]]("deletedDate", O.Default(None))
 
     val index1 = index("email", email, unique = true)
   }
 
-  lazy val UserQuery = new TableQuery(tag => new User(tag))
+  lazy val UserQuery = new TableQuery(tag => new UserTable(tag))
+
+  case class UserWalletRow(
+    user:   UserId,
+    amount: BigDecimal
+  )
+
+  implicit def GetResultUserWalletRow(
+    implicit e0: GR[UserId],
+    e1:          GR[BigDecimal]
+  ): GR[UserWalletRow] = GR { prs =>
+    import prs._
+    UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
+  }
+
+  class UserWalletTable(_tableTag: Tag)
+      extends profile.api.Table[UserWalletRow](_tableTag, Some("chuti"), "userWallet") {
+    def * : ProvenShape[UserWalletRow] =
+      (userId, amount) <> (UserWalletRow.tupled, UserWalletRow.unapply)
+
+    def ? : MappedProjection[Option[UserWalletRow], (Option[UserId], Option[BigDecimal])] =
+      (Rep.Some(userId), Rep.Some(amount)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => UserWalletRow.tupled((_1.get, _2.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    val userId: Rep[UserId] = column[UserId]("userId")
+
+    val amount: Rep[BigDecimal] = column[BigDecimal]("amount")
+
+    lazy val userFk1 = foreignKey("wallet_user_1", userId, UserQuery)(
+      r => r.id,
+      onUpdate = ForeignKeyAction.Restrict,
+      onDelete = ForeignKeyAction.Restrict
+    )
+
+  }
+
+  lazy val UserWalletQuery = new TableQuery(tag => new UserWalletTable(tag))
+
+  case class UserLogRow(
+    user: UserId,
+    time: Timestamp
+  )
+
+  implicit def GetResultUserLogRow(
+    implicit e0: GR[UserId],
+    e1:          GR[Timestamp]
+  ): GR[UserLogRow] = GR { prs =>
+    import prs._
+    UserLogRow.tupled((<<[UserId], <<[Timestamp]))
+  }
+
+  class UserLogTable(_tableTag: Tag)
+      extends profile.api.Table[UserLogRow](_tableTag, Some("chuti"), "userLog") {
+    def * : ProvenShape[UserLogRow] =
+      (userId, time) <> (UserLogRow.tupled, UserLogRow.unapply)
+
+    def ? : MappedProjection[Option[UserLogRow], (Option[UserId], Option[Timestamp])] =
+      (Rep.Some(userId), Rep.Some(time)).shaped.<>(
+        { r =>
+          import r._; _1.map(_ => UserLogRow.tupled((_1.get, _2.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    val userId: Rep[UserId] = column[UserId]("userId")
+
+    val time: Rep[Timestamp] = column[Timestamp]("time")
+
+    lazy val userFk1 = foreignKey("wallet_user_1", userId, UserQuery)(
+      r => r.id,
+      onUpdate = ForeignKeyAction.Restrict,
+      onDelete = ForeignKeyAction.Restrict
+    )
+
+  }
+
+  lazy val UserLogQuery = new TableQuery(tag => new UserLogTable(tag))
+
 }

@@ -32,7 +32,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import zio._
 import zio.duration._
 
-class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
+class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   "Creating a new Game" should "create a game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
@@ -55,7 +55,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     }
 
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
-    assert(game.currentIndex === 1)
+    assert(game.currentEventIndex === 1)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 1)
     assert(game.jugadores.head.user.id === user1.id)
@@ -105,7 +105,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
       }
 
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
-    assert(game.currentIndex === 3)
+    assert(game.currentEventIndex === 3)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 2)
     assert(game.jugadores.head.user.id === user1.id)
@@ -175,7 +175,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.gameStatus === GameStatus.cantando)
-    assert(game.currentIndex === 7)
+    assert(game.currentEventIndex === 7)
     assert(game.jugadores.head.user.id === user1.id)
     assert(game.jugadores.drop(1).head.user.id === user2.id)
     assert(game.jugadores.drop(2).head.user.id === user3.id)
@@ -196,6 +196,8 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
     }
+    val wallet = UserWallet(user1.id.get, 0.0)
+    when(userOperations.getWallet).thenReturn(ZIO.succeed(Option(wallet)))
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
@@ -244,12 +246,12 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     assert(
       game.gameStatus == GameStatus.esperandoJugadoresInvitados || game.gameStatus == GameStatus.esperandoJugadoresAzar
     )
-    assert(game.currentIndex === 4)
+    assert(game.currentEventIndex === 4)
     assert(game.jugadores.head.user.id === user1.id)
     assert(gameEvents.toSeq.flatten.size === 1)
     assert(userEvents.toSeq.flatten.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
-    assert(updatedUser2.wallet === user2.wallet)
+    verify(userOperations, times(0)).updateWallet(any[UserWallet])
     assert(updatedUser2.userStatus === UserStatus.Idle)
   }
 
@@ -262,6 +264,9 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
     }
+    val wallet = UserWallet(user2.id.get, 0.0)
+    when(userOperations.getWallet).thenReturn(ZIO.succeed(Option(wallet)))
+    when(userOperations.updateWallet(UserWallet(user2.id.get, BigDecimal(-0.10)))).thenReturn(ZIO.succeed(true))
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
@@ -308,14 +313,14 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 3)
     assert(game.gameStatus === GameStatus.abandonado)
-    assert(game.currentIndex === 8)
+    assert(game.currentEventIndex === 8)
     assert(game.jugadores.head.user.id === user1.id)
     assert(game.jugadores.drop(1).head.user.id === user3.id)
     assert(game.jugadores.drop(2).head.user.id === user4.id)
     assert(gameEvents.toSeq.flatten.size === 1)
     assert(userEvents.toSeq.flatten.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
-    assert(updatedUser2.wallet === (user2.wallet - game.abandonedPenalty))
+    verify(userOperations, times(1)).updateWallet(any[UserWallet])
     assert(updatedUser2.userStatus === UserStatus.Idle)
   }
 
@@ -365,7 +370,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
 
     assert(invited)
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
-    assert(game.currentIndex === 2)
+    assert(game.currentEventIndex === 2)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 2)
     assert(game.jugadores.head.user.id === user1.id)
@@ -473,7 +478,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     assert(gameCapt === game)
 
     assert(game.gameStatus === GameStatus.cantando)
-    assert(game.currentIndex === 10)
+    assert(game.currentEventIndex === 10)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.jugadores.forall(!_.invited))
@@ -581,7 +586,7 @@ class GameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpe
     assert(gameCapt === game)
 
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
-    assert(game.currentIndex === 9)
+    assert(game.currentEventIndex === 9)
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 3)
     assert(game.jugadores.forall(!_.invited))

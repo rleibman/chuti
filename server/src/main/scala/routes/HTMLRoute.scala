@@ -18,13 +18,14 @@ package routes
 
 import akka.http.scaladsl.server.directives.ContentTypeResolver
 import akka.http.scaladsl.server.{Directives, Route}
-import api.Config
+import api.config
 
 /**
   * A route used to spit out static content
   */
-trait HTMLRoute extends Directives with Config {
-  val staticContentDir: String = config.getString("chuti.staticContentDir")
+trait HTMLRoute extends Directives {
+  val staticContentDir: String =
+    config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
   override def getFromDirectory(
     directoryName: String

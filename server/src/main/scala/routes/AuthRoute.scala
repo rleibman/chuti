@@ -16,44 +16,46 @@
 
 package routes
 
-import java.math.BigInteger
-import java.security.SecureRandom
-
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directives, Route}
 import api._
+import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chuti.{BuildInfo, PagedStringSearch, User, UserId}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
-import courier.{Envelope, Multipart}
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.{GameService, LoggedInUserRepo}
 import game.GameService.GameLayer
+import game.{GameService, LoggedInUserRepo}
 import io.circe.generic.auto._
-import javax.mail.internet.InternetAddress
-import mail.Postman
-import scalacache.Cache
-import scalacache.caffeine.CaffeineCache
+import mail.CourierPostman
+import mail.Postman.Postman
 import slick.basic.BasicBackend
-import zio.{Layer, Task, UIO, ZIO, ZLayer}
+import zio._
+import zio.logging.log
+import zio.logging.slf4j.Slf4jLogger
 import zioslick.RepositoryException
 
-import scala.concurrent.duration._
+object AuthRoute {
+  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
+}
 
 trait AuthRoute
-    extends CRUDRoute[User, UserId, PagedStringSearch] with Postman with Config with SessionUtils
-    with HasActorSystem {
+    extends CRUDRoute[User, UserId, PagedStringSearch] with SessionUtils with HasActorSystem {
   this: Repository.Service with DatabaseProvider.Service =>
 
-  def repositoryLayer:       Layer[Nothing, Repository] = ZLayer.succeed(this)
-  def databaseProviderLayer: Layer[Nothing, DatabaseProvider] = ZLayer.succeed(this)
+  def repositoryLayer:       ULayer[Repository] = ZLayer.succeed(this)
+  def databaseProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(this)
+  def postmanLayer:          ULayer[Postman] = AuthRoute.postman
 
   def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
     zio.console.Console.live ++
-    SessionProvider.layer(session) ++
+      SessionProvider.layer(session) ++
       databaseProviderLayer ++
       repositoryLayer ++
+      postmanLayer ++
+      Slf4jLogger.make((_, b) => b) ++
+      ZLayer.succeed(TokenHolder.live) ++
       ZLayer.succeed(LoggedInUserRepo.live)
 
   lazy private val adminSession = ChutiSession(GameService.god)
@@ -61,7 +63,8 @@ trait AuthRoute
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
 
-      private val staticContentDir: String = config.getString("chuti.staticContentDir")
+      private val staticContentDir: String =
+        config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
       override val url: String = "auth"
 
@@ -73,12 +76,8 @@ trait AuthRoute
         override def db: UIO[BasicBackend#DatabaseDef] = AuthRoute.this.db
       }
 
-      import scalacache.ZioEffect.modes._
-
-      implicit val userTokenCache: Cache[User] = CaffeineCache[User]
-
       override def unauthRoute: Route =
-        extractLog { log =>
+        extractLog { akkaLog =>
           path("serverVersion") {
             complete(BuildInfo.version)
           } ~ path("loginForm") {
@@ -94,11 +93,12 @@ trait AuthRoute
                   entity(as[String]) { password =>
                     complete {
                       val z = for {
-                        userOpt <- scalacache.get(token)
+                        tokenHolder <- ZIO.access[TokenHolder](_.get)
+                        userOpt <- tokenHolder
+                          .validateToken(Token(token), TokenPurpose.LostPassword)
                         passwordChanged <- ZIO.foreach(userOpt)(user =>
                           ops.changePassword(user, password)
                         )
-                        _ <- ZIO.foreach(userOpt)(user => scalacache.remove(token))
                       } yield passwordChanged.getOrElse(false)
 
                       z.provideLayer(fullLayer(adminSession)).tapError(e =>
@@ -121,30 +121,16 @@ trait AuthRoute
                 entity(as[String]) { email =>
                   complete {
                     (for {
+                      postman <- ZIO.access[Postman](_.get)
                       userOpt <- ops.userByEmail(email)
-                      userTokenOpt <- ZIO
-                        .foreach(userOpt) { user =>
-                          val random = SecureRandom.getInstanceStrong
-                          val token = new BigInteger(12 * 5, random).toString(32)
-                          scalacache.put(token)(user, Option(3.hours)).as((user, token))
-                        }
-                      emailed <- ZIO.foreach(userTokenOpt) { userToken =>
-                        postman.deliver(
-                          Envelope
-                            .from(new InternetAddress("system@chuti.fun"))
-                            .to(new InternetAddress(userToken._1.email))
-                            .subject(
-                              s"Password reset request"
-                            )
-                            .content(Multipart().html(s"""<html><body>
-                               | <p>We are sorry you've lost your password</p>
-                               | <p>We have temporarily created a link for you that will allow you to reset it.</p>
-                               | <p>Please go here to reset it: <a href="http://www.chuti.fun/loginForm?passwordReset=true&token=${userToken._2}">http://www.meal-o-rama.com/loginForm?passwordReset=true&?token=${userToken._2}</a>.</p>
-                               | <p>Note that this token will expire after a while, please change your password as soon as you can</p>
-                               |</body></html>""".stripMargin))
-                        )
+                      envelopeOpt <- ZIO.foreach(userOpt) { user =>
+                        postman.lostPasswordEmail(user)
                       }
-                    } yield emailed.nonEmpty).provideLayer(fullLayer(adminSession)).catchSome {
+                      emailed <- ZIO.foreach(envelopeOpt) { envelope =>
+                        postman.deliver(envelope)
+                      }
+
+                    } yield emailed.nonEmpty).provideLayer(gameLayer(adminSession)).catchSome {
                       case e: RepositoryException =>
                         ZIO.succeed {
                           e.printStackTrace()
@@ -163,10 +149,13 @@ trait AuthRoute
                     Symbol("password").as[String]
                   )
                 ) { (email, password) =>
-                  log.info(s"Logging in $email")
-
-                  val zio = ops
-                    .login(email, password).map {
+                  (for {
+                    login <- ops.login(email, password)
+                    _ <- login.fold(log.debug(s"Bad login for $email"))(u =>
+                      log.debug(s"Good Login for $email")
+                    )
+                  } yield {
+                    login match {
                       case Some(user) =>
                         mySetSession(ChutiSession(user)) {
                           setNewCsrfToken(checkHeader) { ctx =>
@@ -176,17 +165,13 @@ trait AuthRoute
                       case None =>
                         redirect("/loginForm?bad=true", StatusCodes.Found)
                     }
-                    .provideLayer(fullLayer(adminSession)).catchSome {
-                      case e: RepositoryException =>
-                        ZIO.succeed {
-                          e.printStackTrace()
-                          throw e: Throwable
-                        }
-                    }
-                  zio
-
-                //TODO log login
-
+                  }).provideLayer(fullLayer(adminSession)).catchSome {
+                    case e: RepositoryException =>
+                      ZIO.succeed {
+                        e.printStackTrace()
+                        throw e: Throwable
+                      }
+                  }
                 }
               }
             } ~

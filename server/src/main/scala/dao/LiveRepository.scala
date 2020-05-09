@@ -19,11 +19,14 @@ package dao
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
-import chuti.{EmptySearch, GameStatus, Game, GameId, PagedStringSearch, User, UserId}
+import chuti._
 import dao.Repository.{GameOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
 import game.GameService
+import scalacache.Cache
+import scalacache.ZioEffect.modes._
+import scalacache.caffeine.CaffeineCache
 import slick.SlickException
 import slick.dbio.DBIO
 import slick.jdbc.MySQLProfile.api._
@@ -31,9 +34,15 @@ import zio.ZIO
 import zioslick.RepositoryException
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 import scala.language.implicitConversions
 
+object LiveRepository {
+  implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
+}
+
 trait LiveRepository extends Repository.Service with SlickToModelInterop {
+  import LiveRepository.gameCache
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
@@ -144,7 +153,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
       search
-        .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
+        .fold(UserQuery: Query[Tables.UserTable, Tables.UserRow, Seq]) { s =>
           UserQuery
             .filter(u => u.email.like(s"%${s.text}%"))
             .drop(s.pageSize * s.pageIndex)
@@ -154,7 +163,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
       search
-        .fold(UserQuery: Query[Tables.User, Tables.UserRow, Seq]) { s =>
+        .fold(UserQuery: Query[Tables.UserTable, Tables.UserRow, Seq]) { s =>
           UserQuery
             .filter(u => u.email.like(s"%${s.text}%"))
         }.length.result.map(_.toLong)
@@ -179,6 +188,12 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
           } yield u.lastloggedin
           q.update(Option(new Timestamp(System.currentTimeMillis())))
         })
+        _ <- DBIO.sequence(
+          userOpt.toSeq.map(user =>
+            UserLogQuery
+              .insertOrUpdate(UserLogRow(user.id, new Timestamp(System.currentTimeMillis())))
+          )
+        )
       } yield userOpt.map(UserRow2User)).transactionally
     }
 
@@ -198,39 +213,90 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
           .map(_ > 0)
       )
     }
-  }
-  override val gameOperations: Repository.GameOperations = new GameOperations {
-    override def upsert(game: Game): RepositoryIO[Game] = { session: ChutiSession =>
-      if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id)) {
-        throw RepositoryException(s"${session.user} Not authorized")
-      }
-      for {
-        upserted <- (GameQuery returning GameQuery.map(_.id) into (
-          (
-            _,
-            id
-          ) => game.copy(id = Some(id))
-        )).insertOrUpdate(Game2GameRow(game))
-          .map(_.getOrElse(game))
-        _ <- DBIO.sequence(game.jugadores.zipWithIndex.map {
-          case (player, index) =>
-            GamePlayersQuery.insertOrUpdate(
-              GamePlayersRow(
-                userId = player.user.id.getOrElse(UserId(0)),
-                gameId = upserted.id.getOrElse(GameId(0)),
-                order = index,
-                invited = player.invited
-              )
-            )
-        })
-      } yield game
+
+    override def getWallet: RepositoryIO[Option[UserWallet]] = { session: ChutiSession =>
+      UserWalletQuery
+        .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
+        .result.headOption.map(
+          _.map(UserWalletRow2UserWallet)
+        ).flatMap {
+          case None =>
+            val newWallet = UserWalletRow(session.user.id.getOrElse(UserId(-1)), 0.0)
+            UserWalletQuery
+              .insertOrUpdate(newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+          case Some(wallet) => DBIO.successful(Option(wallet))
+        }
     }
 
-    override def get(pk: GameId): RepositoryIO[Option[Game]] = //Memoize this
-      GameQuery
-        .filter(_.id === pk)
-        .result
-        .map(_.headOption.map(row => GameRow2Game(row)))
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[Boolean] = {
+      session: ChutiSession =>
+        if (session.user != GameService.god) { //Only god can update a user's wallet.
+          throw RepositoryException(s"${session.user} Not authorized")
+        }
+
+        UserWalletQuery
+          .filter(_.userId === userWallet.userId).insertOrUpdate(
+            UserWallet2UserWalletRow(userWallet)
+          )
+
+    }.map(_ > 0)
+  }
+
+  override val gameOperations: Repository.GameOperations = new GameOperations {
+    override def upsert(game: Game): RepositoryIO[Game] = {
+      val upserted = fromDBIO { session: ChutiSession =>
+        if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id)) {
+          throw RepositoryException(s"${session.user} Not authorized")
+        }
+        for {
+          upserted <- (GameQuery returning GameQuery.map(_.id) into (
+            (
+              _,
+              id
+            ) => game.copy(id = Some(id))
+          )).insertOrUpdate(Game2GameRow(game))
+            .map(_.getOrElse(game))
+          _ <- DBIO.sequence(game.jugadores.zipWithIndex.map {
+            case (player, index) =>
+              GamePlayersQuery.insertOrUpdate(
+                GamePlayersRow(
+                  userId = player.user.id.getOrElse(UserId(0)),
+                  gameId = upserted.id.getOrElse(GameId(0)),
+                  order = index,
+                  invited = player.invited
+                )
+              )
+          })
+        } yield game
+      }
+      for {
+        _        <- scalacache.remove(game.id).mapError(e => RepositoryException("Cache error", Some(e)))
+        upserted <- upserted
+        _ <- scalacache
+          .put(game.id)(Option(upserted), Option(3.hours)).mapError(e =>
+            RepositoryException("Cache error", Some(e))
+          )
+      } yield upserted
+
+    }
+
+    override def get(pk: GameId): RepositoryIO[Option[Game]] = {
+      val zio = fromDBIO {
+        GameQuery
+          .filter(_.id === pk)
+          .result
+          .map(_.headOption.map(row => GameRow2Game(row)))
+      }
+      for {
+        gameOpt <- zio
+        _ <- ZIO.foreach(gameOpt)(game =>
+          scalacache
+            .put(pk)(Option(game), Option(3.hours)).mapError(e =>
+              RepositoryException("Cache error", Some(e))
+            )
+        )
+      } yield gameOpt
+    }
 
     override def delete(
       pk:         GameId,
@@ -239,30 +305,21 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       if (session.user != GameService.god) {
         throw RepositoryException(s"${session.user} Not authorized")
       }
-      if (softDelete) {
-        val q = for {
-          g <- GameQuery if g.id === pk
-        } yield (g.deleted, g.deleteddate)
-        q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
-      } else {
-        GameQuery.filter(_.id === pk).delete.map(_ > 0)
-      }
+      GameQuery.filter(_.id === pk).delete.map(_ > 0)
 
     }
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-      GameQuery
-        .filter(!_.deleted).result
+      GameQuery.result
         .map(_.map(row => GameRow2Game(row)))
 
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
-      GameQuery
-        .filter(!_.deleted).length.result.map(_.toLong)
+      GameQuery.length.result.map(_.toLong)
 
     override def gamesWaitingForPlayers(
     ): RepositoryIO[Seq[Game]] = //TODO implement in terms of search
       GameQuery
-        .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
+        .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus))
         .result
         .map(_.map(row => GameRow2Game(row)))
 
@@ -270,7 +327,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       : RepositoryIO[Option[Game]] = { session: ChutiSession => //TODO implement in terms of search
       GamePlayersQuery
         .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
-        .join(GameQuery.filter(!_.deleted)).on(_.gameId === _.id)
+        .join(GameQuery).on(_.gameId === _.id)
         .result
         .map(_.headOption.map(row => GameRow2Game(row._2)))
     }
@@ -279,7 +336,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       : RepositoryIO[Seq[Game]] = { session: ChutiSession => //TODO implement in terms of search
       GamePlayersQuery
         .filter(player => player.userId === session.user.id.getOrElse(UserId(-1)) && player.invited)
-        .join(GameQuery.filter(!_.deleted)).on(_.gameId === _.id)
+        .join(GameQuery).on(_.gameId === _.id)
         .result
         .map(_.map(row => GameRow2Game(row._2)))
     }

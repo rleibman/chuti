@@ -16,7 +16,9 @@
 
 package chuti
 
+import api.token.TokenHolder
 import better.files.File
+import courier.Envelope
 import dao.Repository.GameOperations
 import dao.{DatabaseProvider, Repository}
 import game.LoggedInUserRepo
@@ -24,8 +26,12 @@ import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
 import io.circe.syntax._
+import mail.Postman
+import mail.Postman.Postman
 import org.mockito.scalatest.MockitoSugar
-import zio.{Task, ZIO, ZLayer, console}
+import zio._
+import zio.logging.Logging
+import zio.logging.slf4j.Slf4jLogger
 
 trait GameAbstractSpec extends MockitoSugar {
   val user1: User =
@@ -37,7 +43,7 @@ trait GameAbstractSpec extends MockitoSugar {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", userStatus = UserStatus.Idle)
 
-  val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
   val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
   val loggedInUserRepo: LoggedInUserRepo.Service = mock[LoggedInUserRepo.Service]
   def createUserOperations: Repository.UserOperations = {
@@ -61,20 +67,26 @@ trait GameAbstractSpec extends MockitoSugar {
       )
   }
 
+  class MockPostman extends Postman.Service {
+    override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] = ZIO.succeed(())
+  }
+
   def fullLayer(
     gameOps: Repository.GameOperations,
-    userOps: Repository.UserOperations
-  ): ZLayer[
-    Any,
-    Nothing,
-    DatabaseProvider with Repository with LoggedInUserRepo.LoggedInUserRepo
+    userOps: Repository.UserOperations,
+    postman: Postman.Service = new MockPostman
+  ): ULayer[
+    DatabaseProvider with Repository with LoggedInUserRepo.LoggedInUserRepo with Postman with Logging with TokenHolder
   ] = {
     ZLayer.succeed(databaseProvider) ++
       ZLayer.succeed(new Repository.Service {
         override val gameOperations: GameOperations = gameOps
         override val userOperations: Repository.UserOperations = userOps
       }) ++
-      ZLayer.succeed(loggedInUserRepo)
+      Slf4jLogger.make((_, b) => b) ++
+      ZLayer.succeed(TokenHolder.live) ++
+      ZLayer.succeed(loggedInUserRepo) ++
+      ZLayer.succeed(postman)
   }
 
   def writeGame(
@@ -95,5 +107,6 @@ trait GameAbstractSpec extends MockitoSugar {
   val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
   val GAME_WITH_2USERS =
     "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
+  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
 
 }

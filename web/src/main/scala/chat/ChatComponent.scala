@@ -22,7 +22,12 @@ import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat.ChatClient.{Mutations, Subscriptions, ChatMessage => CalibanChatMessage, User => CalibanUser}
+import chat.ChatClient.{
+  Mutations,
+  Subscriptions,
+  ChatMessage => CalibanChatMessage,
+  User => CalibanUser
+}
 import chuti.{ChannelId, ChatMessage, User}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted

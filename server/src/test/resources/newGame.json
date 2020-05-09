@@ -2,6 +2,17 @@
   "id" : {
     "value" : 1
   },
+  "gameStatus" : {
+    "esperandoJugadoresInvitados" : {
+      
+    }
+  },
+  "currentEventIndex" : 1,
+  "created" : "2020-05-07T10:03:35.164073",
+  "triunfo" : null,
+  "enJuego" : [
+  ],
+  "estrictaDerecha" : false,
   "jugadores" : [
     {
       "user" : {
@@ -16,31 +27,23 @@
           }
         },
         "currentChannelId" : null,
-        "created" : "2020-04-30T08:44:33.295765",
-        "lastUpdated" : "2020-04-30T08:44:33.298167",
+        "created" : "2020-05-07T10:03:31.390501",
+        "lastUpdated" : "2020-05-07T10:03:31.393169",
         "lastLoggedIn" : null,
-        "wallet" : 0.0,
         "deleted" : false
       },
       "invited" : false,
       "fichas" : [
       ],
-      "casas" : [
+      "filas" : [
       ],
       "turno" : false,
       "cantante" : false,
       "mano" : false,
-      "cuantasCantas" : null
+      "cuantasCantas" : null,
+      "cuenta" : [
+      ]
     }
   ],
-  "enJuego" : [
-  ],
-  "triunfo" : null,
-  "gameStatus" : {
-    "esperandoJugadoresInvitados" : {
-      
-    }
-  },
-  "currentIndex" : 1,
-  "created" : "2020-04-30T08:44:36.125743"
+  "pointsPerDollar" : 100.0
 }

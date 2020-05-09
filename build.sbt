@@ -38,10 +38,10 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.4"
+lazy val akkaVersion = "2.6.5"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.6"
+lazy val calibanVersion = "0.7.7"
 lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
 
 lazy val commonSettings = Seq(
@@ -54,12 +54,15 @@ lazy val commonSettings = Seq(
 )
 
 lazy val commonVmSettings = commonSettings ++ Seq(
+  scalacOptions ++= Seq(
+    "-deprecation" // Emit warning and location for usages of deprecated APIs.
+  ),
   libraryDependencies ++= Seq(
     "com.github.julien-truffaut" %% "monocle-core"            % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
     "org.scalatest"              %% "scalatest"               % "3.1.1" % "test" withSources (),
-    "org.mockito"                %% "mockito-scala-scalatest" % "1.13.10" % Test withSources ()
+    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.0" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -101,7 +104,7 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
     )
   )
 
-//resolvers += Resolver.sonatypeRepo()
+resolvers += Resolver.sonatypeRepo("releases")
 
 lazy val server: Project = project
   .in(file("server"))
@@ -121,17 +124,18 @@ lazy val server: Project = project
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
-      "com.typesafe.slick"        %% "slick"               % "3.3.2" withSources (),
-      "com.typesafe.slick"        %% "slick-hikaricp"      % "3.3.2" withSources (),
-      "com.typesafe.slick"        %% "slick-codegen"       % "3.3.2" withSources (),
-      "mysql"                     % "mysql-connector-java" % "8.0.20" withSources (),
-      "com.foerster-technologies" %% "slick-mysql"         % "1.0.0" withSources (),
+      "com.typesafe.slick"        %% "slick"                  % "3.3.2" withSources (),
+      "com.typesafe.slick"        %% "slick-hikaricp"         % "3.3.2" withSources (),
+      "com.typesafe.slick"        %% "slick-codegen"          % "3.3.2" withSources (),
+      "mysql"                     % "mysql-connector-java"    % "8.0.20" withSources (),
+      "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-zio"      % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % "1.0.0-RC18-2" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.2.8" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       //Util
@@ -277,7 +281,7 @@ lazy val commonWeb: Project => Project =
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % "1.0.0-RC18-2" withSources (),
         "com.softwaremill.sttp.client" %%% "core"       % "2.0.9" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.0.9",
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.1",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0-RC3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0-RC3_2019a" withSources (),
@@ -285,7 +289,7 @@ lazy val commonWeb: Project => Project =
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
         "com.github.japgolly.scalajs-react" %%% "core"  % "1.6.0" withSources (),
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.6.0" withSources (),
-        "com.lihaoyi" %%% "scalatags"                   % "0.9.0" withSources (),
+        "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.0" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.0" withSources (),
         "com.github.pathikrit"                          %% "better-files" % "3.8.0",

@@ -16,6 +16,7 @@
 
 import api.ChutiSession
 import slick.basic.BasicBackend
+import zio.logging.Logging
 import zio.{Has, Layer, UIO, ZIO, ZLayer}
 import zioslick.RepositoryException
 
@@ -26,5 +27,6 @@ package object dao {
 
   type SessionProvider = Has[SessionProvider.Session]
 
-  type RepositoryIO[E] = ZIO[DatabaseProvider with SessionProvider, RepositoryException, E]
+  type RepositoryIO[E] =
+    ZIO[DatabaseProvider with SessionProvider with Logging, RepositoryException, E]
 }

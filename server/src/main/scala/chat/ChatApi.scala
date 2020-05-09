@@ -33,18 +33,25 @@ import zio.clock.Clock
 import zio.console.Console
 import zio.stream.ZStream
 import zio.duration._
+import zio.logging.Logging
 
 case class SayRequest(
   msg:    String,
   toUser: Option[User] = None
 )
 
-object ChatApi extends GenericSchema[ChatService with SessionProvider] {
+object ChatApi extends GenericSchema[ChatService with SessionProvider with Logging] {
 
   case class Queries()
-  case class Mutations(say: SayRequest => URIO[ChatService with SessionProvider, Boolean])
+  case class Mutations(
+    say: SayRequest => URIO[ChatService with SessionProvider with Logging, Boolean]
+  )
   case class Subscriptions(
-    chatStream: ChannelId => ZStream[ChatService with SessionProvider, Nothing, ChatMessage]
+    chatStream: ChannelId => ZStream[
+      ChatService with SessionProvider with Logging,
+      Nothing,
+      ChatMessage
+    ]
   )
 
   implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
@@ -57,7 +64,7 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider] {
   implicit val userSchema:        Typeclass[User] = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
-  lazy val api: GraphQL[Console with Clock with ChatService with SessionProvider] =
+  lazy val api: GraphQL[Console with Clock with ChatService with SessionProvider with Logging] =
     graphQL(
       RootResolver(
         Queries(

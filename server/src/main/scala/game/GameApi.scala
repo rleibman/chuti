@@ -26,11 +26,12 @@ import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chuti.{GameId, UserId, _}
+import dao.SessionProvider
 import game.GameService.{GameLayer, GameService}
 import io.circe.Json
-import io.circe.syntax._
 import io.circe.generic.auto._
-import zio.ZIO
+import io.circe.syntax._
+import zio.{URIO, ZIO}
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
@@ -39,7 +40,10 @@ import zio.stream.ZStream
 object GameApi extends GenericSchema[GameService with GameLayer] {
   import caliban.interop.circe.json._
 
-  case class PlayArgs(gameId: GameId, gameEvent: Json)
+  case class PlayArgs(
+    gameId:    GameId,
+    gameEvent: Json
+  )
   case class GameInviteArgs(
     userId: UserId,
     gameId: GameId
@@ -83,27 +87,58 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
 //  implicit private val gameStateSchema:  GameApi.Typeclass[GameState] = gen[GameState]
 //  implicit private val jugadaSchema:     GameApi.Typeclass[GameEvent] = gen[GameEvent]
 
-  def filterSecretKnowledge(game: Game): Game = game //TODO write this //TODO move this to model?
+  private def filterSecretKnowledge(game: Game) =
+    for {
+      user <- ZIO.access[SessionProvider](_.get.session.user)
+    } yield game.copy(
+      jugadores = game.modifiedPlayers(
+        _.user.id == user.id,
+        identity,
+        j =>
+          j.copy(
+            fichas = j.fichas.map(_ => FichaTapada),
+            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
+          )
+      )
+    )
 
   val api: GraphQL[Console with Clock with GameService with GameLayer] =
     graphQL(
       RootResolver(
         Queries(
-          getGame =
-            gameId => GameService.getGame(gameId).map(_.map(filterSecretKnowledge(_).asJson)),
-          getGameForUser = GameService.getGameForUser.map(_.map(filterSecretKnowledge(_).asJson)),
+          getGame = gameId =>
+            for {
+              gameOpt  <- GameService.getGame(gameId)
+              filtered <- ZIO.foreach(gameOpt)(filterSecretKnowledge)
+            } yield filtered.map(_.asJson),
+          getGameForUser = for {
+            gameOpt  <- GameService.getGameForUser
+            filtered <- ZIO.foreach(gameOpt)(filterSecretKnowledge)
+          } yield filtered.map(_.asJson),
           getFriends = GameService.getFriends,
-          getGameInvites = GameService.getGameInvites.map(_.map(filterSecretKnowledge(_).asJson)),
+          getGameInvites = for {
+            gameSeq  <- GameService.getGameInvites
+            filtered <- ZIO.foreach(gameSeq)(filterSecretKnowledge)
+          } yield filtered.map(_.asJson),
           getLoggedInUsers = GameService.getLoggedInUsers
         ),
         Mutations(
-          newGame = GameService.newGame().map(filterSecretKnowledge(_).asJson),
-          joinRandomGame = GameService.joinRandomGame().map(filterSecretKnowledge(_).asJson),
+          newGame = for {
+            game     <- GameService.newGame()
+            filtered <- filterSecretKnowledge(game)
+          } yield filtered.asJson,
+          joinRandomGame = for {
+            game     <- GameService.joinRandomGame()
+            filtered <- filterSecretKnowledge(game)
+          } yield filtered.asJson,
           abandonGame = gameId => GameService.abandonGame(gameId),
           inviteToGame = userInviteArgs =>
             GameService.inviteToGame(userInviteArgs.userId, userInviteArgs.gameId),
-          acceptGameInvitation =
-            gameId => GameService.acceptGameInvitation(gameId).map(filterSecretKnowledge(_).asJson),
+          acceptGameInvitation = gameId =>
+            for {
+              game     <- GameService.acceptGameInvitation(gameId)
+              filtered <- filterSecretKnowledge(game)
+            } yield filtered.asJson,
           declineGameInvitation = gameId => GameService.declineGameInvitation(gameId),
           play = playArgs => GameService.play(playArgs.gameId, playArgs.gameEvent.asJson)
         ),

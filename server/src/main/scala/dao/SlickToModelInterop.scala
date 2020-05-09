@@ -18,7 +18,18 @@ package dao
 import java.sql.Timestamp
 
 import chuti.GameStatus.comienzo
-import chuti.{GameStatus, Ficha, GameException, GameId, Game, Jugador, Triunfo, User, UserId}
+import chuti.{
+  Ficha,
+  Game,
+  GameException,
+  GameId,
+  GameStatus,
+  Jugador,
+  Triunfo,
+  User,
+  UserId,
+  UserWallet
+}
 import gen.Tables._
 import io.circe
 import io.circe.Decoder
@@ -34,7 +45,6 @@ trait SlickToModelInterop {
     created = row.created.toLocalDateTime,
     lastUpdated = row.created.toLocalDateTime,
     lastLoggedIn = row.lastloggedin.map(_.toLocalDateTime),
-    wallet = 0.0, //TODO row.wallet,
     deleted = row.deleted
   )
   def User2UserRow(value: User): UserRow = UserRow(
@@ -48,10 +58,10 @@ trait SlickToModelInterop {
   )
   def GameRow2Game(row: GameRow): Game = {
     val decoder = implicitly(Decoder[Game])
-    decoder.decodeJson(row.startState).map {
+    decoder.decodeJson(row.lastSnapshot).map {
       _.copy(
         id = Option(row.id),
-        currentIndex = row.currentIndex,
+        currentEventIndex = row.currentIndex,
         gameStatus = row.gameStatus
       )
     } match {
@@ -62,7 +72,7 @@ trait SlickToModelInterop {
 
   def Game2GameRow(value: Game): GameRow = {
 //    id:           GameId,
-//    startState:   String,
+//    lastSnapshot:   String,
 //    gameStatus:   Estado,
 //    created:      java.sql.Timestamp,
 //    lastupdated:  java.sql.Timestamp,
@@ -71,12 +81,17 @@ trait SlickToModelInterop {
 //    deleteddate:  Option[java.sql.Timestamp] = None
     val ret = GameRow(
       id = value.id.getOrElse(GameId(0)),
-      currentIndex = value.currentIndex,
-      startState = value.asJson,
+      currentIndex = value.currentEventIndex,
+      lastSnapshot = value.asJson,
       gameStatus = value.gameStatus,
       created = Timestamp.valueOf(value.created),
       lastupdated = new Timestamp(System.currentTimeMillis())
     )
     ret
   }
+
+  def UserWalletRow2UserWallet(row:   UserWalletRow): UserWallet = UserWallet(row.user, row.amount)
+  def UserWallet2UserWalletRow(value: UserWallet): UserWalletRow =
+    UserWalletRow(value.userId, value.amount)
+
 }

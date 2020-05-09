@@ -254,8 +254,8 @@ object LobbyPage extends ChutiPage {
                     ^.key := user.id.fold("")(_.toString),
                     player.name
                   )
-                  //TODO add flags: isFriend, isPlaying
-                  //TODO make table, add context menu: invite, friend, unfriend,
+                //TODO add flags: isFriend, isPlaying
+                //TODO make table, add context menu: invite, friend, unfriend,
                 }
               )
             ).when(s.friends.nonEmpty),

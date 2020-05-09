@@ -16,7 +16,6 @@
 
 package api
 
-import akka.event.Logging
 import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
 import chuti.{User, UserId}
 import com.softwaremill.session.SessionDirectives._
@@ -26,6 +25,8 @@ import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
+import zio.logging.log
+import zio.logging.slf4j.Slf4jLogger
 import zio.{Task, ZIO, ZLayer}
 import zioslick.RepositoryException
 
@@ -36,20 +37,19 @@ object SessionUtils {
   implicit val userCache: Cache[Option[User]] = CaffeineCache[Option[User]]
 }
 
-trait SessionUtils extends Directives with Config {
+trait SessionUtils extends Directives {
   this: HasActorSystem with Repository.Service with DatabaseProvider.Service =>
   import scalacache._
   import scalacache.memoization._
   import scalacache.caffeine.CaffeineCache
   import actorSystem.dispatcher
-  lazy private val log = Logging.getLogger(actorSystem, this)
-
   import scalacache.ZioEffect.modes._
   import SessionUtils._
 
   def getUser(id: Int): Task[Option[User]] = memoizeF(Option(1.hour)) {
     val dbProv: DatabaseProvider.Service = this
-    val fullLayer = SessionProvider.layer(ChutiSession(GameService.god)) ++ ZLayer.succeed(dbProv)
+    val fullLayer = SessionProvider.layer(ChutiSession(GameService.god)) ++ ZLayer
+      .succeed(dbProv) ++ Slf4jLogger.make((_, str) => str)
     userOperations.get(UserId(id)).provideLayer(fullLayer).catchSome {
       case e: RepositoryException =>
         ZIO.succeed {
@@ -73,7 +73,9 @@ trait SessionUtils extends Directives with Config {
         }
     )
 
-  private val sessionConfig = SessionConfig.default(config.getString("chuti.sessionServerSecret"))
+  private val sessionConfig = SessionConfig.default(
+    config.live.config.getString(s"${config.live.configKey}.sessionServerSecret")
+  )
   implicit protected val sessionManager: SessionManager[ChutiSession] =
     new SessionManager[ChutiSession](sessionConfig)
   implicit private val refreshTokenStorage: InMemoryRefreshTokenStorage[ChutiSession] =

@@ -3,11 +3,11 @@
     "value" : 1
   },
   "gameStatus" : {
-    "cantando" : {
+    "jugando" : {
       
     }
   },
-  "currentEventIndex" : 7,
+  "currentEventIndex" : 11,
   "created" : "2020-05-07T10:03:35.164073",
   "triunfo" : null,
   "enJuego" : [
@@ -102,8 +102,12 @@
       ],
       "turno" : true,
       "cantante" : true,
-      "mano" : false,
-      "cuantasCantas" : null,
+      "mano" : true,
+      "cuantasCantas" : {
+        "Casa" : {
+          
+        }
+      },
       "cuenta" : [
       ]
     },

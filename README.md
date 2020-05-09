@@ -54,11 +54,12 @@ Mano - El jugador que tiene la batuta en un momento dado
  - Las cuatro mas altas de una y 3 mulas
  
 ### Hoyos tecnicos
-1. Si eres el cantante: Cuando sigues corriende el juego a pesar de que ya estas hecho.
-Dado un triunfo, cual es el minimo numero de filas que puedes hacer, Nota: siempre se puede correr la primera.
-Es decir Si llevas la mano, y el minimo es igual o mayor a lo que cantaste, y vuelves a pedir... es hoyo tecnico!
+1. Si eres el cantante: Cuando sigues corriendo el juego a pesar de que ya estas hecho.
+Dado un triunfo, cual es el mínimo numero de filas que puedes hacer, Nota: siempre se puede correr la primera.
+Es decir Si llevas la mano, y el mínimo es igual o mayor a lo que cantaste, y vuelves a pedir... es hoyo tecnico!
 2. Si no eres el cantante, pero llevas la mano si sigues corriendo el juego a pesar de que el hoyo ya esta hecho
-3. Si piden triunfos, tienes y das otra cosa (el juego podria facilmente evitar esto) 
+3. Si piden cualquier numero (triunfo o no), tienes y das otra cosa (el juego podría fácilmente evitar esto) 
+4. Si piden cualquier numero que no sea triunfo, no tienes de esas, pero tienes triunfo y no lo sueltas
 
 ### El juego se acaba
 - Cuando el que canto ya hizo el numero que canto

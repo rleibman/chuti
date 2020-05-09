@@ -16,14 +16,14 @@
 
 package dao
 
-import api.Config
-import zio.{UIO, ZIO}
 import slick.basic.BasicBackend
 import slick.jdbc.JdbcBackend._
+import zio.{UIO, ZIO}
+import api.config
 
-object MySQLDatabaseProvider extends Config {
+object MySQLDatabaseProvider {
 
-  private val db = ZIO.effectTotal { Database.forConfig(configKey) }
+  private val db = ZIO.effectTotal { Database.forConfig(config.live.configKey) }
 
 }
 
