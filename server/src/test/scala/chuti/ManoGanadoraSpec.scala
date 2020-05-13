@@ -25,7 +25,8 @@ class ManoGanadoraSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSp
   tests.map { s =>
     s"cuando juegan ${s._1._1}, triunfando ${s._1._3}, pidiendo ${s._1._2}" should s" ganar ${s._2}" in {
       val fichas = s._1._1.split(",").map(Ficha.fromString)
-      val ganadora = Game.calculaFichaGanadora(fichas, Ficha.fromString(s._1._2), s._1._3)
+      val game = Game(None, triunfo = Option(s._1._3))
+      val (ganadora, perdedora) = game.fichaGanadora(Ficha.fromString(s._1._2), fichas)
       val esperada = Ficha.fromString(s._2)
       assert(ganadora === esperada)
     }

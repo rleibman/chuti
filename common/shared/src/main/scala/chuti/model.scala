@@ -22,6 +22,8 @@ import chuti.Numero._
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import io.circe.{Decoder, Encoder}
 
+import scala.annotation.tailrec
+
 object GameException {
   def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
 }
@@ -155,6 +157,8 @@ case class Jugador(
     }
   }
 
+  lazy val id: Option[UserId] = user.id
+
 }
 
 sealed trait Triunfo extends Product with Serializable
@@ -195,6 +199,9 @@ object GameStatus {
   object abandonado extends GameStatus {
     override def value: String = "abandonado"
   }
+  object partidoTerminado extends GameStatus {
+    override def value: String = "partidoTerminado"
+  }
   def withName(str: String): GameStatus = str match {
     case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
     case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
@@ -202,6 +209,7 @@ object GameStatus {
     case "cantando"                    => cantando
     case "jugando"                     => jugando
     case "terminado"                   => terminado
+    case "partidoTerminado"            => partidoTerminado
     case "abandonado"                  => abandonado
     case other                         => throw GameException(s"Unknown game state $other")
   }
@@ -211,11 +219,15 @@ object GameStatus {
 import chuti.GameStatus._
 
 sealed trait Borlote
-case object Hoyo extends Borlote
-case object ElNiñoDelCumpleaños extends Borlote
-case object SantaClaus extends Borlote
-case object CampanitaSeJuega extends Borlote
-case object Helecho extends Borlote
+object Borlote {
+  case object Hoyo extends Borlote
+  case object HoyoTecnico extends Borlote
+  case object ConTuHoyoMeFui extends Borlote // TODO
+  case object ElNiñoDelCumpleaños extends Borlote
+  case object SantaClaus extends Borlote
+  case object CampanitaSeJuega extends Borlote
+  case object Helecho extends Borlote
+}
 
 case class GameId(value: Int) extends AnyVal
 
@@ -228,26 +240,26 @@ object Game {
     Ficha(Numero(i), Numero(i))
   )
 
-  def calculaFichaGanadora(
-    fichas:   Seq[Ficha],
-    pidiendo: Ficha,
-    triunfo:  Triunfo
-  ): Ficha = {
-    triunfo match {
-      case SinTriunfos =>
-        if (pidiendo.esMula) pidiendo
-        else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
-      case TriunfoNumero(triunfoVal) =>
-        val triunfos = fichas.filter(_.es(triunfoVal))
-        if (triunfos.isEmpty) {
-          if (pidiendo.esMula) pidiendo
-          else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
-        } else {
-          if (pidiendo.esMula && pidiendo.es(triunfoVal)) pidiendo
-          else triunfos.maxBy(f => if (f.arriba == triunfoVal) f.abajo.value else f.arriba.value)
-        }
-    }
-  }
+//  def calculaFichaGanadora(
+//    fichas:   Seq[Ficha],
+//    pidiendo: Ficha,
+//    triunfo:  Triunfo
+//  ): Ficha = {
+//    triunfo match {
+//      case SinTriunfos =>
+//        if (pidiendo.esMula) pidiendo
+//        else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
+//      case TriunfoNumero(triunfoVal) =>
+//        val triunfos = fichas.filter(_.es(triunfoVal))
+//        if (triunfos.isEmpty) {
+//          if (pidiendo.esMula) pidiendo
+//          else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
+//        } else {
+//          if (pidiendo.esMula && pidiendo.es(triunfoVal)) pidiendo
+//          else triunfos.maxBy(f => if (f.arriba == triunfoVal) f.abajo.value else f.arriba.value)
+//        }
+//    }
+//  }
   def calculaJugadorGanador(
     fichas:   Seq[(UserId, Ficha)],
     pidiendo: Ficha,
@@ -286,13 +298,167 @@ case class Game(
   jugadores:       List[Jugador] = List.empty,
   pointsPerDollar: Double = 100.0
 ) {
+
+  def fichaGanadora(
+    pide: Ficha,
+    da:   Ficha
+  ): Ficha = {
+    triunfo match {
+      case Some(SinTriunfos) =>
+        if (pide.esMula) pide
+        else if (pide.abajo.value > da.other(pide.arriba).value) pide
+        else da
+      case Some(TriunfoNumero(triunfo)) =>
+        if (pide.es(triunfo) && pide.esMula)
+          pide
+        else if (pide.es(triunfo) && !da.es(triunfo))
+          pide
+        else if (pide.es(triunfo) && pide
+                   .other(triunfo).value > da.other(triunfo).value)
+          pide
+        else if (pide.es(triunfo) && pide
+                   .other(triunfo).value < da.other(triunfo).value)
+          da
+        else if (pide.esMula)
+          pide
+        else if (!da.es(pide.arriba))
+          pide
+        else if (pide.abajo.value > da.other(pide.arriba).value)
+          pide
+        else
+          da
+    }
+  }
+
+  def fichaGanadora(
+    pide:   Ficha,
+    fichas: Seq[Ficha]
+  ): (Ficha, Ficha) = {
+    //Juega todas:
+    //Score >= 1000 te ganaron.
+
+    //Score == 0 doesn't even match
+    val juegaTodas: Seq[(Ficha, Int)] = fichas
+      .map { da =>
+        val score: Int = triunfo match {
+          case Some(SinTriunfos) =>
+            if (pide.esMula)
+              da.other(pide.arriba).value
+            else if (!da.es(pide.arriba))
+              0
+            else if (pide.abajo.value > da.other(pide.arriba).value)
+              da.other(pide.arriba).value
+            else
+              1000 + da.other(pide.arriba).value
+          case Some(TriunfoNumero(triunfo)) =>
+            if (pide.es(triunfo)) {
+              if (pide.esMula)
+                da.other(triunfo).value
+              else if (!da.es(triunfo))
+                0
+              else if (pide.other(triunfo).value > da.other(triunfo).value)
+                da.other(triunfo).value
+              else if (pide.other(triunfo).value < da.other(triunfo).value)
+                1000 + da.other(triunfo).value
+              else
+                0
+            } else if (da.es(triunfo))
+              1000 + da.other(triunfo).value
+            else if (pide.esMula)
+              da.other(pide.arriba).value
+            else if (!da.es(pide.arriba))
+              0
+            else if (pide.abajo.value > da.other(pide.arriba).value)
+              da.other(pide.arriba).value
+            else
+              1000 + da.other(pide.arriba).value
+        }
+        (da, score)
+      }.sortBy(-_._2)
+
+    if (juegaTodas.head._2 >= 1000) {
+      (juegaTodas.head._1, pide)
+    } else {
+      (pide, juegaTodas.head._1)
+    }
+  }
+
+  def puedesCaerte(jugador: Jugador): Boolean = {
+    @tailrec def loop(
+      looped: Game,
+      fichas: List[Ficha]
+    ): Boolean = {
+      val loopedJugador = looped.jugador(jugador.user.id)
+      val cantante = looped.quienCanta
+      if (loopedJugador.fichas.isEmpty) {
+        true //Ya no hay mas fichas, caete!
+      } else if (loopedJugador.cantante && loopedJugador.cuantasCantas.fold(0)(_.numFilas) >= loopedJugador.filas.size) {
+        true //El cantante ya esta hecho, caete!
+      } else if (!loopedJugador.cantante && loopedJugador.cuantasCantas.fold(0)(_.numFilas) < (cantante.filas.size + loopedJugador.fichas.size)) {
+        true //Ya es hoyo, caete!
+      } else {
+        //Pretende jugar la siguiente ficha.
+        val juegaFicha: Ficha = looped
+          .maxByTriunfo(loopedJugador.fichas).getOrElse(
+            throw GameException("The player better have something to play")
+          )
+
+        val (fichaGanadora, fichaPerdedora) = looped.fichaGanadora(juegaFicha, fichas)
+
+        if (fichaGanadora != juegaFicha) {
+          false //Hay alguien que le ganaria la mano
+        } else {
+          loop(
+            looped.copy(
+              jugadores = looped.modifiedJugadores(
+                _ == loopedJugador,
+                j =>
+                  j.copy(
+                    fichas = fichas.filter(_ != fichaGanadora),
+                    filas = j.filas :+ Fila(List(fichaGanadora))
+                  )
+              )
+            ),
+            fichas.filter(_ != fichaPerdedora)
+          )
+        }
+      }
+    }
+    loop(this, jugadores.filter(_.id != jugador.id).flatMap(_.fichas))
+  }
+
+  def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
+    triunfo match {
+      case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)
+      case Some(TriunfoNumero(num)) =>
+        fichas.maxByOption(f =>
+          if (f.es(num) && f.esMula)
+            300
+          else if (f.es(num))
+            200 + f.other(num).value
+          else if (f.esMula) 100
+          else
+            f.arriba.value
+        )
+    }
+
+  def partidoOver: Boolean = {
+    jugadores.exists(_.cuenta.map(_.puntos).sum >= 21)
+  }
+
+  def jugador(id: Option[UserId]): Jugador =
+    jugadores
+      .find(_.user.id == id).getOrElse(
+        throw GameException("Este usuario no esta jugando en este juego")
+      )
+
   lazy val mano: Jugador = {
     jugadores.find(_.mano).get
   }
 
   lazy val quienCanta: Jugador = jugadores.find(_.cantante).get
 
-  def modifiedPlayers(
+  def modifiedJugadores(
     filter:       Jugador => Boolean,
     ifMatches:    Jugador => Jugador,
     ifNotMatches: Jugador => Jugador = identity
@@ -356,7 +522,7 @@ case class Game(
     userOpt: Option[User],
     event:   GameEvent
   ): (Game, GameEvent) = {
-    //TODO make sure the event *can* be applied "legally"
+    //It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex) {
       throw GameException("Error! the event did not gather the correct index")
@@ -365,7 +531,8 @@ case class Game(
   }
 
   //very similar to apply event, but for the client, this re-applies an event that the server has already processed
-  def reapplyEvent(event: GameEvent): (Game, GameEvent) = {
+  //No new events are generated
+  def reapplyEvent(event: GameEvent): Game = {
     //TODO: Write this
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
     ???
@@ -390,5 +557,5 @@ case class Game(
 
 case class Cuenta(
   puntos: Int,
-  esHoyo: Boolean
+  esHoyo: Boolean = false
 )

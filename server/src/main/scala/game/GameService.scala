@@ -415,6 +415,57 @@ object GameService {
           }
         } yield true).mapError(GameException.apply)
 
+      def checkPlayTransition(
+        user:      User,
+        game:      Game,
+        playEvent: GameEvent
+      ): (Game, Seq[GameEvent]) = {
+        def applyHoyoTecnico(
+          game:  Game,
+          razon: String
+        ): (Game, Seq[GameEvent]) = {
+          val a = game.applyEvent(Option(user), HoyoTecnico(razon))
+          val b = a._1.applyEvent(Option(user), BorloteEvent(Borlote.HoyoTecnico))
+          (b._1, Seq(a._2, b._2))
+        }
+        playEvent match {
+          case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
+          case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
+          case e: PideInicial if e.hoyoTecnico.isDefined =>
+            applyHoyoTecnico(game, e.hoyoTecnico.get)
+          case e: Da if e.ficha == Game.campanita =>
+            val a = game.applyEvent(Option(user), BorloteEvent(Borlote.CampanitaSeJuega))
+            (a._1, Seq(a._2))
+          case _ =>
+            val (regalosGame, regalosBorlote) =
+              if (game.jugadores.filter(!_.cantante).count(_.filas.size == 1) == 3) {
+                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.SantaClaus))
+                (a._1, Seq(a._2))
+              } else if (game.jugadores.filter(!_.cantante).exists(_.filas.size == 3)) {
+                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.ElNiñoDelCumpleaños))
+                (a._1, Seq(a._2))
+              } else
+                (game, Seq.empty)
+
+            val (helechoGame, helechoBorlote) =
+              if (game.jugadores.find(!_.cantante).fold(false)(_.filas.size == 4) && game.jugadores
+                    .exists(_.filas.size < 4)) {
+                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Helecho))
+                (a._1, Seq(a._2))
+              } else {
+                (regalosGame, regalosBorlote)
+              }
+
+            if (helechoGame.jugadores.exists(_.fichas.isEmpty)) {
+              //Ya se acabo el juego, a nadie le quedan fichas
+              val a = helechoGame.applyEvent(Option(user), TerminaJuego())
+              (a._1, helechoBorlote :+ a._2)
+            } else {
+              (helechoGame, helechoBorlote)
+            }
+        }
+      }
+
       override def play(
         gameId:    GameId,
         playEvent: PlayEvent
@@ -423,25 +474,18 @@ object GameService {
           repository <- ZIO.access[Repository](_.get)
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           gameOpt    <- repository.gameOperations.get(gameId)
-          afterPlayed <- gameOpt.fold(throw GameException("Game not found")) { game =>
-            //TODO Check if the move is allowed
+          played <- gameOpt.fold(throw GameException("Game not found")) { game =>
             if (!game.jugadores.exists(_.user.id == user.id)) {
               throw GameException("This user isn't playing in this game!!")
             }
-            val (afterPlayed, event) = game.applyEvent(Option(user), playEvent)
+            val (played, event) = game.applyEvent(Option(user), playEvent)
 
-            if ((game.quienCanta.filas.size + game.quienCanta.fichas.size) < game.quienCanta.cuantasCantas
-                  .fold(0)(_.numFilas)) {
-              //Ya fue hoyo!
-            } else if (game.quienCanta.filas.size >= game.quienCanta.cuantasCantas
-                         .fold(0)(_.numFilas)) {
-              //Ya se hizo
-            }
-            //TODO check change to game status? if it's transitioned we may need more stuff
-            repository.gameOperations.upsert(afterPlayed).map((_, event))
+            val (transitioned, transitionEvents) = checkPlayTransition(user, played, event)
+
+            repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
           }
-          _ <- broadcast(gameEventQueues, afterPlayed._2)
-        } yield afterPlayed._1).mapError(GameException.apply)
+          _ <- ZIO.foreach(played._2)(broadcast(gameEventQueues, _))
+        } yield played._1).mapError(GameException.apply)
       }
 
       override def gameStream(gameId: GameId): ZStream[GameLayer, Nothing, GameEvent] =
@@ -458,7 +502,7 @@ object GameService {
             .filter {
               case InviteToGame(invited, eventGameId, _, _) =>
                 (eventGameId == Option(gameId)) || invited.id == user.id
-              case event => (event.gameId == Option(gameId))
+              case event => event.gameId == Option(gameId)
             }
         }
 

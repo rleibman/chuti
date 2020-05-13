@@ -91,7 +91,7 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
     for {
       user <- ZIO.access[SessionProvider](_.get.session.user)
     } yield game.copy(
-      jugadores = game.modifiedPlayers(
+      jugadores = game.modifiedJugadores(
         _.user.id == user.id,
         identity,
         j =>

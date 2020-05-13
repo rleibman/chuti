@@ -41,8 +41,8 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.5"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.7"
-lazy val scalaCacheVersion = "0.28.2-SNAPSHOT"
+lazy val calibanVersion = "0.7.8"
+lazy val scalaCacheVersion = "0.28.0"
 
 lazy val commonSettings = Seq(
   organization     := "leibman.net",
@@ -61,8 +61,8 @@ lazy val commonVmSettings = commonSettings ++ Seq(
     "com.github.julien-truffaut" %% "monocle-core"            % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
-    "org.scalatest"              %% "scalatest"               % "3.1.1" % "test" withSources (),
-    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.0" % Test withSources ()
+    "org.scalatest"              %% "scalatest"               % "3.1.2" % "test" withSources (),
+    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.1" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -93,7 +93,7 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
         "com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion withSources (),
         "com.github.julien-truffaut" %%% "monocle-macro" % monocleVersion withSources (),
         "com.github.julien-truffaut" %%% "monocle-law"   % monocleVersion % "test" withSources (),
-        "org.scalatest" %%% "scalatest"                  % "3.1.1" % "test" withSources ()
+        "org.scalatest" %%% "scalatest"                  % "3.1.2" % "test" withSources ()
       ),
       libraryDependencies ++= Seq(
         "io.circe" %%% "circe-core",
@@ -132,7 +132,6 @@ lazy val server: Project = project
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
-      "com.github.cb372" %% "scalacache-zio"      % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % "1.0.0-RC18-2" withSources (),
       "dev.zio"               %% "zio-logging-slf4j" % "0.2.8" withSources (),
@@ -293,7 +292,7 @@ lazy val commonWeb: Project => Project =
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.0" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.0" withSources (),
         "com.github.pathikrit"                          %% "better-files" % "3.8.0",
-        "org.scalatest" %%% "scalatest"                 % "3.1.1" % "test" withSources ()
+        "org.scalatest" %%% "scalatest"                 % "3.1.2" % "test" withSources ()
       ),
       organization     := "net.leibman",
       organizationName := "Roberto Leibman",

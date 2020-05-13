@@ -36,7 +36,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     def takeTurn(
       asPlayer: Jugador,
       game:     Game
-    ): PlayEvent
+    ): Option[PlayEvent]
   }
 
   case object MostlyRandomPlayerBot extends PlayerBot {
@@ -127,16 +127,25 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       }
     }
 
+    def caite(
+      jugador: Jugador,
+      game:    Game
+    ): PlayEvent = Caite()
+
     override def takeTurn(
       jugador: Jugador,
       game:    Game
-    ): PlayEvent = {
-      if (jugador.cantante && jugador.filas.isEmpty) {
-        pideInicial(jugador)
+    ): Option[PlayEvent] = {
+      if (game.gameStatus != GameStatus.jugando) {
+        None
+      } else if (jugador.cantante && jugador.filas.isEmpty) {
+        Option(pideInicial(jugador))
+      } else if (jugador.mano && game.puedesCaerte(jugador)) { //TODO Be a little more discriminative, see if the game is over
+        Option(caite(jugador, game))
       } else if (jugador.mano) {
-        pide(jugador, game)
+        Option(pide(jugador, game))
       } else {
-        da(jugador, game)
+        Option(da(jugador, game))
       }
     }
   }
@@ -177,35 +186,43 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       jugador3 = start.nextPlayer(jugador2)
       jugador4 = start.nextPlayer(jugador3)
       afterPlayer1 <- {
-        val event = bot.takeTurn(jugador1, start)
-        gameService
-          .play(GameId(1), event).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador1.user))
-          )
+        val eventOpt = bot.takeTurn(jugador1, start)
+        eventOpt.fold(IO.succeed(start): ZIO[ZEnv, GameException, Game])(event =>
+          gameService
+            .play(GameId(1), event).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador1.user))
+            )
+        )
       }
       _ <- mockGameGet(gameOperations, afterPlayer1)
       afterPlayer2 <- {
-        val event = bot.takeTurn(jugador2, afterPlayer1)
-        gameService
-          .play(GameId(1), event).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador2.user))
-          )
+        val eventOpt = bot.takeTurn(jugador2, afterPlayer1)
+        eventOpt.fold(IO.succeed(afterPlayer1): ZIO[ZEnv, GameException, Game])(event =>
+          gameService
+            .play(GameId(1), event).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador2.user))
+            )
+        )
       }
       _ <- mockGameGet(gameOperations, afterPlayer2)
       afterPlayer3 <- {
-        val event = bot.takeTurn(jugador3, afterPlayer2)
-        gameService
-          .play(GameId(1), event).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador3.user))
-          )
+        val eventOpt = bot.takeTurn(jugador3, afterPlayer2)
+        eventOpt.fold(IO.succeed(afterPlayer2): ZIO[ZEnv, GameException, Game])(event =>
+          gameService
+            .play(GameId(1), event).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador3.user))
+            )
+        )
       }
       _ <- mockGameGet(gameOperations, afterPlayer3)
       afterPlayer4 <- {
-        val event = bot.takeTurn(jugador4, afterPlayer3)
-        gameService
-          .play(GameId(1), event).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(jugador4.user))
-          )
+        val eventOpt = bot.takeTurn(jugador4, afterPlayer3)
+        eventOpt.fold(IO.succeed(afterPlayer3): ZIO[ZEnv, GameException, Game])(event =>
+          gameService
+            .play(GameId(1), event).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(jugador4.user))
+            )
+        )
       }
     } yield afterPlayer4
   }
