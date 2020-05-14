@@ -1,7 +1,7 @@
-import org.apache.commons.io.FileUtils
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
+import org.apache.commons.io.FileUtils
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossProject
 
@@ -400,3 +400,4 @@ lazy val bundlerSettings: Project => Project =
         "webpack-merge"              -> "4.2.2"
       )
     )
+
