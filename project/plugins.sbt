@@ -25,3 +25,7 @@ libraryDependencies += "org.vafer" % "jdeb" % "1.4" artifacts Artifact("jdeb", "
 resolvers += Resolver.bintrayRepo("oyvindberg", "converter")
 
 addSbtPlugin("org.scalablytyped.converter" % "sbt-converter06" % "1.0.0-beta12")
+
+////////////////////////////////////////////////////////////////////////////////////
+// Testing
+addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "0.7.3")
