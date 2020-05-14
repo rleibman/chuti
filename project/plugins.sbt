@@ -29,3 +29,5 @@ addSbtPlugin("org.scalablytyped.converter" % "sbt-converter06" % "1.0.0-beta12")
 ////////////////////////////////////////////////////////////////////////////////////
 // Testing
 addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "0.7.3")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.2.7")
