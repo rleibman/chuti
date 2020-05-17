@@ -58,8 +58,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -71,8 +71,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -121,8 +121,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 4)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 4)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando cinco sin salve" should "get it done" in {
@@ -135,8 +135,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -148,8 +148,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -197,8 +197,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 4)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 4)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando todas" should "get it done" in {
@@ -211,8 +211,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -224,8 +224,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(1).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -250,8 +250,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.mano)
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 1)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 1)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve" should "get it done" in {
@@ -264,8 +264,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -277,8 +277,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -330,8 +330,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(!cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assert(salvador.cuantasCantas === Option(CuantasCantas.Canto5))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 4)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 4)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve de chuti" should "get it done" in {
@@ -344,8 +344,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -357,8 +357,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(2).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -394,8 +394,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(!cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assert(salvador.cuantasCantas === Option(CuantasCantas.CantoTodas))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 2)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 2)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve de 5,6,7" should "get it done" in {
@@ -408,8 +408,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent],
+      userEvents: List[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
@@ -421,8 +421,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
           userStream = gameService.userStream.provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
-          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
+          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           _ <- ZIO.succeed(
@@ -474,8 +474,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(!cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assert(salvador.cuantasCantas === Option(CuantasCantas.CantoTodas))
     assertSoloUnoCanta(game)
-    assert(gameEvents.toSeq.flatten.size === 4)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 4)
+    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
 }

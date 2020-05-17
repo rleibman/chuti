@@ -33,7 +33,9 @@ case class GameException(
   cause: Option[Throwable] = None
 ) extends Exception(msg, cause.orNull)
 
-sealed class Numero(val value: Int)
+sealed class Numero(val value: Int) {
+  override def toString: String = value.toString
+}
 
 object Numero {
   def max(
@@ -131,8 +133,16 @@ case class FichaConocida private[chuti] (
   override def toString: String = s"${arriba.value}:${abajo.value}"
 }
 
-case class Fila(
-  fichas:  List[Ficha],
+object Fila {
+  def apply(
+    abierta: Boolean,
+    fichas:  Ficha*
+  ): Fila = new Fila(fichas.toSeq, abierta)
+  def apply(fichas: Ficha*): Fila = new Fila(fichas.toSeq, true)
+}
+
+case class Fila private[chuti] (
+  fichas:  Seq[Ficha],
   abierta: Boolean = false
 )
 
@@ -149,6 +159,15 @@ case class Jugador(
   cuantasCantas: Option[CuantasCantas] = None,
   cuenta:        Seq[Cuenta] = Seq.empty
 ) {
+  def yaSeHizo: Boolean = {
+    if (!cantante) {
+      throw GameException("Si no canta no se puede hacer!!")
+    }
+    filas.size >= cuantasCantas.fold(throw GameException("Si no canta no se puede hacer!!"))(
+      _.numFilas
+    )
+  }
+
   def dropFicha(ficha: Ficha): List[Ficha] = {
     fichas.headOption match {
       case None              => fichas
@@ -240,26 +259,6 @@ object Game {
     Ficha(Numero(i), Numero(i))
   )
 
-//  def calculaFichaGanadora(
-//    fichas:   Seq[Ficha],
-//    pidiendo: Ficha,
-//    triunfo:  Triunfo
-//  ): Ficha = {
-//    triunfo match {
-//      case SinTriunfos =>
-//        if (pidiendo.esMula) pidiendo
-//        else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
-//      case TriunfoNumero(triunfoVal) =>
-//        val triunfos = fichas.filter(_.es(triunfoVal))
-//        if (triunfos.isEmpty) {
-//          if (pidiendo.esMula) pidiendo
-//          else fichas.filter(_.es(pidiendo.arriba)).maxBy(_.arriba.value)
-//        } else {
-//          if (pidiendo.esMula && pidiendo.es(triunfoVal)) pidiendo
-//          else triunfos.maxBy(f => if (f.arriba == triunfoVal) f.abajo.value else f.arriba.value)
-//        }
-//    }
-//  }
   def calculaJugadorGanador(
     fichas:   Seq[(UserId, Ficha)],
     pidiendo: Ficha,
@@ -298,137 +297,121 @@ case class Game(
   jugadores:       List[Jugador] = List.empty,
   pointsPerDollar: Double = 100.0
 ) {
+  //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
+  def cuantasDeCaida(
+    fichas:    Seq[Ficha],
+    remainder: Seq[Ficha]
+  ): Seq[Fila] = {
+    @tailrec def loop(
+      fichas:    Seq[Ficha],
+      remainder: Seq[Ficha],
+      filas:     Seq[Fila]
+    ): Seq[Fila] = {
+      val pideOpt = maxByTriunfo(fichas)
+      pideOpt match {
+        case None => filas
+        case Some(pide) =>
+          val enJuego = remainder
+            .map(da => (da, score(pide, da)))
+            .filter(_._2 > 0)
+            .sortBy(-_._2)
+          if (enJuego.headOption.fold(false)(_._2 >= 1000)) {
+            filas
+          } else {
+            loop(
+              fichas.filter(_ != pide),
+              remainder.filter(f => enJuego.lastOption.fold(true)(_._1 != f)),
+              filas :+ Fila(Seq(pide) ++ enJuego.lastOption.map(_._1).toSeq)
+            )
+          }
+
+      }
+
+    }
+    loop(fichas, remainder, Seq.empty)
+  }
+
+  /**
+    *
+    * @return
+    *         1100 + valor si pides otra cosa y te ganan con triunfo
+    *         1000 + valor si te gana
+    *         100 + valor si no te gana, pero por lo menos te dio lo que pediste
+    *         0 si ni siquiera es lo que pediste
+    */
+  def score(
+    pide: Ficha,
+    da:   Ficha
+  ): Int = {
+    triunfo match {
+      case None => throw GameException("Not happening!")
+      case Some(SinTriunfos) =>
+        if (!da.es(pide.arriba))
+          0 //Ni siquiera es lo que pediste.
+        else if (pide.esMula || pide.abajo.value > da.other(pide.arriba).value)
+          100 + da.other(pide.arriba).value //Ganas por valor
+        else
+          1000 + da.other(pide.arriba).value //Te ganaron
+      case Some(TriunfoNumero(triunfo)) =>
+        if (pide.es(triunfo) && !da.es(triunfo))
+          0 //Ni siquiera es lo que pediste.
+        else if (!pide.es(triunfo) && da.es(triunfo))
+          1100 + da.other(triunfo).value //Te ganaron con triunfo.
+        else if (pide.es(triunfo) && (pide.esMula || pide
+                   .other(triunfo).value > da.other(triunfo).value))
+          100 + da.other(triunfo).value //Mula de triunfos, o ambos triunfos, pero tu ganas
+        else if (pide.es(triunfo) && pide.other(triunfo).value < da.other(triunfo).value)
+          1000 + da.other(triunfo).value //Ambos triunfos, pero te ganaron
+        else if (!da.es(pide.arriba))
+          0 //Ni siquiera es lo que pediste.
+        else if (pide.esMula || pide.abajo.value > da.other(pide.arriba).value)
+          100 + da.other(pide.arriba).value //Ganas por valor
+        else
+          1000 + da.other(pide.arriba).value //Te ganaron
+    }
+  }
+
+  def fichaGanadora(
+    pide:  Ficha,
+    juego: Seq[Ficha]
+  ): Ficha =
+    juego
+      .filter(_ != pide)
+      .map(da => (da, score(pide, da)))
+      .filter(_._2 >= 1000)
+      .sortBy(-_._2)
+      .headOption
+      .map(_._1)
+      .getOrElse(pide)
 
   def fichaGanadora(
     pide: Ficha,
     da:   Ficha
-  ): Ficha = {
-    triunfo match {
-      case Some(SinTriunfos) =>
-        if (pide.esMula) pide
-        else if (pide.abajo.value > da.other(pide.arriba).value) pide
-        else da
-      case Some(TriunfoNumero(triunfo)) =>
-        if (pide.es(triunfo) && pide.esMula)
-          pide
-        else if (pide.es(triunfo) && !da.es(triunfo))
-          pide
-        else if (pide.es(triunfo) && pide
-                   .other(triunfo).value > da.other(triunfo).value)
-          pide
-        else if (pide.es(triunfo) && pide
-                   .other(triunfo).value < da.other(triunfo).value)
-          da
-        else if (pide.esMula)
-          pide
-        else if (!da.es(pide.arriba))
-          pide
-        else if (pide.abajo.value > da.other(pide.arriba).value)
-          pide
-        else
-          da
-    }
-  }
-
-  def fichaGanadora(
-    pide:   Ficha,
-    fichas: Seq[Ficha]
-  ): (Ficha, Ficha) = {
-    //Juega todas:
-    //Score >= 1000 te ganaron.
-
-    //Score == 0 doesn't even match
-    val juegaTodas: Seq[(Ficha, Int)] = fichas
-      .map { da =>
-        val score: Int = triunfo match {
-          case Some(SinTriunfos) =>
-            if (pide.esMula)
-              da.other(pide.arriba).value
-            else if (!da.es(pide.arriba))
-              0
-            else if (pide.abajo.value > da.other(pide.arriba).value)
-              da.other(pide.arriba).value
-            else
-              1000 + da.other(pide.arriba).value
-          case Some(TriunfoNumero(triunfo)) =>
-            if (pide.es(triunfo)) {
-              if (pide.esMula)
-                da.other(triunfo).value
-              else if (!da.es(triunfo))
-                0
-              else if (pide.other(triunfo).value > da.other(triunfo).value)
-                da.other(triunfo).value
-              else if (pide.other(triunfo).value < da.other(triunfo).value)
-                1000 + da.other(triunfo).value
-              else
-                0
-            } else if (da.es(triunfo))
-              1000 + da.other(triunfo).value
-            else if (pide.esMula)
-              da.other(pide.arriba).value
-            else if (!da.es(pide.arriba))
-              0
-            else if (pide.abajo.value > da.other(pide.arriba).value)
-              da.other(pide.arriba).value
-            else
-              1000 + da.other(pide.arriba).value
-        }
-        (da, score)
-      }.sortBy(-_._2)
-
-    if (juegaTodas.head._2 >= 1000) {
-      (juegaTodas.head._1, pide)
-    } else {
-      (pide, juegaTodas.head._1)
-    }
-  }
+  ): Ficha = if (score(pide, da) > 1000) da else pide
 
   def puedesCaerte(jugador: Jugador): Boolean = {
-    @tailrec def loop(
-      looped: Game,
-      fichas: List[Ficha]
-    ): Boolean = {
-      val loopedJugador = looped.jugador(jugador.user.id)
-      val cantante = looped.quienCanta
-      if (loopedJugador.fichas.isEmpty) {
-        true //Ya no hay mas fichas, caete!
-      } else if (loopedJugador.cantante && loopedJugador.cuantasCantas.fold(0)(_.numFilas) >= loopedJugador.filas.size) {
-        true //El cantante ya esta hecho, caete!
-      } else if (!loopedJugador.cantante && loopedJugador.cuantasCantas.fold(0)(_.numFilas) < (cantante.filas.size + loopedJugador.fichas.size)) {
-        true //Ya es hoyo, caete!
+    if (jugador.fichas.isEmpty) {
+      true
+    } else {
+      val cuantas = cuantasDeCaida(jugador.fichas, jugadores.filter(_ != jugador).flatMap(_.fichas))
+      val cantante = quienCanta
+      if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
+            .fold(0)(
+              _.numFilas
+            )) {
+        true //Eres el cantante y ya estas hecho, caete!
+      } else if (jugador.id != cantante.id && (jugador.fichas.size - (cantante.filas.size + cuantas.size)) < cantante.cuantasCantas
+                   .fold(0)(_.numFilas)) {
+        true //Ya es hoyo, deten esa masacre //TODO need to make sure this is tested
       } else {
-        //Pretende jugar la siguiente ficha.
-        val juegaFicha: Ficha = looped
-          .maxByTriunfo(loopedJugador.fichas).getOrElse(
-            throw GameException("The player better have something to play")
-          )
-
-        val (fichaGanadora, fichaPerdedora) = looped.fichaGanadora(juegaFicha, fichas)
-
-        if (fichaGanadora != juegaFicha) {
-          false //Hay alguien que le ganaria la mano
-        } else {
-          loop(
-            looped.copy(
-              jugadores = looped.modifiedJugadores(
-                _ == loopedJugador,
-                j =>
-                  j.copy(
-                    fichas = fichas.filter(_ != fichaGanadora),
-                    filas = j.filas :+ Fila(List(fichaGanadora))
-                  )
-              )
-            ),
-            fichas.filter(_ != fichaPerdedora)
-          )
-        }
+        false //No sabemos mas alla de las que cantaste.
       }
     }
-    loop(this, jugadores.filter(_.id != jugador.id).flatMap(_.fichas))
   }
 
   def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
     triunfo match {
+      case None              => throw GameException("Should never happen!")
       case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)
       case Some(TriunfoNumero(num)) =>
         fichas.maxByOption(f =>
@@ -542,12 +525,12 @@ case class Game(
     def jugadorStr(jugador: Jugador): String =
       s"""
          |${jugador.user.name}: ${if (jugador.mano) "Me toca cantar" else ""}
-         |${jugador.fichas.map(_.toString).mkString(" ")}
-         |""".stripMargin
+         |${jugador.fichas.map(_.toString).mkString(" ")}""".stripMargin
 
     s"""
        |id         = $id
        |gameStatus = $gameStatus
+       |triunfo    = ${triunfo.getOrElse("")}
        |${jugadores.map { jugadorStr }.mkString}
        |""".stripMargin
 

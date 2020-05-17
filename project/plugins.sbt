@@ -14,10 +14,9 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Web client
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.32")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.33")
 addSbtPlugin("ch.epfl.scala" % "sbt-scalajs-bundler-sjs06" % "0.17.0")
-addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "0.7.6")
-
+addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "0.7.9")
 libraryDependencies += "org.slf4j" % "slf4j-nop" % "1.7.30" // Needed by sbt-git
 libraryDependencies += "commons-io" % "commons-io" % "2.6"
 libraryDependencies += "org.vafer" % "jdeb" % "1.4" artifacts Artifact("jdeb", "jar", "jar")

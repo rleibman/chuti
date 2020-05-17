@@ -2,6 +2,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 import org.apache.commons.io.FileUtils
+import sbt.Keys.dependencyOverrides
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossProject
 
@@ -41,8 +42,9 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.5"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.8"
+lazy val calibanVersion = "0.7.9"
 lazy val scalaCacheVersion = "0.28.0"
+lazy val zioVersion = "1.0.0-RC19"
 
 lazy val commonSettings = Seq(
   organization     := "leibman.net",
@@ -62,7 +64,7 @@ lazy val commonVmSettings = commonSettings ++ Seq(
     "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
     "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
     "org.scalatest"              %% "scalatest"               % "3.1.2" % "test" withSources (),
-    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.1" % Test withSources ()
+    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.2" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -120,7 +122,7 @@ lazy val server: Project = project
       //Akka
       "com.typesafe.akka"                  %% "akka-actor-typed" % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
-      "com.typesafe.akka"                  %% "akka-http"        % "10.1.11" withSources (),
+      "com.typesafe.akka"                  %% "akka-http"        % "10.1.12" withSources (),
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
@@ -133,12 +135,12 @@ lazy val server: Project = project
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
-      "dev.zio"               %% "zio"               % "1.0.0-RC18-2" withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.2.8" withSources (),
+      "dev.zio"               %% "zio"               % zioVersion withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.2.9" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       //Util
-      "com.github.pathikrit"  %% "better-files"   % "3.8.0" withSources (),
+      "com.github.pathikrit"  %% "better-files"   % "3.9.0" withSources (),
       "com.github.daddykotex" %% "courier"        % "2.0.0" withSources (),
       "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
       "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources ()
@@ -276,12 +278,12 @@ lazy val commonWeb: Project => Project =
         "io.circe" %%% "circe-literal"
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
-        "commons-io"                                    % "commons-io" % "2.6" withSources (),
-        "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
-        "dev.zio" %%% "zio"                             % "1.0.0-RC18-2" withSources (),
+        "commons-io"                                 % "commons-io" % "2.6" withSources (),
+        "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources (),
+//        "dev.zio" %%% "zio"                             % zioVersion withSources (),
         "com.softwaremill.sttp.client" %%% "core"       % "2.0.9" withSources (),
         "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.1",
-        "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.3" withSources (),
+        "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0-RC3" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0-RC3_2019a" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "0.9.8" withSources (),
@@ -289,9 +291,8 @@ lazy val commonWeb: Project => Project =
         "com.github.japgolly.scalajs-react" %%% "core"  % "1.6.0" withSources (),
         "com.github.japgolly.scalajs-react" %%% "extra" % "1.6.0" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
-        "com.github.japgolly.scalacss" %%% "core"       % "0.6.0" withSources (),
-        "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.0" withSources (),
-        "com.github.pathikrit"                          %% "better-files" % "3.8.0",
+        "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
+        "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
         "org.scalatest" %%% "scalatest"                 % "3.1.2" % "test" withSources ()
       ),
       organization     := "net.leibman",
@@ -400,4 +401,3 @@ lazy val bundlerSettings: Project => Project =
         "webpack-merge"              -> "4.2.2"
       )
     )
-

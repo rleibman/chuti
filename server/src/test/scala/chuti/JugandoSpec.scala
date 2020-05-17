@@ -19,24 +19,22 @@ package chuti
 import api.ChutiSession
 import api.token.TokenHolder
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import dao.{DatabaseProvider, Repository, RepositoryIO, SessionProvider}
+import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameService
-import game.GameService.GameService
+import game.GameService.{GameLayer, GameService}
 import game.LoggedInUserRepo.LoggedInUserRepo
+import mail.Postman
 import mail.Postman.Postman
 import org.mockito.scalatest.MockitoSugar
-import org.mockito.stubbing.ScalaOngoingStubbing
 import org.scalatest.flatspec.AnyFlatSpec
 import zio._
 import zio.duration._
 import zio.logging.Logging
+import zio.logging.slf4j.Slf4jLogger
 
 class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   trait PlayerBot {
-    def takeTurn(
-      asPlayer: Jugador,
-      game:     Game
-    ): Option[PlayEvent]
+    def takeTurn(gameId: GameId): RIO[GameLayer with GameService, Game]
   }
 
   case object MostlyRandomPlayerBot extends PlayerBot {
@@ -71,6 +69,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       game:    Game
     ): Pide = {
       game.triunfo match {
+        case None => throw GameException("Should never happen!")
         case Some(SinTriunfos) =>
           Pide(
             jugador.fichas.maxBy(ficha => if (ficha.esMula) 100 else ficha.arriba.value),
@@ -83,7 +82,6 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             ),
             estrictaDerecha = false
           )
-        case None => throw GameException("WTF?")
       }
     }
 
@@ -93,6 +91,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     ): Da = {
       val first = game.enJuego.head
       game.triunfo match {
+        case None => throw GameException("Should never happen!")
         case Some(SinTriunfos) =>
           val pideNum = first._2.arriba
           Da(
@@ -123,233 +122,206 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
                 )
               )
           )
-        case None => throw GameException("what's up with that?")
       }
     }
 
-    def caite(
-      jugador: Jugador,
-      game:    Game
-    ): PlayEvent = Caite()
+    def caite(): PlayEvent = Caite()
 
-    override def takeTurn(
-      jugador: Jugador,
-      game:    Game
-    ): Option[PlayEvent] = {
-      if (game.gameStatus != GameStatus.jugando) {
-        None
-      } else if (jugador.cantante && jugador.filas.isEmpty) {
-        Option(pideInicial(jugador))
-      } else if (jugador.mano && game.puedesCaerte(jugador)) { //TODO Be a little more discriminative, see if the game is over
-        Option(caite(jugador, game))
-      } else if (jugador.mano) {
-        Option(pide(jugador, game))
-      } else {
-        Option(da(jugador, game))
-      }
+    override def takeTurn(gameId: GameId): RIO[GameLayer with GameService, Game] = {
+      for {
+        gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+        gameService    <- ZIO.access[GameService](_.get)
+        user           <- ZIO.access[SessionProvider](_.get.session.user)
+        game           <- gameOperations.get(gameId).map(_.get)
+        played <- {
+          val jugador = game.jugador(user.id)
+          if (game.gameStatus != GameStatus.jugando) {
+            ZIO.succeed(game)
+          } else if (jugador.cantante && jugador.mano && jugador.filas.isEmpty) {
+            gameService.play(gameId, pideInicial(jugador))
+          } else if (jugador.mano && game.puedesCaerte(jugador)) {
+            gameService.play(gameId, caite())
+          } else if (jugador.mano) {
+            gameService.play(gameId, pide(jugador, game))
+          } else {
+            gameService.play(gameId, da(jugador, game))
+          }
+        }
+      } yield played
     }
   }
 
-  def mockGameGet(
-    mocked: => Repository.GameOperations,
-    game:   Game
-  ): UIO[ScalaOngoingStubbing[RepositoryIO[Option[Game]]]] = ZIO.succeed(
-    when(mocked.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
-  )
-
-  def juegaHastaElFinal(
-    gameService:    GameService.Service,
-    gameOperations: Repository.GameOperations,
-    layer: ULayer[
-      DatabaseProvider with Repository with LoggedInUserRepo with Postman with Logging with TokenHolder
-    ],
-    start: Game
-  ): ZIO[zio.ZEnv, Any, Game] = {
-    ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando
-//      game.jugadores.count(_.fichas.nonEmpty) == 4
-    )(game => juegaMano(gameService, gameOperations, layer, game))
-  }
-
-  def juegaMano(
-    gameService:    GameService.Service,
-    gameOperations: Repository.GameOperations,
-    layer: ULayer[
-      DatabaseProvider with Repository with LoggedInUserRepo with Postman with Logging with TokenHolder
-    ],
-    start: Game
-  ): ZIO[zio.ZEnv, Any, Game] = {
-    val bot: PlayerBot = MostlyRandomPlayerBot
+  def juegaHastaElFinal(gameId: GameId): RIO[LayerWithoutSession, Game] = {
     for {
-      _ <- mockGameGet(gameOperations, start)
-      jugador1 = start.mano
-      jugador2 = start.nextPlayer(jugador1)
-      jugador3 = start.nextPlayer(jugador2)
-      jugador4 = start.nextPlayer(jugador3)
-      afterPlayer1 <- {
-        val eventOpt = bot.takeTurn(jugador1, start)
-        eventOpt.fold(IO.succeed(start): ZIO[ZEnv, GameException, Game])(event =>
-          gameService
-            .play(GameId(1), event).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador1.user))
-            )
+      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+      start <- gameOperations
+        .get(gameId).map(_.get).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(GameService.god))
         )
-      }
-      _ <- mockGameGet(gameOperations, afterPlayer1)
-      afterPlayer2 <- {
-        val eventOpt = bot.takeTurn(jugador2, afterPlayer1)
-        eventOpt.fold(IO.succeed(afterPlayer1): ZIO[ZEnv, GameException, Game])(event =>
-          gameService
-            .play(GameId(1), event).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2.user))
-            )
+      looped <- ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ =>
+        juegaMano(gameId)
+      )
+    } yield looped
+  }
+
+  type LayerWithoutSession = DatabaseProvider
+    with Repository with LoggedInUserRepo with Postman with Logging with TokenHolder
+    with GameService
+
+  def juegaMano(gameId: GameId): RIO[LayerWithoutSession, Game] = {
+    val bot = MostlyRandomPlayerBot
+    for {
+      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+      game <- gameOperations
+        .get(gameId).map(_.get).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(GameService.god))
         )
-      }
-      _ <- mockGameGet(gameOperations, afterPlayer2)
-      afterPlayer3 <- {
-        val eventOpt = bot.takeTurn(jugador3, afterPlayer2)
-        eventOpt.fold(IO.succeed(afterPlayer2): ZIO[ZEnv, GameException, Game])(event =>
-          gameService
-            .play(GameId(1), event).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador3.user))
-            )
+      mano = game.mano
+      sigiuente1 = game.nextPlayer(mano)
+      sigiuente2 = game.nextPlayer(sigiuente1)
+      sigiuente3 = game.nextPlayer(sigiuente2)
+      _ <- bot
+        .takeTurn(gameId).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(mano.user))
         )
-      }
-      _ <- mockGameGet(gameOperations, afterPlayer3)
-      afterPlayer4 <- {
-        val eventOpt = bot.takeTurn(jugador4, afterPlayer3)
-        eventOpt.fold(IO.succeed(afterPlayer3): ZIO[ZEnv, GameException, Game])(event =>
-          gameService
-            .play(GameId(1), event).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador4.user))
-            )
+      _ <- bot
+        .takeTurn(gameId).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(sigiuente1.user))
         )
-      }
+      _ <- bot
+        .takeTurn(gameId).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(sigiuente2.user))
+        )
+      afterPlayer4 <- bot
+        .takeTurn(gameId).provideSomeLayer[LayerWithoutSession](
+          SessionProvider.layer(ChutiSession(sigiuente3.user))
+        )
     } yield afterPlayer4
   }
 
-  "primera mano" should "work" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
-    val userOperations = createUserOperations
+  def repositoryLayer(gameFiles: String*): ULayer[Repository] = ZLayer.fromEffect {
+    val z:  ZIO[Any, Throwable, List[Game]] = ZIO.foreach(gameFiles)(filename => readGame(filename))
+    val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
+    zz
+  }
 
-    val layer = fullLayer(gameOperations, userOperations)
+  final protected def testLayer: ULayer[LayerWithoutSession] = {
+    val postman: Postman.Service = new MockPostman
+    ZLayer.succeed(databaseProvider) ++
+      repositoryLayer(GAME_CANTO4) ++
+      ZLayer.succeed(loggedInUserRepo) ++
+      ZLayer.succeed(postman) ++
+      Slf4jLogger.make((_, b) => b) ++
+      ZLayer.succeed(TokenHolder.live) ++
+      GameService.make()
+  }
+
+  "primera mano" should "work" in {
+    val gameId = GameId(1)
+
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent]
     ) =
       testRuntime.unsafeRun {
-
-        for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+        (for {
+          gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
+            .gameStream(gameId)
+            .provideSomeLayer[LayerWithoutSession](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <- gameStream
+            .takeUntil {
+              case PoisonPill(Some(id), _, _) if id == gameId => true
+              case _                                          => false
+            }.runCollect.fork
+          _     <- clock.sleep(1.second)
+          mano1 <- juegaMano(gameId)
+          _ <- gameService
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[LayerWithoutSession](
+              SessionProvider.layer(ChutiSession(GameService.god))
             )
-          userStream = gameService.userStream.provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
-          gameEventsFiber <- gameStream.take(4).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
-          _               <- clock.sleep(1.second)
-          start           <- readGame(GAME_CANTO4)
-          mano1           <- juegaMano(gameService, gameOperations, layer, start)
-          gameEvents      <- gameEventsFiber.join
-          userEvents      <- userEventsFiber.join
-        } yield (mano1, gameEvents, userEvents)
+          gameEvents <- gameEventsFiber.join
+        } yield (mano1, gameEvents)).provideCustomLayer(testLayer)
       }
 
-    assert(game.id === Option(GameId(1)))
+    assert(game.id === Option(gameId))
     assert(game.jugadores.count(_.fichas.size == 6) === 4) //Todos dieron una ficha.
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
-    assert(gameEvents.toSeq.flatten.size === 4)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.size === 5) //Including the poison pill
   }
   "jugando 4 manos" should "work" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
-    val userOperations = createUserOperations
+    val gameId = GameId(1)
 
-    val layer = fullLayer(gameOperations, userOperations)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent]
     ) =
       testRuntime.unsafeRun {
-
-        for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+        (for {
+          gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
+            .gameStream(gameId)
+            .provideSomeLayer[LayerWithoutSession](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <- gameStream
+            .takeUntil {
+              case PoisonPill(Some(id), _, _) if id == gameId => true
+              case _                                          => false
+            }.runCollect.fork
+          _     <- clock.sleep(1.second)
+          _     <- juegaMano(gameId)
+          _     <- juegaMano(gameId)
+          _     <- juegaMano(gameId)
+          mano4 <- juegaMano(gameId)
+          _ <- gameService
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[LayerWithoutSession](
+              SessionProvider.layer(ChutiSession(GameService.god))
             )
-          userStream = gameService.userStream.provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
-          gameEventsFiber <- gameStream.take(16).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
-          _               <- clock.sleep(1.second)
-          start           <- readGame(GAME_CANTO4)
-          mano1           <- juegaMano(gameService, gameOperations, layer, start)
-          mano2           <- juegaMano(gameService, gameOperations, layer, mano1)
-          mano3           <- juegaMano(gameService, gameOperations, layer, mano2)
-          mano4           <- juegaMano(gameService, gameOperations, layer, mano3)
-          gameEvents      <- gameEventsFiber.join
-          userEvents      <- userEventsFiber.join
-        } yield (mano4, gameEvents, userEvents)
+          gameEvents <- gameEventsFiber.join
+        } yield (mano4, gameEvents)).provideCustomLayer(testLayer)
       }
 
-    assert(game.id === Option(GameId(1)))
-    assert(game.jugadores.count(_.fichas.size == 3) === 4) //Todos dieron una ficha.
-    val ganador = game.jugadores.maxBy(_.filas.size)
-    println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
-    assert(gameEvents.toSeq.flatten.size === 16)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(game.id === Option(gameId))
+    val numFilas = game.jugadores.map(_.filas.size).sum
+    assert(game.quienCanta.fichas.size === (numFilas - 7))
+    if (game.quienCanta.yaSeHizo) {
+      println(s"${game.quienCanta.user.name} se hizo con ${game.quienCanta.filas.size}!")
+    } else {
+      println(s"Fue hoyo para ${game.quienCanta.user.name}!")
+    }
+    assert(gameEvents.nonEmpty)
   }
   "jugando hasta que se haga o sea hoyo" should "work" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
-    val userOperations = createUserOperations
-
-    val layer = fullLayer(gameOperations, userOperations)
+    val gameId = GameId(1)
     val (
       game:       Game,
-      gameEvents: Option[List[GameEvent]],
-      userEvents: Option[List[UserEvent]]
+      gameEvents: List[GameEvent]
     ) =
       testRuntime.unsafeRun {
-
-        for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+        (for {
+          gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
+            .gameStream(gameId)
+            .provideSomeLayer[LayerWithoutSession](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <- gameStream
+            .takeWhile {
+              case PoisonPill(Some(id), _, _) if id == gameId => false
+              case _                                          => true
+            }.runCollect.fork
+          _   <- clock.sleep(1.second)
+          end <- juegaHastaElFinal(gameId)
+          _ <- gameService
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[LayerWithoutSession](
+              SessionProvider.layer(ChutiSession(GameService.god))
             )
-          userStream = gameService.userStream.provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
-          gameEventsFiber <- gameStream.take(16).runCollect.timeout(3.second).fork
-          userEventsFiber <- userStream.take(0).runCollect.timeout(3.second).fork
-          _               <- clock.sleep(1.second)
-          start           <- readGame(GAME_CANTO4)
-          end             <- juegaHastaElFinal(gameService, gameOperations, layer, start)
           gameEvents      <- gameEventsFiber.join
-          userEvents      <- userEventsFiber.join
-        } yield (end, gameEvents, userEvents)
+        } yield (end, gameEvents)).provideCustomLayer(testLayer)
       }
 
-    assert(game.id === Option(GameId(1)))
+    assert(game.id === Option(gameId))
+    assert(game.gameStatus === GameStatus.terminado)
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
-    assert(gameEvents.toSeq.flatten.size === 16)
-    assert(userEvents.toSeq.flatten.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(gameEvents.nonEmpty)
   }
 }

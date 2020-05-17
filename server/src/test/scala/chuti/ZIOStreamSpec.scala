@@ -20,14 +20,14 @@ import org.scalatest.flatspec.AsyncFlatSpec
 import zio.console._
 import zio.duration._
 import zio.stream.ZStream
-import zio.{ Queue, UIO, ZIO, ZQueue }
+import zio.{Queue, UIO, ZIO, ZQueue}
 
 class ZIOStreamSpec extends AsyncFlatSpec {
   "open a stream and writing to it" should "all work" in {
     val zioQueue: UIO[Queue[String]] = ZQueue.unbounded[String]
 
     val result = for {
-      queue        <- zioQueue
+      queue <- zioQueue
       consumeQueue = ZStream.fromQueue(queue).foreach(e => putStrLn(e.toString))
       //Sleep without blocking threads thanks to ZIO fibers
       feedQueue = ZIO.foreach(Range(1, 1000)) { e =>
