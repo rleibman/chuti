@@ -27,6 +27,7 @@ import zio._
 import zio.duration._
 
 class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
+  import InMemoryRepository._
   "Printing the game" should "print it" in {
     testRuntime.unsafeRun {
       for {
@@ -37,6 +38,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
   }
 
+  //TODO move up
   def assertSoloUnoCanta(game: Game): Assertion = {
     assert(game.jugadores.count(_.cantante) === 1)
     assert(game.jugadores.count(_.mano) === 1)

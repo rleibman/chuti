@@ -301,7 +301,14 @@ case class Sopa(
 // Cantando
 
 object CuantasCantas {
-  sealed abstract class CuantasCantas(
+  def byNum(cuantas: Int): CuantasCantas = cuantas match {
+    case 5 => Canto5
+    case 6 => Canto6
+    case 7 => CantoTodas
+    case _ => Casa
+  }
+
+  sealed abstract class CuantasCantas protected (
     val numFilas:  Int,
     val prioridad: Int
   ) {
@@ -577,10 +584,13 @@ case class Caite(
     val losRegalos: Seq[Ficha] = jugador.fichas.diff(deCaida.map(_.fichas.head))
 
     val jugadores =
-      game.modifiedJugadores(_.id == jugador.id, j => j.copy(
-        filas = j.filas ++ deCaida,
-        fichas = List.empty
-      ),
+      game.modifiedJugadores(
+        _.id == jugador.id,
+        j =>
+          j.copy(
+            filas = j.filas ++ deCaida,
+            fichas = List.empty
+          ),
         j => j.copy(fichas = j.fichas.diff(deCaida.flatMap(_.fichas)))
       )
 
@@ -599,7 +609,7 @@ case class Caite(
           jugadores = jugadores.map(j =>
             if (j.fichas.contains(fichaMerecedora)) {
               j.copy(
-                filas =  j.filas :+ Fila(fichaMerecedora, regalo),
+                filas = j.filas :+ Fila(fichaMerecedora, regalo),
                 fichas = j.fichas.filter(_ != fichaMerecedora)
               )
             } else {

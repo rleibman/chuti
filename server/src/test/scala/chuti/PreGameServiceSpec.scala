@@ -17,15 +17,9 @@
 package chuti
 
 import api.ChutiSession
-import better.files.File
-import dao.Repository.GameOperations
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
+import game.GameService
 import game.GameService.GameService
-import game.{GameService, LoggedInUserRepo}
-import io.circe.Printer
-import io.circe.generic.auto._
-import io.circe.parser._
-import io.circe.syntax._
 import org.mockito.captor.ArgCaptor
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
@@ -33,6 +27,8 @@ import zio._
 import zio.duration._
 
 class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
+  import InMemoryRepository._
+
   "Creating a new Game" should "create a game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
