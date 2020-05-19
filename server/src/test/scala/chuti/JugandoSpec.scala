@@ -127,11 +127,11 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
             SessionProvider.layer(ChutiSession(GameService.god))
           )
           gameEvents <- gameEventsFiber.join
-        } yield (end, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
+        } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
 
     assert(game.id === Option(gameId))
-    assert(game.gameStatus === GameStatus.terminado)
+    assert(game.gameStatus === GameStatus.requiereSopa)
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
     assert(gameEvents.nonEmpty)

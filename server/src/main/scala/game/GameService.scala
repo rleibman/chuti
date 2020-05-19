@@ -27,7 +27,6 @@ import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import mail.Postman.Postman
 import zio._
-import zio.console.Console
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
@@ -64,8 +63,9 @@ object GameService {
     lastUpdated = LocalDateTime.now()
   )
 
-  type GameLayer = SessionProvider with DatabaseProvider with Repository with LoggedInUserRepo with Postman
-    with Logging with TokenHolder
+  type GameLayer = SessionProvider
+    with DatabaseProvider with Repository with LoggedInUserRepo with Postman with Logging
+    with TokenHolder
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
@@ -241,12 +241,13 @@ object GameService {
               .upsert(Game(None, gameStatus = GameStatus.esperandoJugadoresAzar))
           )(game => ZIO.succeed(game))
           afterApply <- {
+            //TODO, refactor with acceptGameInvitation
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
-            val (started, startGame: GameEvent) = if (joined.canTransition(GameStatus.cantando)) {
-              joined.applyEvent(None, Sopa())
+            val (started, startGame: GameEvent) = if (joined.canTransitionTo(GameStatus.requiereSopa)) {
+              joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
               //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
-              joined.applyEvent(None, NoOp())
+              joined.applyEvent(Option(user), NoOp())
             }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
@@ -381,12 +382,13 @@ object GameService {
               .upsert(Game(None, gameStatus = GameStatus.esperandoJugadoresInvitados))
           )(game => ZIO.succeed(game))
           afterApply <- {
+            //TODO, refactor with acceptGameInvitation
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
-            val (started, startGame: GameEvent) = if (joined.canTransition(GameStatus.cantando)) {
-              joined.applyEvent(None, Sopa())
+            val (started, startGame: GameEvent) = if (joined.canTransitionTo(GameStatus.requiereSopa)) {
+              joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
               //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             } else {
-              joined.applyEvent(None, NoOp())
+              joined.applyEvent(Option(user), NoOp())
             }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
@@ -502,7 +504,7 @@ object GameService {
             _     <- log.info(s"GameStream started, queues have ${after.length} entries")
           } yield ZStream
             .fromQueue(queue)
-            .tap(event => log.info(event.toString))
+            .tap(event => log.debug(event.toString))
             .filter {
               case InviteToGame(invited, eventGameId, _, _) =>
                 (eventGameId == Option(gameId)) || invited.id == user.id

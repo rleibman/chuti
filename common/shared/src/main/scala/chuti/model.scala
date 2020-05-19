@@ -73,6 +73,40 @@ object Numero {
 
 }
 
+object CuantasCantas {
+  def byNum(cuantas: Int): CuantasCantas = cuantas match {
+    case 5 => Canto5
+    case 6 => Canto6
+    case 7 => CantoTodas
+    case _ => Casa
+  }
+
+  sealed abstract class CuantasCantas protected (
+    val numFilas:  Int,
+    val score:     Int,
+    val prioridad: Int
+  ) {}
+
+  case object Casa extends CuantasCantas(4, 4, 4) {
+    override def toString: String = "Casa"
+  }
+  case object Canto5 extends CuantasCantas(5, 5, 5) {
+    override def toString: String = "Cinco"
+  }
+  case object Canto6 extends CuantasCantas(6, 6, 6) {
+    override def toString: String = "Seis"
+  }
+  case object Canto7 extends CuantasCantas(7, 7, 7) {
+    override def toString: String = "Siete (porque le voy al America)"
+  }
+  case object CantoTodas extends CuantasCantas(7, 21, 8) {
+    override def toString: String = "Todas!"
+  }
+  case object Buenas extends CuantasCantas(-1, 0, -1) {
+    override def toString: String = "Buenas"
+  }
+}
+
 object Ficha {
   def apply(
     a: Numero,
@@ -159,7 +193,7 @@ case class Jugador(
   cuantasCantas: Option[CuantasCantas] = None,
   cuenta:        Seq[Cuenta] = Seq.empty
 ) {
-  def yaSeHizo: Boolean = {
+  lazy val yaSeHizo: Boolean = {
     if (!cantante) {
       throw GameException("Si no canta no se puede hacer!!")
     }
@@ -212,8 +246,8 @@ object GameStatus {
     override def value:   String = "jugando"
     override def enJuego: Boolean = true
   }
-  case object terminado extends GameStatus {
-    override def value: String = "terminado"
+  case object requiereSopa extends GameStatus {
+    override def value: String = "requiereSopa"
   }
   object abandonado extends GameStatus {
     override def value: String = "abandonado"
@@ -227,7 +261,7 @@ object GameStatus {
     case "comienzo"                    => comienzo
     case "cantando"                    => cantando
     case "jugando"                     => jugando
-    case "terminado"                   => terminado
+    case "requiereSopa"                => requiereSopa
     case "partidoTerminado"            => partidoTerminado
     case "abandonado"                  => abandonado
     case other                         => throw GameException(s"Unknown game state $other")
@@ -400,9 +434,10 @@ case class Game(
               _.numFilas
             )) {
         true //Eres el cantante y ya estas hecho, caete!
-      } else if (jugador.id != cantante.id && (jugador.fichas.size - (cantante.filas.size + cuantas.size)) < cantante.cuantasCantas
+      } else if (jugador.id != cantante.id &&
+                 (jugador.fichas.size + cantante.filas.size - cuantas.size) < cantante.cuantasCantas
                    .fold(0)(_.numFilas)) {
-        true //Ya es hoyo, deten esa masacre //TODO need to make sure this is tested
+        true //Ya es hoyo, deten esa masacre
       } else {
         false //No sabemos mas alla de las que cantaste.
       }
@@ -491,10 +526,14 @@ case class Game(
   val abandonedPenalty = 10.0
   val numPlayers = 4
 
-  def canTransition(estado: GameStatus): Boolean = {
-    estado match {
-      case GameStatus.cantando =>
-        jugadores.length == numPlayers && (gameStatus == GameStatus.esperandoJugadoresAzar || gameStatus == GameStatus.esperandoJugadoresInvitados) &&
+  def canTransitionTo(transitionState: GameStatus): Boolean = {
+    //TODO fill this up and follow every place state changes
+    transitionState match {
+      case GameStatus.requiereSopa =>
+        jugadores.length == numPlayers &&
+          (gameStatus == GameStatus.jugando ||
+            gameStatus == GameStatus.esperandoJugadoresAzar ||
+            gameStatus == GameStatus.esperandoJugadoresInvitados) &&
           jugadores.forall(_.invited == false) //Not everyone has accepted
       case _ => false
     }

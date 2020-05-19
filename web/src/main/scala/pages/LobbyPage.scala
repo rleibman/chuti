@@ -278,7 +278,7 @@ object LobbyPage extends ChutiPage {
                     ),
                     <.p(s"Hasta ahorita van: ${game.jugadores.map(_.user.name).mkString(",")}")
                   )
-                case GameStatus.terminado => EmptyVdom //I don't even know how we got here
+                case GameStatus.`requiereSopa` => EmptyVdom //I don't even know how we got here
               }
             }
           )

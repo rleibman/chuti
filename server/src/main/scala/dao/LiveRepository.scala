@@ -243,6 +243,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
   }
 
   override val gameOperations: Repository.GameOperations = new GameOperations {
+    //TODO game needs to be cached
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
         if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id)) {
@@ -281,6 +282,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     }
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] = {
+      //TODO game needs to be cached
       val zio = fromDBIO {
         GameQuery
           .filter(_.id === pk)
@@ -323,6 +325,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         .result
         .map(_.map(row => GameRow2Game(row)))
 
+    //TODO game needs to be cached
     override def getGameForUser
       : RepositoryIO[Option[Game]] = { session: ChutiSession => //TODO implement in terms of search
       GamePlayersQuery

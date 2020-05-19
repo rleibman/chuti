@@ -259,14 +259,19 @@ case class Sopa(
   userId: Option[UserId] = None,
   index:  Option[Int] = None,
   turno:  Option[User] = None
-) extends PreGameEvent {
+) extends PlayEvent {
   import Game._
   def sopa:                    List[Ficha] = Random.shuffle(todaLaFicha)
-  override def expectedStatus: Option[GameStatus] = Option(GameStatus.jugando)
+  override def expectedStatus: Option[GameStatus] = Option(GameStatus.requiereSopa)
   override def doEvent(
-    userOpt: Option[User],
+    jugador: Jugador,
     game:    Game
   ): (Game, GameEvent) = {
+    //La sopa siempre la debe de hacer el jugador anterior al turno
+    //Realmente no importa, pero hay que mantener la tradición :)
+    if (turno.fold(false)(t => jugador.id != game.prevPlayer(t).id)) {
+      throw GameException("Quien canto la ultima vez tiene que hacer la sopa")
+    }
 
     val jugadores = game.jugadores
     val newJugadores = sopa
@@ -289,9 +294,10 @@ case class Sopa(
     (
       game.copy(
         jugadores = newJugadores,
-        gameStatus = GameStatus.cantando
+        gameStatus = GameStatus.cantando,
+        enJuego = List.empty
       ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
     )
   }
 
@@ -300,34 +306,6 @@ case class Sopa(
 //////////////////////////////////////////////////////////////////////////////////////
 // Cantando
 
-object CuantasCantas {
-  def byNum(cuantas: Int): CuantasCantas = cuantas match {
-    case 5 => Canto5
-    case 6 => Canto6
-    case 7 => CantoTodas
-    case _ => Casa
-  }
-
-  sealed abstract class CuantasCantas protected (
-    val numFilas:  Int,
-    val prioridad: Int
-  ) {
-    def <=(cuantasCanto: CuantasCantas): Boolean = prioridad <= cuantasCanto.prioridad
-    def >(cuantasCanto:  CuantasCantas): Boolean = prioridad > cuantasCanto.prioridad
-  }
-
-  case object Casa extends CuantasCantas(4, 4)
-
-  case object Canto5 extends CuantasCantas(5, 5)
-
-  case object Canto6 extends CuantasCantas(6, 6)
-
-  case object Canto7 extends CuantasCantas(7, 7)
-
-  case object CantoTodas extends CuantasCantas(21, 8)
-
-  case object Buenas extends CuantasCantas(-1, -1)
-}
 import chuti.CuantasCantas._
 
 case class Canta(
@@ -350,7 +328,7 @@ case class Canta(
       //primer jugador cantando
       jugador.copy(cantante = true, mano = true, cuantasCantas = Option(cuantasCantas))
     } { cuantasCanto =>
-      if (cuantasCantas <= cuantasCanto || cuantasCanto == CuantasCantas.CantoTodas) {
+      if (cuantasCantas.prioridad <= cuantasCanto.prioridad || cuantasCanto == CuantasCantas.CantoTodas) {
         //No es suficiente para salvarlo, dejalo como esta
         cantanteActual
       } else {
@@ -403,6 +381,10 @@ case class PideInicial(
     if (!jugador.fichas.contains(ficha)) {
       throw GameException("No puedes jugar una ficha que no tienes!")
     }
+    if (game.enJuego.nonEmpty || game.jugadores
+          .flatMap(_.filas).nonEmpty || jugador.fichas.size != 7) {
+      throw GameException("No puedes pedir si ya hay fichas en la mesa")
+    }
 
     val conTriunfo = game
       .copy(
@@ -454,6 +436,9 @@ case class Pide(
     if (!jugador.fichas.contains(ficha)) {
       throw GameException("No puedes jugar una ficha que no tienes!")
     }
+    if (game.enJuego.nonEmpty) {
+      throw GameException("No puedes pedir si hay fichas en la mesa")
+    }
 
     (
       //transfiere la ficha al centro
@@ -488,11 +473,11 @@ case class Da(
     game:    Game
   ): (Game, GameEvent) = {
     //Restricciones
-    if (game.estrictaDerecha && !jugador.mano) {
-      throw GameException("No te adelantes")
-    }
     if (!jugador.fichas.contains(ficha)) {
       throw GameException("Este jugador no tiene esta ficha!")
+    }
+    if (game.estrictaDerecha && !game.enJuego.exists(_._1 == game.prevPlayer(jugador).id.get)) {
+      throw GameException("Estricta derecha, no te adelantes!")
     }
     val enJuego = game.enJuego :+ (jugador.id.get, ficha)
     //Si es el cuarto jugador dando la ficha
@@ -501,20 +486,22 @@ case class Da(
       //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
       //TODO rewrite this using game.fichaGanadora(
       val ganador = Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
-      game.copy(jugadores = game.modifiedJugadores(
-        _.id == Option(ganador._1), { j =>
-          j.copy(
-            mano = true,
-            fichas = j.dropFicha(ficha),
-            filas = j.filas :+ Fila(
-              enJuego.map(_._2),
-              abierta = game.jugadores.flatMap(_.filas).isEmpty
+      game.copy(
+        enJuego = List.empty,
+        jugadores = game.modifiedJugadores(
+          _.id == Option(ganador._1), { j =>
+            j.copy(
+              mano = true,
+              fichas = j.dropFicha(ficha),
+              filas = j.filas :+ Fila(
+                enJuego.map(_._2),
+                abierta = game.jugadores.flatMap(_.filas).isEmpty
+              )
             )
-          )
-        }, { j =>
-          j.copy(mano = false, fichas = j.dropFicha(ficha))
-        }
-      )
+          }, { j =>
+            j.copy(mano = false, fichas = j.dropFicha(ficha))
+          }
+        )
       )
     } else {
       //transfiere la ficha al centro
@@ -543,7 +530,8 @@ case class Da(
                  (game.triunfo match {
                    case None => throw GameException("Should never happen!")
                    case Some(TriunfoNumero(num)) =>
-                     modifiedGame.jugador(jugador.id).fichas.exists(_.es(num))
+                     !ficha.es(num) &&
+                       modifiedGame.jugador(jugador.id).fichas.exists(_.es(num))
                    case Some(SinTriunfos) => false
                  })) {
         Option(s"Pidieron $pidioNum, diste $ficha pero si tienes triunfos")
@@ -566,9 +554,10 @@ case class Da(
 
 //Acuerdate de los regalos
 case class Caite(
-  gameId: Option[GameId] = None,
-  userId: Option[UserId] = None,
-  index:  Option[Int] = None
+  triunfo: Option[Triunfo] = None,
+  gameId:  Option[GameId] = None,
+  userId:  Option[UserId] = None,
+  index:   Option[Int] = None
 ) extends PlayEvent {
   override def doEvent(
     jugador: Jugador,
@@ -578,13 +567,18 @@ case class Caite(
     if (!jugador.mano) {
       throw GameException("No te adelantes")
     }
+    //Te puedes caer antes de pedir la inicial, en cuyo caso hay que establecer los triunfos
+    val conTriunfos = game.copy(triunfo = game.triunfo.fold(triunfo)(Option(_)))
 
-    val deCaida: Seq[Fila] = game
-      .cuantasDeCaida(jugador.fichas, game.jugadores.filter(_.id != jugador.id).flatMap(_.fichas))
+    val deCaida: Seq[Fila] = conTriunfos
+      .cuantasDeCaida(
+        jugador.fichas,
+        conTriunfos.jugadores.filter(_.id != jugador.id).flatMap(_.fichas)
+      )
     val losRegalos: Seq[Ficha] = jugador.fichas.diff(deCaida.map(_.fichas.head))
 
     val jugadores =
-      game.modifiedJugadores(
+      conTriunfos.modifiedJugadores(
         _.id == jugador.id,
         j =>
           j.copy(
@@ -601,8 +595,9 @@ case class Caite(
       if (regalos.isEmpty) {
         jugadores
       } else {
-        val regalo = game.maxByTriunfo(regalos).get
-        val fichaMerecedora = game.fichaGanadora(regalo, jugadores.flatMap(_.fichas))
+        //TODO Pregunta los regalos se dan maxByTriunfo o minByTriunfo?
+        val regalo = conTriunfos.maxByTriunfo(regalos).get
+        val fichaMerecedora = conTriunfos.fichaGanadora(regalo, jugadores.flatMap(_.fichas))
 
         regaloLoop(
           regalos.filter(_ != regalo),
@@ -610,6 +605,12 @@ case class Caite(
             if (j.fichas.contains(fichaMerecedora)) {
               j.copy(
                 filas = j.filas :+ Fila(fichaMerecedora, regalo),
+                fichas = j.fichas.filter(_ != fichaMerecedora)
+              )
+              //Nota que es posible auto-regalarse si nadie mas tiene otra de esas
+            } else if ((j.id == jugador.id && regalo == fichaMerecedora)) {
+              j.copy(
+                filas = j.filas :+ Fila(fichaMerecedora),
                 fichas = j.fichas.filter(_ != fichaMerecedora)
               )
             } else {
@@ -634,6 +635,7 @@ case class Caite(
   }
 }
 
+//TODO test
 case class MeRindo(
   gameId: Option[GameId] = None,
   userId: Option[UserId] = None,
@@ -650,7 +652,7 @@ case class MeRindo(
     }
     (
       game.copy(
-        gameStatus = GameStatus.terminado,
+        gameStatus = GameStatus.requiereSopa,
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
           guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
@@ -674,7 +676,7 @@ case class HoyoTecnico(
     (
       //Se apunta un hoyo, juego nuevo.
       game.copy(
-        gameStatus = GameStatus.terminado,
+        gameStatus = GameStatus.requiereSopa,
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
           guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
@@ -697,19 +699,22 @@ case class TerminaJuego(
     game:    Game
   ): (Game, GameEvent) = {
     val conCuentas = game.copy(
-      gameStatus = if (game.partidoOver) GameStatus.partidoTerminado else GameStatus.terminado,
+      gameStatus = if (game.partidoOver) GameStatus.partidoTerminado else GameStatus.requiereSopa,
       jugadores = game.modifiedJugadores(
         _.cantante, { victima =>
           if (game.quienCanta.yaSeHizo) {
             victima.copy(cuenta = victima.cuenta ++ victima.filas.headOption.map(_ =>
-              Cuenta(victima.filas.size, esHoyo = false)
+              Cuenta(
+                Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)),
+                esHoyo = false
+              )
             )
             )
           } else {
             //Ya fue hoyo!
             victima
               .copy(cuenta = victima.cuenta :+ Cuenta(
-                victima.cuantasCantas.fold(0)(_.numFilas),
+                -victima.cuantasCantas.fold(0)(_.score),
                 esHoyo = true
               )
               )
@@ -722,7 +727,7 @@ case class TerminaJuego(
 
     if (conCuentas.partidoOver) {
       (
-        conCuentas.copy(gameStatus = GameStatus.partidoTerminado),
+        conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
         copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
       )
     } else {

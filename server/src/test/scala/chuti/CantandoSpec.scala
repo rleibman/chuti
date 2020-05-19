@@ -46,7 +46,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.jugadores.count(j => j.cuantasCantas.nonEmpty) === 1)
     assert(
       game.jugadores
-        .find(_.cantante).fold(false)(_.cuantasCantas.fold(false)(c => c > CuantasCantas.Buenas))
+        .find(_.cantante).fold(false)(_.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad))
     )
   }
 

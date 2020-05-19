@@ -13,7 +13,7 @@ case object DumbPlayerBot extends PlayerBot {
 
     val numTriunfos =
       jugador.fichas
-        .flatMap(f => if(f.esMula) Seq(f.arriba) else Seq(f.arriba, f.abajo))
+        .flatMap(f => if (f.esMula) Seq(f.arriba) else Seq(f.arriba, f.abajo))
         .groupBy(identity)
         .map {
           case (n, l) =>
@@ -23,9 +23,10 @@ case object DumbPlayerBot extends PlayerBot {
 
     if (numTriunfos._2 > deCaidaCount) {
       //Tenemos algunos triunfos, pero no suficientes para ser de caida, asi es que cantamos uno menos de lo que tenemos
-      (numTriunfos._2 - 1, TriunfoNumero(numTriunfos._1))}
-    else {
-      (deCaidaCount, deCaidaTriunfo)}
+      (numTriunfos._2 - 1, TriunfoNumero(numTriunfos._1))
+    } else {
+      (deCaidaCount, deCaidaTriunfo)
+    }
   }
 
   private def calculaDeCaida(
@@ -75,22 +76,17 @@ case object DumbPlayerBot extends PlayerBot {
   private def pideInicial(
     jugador: Jugador,
     game:    Game
-  ): PideInicial = {
-    val (cuantasCantas, triunfo) = calculaCanto(jugador, game)
-    triunfo match {
-      case SinTriunfos =>
-        PideInicial(
-          jugador.fichas.filter(_.esMula).maxBy(_.arriba.value),
-          SinTriunfos,
-          estrictaDerecha = false
-        )
-      case TriunfoNumero(num) =>
-        val triunfos = jugador.fichas.filter(_.es(num))
-        PideInicial(
-          triunfos.find(_.esMula).getOrElse(triunfos.maxBy(_.other(num).value)),
-          Triunfo.TriunfoNumero(num),
-          estrictaDerecha = false
-        )
+  ): PlayEvent = {
+    val (_, triunfo) = calculaCanto(jugador, game)
+    val hypotheticalGame = game.copy(triunfo = Option(triunfo))
+    if (hypotheticalGame.puedesCaerte(jugador)) {
+      Caite(Option(triunfo))
+    } else {
+      PideInicial(
+        hypotheticalGame.maxByTriunfo(jugador.fichas).get,
+        triunfo,
+        estrictaDerecha = false
+      )
     }
   }
 
@@ -119,11 +115,14 @@ case object DumbPlayerBot extends PlayerBot {
     jugador: Jugador,
     game:    Game
   ): Da = {
-    val first = game.enJuego.head
+    if (game.enJuego.isEmpty) {
+      throw GameException("Should never happen")
+    }
+    val pide = game.enJuego.head
     game.triunfo match {
       case None => throw GameException("Should never happen!")
       case Some(SinTriunfos) =>
-        val pideNum = first._2.arriba
+        val pideNum = pide._2.arriba
         Da(
           jugador.fichas
             .filter(_.es(pideNum))
@@ -132,10 +131,10 @@ case object DumbPlayerBot extends PlayerBot {
             .getOrElse(jugador.fichas.minBy(f => if (f.esMula) 100 else f.value))
         )
       case Some(TriunfoNumero(triunfo)) =>
-        val pideNum = if (first._2.es(triunfo)) {
+        val pideNum = if (pide._2.es(triunfo)) {
           triunfo
         } else {
-          first._2.arriba
+          pide._2.arriba
         }
         Da(
           jugador.fichas
@@ -175,7 +174,7 @@ case object DumbPlayerBot extends PlayerBot {
       Canta(cuantasCantas)
     } else {
       val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
-      if (cuantasCantas > prev) {
+      if (cuantasCantas.prioridad > prev.prioridad) {
         Canta(cuantasCantas)
       } else {
         Canta(Buenas)
@@ -196,11 +195,18 @@ case object DumbPlayerBot extends PlayerBot {
           Option(caite())
         } else if (jugador.mano) {
           Option(pide(jugador, game))
+        } else if (game.enJuego.isEmpty && game.jugadores.exists(
+                     _.cuantasCantas == Option(CuantasCantas.CantoTodas)
+                   )) {
+          None //Skipping this,
         } else {
           Option(da(jugador, game))
         }
       case GameStatus.cantando =>
         Option(canta(jugador, game))
+      case GameStatus.partidoTerminado | GameStatus.`requiereSopa` =>
+        //Ya pa' que?
+        None
       case other =>
         println(s"I'm too dumb to know what to do when $other")
         None

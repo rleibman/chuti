@@ -1,0 +1,396 @@
+{
+  "comment": "Con auto regalo",
+  "id" : {
+    "value" : 1
+  },
+  "gameStatus" : {
+    "jugando" : {
+      
+    }
+  },
+  "currentEventIndex" : 14,
+  "created" : "2020-05-18T09:36:36.058041",
+  "triunfo" : null,
+  "enJuego" : [
+  ],
+  "estrictaDerecha" : false,
+  "jugadores" : [
+    {
+      "user" : {
+        "id" : {
+          "value" : 1
+        },
+        "email" : "yoyo1@example.com",
+        "name" : "yoyo1",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-05-18T09:36:16.962535",
+        "lastUpdated" : "2020-05-18T09:36:16.962561",
+        "lastLoggedIn" : null,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 5
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 1
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 2
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 2
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 5
+          }
+        }
+      ],
+      "filas" : [
+      ],
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null,
+      "cuenta" : [
+      ]
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 2
+        },
+        "email" : "yoyo2@example.com",
+        "name" : "yoyo2",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-05-18T09:36:16.962576",
+        "lastUpdated" : "2020-05-18T09:36:16.962581",
+        "lastLoggedIn" : null,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 1
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 2
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        }
+      ],
+      "filas" : [
+      ],
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null,
+      "cuenta" : [
+      ]
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 3
+        },
+        "email" : "yoyo3@example.com",
+        "name" : "yoyo3",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-05-18T09:36:16.962589",
+        "lastUpdated" : "2020-05-18T09:36:16.962593",
+        "lastLoggedIn" : null,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 4
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 6
+          }
+        }
+      ],
+      "filas" : [
+      ],
+      "turno" : true,
+      "cantante" : true,
+      "mano" : true,
+      "cuantasCantas" : {
+        "Casa" : {
+          
+        }
+      },
+      "cuenta" : [
+      ]
+    },
+    {
+      "user" : {
+        "id" : {
+          "value" : 4
+        },
+        "email" : "yoyo4@example.com",
+        "name" : "yoyo4",
+        "userStatus" : {
+          "Playing" : {
+            
+          }
+        },
+        "currentChannelId" : null,
+        "created" : "2020-05-18T09:36:16.9626",
+        "lastUpdated" : "2020-05-18T09:36:16.962604",
+        "lastLoggedIn" : null,
+        "deleted" : false
+      },
+      "invited" : false,
+      "fichas" : [
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 4
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 0
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 4
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        }
+      ],
+      "filas" : [
+      ],
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
+      "cuantasCantas" : null,
+      "cuenta" : [
+      ]
+    }
+  ],
+  "pointsPerDollar" : 100.0
+}
