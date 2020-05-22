@@ -2,7 +2,6 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 import org.apache.commons.io.FileUtils
-import sbt.Keys.dependencyOverrides
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossProject
 
@@ -42,9 +41,9 @@ lazy val root = (project in file("."))
 lazy val akkaVersion = "2.6.5"
 lazy val circeVersion = "0.13.0"
 lazy val monocleVersion = "2.0.4" // depends on cats 2.x
-lazy val calibanVersion = "0.7.9"
+lazy val calibanVersion = "0.8.0"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.0-RC19"
+lazy val zioVersion = "1.0.0-RC19-2"
 
 lazy val commonSettings = Seq(
   organization     := "leibman.net",
@@ -140,7 +139,7 @@ lazy val server: Project = project
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       //Util
-      "com.github.pathikrit"  %% "better-files"   % "3.9.0" withSources (),
+      "com.github.pathikrit"  %% "better-files"   % "3.9.1" withSources (),
       "com.github.daddykotex" %% "courier"        % "2.0.0" withSources (),
       "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
       "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources ()
@@ -280,16 +279,16 @@ lazy val commonWeb: Project => Project =
       libraryDependencies ++= Seq(
         "commons-io"                                 % "commons-io" % "2.6" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources (),
-//        "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.0.9" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.1",
+        "dev.zio" %%% "zio"                             % zioVersion withSources (),
+        "com.softwaremill.sttp.client" %%% "core"       % "2.1.4" withSources (),
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.4",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
-        "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0-RC3" withSources (),
-        "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0-RC3_2019a" withSources (),
-        "org.scala-js" %%% "scalajs-dom"                % "0.9.8" withSources (),
+        "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
+        "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
+        "org.scala-js" %%% "scalajs-dom"                % "1.0.0" withSources (),
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.6.0" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.6.0" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.0" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.0" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
@@ -300,7 +299,6 @@ lazy val commonWeb: Project => Project =
       startYear        := Some(2020),
       licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
       scalacOptions ++= Seq(
-        "-P:scalajs:sjsDefinedByDefault",
         "-deprecation", // Emit warning and location for usages of deprecated APIs.
         "-explaintypes", // Explain type errors in more detail.
         "-feature", // Emit warning and location for usages of features that should be imported explicitly.
@@ -310,7 +308,6 @@ lazy val commonWeb: Project => Project =
         "-language:implicitConversions", // Allow definition of implicit functions called views
         "-unchecked", // Enable additional warnings where generated code depends on assumptions.
         "-Xcheckinit", // Wrap field accessors to throw an exception on uninitialized access.
-        //"-Xfatal-warnings", // Fail the compilation if there are any warnings.
         "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
         "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
         "-Xlint:delayedinit-select", // Selecting member of DelayedInit.
@@ -352,8 +349,6 @@ lazy val bundlerSettings: Project => Project =
       scalaJSUseMainModuleInitializer := true,
 //      /* disabled because it somehow triggers many warnings */
 //      emitSourceMaps    := false,
-//      scalaJSModuleKind := ModuleKind.CommonJSModule,
-      /* Specify current versions and modes */
       startWebpackDevServer / version := "3.1.10",
       webpack / version               := "4.28.3",
       Compile / fastOptJS / webpackExtraArgs += "--mode=development",
@@ -361,12 +356,10 @@ lazy val bundlerSettings: Project => Project =
       Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
       Compile / fullOptJS / webpackDevServerExtraArgs += "--mode=production",
       useYarn := true,
-      //      jsEnv := new org.scalajs.jsenv.jsdomnodejs.JSDOMNodeJSEnv,
       fork in run                                := true,
       scalaJSStage in Global                     := FastOptStage,
       scalaJSUseMainModuleInitializer in Compile := true,
       scalaJSUseMainModuleInitializer in Test    := false,
-//      skip in packageJSDependencies              := false,
       artifactPath
         .in(Compile, fastOptJS) := ((crossTarget in (Compile, fastOptJS)).value /
         ((moduleName in fastOptJS).value + "-opt.js")),
