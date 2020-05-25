@@ -45,7 +45,7 @@ object Postman {
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a ser su amigo en ${webHostName}")
+          .subject(s"${user.name.capitalize} te invito a ser su amigo en chuti.fun")
           .content(Multipart().html(s"""<html><body>
                                      |<p>${user.name.capitalize}<p> Te invito a ser su amigo en chuti.fun</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
@@ -89,7 +89,7 @@ object Postman {
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a jugar chuti")
+          .subject(s"${user.name.capitalize} te invito a jugar chuti en chuti.fun")
           .content(Multipart().html(s"""<html><body>
                                      |<p>${user.name.capitalize}<p> Te invito a jugar chuti, hasta ahorita se han apuntado en este juego</p>
                                      |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
@@ -107,6 +107,7 @@ object Postman {
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
+          .subject("chuti.fun: lost password reset")
           .content(Multipart().html(s"""<html><body>
                                  | <p>We are sorry you've lost your password</p>
                                  | <p>We have temporarily created a link for you that will allow you to reset it.</p>
@@ -125,7 +126,7 @@ object Postman {
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
-          .subject("Welcome to chuti!")
+          .subject("Welcome to chuti.fun!")
           .content(Multipart().html(s"""<html><body>
                                        | <p>Thank you for registering!</p>
                                        | <p>All you need to do now is go here to confirm your registration.</p>

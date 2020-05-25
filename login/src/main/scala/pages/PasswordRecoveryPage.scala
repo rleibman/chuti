@@ -16,25 +16,73 @@
 
 package pages
 
-import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import japgolly.scalajs.react.component.Scala.Unmounted
+import app.LoginControllerState
+import io.circe.syntax._
+import japgolly.scalajs.react._
+import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom.raw.HTMLInputElement
+import react.Toast
+import typings.semanticUiReact.components.{Button, Form, FormField, Input, Label}
+import typings.semanticUiReact.inputInputMod.InputOnChangeData
+
+import scala.util.{Failure, Success}
 
 object PasswordRecoveryPage {
-  case class State()
-  class Backend($ : BackendScope[_, State]) {
-    def render(s: State): VdomElement =
-      <.div("PasswordRecoveryPage")
+  case class State(submitted: Boolean = false, email: String = "")
 
-    def refresh(s: State): Callback = Callback.empty //TODO add ajax initalization stuff here
+  class Backend($ : BackendScope[_, State]) {
+    def onSubmitEmailAddress(email: String) =
+      Ajax("POST", s"/passwordRecoveryRequest")
+        .and(_.withCredentials = true)
+        .setRequestContentTypeJson
+        .send(email.asJson.noSpaces)
+        .asAsyncCallback
+        .completeWith {
+          case Success(xhr) if xhr.status < 300 =>
+            $.modState(_.copy(submitted = true))
+          case Success(xhr) =>
+            Toast.error(s"There was an error submitting the email: ${xhr.statusText}, please try again.")
+          case Failure(e: Throwable) =>
+            Toast.error(s"There was an error submitting the email: ${e.getLocalizedMessage}, please try again.")
+            e.printStackTrace()
+            Callback { e.printStackTrace() }
+        }
+
+    def render(state: State) = LoginControllerState.ctx.consume { context =>
+      <.div(
+        if (state.submitted) <.div(
+            "We have sent an email to your account with password recovery instructions, you'll have three hours to change your password before you need to try again",
+            Button(onClick = { (_, _) => $.modState(_.copy(submitted = false))})("Try again")
+          ) else {
+          <.div(
+            "Please enter your email address, you will get an email with password recovery instructions",
+            Form()(
+              FormField()(
+                Label()("Email Address"),
+                Input(
+                  required = true,
+                  name = "email",
+                  `type` = "email",
+                  value = state.email,
+                  onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                    $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
+                  }
+                )()
+              ),
+              Button(onClick = {(_, _) => onSubmitEmailAddress(state.email)})("Submit")
+            )
+          )
+        }
+      )
+    }
   }
 
-  private val component = ScalaComponent
+  val component = ScalaComponent
     .builder[Unit]("PasswordRecoveryPage")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh($.state))
     .build
 
-  def apply(): Unmounted[Unit, State, Backend] = component()
+  def apply() = component()
 }

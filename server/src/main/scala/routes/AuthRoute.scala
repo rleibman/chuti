@@ -17,7 +17,12 @@
 package routes
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directives, Route}
+import akka.http.scaladsl.server.{
+  AuthorizationFailedRejection,
+  Directives,
+  Route,
+  ValidationRejection
+}
 import api._
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
@@ -34,7 +39,6 @@ import slick.basic.BasicBackend
 import zio._
 import zio.logging.log
 import zio.logging.slf4j.Slf4jLogger
-import zioslick.RepositoryException
 
 object AuthRoute {
   private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
@@ -97,37 +101,34 @@ trait AuthRoute
             complete(chuti.BuildInfo.version)
           } ~ path("loginForm") {
             get {
-              println(s"$staticContentDir/login.html")
-              println(File(s"$staticContentDir/login.html").path.toAbsolutePath)
+              akkaLog.debug(File(s"$staticContentDir/login.html").path.toAbsolutePath.toString)
               getFromFile(s"$staticContentDir/login.html")
             }
           } ~
             path("passwordReset") {
               post {
-                parameters(Symbol("token").as[String]) { token =>
-                  entity(as[String]) { password =>
-                    complete {
+                formFields(Symbol("token").as[String].?, Symbol("password").as[String].?) {
+                  (token, password) =>
+                    if (token.isEmpty || password.isEmpty) {
+                      reject(ValidationRejection("You need to pass a token and password"))
+                    } else {
                       val z = for {
                         tokenHolder <- ZIO.access[TokenHolder](_.get)
                         userOpt <- tokenHolder
-                          .validateToken(Token(token), TokenPurpose.LostPassword)
+                          .validateToken(Token(token.get), TokenPurpose.LostPassword)
                         passwordChanged <- ZIO.foreach(userOpt)(user =>
-                          ops.changePassword(user, password)
+                          ops.changePassword(user, password.get)
                         )
-                      } yield passwordChanged.getOrElse(false)
+                      } yield passwordChanged.fold(
+                        redirect("/loginForm?passwordChangeFailed", StatusCodes.SeeOther)
+                      )(changed =>
+                        redirect("/loginForm?passwordChangeSucceeded", StatusCodes.SeeOther)
+                      )
 
                       z.provideLayer(fullLayer(adminSession)).tapError(e =>
-                          Task.succeed(e.printStackTrace())
-                        ).catchSome {
-                          case e: RepositoryException =>
-                            ZIO.succeed {
-                              e.printStackTrace()
-                              throw e: Throwable
-                            }
-                        }
-
+                          Task.succeed(akkaLog.error(e, "Resetting Password"))
+                        )
                     }
-                  }
                 }
               }
             } ~
@@ -145,13 +146,10 @@ trait AuthRoute
                         postman.deliver(envelope)
                       }
 
-                    } yield emailed.nonEmpty).provideLayer(gameLayer(adminSession)).catchSome {
-                      case e: RepositoryException =>
-                        ZIO.succeed {
-                          e.printStackTrace()
-                          throw e: Throwable
-                        }
-                    }
+                    } yield emailed.nonEmpty)
+                      .provideLayer(gameLayer(adminSession)).tapError(e =>
+                        Task.succeed(akkaLog.error(e, "In Password Recover Request"))
+                      )
                   }
                 }
               }
@@ -181,16 +179,14 @@ trait AuthRoute
                     _        <- ZIO.foreach(envelope)(postman.deliver)
                   } yield {
                     if (exists)
-                      complete(UserCreationResponse(Option("A user with that email already exists")))
+                      complete(
+                        UserCreationResponse(Option("A user with that email already exists"))
+                      )
                     else
                       complete(UserCreationResponse(validate))
-                  }).provideLayer(gameLayer(adminSession)).catchSome {
-                    case e: RepositoryException =>
-                      ZIO.succeed {
-                        e.printStackTrace()
-                        throw e: Throwable
-                      }
-                  }
+                  }).provideLayer(gameLayer(adminSession)).tapError(e =>
+                      Task.succeed(akkaLog.error(e, "Creating user"))
+                    )
                 }
               }
             } ~
@@ -204,10 +200,11 @@ trait AuthRoute
                       userOperations.upsert(user.copy(active = true))
                     )
                   } yield activate.fold(
-//                    getFromFile(s"$staticContentDir/login.html")
                     redirect("/loginForm?registrationFailed", StatusCodes.SeeOther)
                   )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
-                    .provideLayer(fullLayer(adminSession))
+                    .provideLayer(fullLayer(adminSession)).tapError(e =>
+                      Task.succeed(akkaLog.error(e, "Confirming registration"))
+                    )
                 }
               }
             } ~
@@ -221,7 +218,7 @@ trait AuthRoute
                 ) { (email, password) =>
                   (for {
                     login <- ops.login(email, password)
-                    _ <- login.fold(log.debug(s"Bad login for $email"))(u =>
+                    _ <- login.fold(log.debug(s"Bad login for $email"))(_ =>
                       log.debug(s"Good Login for $email")
                     )
                   } yield {
@@ -235,13 +232,9 @@ trait AuthRoute
                       case None =>
                         redirect("/loginForm?bad=true", StatusCodes.SeeOther)
                     }
-                  }).provideLayer(fullLayer(adminSession)).catchSome {
-                    case e: RepositoryException =>
-                      ZIO.succeed {
-                        e.printStackTrace()
-                        throw e: Throwable
-                      }
-                  }
+                  }).provideLayer(fullLayer(adminSession)).tapError(e =>
+                      Task.succeed(akkaLog.error(e, "In Login"))
+                    )
                 }
               }
             } ~

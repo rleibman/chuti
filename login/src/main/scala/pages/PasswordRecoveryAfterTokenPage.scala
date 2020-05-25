@@ -16,25 +16,89 @@
 
 package pages
 
+import app.LoginControllerState
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react._
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import org.scalajs.dom.window
+import react.Toast
+import typings.react.reactStrings.submit
+import typings.semanticUiReact.components.{Button, Form, FormField, Input, Label}
+import org.scalajs.dom.raw.HTMLFormElement
 
 object PasswordRecoveryAfterTokenPage {
-  case class State()
-  class Backend($ : BackendScope[_, State]) {
-    def render(s: State): VdomElement =
-      <.div("PasswordRecoveryAfterTokenPage")
+  case class State(
+    password:      String = "",
+    passwordAgain: String = ""
+  )
 
-    def refresh(s: State): Callback = Callback.empty //TODO add ajax initalization stuff here
+  class Backend($ : BackendScope[Props, State]) {
+    def handleSubmit(state: State, event: ReactEventFrom[HTMLFormElement]): Callback =
+      if (state.password.isEmpty)
+        Callback(event.preventDefault()) >> Toast.error("The passwords cannot be empty")
+      else if (state.password != state.passwordAgain)
+        Callback(event.preventDefault()) >> Toast.error("The passwords must match")
+      else
+        Callback.empty
+
+    def render(
+      props: Props,
+      state: State
+    ): VdomElement = LoginControllerState.ctx.consume { _ =>
+      <.div(
+        ^.width     := 800.px,
+        Form(
+          action    = "passwordReset",
+          method    = "post",
+          onSubmit = {(event, _) => handleSubmit(state, event)})
+        (
+          FormField()(
+            Label()("Password"),
+            Input(
+              required = true,
+              name = "password",
+              `type` = "password",
+              value = state.password,
+              onChange = { (_, data) =>
+                $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
+              }
+            )()
+          ),
+          FormField()(
+            Label()("Repeat Password"),
+            Input(
+              required = true,
+              name = "passwordAgain",
+              `type` = "password",
+              value = state.passwordAgain,
+              onChange = { (_, data) =>
+                $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
+              }
+            )()
+          ),
+          <.input(
+            ^.`type` := "hidden",
+            ^.id     := "token",
+            ^.name   := "token",
+            ^.value  := props.token.getOrElse("")
+          ),
+          Button(`type` = submit)("Change Password"),
+          Button(onClick = { (_, _) =>
+            Callback(window.location.replace("/"))
+          })("Cancel")
+        )
+      )
+    }
   }
 
+  case class Props(token: Option[String])
+
   private val component = ScalaComponent
-    .builder[Unit]("PasswordRecoveryAfterTokenPage")
+    .builder[Props]("PasswordRecoveryAfterTokenPage")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh($.state))
     .build
 
-  def apply(): Unmounted[Unit, State, Backend] = component()
+  def apply(token: Option[String]): Unmounted[Props, State, Backend] = component(Props(token))
 }

@@ -20,11 +20,9 @@ import app.{LoginControllerState, Mode}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import org.scalajs.dom.raw.HTMLButtonElement
 import org.scalajs.dom.window
-import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components.{Button, FormField, Input, Label, Message}
 import typings.react.reactStrings.submit
+import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.SemanticCOLORS
 
 object LoginPage {
@@ -34,7 +32,10 @@ object LoginPage {
   class Backend($ : BackendScope[Props, State]) {
     val query: String = window.location.search.substring(1)
     val isBad: Boolean = query.contains("bad=true")
-    def render(P: Props, S: State): VdomElement =
+    def render(
+      P: Props,
+      S: State
+    ): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
           <.span(
@@ -58,10 +59,10 @@ object LoginPage {
             ),
             Button(`type` = submit)("Login")
           ),
-          Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+          Button(onClick = { (_, _) =>
             context.onModeChanged(Mode.registration, None)
           })("I'm new to this, create new account"),
-          Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+          Button(onClick = { (_, _) =>
             context.onModeChanged(Mode.passwordRecoveryRequest, None)
           })("I lost my password")
         )
@@ -76,5 +77,6 @@ object LoginPage {
 
   case class Props(messageForScreen: Option[String])
 
-  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] = component(Props(messageForScreen))
+  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] =
+    component(Props(messageForScreen))
 }
