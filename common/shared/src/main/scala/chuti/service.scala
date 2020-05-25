@@ -21,6 +21,8 @@ case class UserCreationRequest(
   password: String
 )
 
+case class UserCreationResponse(error: Option[String])
+
 trait Search
 
 trait PagedSearch {

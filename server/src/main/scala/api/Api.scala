@@ -48,9 +48,9 @@ trait Api
                   apiRoute(session)
                 case None =>
                   log.info(
-                    s"Unauthorized request of ${requestContext.unmatchedPath}, redirecting to login"
+                    s"Unauthorized ${requestContext.request.method.value} request of ${requestContext.unmatchedPath}, redirecting to login"
                   )
-                  redirect("/loginForm", StatusCodes.Found)
+                  redirect("/loginForm", StatusCodes.SeeOther)
               }
             }
           }

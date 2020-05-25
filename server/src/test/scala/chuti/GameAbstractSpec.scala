@@ -69,6 +69,8 @@ trait GameAbstractSpec extends MockitoSugar {
 
   class MockPostman extends Postman.Service {
     override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] = ZIO.succeed(())
+
+    override def webHostName: String = "chuti.fun"
   }
 
   def fullLayer(

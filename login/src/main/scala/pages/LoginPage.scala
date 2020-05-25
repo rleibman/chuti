@@ -31,10 +31,10 @@ object LoginPage {
 
   case class State()
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[Props, State]) {
     val query: String = window.location.search.substring(1)
     val isBad: Boolean = query.contains("bad=true")
-    def render(S: State): VdomElement =
+    def render(P: Props, S: State): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
           <.span(
@@ -42,6 +42,7 @@ object LoginPage {
               "Bad Login! Your email or password did not match, please try again!"
             )
           ).when(isBad),
+          P.messageForScreen.fold(EmptyVdom: VdomNode)(str => <.span(Message()(str))),
           <.form(
             ^.action    := "doLogin",
             ^.method    := "post",
@@ -58,20 +59,22 @@ object LoginPage {
             Button(`type` = submit)("Login")
           ),
           Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-            context.onModeChanged(Mode.registration)
+            context.onModeChanged(Mode.registration, None)
           })("I'm new to this, create new account"),
           Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-            context.onModeChanged(Mode.passwordRecoveryRequest)
+            context.onModeChanged(Mode.passwordRecoveryRequest, None)
           })("I lost my password")
         )
       }
   }
 
   val component = ScalaComponent
-    .builder[Unit]("LoginPage")
+    .builder[Props]("LoginPage")
     .initialState(State())
     .renderBackend[Backend]
     .build
 
-  def apply(): Unmounted[Unit, State, Backend] = component()
+  case class Props(messageForScreen: Option[String])
+
+  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] = component(Props(messageForScreen))
 }

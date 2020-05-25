@@ -29,6 +29,7 @@ object Postman {
 
   trait Service {
     def deliver(email: Envelope): ZIO[Postman, Throwable, Unit]
+    def webHostName: String
 
     //You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
     def inviteNewFriendEmail(
@@ -39,12 +40,12 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser)
       } yield {
-        val linkUrl = s"http://chuti.fun/acceptFriendInvite?token=$token"
+        val linkUrl = s"http://${webHostName}/acceptFriendInvite?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a ser su amigo en chuti.fun")
+          .subject(s"${user.name.capitalize} te invito a ser su amigo en ${webHostName}")
           .content(Multipart().html(s"""<html><body>
                                      |<p>${user.name.capitalize}<p> Te invito a ser su amigo en chuti.fun</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
@@ -60,7 +61,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(invited, TokenPurpose.FriendToken)
       } yield {
-        val linkUrl = s"http://chuti.fun/newUserAcceptFriend?token=$token"
+        val linkUrl = s"http://${webHostName}/newUserAcceptFriend?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -83,7 +84,7 @@ object Postman {
         token       <- tokenHolder.createToken(invited, TokenPurpose.GameInvite)
       } yield {
         val linkUrl =
-          s"http://chuti.fun/acceptGameInvite?gameId=${game.id.getOrElse(0)}&token=$token"
+          s"http://${webHostName}/acceptGameInvite?gameId=${game.id.getOrElse(0)}&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -102,7 +103,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(user, TokenPurpose.LostPassword)
       } yield {
-        val linkUrl = s"http://chuti.fun/loginForm?passwordReset=true&token=$token"
+        val linkUrl = s"http://${webHostName}/loginForm?passwordReset=true&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
@@ -120,10 +121,11 @@ object Postman {
         token       <- tokenHolder.createToken(user, TokenPurpose.NewUser)
       } yield {
         val linkUrl =
-          s"http://chuti.fun/confirmRegistration?&token=$token"
+          s"http://${webHostName}/confirmRegistration?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
+          .subject("Welcome to chuti!")
           .content(Multipart().html(s"""<html><body>
                                        | <p>Thank you for registering!</p>
                                        | <p>All you need to do now is go here to confirm your registration.</p>
@@ -163,6 +165,8 @@ object CourierPostman {
 
     override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] =
       ZIO.fromFuture(implicit ec => mailer(email))
+
+    override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
 
   }
 }

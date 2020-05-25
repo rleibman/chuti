@@ -2,6 +2,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
 import org.apache.commons.io.FileUtils
+import sbt.Keys.testFrameworks
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 import sbtcrossproject.CrossProject
 
@@ -39,14 +40,15 @@ lazy val root = (project in file("."))
   )
 
 lazy val akkaVersion = "2.6.5"
+lazy val akkaHttpVersion = "10.1.12"
+lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val monocleVersion = "2.0.4" // depends on cats 2.x
 lazy val calibanVersion = "0.8.0"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.0-RC19-2"
 
 lazy val commonSettings = Seq(
-  organization     := "leibman.net",
+  organization     := "net.leibman",
   version          := "0.1",
   scalaVersion     := "2.13.2",
   startYear        := Some(2020),
@@ -57,13 +59,6 @@ lazy val commonSettings = Seq(
 lazy val commonVmSettings = commonSettings ++ Seq(
   scalacOptions ++= Seq(
     "-deprecation" // Emit warning and location for usages of deprecated APIs.
-  ),
-  libraryDependencies ++= Seq(
-    "com.github.julien-truffaut" %% "monocle-core"            % monocleVersion withSources (),
-    "com.github.julien-truffaut" %% "monocle-macro"           % monocleVersion withSources (),
-    "com.github.julien-truffaut" %% "monocle-law"             % monocleVersion % "test" withSources (),
-    "org.scalatest"              %% "scalatest"               % "3.1.2" % "test" withSources (),
-    "org.mockito"                %% "mockito-scala-scalatest" % "1.14.2" % Test withSources ()
   ),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
@@ -91,12 +86,6 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
   .jsSettings(
     commonSettings ++ Seq(
       libraryDependencies ++= Seq(
-        "com.github.julien-truffaut" %%% "monocle-core"  % monocleVersion withSources (),
-        "com.github.julien-truffaut" %%% "monocle-macro" % monocleVersion withSources (),
-        "com.github.julien-truffaut" %%% "monocle-law"   % monocleVersion % "test" withSources (),
-        "org.scalatest" %%% "scalatest"                  % "3.1.2" % "test" withSources ()
-      ),
-      libraryDependencies ++= Seq(
         "io.circe" %%% "circe-core",
         "io.circe" %%% "circe-generic",
         "io.circe" %%% "circe-parser",
@@ -109,7 +98,9 @@ resolvers += Resolver.sonatypeRepo("releases")
 
 lazy val server: Project = project
   .in(file("server"))
+  .configs(IntegrationTest)
   .dependsOn(commonJVM)
+  .settings(Defaults.itSettings)
   .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
@@ -121,13 +112,13 @@ lazy val server: Project = project
       //Akka
       "com.typesafe.akka"                  %% "akka-actor-typed" % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
-      "com.typesafe.akka"                  %% "akka-http"        % "10.1.12" withSources (),
+      "com.typesafe.akka"                  %% "akka-http"        % akkaHttpVersion withSources (),
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
-      "com.typesafe.slick"        %% "slick"                  % "3.3.2" withSources (),
-      "com.typesafe.slick"        %% "slick-hikaricp"         % "3.3.2" withSources (),
-      "com.typesafe.slick"        %% "slick-codegen"          % "3.3.2" withSources (),
+      "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
+      "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
+      "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
       "mysql"                     % "mysql-connector-java"    % "8.0.20" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
       // Scala Cache
@@ -138,12 +129,19 @@ lazy val server: Project = project
       "dev.zio"               %% "zio-logging-slf4j" % "0.2.9" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
-      //Util
+      // Other random utilities
       "com.github.pathikrit"  %% "better-files"   % "3.9.1" withSources (),
       "com.github.daddykotex" %% "courier"        % "2.0.0" withSources (),
       "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
-      "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources ()
-    )
+      "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources (),
+      //Testing
+      "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
+      "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
+      "org.scalatest" %% "scalatest"               % "3.1.2"    % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.2"   % "it, test" withSources ()
+    ),
+    testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
+    IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
 
 lazy val login: Project = project
@@ -277,8 +275,8 @@ lazy val commonWeb: Project => Project =
         "io.circe" %%% "circe-literal"
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
-        "commons-io"                                 % "commons-io" % "2.6" withSources (),
-        "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources (),
+        "commons-io"                                    % "commons-io" % "2.6" withSources (),
+        "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
         "com.softwaremill.sttp.client" %%% "core"       % "2.1.4" withSources (),
         "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.4",
@@ -294,7 +292,6 @@ lazy val commonWeb: Project => Project =
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
         "org.scalatest" %%% "scalatest"                 % "3.1.2" % "test" withSources ()
       ),
-      organization     := "net.leibman",
       organizationName := "Roberto Leibman",
       startYear        := Some(2020),
       licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -355,7 +352,7 @@ lazy val bundlerSettings: Project => Project =
       Compile / fullOptJS / webpackExtraArgs += "--mode=production",
       Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
       Compile / fullOptJS / webpackDevServerExtraArgs += "--mode=production",
-      useYarn := true,
+      useYarn                                    := true,
       fork in run                                := true,
       scalaJSStage in Global                     := FastOptStage,
       scalaJSUseMainModuleInitializer in Compile := true,

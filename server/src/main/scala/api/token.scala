@@ -38,7 +38,9 @@ package object token {
 
   type TokenHolder = Has[TokenHolder.Service]
 
-  case class Token(tok: String)
+  case class Token(tok: String) {
+    override def toString: String = tok
+  }
 
   object TokenHolder {
     trait Service {

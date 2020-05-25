@@ -45,14 +45,15 @@ trait SlickToModelInterop {
     created = row.created.toLocalDateTime,
     lastUpdated = row.created.toLocalDateTime,
     lastLoggedIn = row.lastloggedin.map(_.toLocalDateTime),
+    active = row.active,
     deleted = row.deleted
   )
   def User2UserRow(value: User): UserRow = UserRow(
     id = value.id.getOrElse(UserId(0)),
-    hashedpassword = "",
     name = value.name,
     email = value.email,
     created = Timestamp.valueOf(value.created),
+    active = value.active,
     lastupdated = new Timestamp(System.currentTimeMillis()),
     lastloggedin = value.lastLoggedIn.map(Timestamp.valueOf)
   )

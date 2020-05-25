@@ -44,6 +44,7 @@ case class User(
   created:          LocalDateTime = LocalDateTime.now,
   lastUpdated:      LocalDateTime = LocalDateTime.now,
   lastLoggedIn:     Option[LocalDateTime] = None,
+  active:           Boolean = false,
   deleted:          Boolean = false
 ) {
   def chatChannel: Option[ChannelId] = userStatus match {

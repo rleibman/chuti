@@ -19,8 +19,9 @@ package pages
 import java.time.LocalDateTime
 
 import app.{LoginControllerState, Mode}
-import chuti.{User, UserCreationRequest}
+import chuti.{User, UserCreationRequest, UserCreationResponse}
 import io.circe.generic.auto._
+import io.circe.parser.decode
 import io.circe.syntax._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
@@ -66,18 +67,26 @@ object RegistrationPage {
       ) =>
         {
           val async: AsyncCallback[Callback] = for {
-            saved <- Ajax("PUT", "")
-              .and(_.withCredentials = true)
+            saved <- Ajax("PUT", "/userCreation")
               .setRequestContentTypeJson
               .send(UserCreationRequest(state.user, state.passwordPair._1).asJson.noSpaces)
               .asAsyncCallback
               .map { xhr =>
-                if (xhr.status < 300)
-                  context.onModeChanged(Mode.login) >> Toast.success(
-                    "Account created successfully!"
-                  )
-                else
+                if (xhr.status < 300) {
+                  decode[UserCreationResponse](xhr.responseText)
+                    .fold(
+                      e => Toast.error(e.getLocalizedMessage),
+                      response =>
+                        response.error.fold(
+                          context.onModeChanged(Mode.login, response.error) >> Toast.success(
+                            //TODO, maybe different page instead of login?
+                            "Account created successfully! Please wait for your confirmation email"
+                          )
+                        )(errorMsg => Toast.error(errorMsg))
+                    )
+                } else {
                   Toast.error(s"Error creating account: ${xhr.statusText}")
+                }
               }
           } yield saved
           val valid: Seq[String] = validate(state)

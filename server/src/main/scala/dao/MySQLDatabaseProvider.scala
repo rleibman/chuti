@@ -23,10 +23,10 @@ import api.config
 
 object MySQLDatabaseProvider {
 
-  private val db = ZIO.effectTotal { Database.forConfig(config.live.configKey) }
+  private val db = Database.forConfig(config.live.configKey)
 
 }
 
 trait MySQLDatabaseProvider extends DatabaseProvider.Service {
-  override def db: UIO[BasicBackend#DatabaseDef] = MySQLDatabaseProvider.db
+  override def db: UIO[BasicBackend#DatabaseDef] = ZIO.succeed(MySQLDatabaseProvider.db)
 }

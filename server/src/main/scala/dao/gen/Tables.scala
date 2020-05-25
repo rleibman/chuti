@@ -287,12 +287,12 @@ trait Tables {
 
   case class UserRow(
     id:             UserId,
-    hashedpassword: String,
     name:           String,
     email:          String,
     created:        Timestamp,
     lastupdated:    Timestamp,
     lastloggedin:   Option[Timestamp] = None,
+    active:         Boolean = false,
     deleted:        Boolean = false,
     deleteddate:    Option[Timestamp] = None
   )
@@ -310,10 +310,10 @@ trait Tables {
         <<[UserId],
         <<[String],
         <<[String],
-        <<[String],
         <<[Timestamp],
         <<[Timestamp],
         <<?[Timestamp],
+        <<[Boolean],
         <<[Boolean],
         <<?[Timestamp]
       )
@@ -325,41 +325,41 @@ trait Tables {
     def * : ProvenShape[UserRow] =
       (
         id,
-        hashedpassword,
         name,
         email,
         created,
         lastupdated,
         lastloggedin,
+        active,
         deleted,
         deleteddate
       ) <> (UserRow.tupled, UserRow.unapply)
 
     def ?
-      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
-        Rep.Some(hashedpassword),
         Rep.Some(name),
         Rep.Some(email),
         Rep.Some(created),
         Rep.Some(lastupdated),
         lastloggedin,
+        Rep.Some(active),
         Rep.Some(deleted),
         deleteddate
       ).shaped.<>(
         { r =>
           import r._
           _1.map(_ =>
-            UserRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7, _8.get, _9))
+            UserRow.tupled(
+              (_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9)
+            )
           )
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
     val id: Rep[UserId] = column[UserId]("id", O.AutoInc, O.PrimaryKey)
-
-    val hashedpassword: Rep[String] = column[String]("hashedPassword")
 
     val name: Rep[String] = column[String]("name")
 
@@ -374,6 +374,8 @@ trait Tables {
       column[Option[Timestamp]]("lastLoggedIn", O.Default(None))
 
     val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
+
+    val active: Rep[Boolean] = column[Boolean]("active", O.Default(false))
 
     val deleteddate: Rep[Option[Timestamp]] =
       column[Option[Timestamp]]("deletedDate", O.Default(None))

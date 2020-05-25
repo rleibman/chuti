@@ -168,38 +168,36 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
             .filter(u => u.email.like(s"%${s.text}%"))
         }.length.result.map(_.toLong)
 
+    //TODO add user to cache of users
     override def login(
       email:    String,
       password: String
     ): RepositoryIO[Option[User]] = {
       (for {
-        userOpt <- UserQuery
-          .filter(user =>
-            !user.deleted && user.email === email && user.hashedpassword === hashPassword(
-              password,
-              512
-            )
-          )
-          .result
-          .headOption
-        _ <- DBIO.sequence(userOpt.toSeq.map { user =>
-          val q = for {
-            u <- UserQuery if u.id === user.id && !u.deleted
-          } yield u.lastloggedin
-          q.update(Option(new Timestamp(System.currentTimeMillis())))
-        })
+        idOpt <- sql"""select u.id
+               from user u
+               where u.deleted = 0 and
+               u.active = 1 and
+               u.email = $email and
+               u.hashedpassword = SHA2($password, 512)""".as[Int].map(_.headOption.map(UserId))
+        userOpt <- DBIO
+          .sequence(idOpt.toSeq.map { id =>
+            UserQuery.filter(_.id === id).result
+          }).map(_.flatten.map(UserRow2User).headOption)
+        //Log the log in.
         _ <- DBIO.sequence(
-          userOpt.toSeq.map(user =>
-            UserLogQuery
-              .insertOrUpdate(UserLogRow(user.id, new Timestamp(System.currentTimeMillis())))
+          idOpt.toSeq.map(id =>
+            UserLogQuery += UserLogRow(id, new Timestamp(System.currentTimeMillis()))
           )
         )
-      } yield userOpt.map(UserRow2User)).transactionally
+      } yield userOpt).transactionally
     }
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] =
       UserQuery
-        .filter(u => u.email === email && !u.deleted).result.headOption.map(_.map(UserRow2User))
+        .filter(u => u.email === email && !u.deleted && u.active).result.headOption.map(
+          _.map(UserRow2User)
+        )
 
     override def changePassword(
       user:        User,

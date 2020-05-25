@@ -22,7 +22,7 @@
     - Lost password
     - Set up table
 - Code game     
-- Animations
+- Animations of Borlotes
     - Sopa
     - Poner ficha
     - Hoyo
@@ -30,3 +30,10 @@
     - El hoyo que camina
     - Tecnico
 - Chose back logo
+- Still having issues with opening too many connections
+- Rehydrate the system after restart
+    - Tokens
+    - Games
+    - Logged in User repo
+- Consistent language
+- Translate to English

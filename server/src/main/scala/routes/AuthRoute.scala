@@ -21,7 +21,7 @@ import akka.http.scaladsl.server.{AuthorizationFailedRejection, Directives, Rout
 import api._
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
-import chuti.{BuildInfo, PagedStringSearch, User, UserId}
+import chuti.{BuildInfo => _, _}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.{DatabaseProvider, Repository, SessionProvider}
@@ -43,6 +43,21 @@ object AuthRoute {
 trait AuthRoute
     extends CRUDRoute[User, UserId, PagedStringSearch] with SessionUtils with HasActorSystem {
   this: Repository.Service with DatabaseProvider.Service =>
+
+  lazy val allowed = Set(
+    "/login.html",
+    "/css/chuti.css",
+    "/css/app-sui-theme.css",
+    "/chuti-login-opt-bundle.js",
+    "/chuti-login-opt-bundle.js.map",
+    "/css/app.css",
+    "/images/favicon.png",
+    "/favicon.ico",
+    "/images/favicon.svg",
+    "/webfonts/fa-solid-900.woff2",
+    "/webfonts/fa-solid-900.woff",
+    "/webfonts/fa-solid-900.ttf"
+  )
 
   def repositoryLayer:       ULayer[Repository] = ZLayer.succeed(this)
   def databaseProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(this)
@@ -79,7 +94,7 @@ trait AuthRoute
       override def unauthRoute: Route =
         extractLog { akkaLog =>
           path("serverVersion") {
-            complete(BuildInfo.version)
+            complete(chuti.BuildInfo.version)
           } ~ path("loginForm") {
             get {
               println(s"$staticContentDir/login.html")
@@ -141,6 +156,61 @@ trait AuthRoute
                 }
               }
             } ~
+            path("userCreation") {
+              put {
+                entity(as[UserCreationRequest]) { request =>
+                  (for {
+                    postman <- ZIO.access[Postman](_.get)
+                    validate <- ZIO.succeed(
+                      if (request.user.email.trim.isEmpty)
+                        Option("User Email cannot be empty")
+                      else if (request.user.name.trim.isEmpty)
+                        Option("User Name cannot be empty")
+                      else if (request.password.trim.isEmpty || request.password.trim.length < 3)
+                        Option("Password is invalid")
+                      else if (request.user.id.nonEmpty)
+                        Option("You can't register an existing user")
+                      else
+                        None
+                    )
+                    exists <- ops.userByEmail(request.user.email).map(_.nonEmpty)
+                    saved <- if (validate.nonEmpty || exists) ZIO.none
+                    else ops.upsert(request.user.copy(active = false)).map(Option(_))
+                    _        <- ZIO.foreach(saved)(ops.changePassword(_, request.password))
+                    envelope <- ZIO.foreach(saved)(postman.registrationEmail)
+                    _        <- ZIO.foreach(envelope)(postman.deliver)
+                  } yield {
+                    if (exists)
+                      complete(UserCreationResponse(Option("A user with that email already exists")))
+                    else
+                      complete(UserCreationResponse(validate))
+                  }).provideLayer(gameLayer(adminSession)).catchSome {
+                    case e: RepositoryException =>
+                      ZIO.succeed {
+                        e.printStackTrace()
+                        throw e: Throwable
+                      }
+                  }
+                }
+              }
+            } ~
+            path("confirmRegistration") {
+              get {
+                parameters(Symbol("token").as[String]) { token =>
+                  (for {
+                    tokenHolder <- ZIO.access[TokenHolder](_.get)
+                    user        <- tokenHolder.validateToken(Token(token), TokenPurpose.NewUser)
+                    activate <- ZIO.foreach(user)(user =>
+                      userOperations.upsert(user.copy(active = true))
+                    )
+                  } yield activate.fold(
+//                    getFromFile(s"$staticContentDir/login.html")
+                    redirect("/loginForm?registrationFailed", StatusCodes.SeeOther)
+                  )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
+                    .provideLayer(fullLayer(adminSession))
+                }
+              }
+            } ~
             path("doLogin") {
               post {
                 formFields(
@@ -159,11 +229,11 @@ trait AuthRoute
                       case Some(user) =>
                         mySetSession(ChutiSession(user)) {
                           setNewCsrfToken(checkHeader) { ctx =>
-                            ctx.redirect("/", StatusCodes.Found)
+                            ctx.redirect("/", StatusCodes.SeeOther)
                           }
                         }
                       case None =>
-                        redirect("/loginForm?bad=true", StatusCodes.Found)
+                        redirect("/loginForm?bad=true", StatusCodes.SeeOther)
                     }
                   }).provideLayer(fullLayer(adminSession)).catchSome {
                     case e: RepositoryException =>
@@ -176,20 +246,7 @@ trait AuthRoute
               }
             } ~
             pathPrefix("unauth") {
-              get {
-                val allowed = Set(
-                  "/login.html",
-                  "/css/chuti.css",
-                  "/css/app-sui-theme.css",
-                  "/chuti-login-opt-bundle.js",
-                  "/chuti-login-opt-bundle.js.map",
-                  "/css/app.css",
-                  "/images/favicon.png",
-                  "/images/favicon.svg",
-                  "/webfonts/fa-solid-900.woff2",
-                  "/webfonts/fa-solid-900.woff",
-                  "/webfonts/fa-solid-900.ttf"
-                )
+              (get | put | post) {
 
                 extractUnmatchedPath { path =>
                   if (allowed(path.toString())) {
@@ -198,7 +255,7 @@ trait AuthRoute
                       getFromDirectory(staticContentDir)
                     }
                   } else {
-                    println(s"Trying to get $path, not in $allowed")
+                    log.info(s"Trying to get $path, not in $allowed")
                     reject(AuthorizationFailedRejection)
                   }
                 }
@@ -219,13 +276,13 @@ trait AuthRoute
               post {
                 myInvalidateSession { ctx =>
                   log.info(s"Logging out $session")
-                  ctx.redirect("/loginForm", StatusCodes.Found)
+                  ctx.redirect("/loginForm", StatusCodes.SeeOther)
                 }
               } ~
                 get {
                   myInvalidateSession { ctx =>
                     log.info(s"Logging out $session")
-                    ctx.redirect("/loginForm", StatusCodes.Found)
+                    ctx.redirect("/loginForm", StatusCodes.SeeOther)
                   }
                 }
             }

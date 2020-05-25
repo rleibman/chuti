@@ -17,10 +17,12 @@
 package router
 
 import components.components.ChutiComponent
+import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom._
 import pages._
-import typings.semanticUiReact.components.{Sidebar, SidebarPushable, SidebarPusher}
+import typings.semanticUiReact.components.{Button, Sidebar, SidebarPushable, SidebarPusher}
 import typings.semanticUiReact.semanticUiReactStrings.push
 
 object AppRouter extends ChutiComponent {
@@ -51,13 +53,16 @@ object AppRouter extends ChutiComponent {
 
       <.div(
         ^.height := 100.pct,
-        SidebarPushable()(
+          SidebarPushable()(
           Sidebar(animation = push, visible = chutiState.sidebarVisible)(renderMenu),
           SidebarPusher()(
             <.div(
               ^.height   := 100.pct,
               ^.maxWidth := 1500.px,
               ^.padding  := 5.px,
+              Button(onClick = { (_, _) => Callback {
+                document.location.href = "/api/auth/doLogout"
+              }})("Log Out"),
               resolution.render()
             )
           )
