@@ -27,8 +27,8 @@ object Confirm {
   case class ConfirmState(
     question:    String = "",
     open:        Boolean = false,
-    onConfirm:   () => Callback = () => Callback.empty,
-    onCancel:    Option[() => Callback] = None,
+    onConfirm:   Callback = Callback.empty,
+    onCancel:    Option[Callback] = None,
     cancelText:  String = "Cancel",
     confirmText: String = "Ok",
     header:      Option[String] = None
@@ -36,19 +36,19 @@ object Confirm {
 
   class Backend($ : BackendScope[Unit, ConfirmState]) {
     private def doConfirm(
-      onConfirm: () => Callback
+      onConfirm: Callback
     )(
       event: ReactEvent,
       obj:   js.Object
     ) =
-      $.modState(s => s.copy(open = false), onConfirm())
+      $.modState(s => s.copy(open = false), onConfirm)
     private def doCancel(
-      onCancel: Option[() => Callback]
+      onCancel: Option[Callback]
     )(
       event: ReactEvent,
       obj:   js.Object
     ) =
-      $.modState(s => s.copy(open = false), onCancel.fold(Callback.empty)(fn => fn()))
+      $.modState(s => s.copy(open = false), onCancel.getOrElse(Callback.empty))
 
     def render(state: ConfirmState): VdomNode =
       <.div(
@@ -65,8 +65,8 @@ object Confirm {
 
     def confirm(
       question:    String,
-      onConfirm:   () => Callback,
-      onCancel:    Option[() => Callback] = None,
+      onConfirm:   Callback,
+      onCancel:    Option[Callback] = None,
       cancelText:  String = "Cancel",
       confirmText: String = "Ok",
       header:      Option[String] = None
@@ -89,8 +89,8 @@ object Confirm {
 
   def confirm(
     question:    String,
-    onConfirm:   () => Callback,
-    onCancel:    Option[() => Callback] = None,
+    onConfirm:   Callback,
+    onCancel:    Option[Callback] = None,
     cancelText:  String = "Cancel",
     confirmText: String = "Ok",
     header:      Option[String] = None

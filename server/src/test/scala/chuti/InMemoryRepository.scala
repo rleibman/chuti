@@ -62,6 +62,8 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
       Task.succeed(games.values.toSeq)
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] = Task.succeed(games.size)
+
+    override def updatePlayers(game: Game): RepositoryIO[Game] = ???
   }
 
 

@@ -18,6 +18,7 @@ package game
 
 import java.time.{LocalDateTime, ZoneOffset}
 
+import api.ChutiSession
 import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti._
@@ -55,6 +56,10 @@ object LoggedInUserRepo {
 }
 
 object GameService {
+  lazy val godLayer: ULayer[SessionProvider] = {
+    SessionProvider.layer(ChutiSession(GameService.god))
+  }
+
   val god: User = User(
     id = Some(UserId(-666)),
     email = "god@chuti.fun",
@@ -195,11 +200,37 @@ object GameService {
           repository <- ZIO.access[Repository](_.get)
           gameOpt    <- repository.gameOperations.get(gameId)
           savedOpt <- ZIO.foreach(gameOpt) { game =>
-            val (gameAfterApply, appliedEvent) =
-              game.applyEvent(Option(user), AbandonGame())
-            repository.gameOperations.upsert(gameAfterApply).map((_, appliedEvent))
+            if (!game.jugadores.exists(_.id == user.id)) {
+              throw GameException("Ese usuario no esta jugando matarile-rile-ron")
+            } else {
+              val (gameAfterApply, appliedEvent) =
+                game.applyEvent(Option(user), AbandonGame())
+              //God needs to save this user, because the user has already left the game
+              repository.gameOperations
+                .upsert(gameAfterApply).map((_, appliedEvent)).provideSomeLayer[
+                  DatabaseProvider with Logging
+                ](godLayer)
+            }
           }
-          _ <- ZIO.foreach(gameOpt) { game =>
+          players <- ZIO.foreach(savedOpt) {
+            case (game, event) =>
+              repository.gameOperations.updatePlayers(game).map((_, event))
+          }
+          _ <- ZIO.foreach(players) {
+            case (game, _)
+                if game.jugadores.isEmpty &&
+                  (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
+                    game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
+              repository.gameOperations
+                .delete(game.id.get, false).provideSomeLayer[DatabaseProvider with Logging](
+                  godLayer
+                )
+            case (game, _) if game.jugadores.isEmpty =>
+              repository.gameOperations
+                .delete(game.id.get, true).provideSomeLayer[DatabaseProvider with Logging](godLayer)
+            case (game, event) => ZIO.succeed(game)
+          }
+          _ <- ZIO.foreach(players) { game =>
             //TODO make sure that current losses in this game are also assigned to the user
             //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
             repository.userOperations
@@ -243,14 +274,16 @@ object GameService {
           afterApply <- {
             //TODO, refactor with acceptGameInvitation
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
-            val (started, startGame: GameEvent) = if (joined.canTransitionTo(GameStatus.requiereSopa)) {
-              joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
-              //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
-            } else {
-              joined.applyEvent(Option(user), NoOp())
-            }
+            val (started, startGame: GameEvent) =
+              if (joined.canTransitionTo(GameStatus.requiereSopa)) {
+                joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
+                //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
+              } else {
+                joined.applyEvent(Option(user), NoOp())
+              }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
+          _ <- repository.gameOperations.updatePlayers(afterApply._1)
           _ <- ZIO.foreach(afterApply._1.jugadores.find(_.user.id == user.id))(j =>
             repository.userOperations.upsert(j.user)
           )
@@ -271,6 +304,7 @@ object GameService {
             val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
             repository.gameOperations.upsert(game2)
           }
+          _ <- repository.gameOperations.updatePlayers(upserted)
           _ <- ZIO.foreach(upserted.jugadores.find(_.user.id == user.id))(j =>
             repository.userOperations.upsert(j.user)
           )
@@ -359,6 +393,7 @@ object GameService {
               game.applyEvent(Option(user), InviteToGame(invited = invitedOpt.get))
             repository.gameOperations.upsert(withInvite).map((_, invitation))
           }
+          _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
           envelopeOpt <- ZIO.foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
             case (invited, game) =>
               postman.inviteToGameEmail(user, invited, game)
@@ -384,14 +419,16 @@ object GameService {
           afterApply <- {
             //TODO, refactor with acceptGameInvitation
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
-            val (started, startGame: GameEvent) = if (joined.canTransitionTo(GameStatus.requiereSopa)) {
-              joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
-              //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
-            } else {
-              joined.applyEvent(Option(user), NoOp())
-            }
+            val (started, startGame: GameEvent) =
+              if (joined.canTransitionTo(GameStatus.requiereSopa)) {
+                joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
+                //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
+              } else {
+                joined.applyEvent(Option(user), NoOp())
+              }
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
+          _ <- repository.gameOperations.updatePlayers(afterApply._1)
           _ <- ZIO.foreach(afterApply._1.jugadores.find(_.user.id == user.id))(j =>
             repository.userOperations.upsert(j.user)
           )
@@ -415,6 +452,7 @@ object GameService {
             val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
             repository.gameOperations.upsert(afterEvent).map((_, declinedEvent))
           }
+          _ <- ZIO.foreach(afterEvent)(g => repository.gameOperations.updatePlayers(g._1))
           _ <- ZIO.foreach(afterEvent) {
             case (_, event) =>
               broadcast(gameEventQueues, event)

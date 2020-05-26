@@ -22,10 +22,11 @@ import app.ChutiState
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
-import caliban.client.Value.StringValue
+import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat.ChatComponent
+import chat._
 import chuti._
+import components.{Confirm, Toast}
 import game.GameClient.{
   Mutations,
   Queries,
@@ -181,6 +182,7 @@ object LobbyPage extends ChutiPage {
               ) => {
                 val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
                   case StringValue(str) => UserStatus.fromString(str)
+                  case EnumValue(str)   => UserStatus.fromString(str)
                   case other            => throw DecodingError(s"Can't build UserStatus from input $other")
                 }
                 User(
@@ -208,7 +210,7 @@ object LobbyPage extends ChutiPage {
               ChannelId.lobbyChannel,
               onPrivateMessage = Option(msg => $.modState(_.copy(privateMessage = Option(msg))))
             ),
-            Container()(s.privateMessage.fold("")(_.msg)),
+            Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             Button(onClick = (_, _) =>
               Callback.log(s"Calling joinRandomGame") >>
                 calibanCallThroughJsonOpt[Mutations, Game](
@@ -216,15 +218,35 @@ object LobbyPage extends ChutiPage {
                   game => $.modState(_.copy(gameInProgress = Option(game)))
                 )
             )("Juega Con Quien sea"),
-            Button(onClick = (_, _) =>
-              Callback.log(s"Calling newGame") >>
-                calibanCallThroughJsonOpt[Mutations, Game](
-                  Mutations.newGame,
-                  game => $.modState(_.copy(gameInProgress = Option(game)))
-                )
-            )("Empezar Juego Nuevo"),
             TagMod(
-              Container()(
+              Button(onClick = (_, _) =>
+                Callback.log(s"Calling newGame") >>
+                  calibanCallThroughJsonOpt[Mutations, Game](
+                    Mutations.newGame,
+                    game => $.modState(_.copy(gameInProgress = Option(game)))
+                  )
+              )("Empezar Juego Nuevo")
+            ).when(s.gameInProgress.isEmpty),
+            s.gameInProgress.fold(EmptyVdom)(game =>
+              Button(onClick = (_, _) =>
+                Confirm.confirm(
+                  header = Option("Abandonar juego"),
+                  question =
+                    s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty} satoshi",
+                  onConfirm = Callback.log(s"Abandoning game") >>
+                    calibanCall[Mutations, Option[Boolean]](
+                      Mutations.abandonGame(game.id.get.value),
+                      res =>
+                        (
+                          if (res.getOrElse(false)) Toast.success("Juego abandonado!")
+                          else Toast.error("Error abandonando juego!")
+                        ) >> $.modState(_.copy(gameInProgress = None))
+                    )
+                )
+              )("Abandona Juego")
+            ),
+            TagMod(
+              Container(key = "invitaciones")(
                 Header()("Invitaciones"),
                 s.invites.toVdomArray { game =>
                   <.div(
@@ -247,7 +269,7 @@ object LobbyPage extends ChutiPage {
               )
             ).when(s.invites.nonEmpty),
             TagMod(
-              Container()(
+              Container(key = "jugadores")(
                 Header()("Jugadores"),
                 s.loggedInUsers.toVdomArray { player =>
                   <.div(
@@ -272,7 +294,7 @@ object LobbyPage extends ChutiPage {
                   )
                  */
                 case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
-                  Container()(
+                  Container(key = "esperandoJugadores")(
                     <.p(
                       "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
                     ),

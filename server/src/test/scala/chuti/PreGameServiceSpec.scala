@@ -109,7 +109,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 2)
     assert(userEvents.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
-    verify(gameOperations).upsert(*[Game])
+
     verify(userOperations, times(1)).upsert(*[User])
   }
 
@@ -179,7 +179,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 6)
     assert(userEvents.size === 3) //Though 2 happen (log in and log out, only log in should be registering)
     assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
-    verify(gameOperations, times(3)).upsert(*[Game])
+
     verify(userOperations, times(3)).upsert(*[User])
   }
 
@@ -260,7 +260,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
     }
-    val wallet = UserWallet(user2.id.get, 0.0)
+    val wallet = UserWallet(user2.id.get)
     when(userOperations.getWallet).thenReturn(ZIO.succeed(Option(wallet)))
     when(userOperations.updateWallet(UserWallet(user2.id.get, BigDecimal(-0.10))))
       .thenReturn(ZIO.succeed(true))
@@ -416,7 +416,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           )
-          invited2 <- gameService
+          _ <- gameService
             .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -426,7 +426,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
             val game = gameCaptor.value
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           }
-          invited3 <- gameService
+          _ <- gameService
             .inviteToGame(user3.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -436,7 +436,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
             val game = gameCaptor.value
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           }
-          invited4 <- gameService
+          _ <- gameService
             .inviteToGame(user4.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -521,7 +521,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           )
-          invited2 <- gameService
+          _ <- gameService
             .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -531,7 +531,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
             val game = gameCaptor.value
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           }
-          invited3 <- gameService
+          _ <- gameService
             .inviteToGame(user3.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -541,7 +541,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
             val game = gameCaptor.value
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game)))
           }
-          invited4 <- gameService
+          _ <- gameService
             .inviteToGame(user4.id.get, game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
@@ -558,7 +558,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(accepted2)))
           )
-          declined3 <- gameService
+          _ <- gameService
             .declineGameInvitation(game.id.get).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user3))
             )

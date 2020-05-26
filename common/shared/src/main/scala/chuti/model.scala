@@ -31,7 +31,9 @@ object GameException {
 case class GameException(
   msg:   String = "",
   cause: Option[Throwable] = None
-) extends Exception(msg, cause.orNull)
+) extends Exception(msg, cause.orNull) {
+  this.printStackTrace()
+}
 
 sealed class Numero(val value: Int) {
   override def toString: String = value.toString
@@ -523,7 +525,7 @@ case class Game(
 
   def nextIndex: Int = currentEventIndex + 1
 
-  val abandonedPenalty = 10.0
+  val abandonedPenalty = 1000 //In satoshi
   val numPlayers = 4
 
   def canTransitionTo(transitionState: GameStatus): Boolean = {

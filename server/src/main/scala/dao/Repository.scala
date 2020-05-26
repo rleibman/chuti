@@ -43,6 +43,7 @@ object Repository {
     def updateWallet(userWallet: UserWallet): RepositoryIO[Boolean]
   }
   trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {
+    def updatePlayers(game: Game): RepositoryIO[Game]
     def gameInvites:              RepositoryIO[Seq[Game]]
     def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]]
     def getGameForUser:           RepositoryIO[Option[Game]]

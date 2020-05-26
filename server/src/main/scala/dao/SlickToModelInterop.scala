@@ -72,14 +72,6 @@ trait SlickToModelInterop {
   }
 
   def Game2GameRow(value: Game): GameRow = {
-//    id:           GameId,
-//    lastSnapshot:   String,
-//    gameStatus:   Estado,
-//    created:      java.sql.Timestamp,
-//    lastupdated:  java.sql.Timestamp,
-//    currentIndex: Int = 0,
-//    deleted:      Boolean = false,
-//    deleteddate:  Option[java.sql.Timestamp] = None
     val ret = GameRow(
       id = value.id.getOrElse(GameId(0)),
       currentIndex = value.currentEventIndex,

@@ -220,8 +220,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         ).flatMap {
           case None =>
             val newWallet = UserWalletRow(session.user.id.getOrElse(UserId(-1)), 0.0)
-            UserWalletQuery
-              .insertOrUpdate(newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+            (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
           case Some(wallet) => DBIO.successful(Option(wallet))
         }
     }
@@ -241,7 +240,6 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
   }
 
   override val gameOperations: Repository.GameOperations = new GameOperations {
-    //TODO game needs to be cached
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
         if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id)) {
@@ -255,18 +253,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
             ) => game.copy(id = Some(id))
           )).insertOrUpdate(Game2GameRow(game))
             .map(_.getOrElse(game))
-          _ <- DBIO.sequence(game.jugadores.zipWithIndex.map {
-            case (player, index) =>
-              GamePlayersQuery.insertOrUpdate(
-                GamePlayersRow(
-                  userId = player.user.id.getOrElse(UserId(0)),
-                  gameId = upserted.id.getOrElse(GameId(0)),
-                  order = index,
-                  invited = player.invited
-                )
-              )
-          })
-        } yield game
+        } yield upserted
       }
       for {
         _        <- scalacache.remove(game.id).mapError(e => RepositoryException("Cache error", Some(e)))
@@ -342,5 +329,22 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         .map(_.map(row => GameRow2Game(row._2)))
     }
 
+    override def updatePlayers(game: Game): RepositoryIO[Game] = {
+      for {
+        _ <- GamePlayersQuery.filter(_.gameId === game.id.get).delete
+        _ <- DBIO
+          .sequence(game.jugadores.zipWithIndex.map {
+            case (player, index) =>
+              GamePlayersQuery.insertOrUpdate(
+                GamePlayersRow(
+                  userId = player.user.id.getOrElse(UserId(0)),
+                  gameId = game.id.getOrElse(GameId(0)),
+                  order = index,
+                  invited = player.invited
+                )
+              )
+          }).map(_.sum)
+      } yield game
+    }
   }
 }
