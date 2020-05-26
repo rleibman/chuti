@@ -72,14 +72,13 @@ object ChatComponent {
               )
           ),
         onData = { (_, data) =>
-          println(s"got data! $data")
+          Callback.log(s"got data! $data")
           data
             .fold(Callback.empty) { msg =>
               msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
                 $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
               }
-
-            }.runNow()
+            }
         },
         operationId = s"chat$chatId"
       )

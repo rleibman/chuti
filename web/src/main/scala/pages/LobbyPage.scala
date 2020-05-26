@@ -49,13 +49,16 @@ import typings.semanticUiReact.genericMod.SemanticSIZES
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-object LobbyPage extends ChutiPage {
+object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
   case class State(
     friends:        Seq[UserId] = Seq.empty,
     loggedInUsers:  Seq[User] = Seq.empty,
     privateMessage: Option[ChatMessage] = None,
     gameInProgress: Option[Game] = None,
-    invites:        Seq[Game] = Seq.empty
+    invites:        Seq[Game] = Seq.empty,
+    userStream:     Option[WebSocketHandler] = None,
+    gameStream:     Option[WebSocketHandler] = None,
+    gameEventQueue: Seq[GameEvent] = Seq.empty
   )
 
   //TODO Move to common area
@@ -83,7 +86,8 @@ object LobbyPage extends ChutiPage {
             case Left(error) =>
               Callback.log(s"1 Error: $error") //TODO handle error responses better
           }
-        case Failure(exception) => Callback.error(exception) //TODO handle error responses better
+        case Failure(exception) =>
+          Callback.throwException(exception) //TODO handle error responses better
         case Success(response) =>
           Callback.log(s"2 Error: ${response.statusText}") //TODO handle error responses better
       }
@@ -125,31 +129,84 @@ object LobbyPage extends ChutiPage {
     }
   )
 
-  class Backend($ : BackendScope[Props, State]) extends ScalaJSClientAdapter {
-    val wsHandle: WebSocketHandler = makeWebSocketClient[(String, CalibanUserEventType)](
-      uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-      query = Subscriptions
-        .userStream(
-          CalibanUserEvent.user(CalibanUser.name) ~ CalibanUserEvent.userEventType
-        ),
-      onData = { (_, data) =>
-        Callback
-          .log(s"got data! $data")
-          .runNow()
-      },
-      operationId = "-"
-    )
-
+  class Backend($ : BackendScope[Props, State]) {
     def init(
       props: Props,
       state: State
     ): Callback = {
       val gameDecoder = implicitly[Decoder[Game]]
+      val gameEventDecoder = implicitly[Decoder[GameEvent]]
+
+      def processQueue: Callback = Callback.empty //TODO write this
+
+      def onGameEvent(gameEvent: GameEvent): Callback = {
+        Callback.log(gameEvent.toString) >>
+          $.modState(
+            { s =>
+              val moddedGame = s.gameInProgress.map {
+                currentGame: Game =>
+                  gameEvent.index match {
+                    case None =>
+                      throw GameException(
+                        "This clearly could not be happening (event has no index)"
+                      )
+                    case Some(index) if index == currentGame.currentEventIndex => {
+                      //If the game event is the next one to be applied, apply it to the game
+                      currentGame.reapplyEvent(gameEvent)
+                    }
+                    case Some(index) if index > currentGame.currentEventIndex => {
+                      //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+                      //In a few seconds, just get the full game.
+                      currentGame
+                    }
+                    case Some(index) => {
+                      //If it's past, mark an error, how could we have a past event???
+                      throw GameException(
+                        s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+                      )
+                    }
+                  }
+              }
+              val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
+                gameEvent.index match {
+                  case Some(index) if index == currentGame.nextIndex + 1 => {
+                    //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+                    //In a few seconds, just get the full game.
+                    s.gameEventQueue :+ gameEvent
+                  }
+                  case _ => s.gameEventQueue
+                }
+              }
+
+              s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
+            },
+            processQueue
+          )
+      }
 
       Callback.log(s"Initializing ${props.chutiState.user}") >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
-          game => $.modState(_.copy(gameInProgress = Option(game)))
+          game =>
+            $.modState(
+              _.copy(
+                gameInProgress = Option(game),
+                gameStream = Option(
+                  makeWebSocketClient[Json](
+                    uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                    query = Subscriptions.gameStream(game.id.get.value),
+                    onData = { (_, data) =>
+                      data.fold(Callback.empty)(json =>
+                        gameEventDecoder
+                          .decodeJson(json)
+                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                      )
+                    },
+                    operationId = "-"
+                  )
+                )
+              )
+            )
         ) >>
         calibanCall[Queries, Option[List[UserId]]](
           Queries.getFriends(CalibanUserId.value.map(UserId.apply)),
@@ -195,7 +252,27 @@ object LobbyPage extends ChutiPage {
               })
           ),
           loggedInUsersOpt => $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten))
+        ) >> $.modState(
+        _.copy(userStream = Option(
+          makeWebSocketClient[(String, CalibanUserEventType)](
+            uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+            query = Subscriptions
+              .userStream(
+                CalibanUserEvent.user(CalibanUser.name) ~ CalibanUserEvent.userEventType
+              ),
+            onData = { (_, data) =>
+              onUserStreamData(data)
+            },
+            operationId = "-"
+          )
         )
+        )
+      )
+    }
+
+    def onUserStreamData(data: Option[(String, CalibanUserEventType)]): Callback = {
+      Callback
+        .log(s"got data! $data")
     }
 
     def render(
@@ -215,7 +292,10 @@ object LobbyPage extends ChutiPage {
               Callback.log(s"Calling joinRandomGame") >>
                 calibanCallThroughJsonOpt[Mutations, Game](
                   Mutations.joinRandomGame,
-                  game => $.modState(_.copy(gameInProgress = Option(game)))
+                  game =>
+                    Toast.success("Sentado a la mesa!") >> $.modState(
+                      _.copy(gameInProgress = Option(game))
+                    )
                 )
             )("Juega Con Quien sea"),
             TagMod(
@@ -223,7 +303,10 @@ object LobbyPage extends ChutiPage {
                 Callback.log(s"Calling newGame") >>
                   calibanCallThroughJsonOpt[Mutations, Game](
                     Mutations.newGame,
-                    game => $.modState(_.copy(gameInProgress = Option(game)))
+                    game =>
+                      Toast.success("Juego empezado!") >> $.modState(
+                        _.copy(gameInProgress = Option(game))
+                      )
                   )
               )("Empezar Juego Nuevo")
             ).when(s.gameInProgress.isEmpty),

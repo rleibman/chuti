@@ -559,7 +559,16 @@ case class Game(
   def reapplyEvent(event: GameEvent): Game = {
     //TODO: Write this
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
-    ???
+    val user = jugadores.find(_.user.id == event.userId).map(_.user)
+    val processed = event.doEvent(user, game = this)
+    if (processed._2.index.getOrElse(-1) != currentEventIndex) {
+      throw GameException("Error! the event did not gather the correct index")
+    }
+    if (processed._2 != event) {
+      //For all events, test that reapplying the event to the same original game doesn't change the event, Sopa in particular
+      throw GameException(s"Should not have modified event on reapply!\n$event\n${processed._2}")
+    }
+    processed._1.copy(currentEventIndex = nextIndex)
   }
 
   override def toString: String = {

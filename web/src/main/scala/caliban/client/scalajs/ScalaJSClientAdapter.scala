@@ -25,6 +25,7 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import io.circe.{Decoder, Error, Json}
+import japgolly.scalajs.react.Callback
 import org.scalajs.dom
 import org.scalajs.dom.WebSocket
 import zio.duration._
@@ -40,7 +41,7 @@ trait ScalaJSClientAdapter {
     uriOrSocket:          Either[URI, WebSocket],
     query:                SelectionBuilder[RootSubscription, A],
     operationId:          String,
-    onData:               (String, Option[A]) => Unit,
+    onData:               (String, Option[A]) => Callback,
     connectionParams:     Option[Json] = None,
     timeout:              Duration = 120.seconds, //how long the client should wait in ms for a keep-alive message from the server (default 30000 ms), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
@@ -208,7 +209,7 @@ trait ScalaJSClientAdapter {
           } yield {
             dataOrError match {
               case Right(data) =>
-                onData(id.getOrElse(""), Option(data))
+                onData(id.getOrElse(""), Option(data)).runNow()
               case Left(error) =>
                 error.printStackTrace()
                 onClientError(error)

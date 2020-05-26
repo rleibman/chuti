@@ -198,16 +198,18 @@ case class InviteToGame(
 }
 
 case class JoinGame(
-  gameId: Option[GameId] = None,
-  userId: Option[UserId] = None,
-  index:  Option[Int] = None
+  joinedUser: Option[User] = None,
+  gameId:     Option[GameId] = None,
+  userId:     Option[UserId] = None,
+  index:      Option[Int] = None
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
   override def doEvent(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    val user = userOpt.getOrElse(throw GameException("User required for this move"))
+    val user =
+      joinedUser.getOrElse(userOpt.getOrElse(throw GameException("User required for this move")))
     if (game.jugadores.exists(j => j.id == user.id && !j.invited)) {
       throw GameException("A player can't join a game twice")
     }
@@ -219,7 +221,12 @@ case class JoinGame(
 
     (
       game.copy(jugadores = game.jugadores.filter(_.id != user.id) :+ newPlayer),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(
+        joinedUser = Option(user),
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = user.id
+      )
     )
   }
 }

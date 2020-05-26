@@ -268,8 +268,11 @@ object GameService {
           gameOpt <- repository.gameOperations
             .gamesWaitingForPlayers().bimap(GameException.apply, _.headOption)
           newOrRetrieved <- gameOpt.fold(
+            //The game has no players, so god needs to save it
             repository.gameOperations
-              .upsert(Game(None, gameStatus = GameStatus.esperandoJugadoresAzar))
+              .upsert(Game(None, gameStatus = GameStatus.esperandoJugadoresAzar)).provideSomeLayer[
+                DatabaseProvider with Logging
+              ](godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
             //TODO, refactor with acceptGameInvitation
