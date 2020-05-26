@@ -24,20 +24,10 @@ import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
+import chuti.{UserEventType, _}
 import chat._
-import chuti._
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  ChannelId => CalibanChannelId,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType,
-  UserId => CalibanUserId,
-  UserStatus => CalibanUserStatus
-}
+import game.GameClient.{Mutations, Queries, Subscriptions, ChannelId => CalibanChannelId, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserId => CalibanUserId, UserStatus => CalibanUserStatus}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
@@ -49,6 +39,7 @@ import typings.semanticUiReact.genericMod.SemanticSIZES
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+//TODO refactor LobbyPage and GamePage into MainPage with GameComponent and LobbyComponent, with modes
 object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
   case class State(
     friends:        Seq[UserId] = Seq.empty,
@@ -254,11 +245,20 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           loggedInUsersOpt => $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten))
         ) >> $.modState(
         _.copy(userStream = Option(
-          makeWebSocketClient[(String, CalibanUserEventType)](
+          makeWebSocketClient[(User, CalibanUserEventType)](
             uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
             query = Subscriptions
               .userStream(
-                CalibanUserEvent.user(CalibanUser.name) ~ CalibanUserEvent.userEventType
+                (CalibanUserEvent.user(CalibanUser.id(CalibanUserId.value)) ~
+                  CalibanUserEvent.user(CalibanUser.name) ~
+                  CalibanUserEvent.user(CalibanUser.email) ~
+                  CalibanUserEvent.userEventType).map{
+                  case (((idOpt, name), email), eventType) =>
+                    (
+                      User(id = idOpt.map(UserId), name = name, email = email),
+                      eventType
+                    )
+                  }
               ),
             onData = { (_, data) =>
               onUserStreamData(data)
@@ -270,7 +270,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
       )
     }
 
-    def onUserStreamData(data: Option[(String, CalibanUserEventType)]): Callback = {
+    def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
       Callback
         .log(s"got data! $data")
     }

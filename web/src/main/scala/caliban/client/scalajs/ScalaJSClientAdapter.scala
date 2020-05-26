@@ -19,8 +19,10 @@ package caliban.client.scalajs
 import java.net.URI
 import java.time.LocalDateTime
 
+import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.Operations.RootSubscription
-import caliban.client.{GraphQLRequest, SelectionBuilder}
+import caliban.client.Value.ObjectValue
+import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
@@ -32,11 +34,13 @@ import zio.duration._
 
 trait ScalaJSClientAdapter {
 
+  private[caliban] lazy val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
+
   trait WebSocketHandler {
     def close(): Unit
   }
 
-  //TODO we will replace this with some zio thing as soon as I figure out how
+  //TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: Decoder](
     uriOrSocket:          Either[URI, WebSocket],
     query:                SelectionBuilder[RootSubscription, A],
@@ -46,29 +50,27 @@ trait ScalaJSClientAdapter {
     timeout:              Duration = 120.seconds, //how long the client should wait in ms for a keep-alive message from the server (default 30000 ms), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
-    onConnected: (String, Option[Json]) => Unit = { (_, _) =>
-      ()
+    onConnected: (String, Option[Json]) => Callback = { (_, _) =>
+      Callback.empty
     },
-    onReconnected: (String, Option[Json]) => Unit = { (_, _) =>
-      ()
+    onReconnected: (String, Option[Json]) => Callback = { (_, _) =>
+      Callback.empty
     },
-    onReconnecting: (String) => Unit = { _ =>
-      ()
+    onReconnecting: String => Callback = { _ =>
+      Callback.empty
     },
-    onConnecting: () => Unit = { () =>
-      ()
+    onConnecting: Callback = Callback.empty,
+    onDisconnected: (String, Option[Json]) => Callback = { (_, _) =>
+      Callback.empty
     },
-    onDisconnected: (String, Option[Json]) => Unit = { (_, _) =>
-      ()
+    onKeepAlive: Option[Json] => Callback = { _ =>
+      Callback.empty
     },
-    onKeepAlive: Option[Json] => Unit = { _ =>
-      ()
+    onServerError: (String, Option[Json]) => Callback = { (_, _) =>
+      Callback.empty
     },
-    onServerError: (String, Option[Json]) => Unit = { (_, _) =>
-      ()
-    },
-    onClientError: Throwable => Unit = { _ =>
-      ()
+    onClientError: Throwable => Callback = { _ =>
+      Callback.empty
     }
   )(
     implicit decoder: Decoder[A]
@@ -137,11 +139,11 @@ trait ScalaJSClientAdapter {
       val strMsg = e.data.toString
       val msg: Either[Error, GQLOperationMessage] =
         decode[GQLOperationMessage](strMsg)
-      println(s"Received: $strMsg")
+//      println(s"Received: $strMsg")
       msg match {
         case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
           connectionState.kaIntervalOpt.foreach(id => dom.window.clearInterval(id))
-          onDisconnected(id.getOrElse(""), payload)
+          onDisconnected(id.getOrElse(""), payload).runNow()
 //          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
 //            connectionState =
 //              connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
@@ -154,17 +156,17 @@ trait ScalaJSClientAdapter {
         case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
           //We should only do this the first time
           if (connectionState.firstConnection) {
-            onConnected(id.getOrElse(""), payload)
+            onConnected(id.getOrElse(""), payload).runNow()
             connectionState = connectionState.copy(firstConnection = false, reconnectCount = 0)
           } else {
-            onReconnected(id.getOrElse(""), payload)
+            onReconnected(id.getOrElse(""), payload).runNow()
           }
           val sendMe = GQLStart(graphql)
           println(s"Sending: $sendMe")
           socket.send(sendMe.asJson.noSpaces)
         case Right(GQLOperationMessage(GQL_CONNECTION_ERROR, id, payload)) =>
           //if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
-          onServerError(id.getOrElse(""), payload)
+          onServerError(id.getOrElse(""), payload).runNow()
           println(s"Connection Error from server $payload")
         case Right(GQLOperationMessage(GQL_CONNECTION_KEEP_ALIVE, id, payload)) =>
           connectionState = connectionState.copy(reconnectCount = 0)
@@ -184,7 +186,7 @@ trait ScalaJSClientAdapter {
                       if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
                         connectionState =
                           connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
-                        onReconnecting(id.getOrElse(""))
+                        onReconnecting(id.getOrElse("")).runNow()
                         doConnect()
                       } else if (connectionState.reconnectCount > reconnectionAttempts) {
                         println("Maximum number of connection retries exceeded")
@@ -198,22 +200,29 @@ trait ScalaJSClientAdapter {
             )
           }
           connectionState = connectionState.copy(lastKAOpt = Option(LocalDateTime.now()))
-          onKeepAlive(payload)
+          onKeepAlive(payload).runNow()
         case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
           connectionState = connectionState.copy(reconnectCount = 0)
-          for {
-            payload     <- payloadOpt
-            data        <- payload.asObject.flatMap(_("data"))
-            inner       <- data.asObject.flatMap(_.values.headOption)
-            dataOrError <- Option(decoder.decodeJson(inner))
-          } yield {
-            dataOrError match {
-              case Right(data) =>
-                onData(id.getOrElse(""), Option(data)).runNow()
-              case Left(error) =>
-                error.printStackTrace()
-                onClientError(error)
+          val res = for {
+            payload     <- payloadOpt.toRight(DecodingError("No payload"))
+            parsed <- graphQLDecoder
+              .decodeJson(payload)
+              .left
+              .map(ex => DecodingError("Json deserialization error", Some(ex)))
+            data <- if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors)) else Right(parsed.data)
+            objectValue <- data match {
+              case Some(o: ObjectValue) => Right(o)
+              case _                    => Left(DecodingError(s"Result is not an object ($data)"))
             }
+            result <- query.fromGraphQL(objectValue)
+          } yield result
+
+          res match {
+            case Right(data) =>
+              onData(id.getOrElse(""), Option(data)).runNow()
+            case Left(error) =>
+              error.printStackTrace()
+              onClientError(error).runNow()
           }
         case Right(GQLOperationMessage(GQL_ERROR, id, payload)) =>
           println(s"Error from server $payload")
@@ -234,7 +243,7 @@ trait ScalaJSClientAdapter {
     socket.onopen = { (e: dom.Event) =>
       println(socket.protocol)
       println(e.`type`)
-      onConnecting()
+      onConnecting.runNow()
       doConnect()
     }
 
