@@ -39,7 +39,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
         (for {
           gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(gameId)
+            .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeUntil {
@@ -73,7 +73,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
         (for {
           gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(gameId)
+            .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeUntil {
@@ -113,7 +113,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
         (for {
           gameService <- ZIO.access[GameService](_.get)
           gameStream = gameService
-            .gameStream(gameId)
+            .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeWhile {

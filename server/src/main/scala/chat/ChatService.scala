@@ -96,14 +96,7 @@ object ChatService {
           sent <- {
             val sendMe = ChatMessage(user, request.msg)
             UIO
-              .foreach(allSubscriptions)(userQueue =>
-                userQueue.queue
-                  .offer(sendMe)
-                  .onInterrupt(
-                    //If it was shutdown, remove from subscribers
-                    chatMessageQueue.update(_.filterNot(_ == userQueue))
-                  )
-              )
+              .foreach(allSubscriptions)(_.queue.offer(sendMe))
               .as(sendMe)
           }
         } yield {
@@ -117,9 +110,11 @@ object ChatService {
           user  <- ZIO.access[SessionProvider with Logging](_.get.session.user)
           queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
           _     <- chatMessageQueue.update(MessageQueue(user, queue) :: _)
-        } yield ZStream.fromQueue(queue).filter(_.fromUser.chatChannel == Option(channelId))
+        } yield ZStream
+          .fromQueue(queue)
+          .ensuring(queue.shutdown *> chatMessageQueue.update(_.filterNot(_.user == user)))
+          .filter(_.fromUser.chatChannel == Option(channelId))
       }
     }
   }
-
 }

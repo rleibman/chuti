@@ -16,6 +16,8 @@
 
 package chuti
 
+import java.util.UUID
+
 import api.ChutiSession
 import api.token.TokenHolder
 import better.files.File
@@ -23,8 +25,8 @@ import chuti.InMemoryRepository.{user1, user2, user3, user4}
 import chuti.bots.DumbPlayerBot
 import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameService.GameService
-import game.LoggedInUserRepo.LoggedInUserRepo
-import game.{GameService, LoggedInUserRepo}
+import game.UserConnectionRepo.UserConnectionRepo
+import game.{GameService, UserConnectionRepo}
 import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -41,21 +43,22 @@ import zio.logging.slf4j.Slf4jLogger
 import zio.duration._
 
 trait GameAbstractSpec2 extends MockitoSugar {
+  val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
   lazy protected val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
   lazy protected val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  lazy protected val loggedInUserRepo: LoggedInUserRepo.Service = {
-    val value = mock[LoggedInUserRepo.Service]
-    when(value.addUser(*[User])).thenAnswer { user: User =>
+  lazy protected val userConnectionRepo: UserConnectionRepo.Service = {
+    val value = mock[UserConnectionRepo.Service]
+    when(value.addConnection(*[ConnectionId], *[User])).thenAnswer { tuple: (ConnectionId, User) =>
       console
-        .putStrLn(s"User ${user.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-          zio.console.Console.live
-        )
+        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
+        zio.console.Console.live
+      )
     }
-    when(value.removeUser(*[UserId])).thenAnswer { userId: Int =>
+    when(value.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
       console
-        .putStrLn(s"User $userId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
-          zio.console.Console.live
-        )
+        .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
+        zio.console.Console.live
+      )
     }
     value
   }
@@ -135,14 +138,14 @@ trait GameAbstractSpec2 extends MockitoSugar {
   }
 
   type TestLayer = DatabaseProvider
-    with Repository with LoggedInUserRepo with Postman with Logging with TokenHolder
+    with Repository with UserConnectionRepo with Postman with Logging with TokenHolder
     with GameService
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
     ZLayer.succeed(databaseProvider) ++
       repositoryLayer(gameFiles: _*) ++
-      ZLayer.succeed(loggedInUserRepo) ++
+      ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman) ++
       Slf4jLogger.make((_, b) => b) ++
       ZLayer.succeed(TokenHolder.live) ++
@@ -285,7 +288,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
         }
       }
       gameStream = gameService
-        .gameStream(start.id.get)
+        .gameStream(start.id.get, connectionId)
         .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
       gameEventsFiber <- gameStream
         .takeUntil {
@@ -367,7 +370,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       )
       _ <- zio.console.putStrLn(s"Game ${game.id.get} loaded")
       gameStream = gameService
-        .gameStream(game.id.get)
+        .gameStream(game.id.get, connectionId)
         .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
       gameEventsFiber <- gameStream
         .takeUntil {

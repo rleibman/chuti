@@ -95,7 +95,7 @@ object GameClient {
     def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
     def lastLoggedIn: SelectionBuilder[User, Option[Long]] =
       Field("lastLoggedIn", OptionOf(Scalar()))
-    def wallet:  SelectionBuilder[User, Double] = Field("wallet", Scalar())
+    def active:  SelectionBuilder[User, Boolean] = Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
   }
 
@@ -111,6 +111,14 @@ object GameClient {
     def value: SelectionBuilder[UserId, Int] = Field("value", Scalar())
   }
 
+  case class ConnectionIdInput(value: String)
+  object ConnectionIdInput {
+    implicit val encoder: ArgEncoder[ConnectionIdInput] = new ArgEncoder[ConnectionIdInput] {
+      override def encode(value: ConnectionIdInput): Value =
+        ObjectValue(List("value" -> implicitly[ArgEncoder[String]].encode(value.value)))
+      override def typeName: String = "ConnectionIdInput"
+    }
+  }
   case class GameIdInput(value: Int)
   object GameIdInput {
     implicit val encoder: ArgEncoder[GameIdInput] = new ArgEncoder[GameIdInput] {
@@ -165,17 +173,34 @@ object GameClient {
       Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def declineGameInvitation(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("declineGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
-    def play(gameEvent: Json): SelectionBuilder[RootMutation, Option[Boolean]] =
-      Field("play", OptionOf(Scalar()), arguments = List(Argument("gameEvent", gameEvent)))
+    def play(
+      gameId:    GameIdInput,
+      gameEvent: Json
+    ): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field(
+        "play",
+        OptionOf(Scalar()),
+        arguments = List(Argument("gameId", gameId), Argument("gameEvent", gameEvent))
+      )
   }
 
   type Subscriptions = RootSubscription
   object Subscriptions {
-    def gameStream(value: Int): SelectionBuilder[RootSubscription, Json] =
-      Field("gameStream", Scalar(), arguments = List(Argument("value", value)))
+    def gameStream(
+      gameId:       GameIdInput,
+      connectionId: ConnectionIdInput
+    ): SelectionBuilder[RootSubscription, Json] =
+      Field(
+        "gameStream",
+        Scalar(),
+        arguments = List(Argument("gameId", gameId), Argument("connectionId", connectionId))
+      )
     def userStream[A](
+      value: String
+    )(
       innerSelection: SelectionBuilder[UserEvent, A]
-    ): SelectionBuilder[RootSubscription, A] = Field("userStream", Obj(innerSelection))
+    ): SelectionBuilder[RootSubscription, A] =
+      Field("userStream", Obj(innerSelection), arguments = List(Argument("value", value)))
   }
 
 }

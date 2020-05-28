@@ -76,10 +76,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -130,10 +130,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -205,10 +205,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -275,10 +275,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -339,10 +339,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -403,10 +403,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
@@ -508,10 +508,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
           gameStream = gameService
-            .gameStream(GameId(1)).provideCustomLayer(
+            .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream.provideCustomLayer(
+          userStream = gameService.userStream(connectionId).provideCustomLayer(
             layer ++ SessionProvider.layer(ChutiSession(user1))
           )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork

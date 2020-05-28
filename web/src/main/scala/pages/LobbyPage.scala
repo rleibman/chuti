@@ -17,6 +17,7 @@
 package pages
 
 import java.net.URI
+import java.util.UUID
 
 import app.ChutiState
 import caliban.client.CalibanClientError.DecodingError
@@ -24,25 +25,28 @@ import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.{UserEventType, _}
 import chat._
+import chuti._
 import components.{Confirm, Toast}
-import game.GameClient.{Mutations, Queries, Subscriptions, ChannelId => CalibanChannelId, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserId => CalibanUserId, UserStatus => CalibanUserStatus}
+import game.GameClient.{ConnectionIdInput, GameIdInput, Mutations, Queries, Subscriptions, ChannelId => CalibanChannelId, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserId => CalibanUserId, UserStatus => CalibanUserStatus}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import typings.semanticUiReact.components.{Button, Container, Header, Loader}
-import typings.semanticUiReact.genericMod.SemanticSIZES
+import typings.semanticUiReact.components.{Button, Container, Dropdown, DropdownItem, DropdownMenu, Header, Icon, Loader, Table, TableBody, TableCell, TableRow}
+import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 //TODO refactor LobbyPage and GamePage into MainPage with GameComponent and LobbyComponent, with modes
 object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
+  private val connectionId: ConnectionIdInput = ConnectionIdInput(UUID.randomUUID().toString)
+
+  println(ChatComponent.chatId)
   case class State(
-    friends:        Seq[UserId] = Seq.empty,
+    friends:        Set[UserId] = Set.empty,
     loggedInUsers:  Seq[User] = Seq.empty,
     privateMessage: Option[ChatMessage] = None,
     gameInProgress: Option[Game] = None,
@@ -185,7 +189,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                 gameStream = Option(
                   makeWebSocketClient[Json](
                     uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                    query = Subscriptions.gameStream(game.id.get.value),
+                    query = Subscriptions.gameStream(GameIdInput(game.id.get.value), connectionId),
                     onData = { (_, data) =>
                       data.fold(Callback.empty)(json =>
                         gameEventDecoder
@@ -201,7 +205,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
         ) >>
         calibanCall[Queries, Option[List[UserId]]](
           Queries.getFriends(CalibanUserId.value.map(UserId.apply)),
-          friendsOpt => $.modState(_.copy(friends = friendsOpt.toSeq.flatten))
+          friendsOpt => $.modState(_.copy(friends = friendsOpt.toSet.flatten))
         ) >>
         calibanCall[Queries, Option[List[Json]]](
           Queries.getGameInvites,
@@ -242,23 +246,24 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                 )
               })
           ),
-          loggedInUsersOpt => $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten))
+          loggedInUsersOpt =>
+            $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id)))
         ) >> $.modState(
         _.copy(userStream = Option(
           makeWebSocketClient[(User, CalibanUserEventType)](
             uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
             query = Subscriptions
-              .userStream(
+              .userStream(connectionId.value)(
                 (CalibanUserEvent.user(CalibanUser.id(CalibanUserId.value)) ~
                   CalibanUserEvent.user(CalibanUser.name) ~
                   CalibanUserEvent.user(CalibanUser.email) ~
-                  CalibanUserEvent.userEventType).map{
+                  CalibanUserEvent.userEventType).map {
                   case (((idOpt, name), email), eventType) =>
                     (
                       User(id = idOpt.map(UserId), name = name, email = email),
                       eventType
                     )
-                  }
+                }
               ),
             onData = { (_, data) =>
               onUserStreamData(data)
@@ -271,8 +276,19 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     }
 
     def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
-      Callback
-        .log(s"got data! $data")
+      import CalibanUserEventType._
+      Callback.log(data.toString) >> {
+        data match {
+          case None                        => Callback.empty
+          case Some((user, AbandonedGame)) => Callback.empty
+          case Some((user, Connected)) =>
+            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id) :+ user))
+          case Some((user, Disconnected)) =>
+            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id)))
+          case Some((user, JoinedGame)) => Callback.empty
+          case Some((user, Modified))   => Callback.empty
+        }
+      }
     }
 
     def render(
@@ -288,17 +304,17 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               onPrivateMessage = Option(msg => $.modState(_.copy(privateMessage = Option(msg))))
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
-            Button(onClick = (_, _) =>
-              Callback.log(s"Calling joinRandomGame") >>
-                calibanCallThroughJsonOpt[Mutations, Game](
-                  Mutations.joinRandomGame,
-                  game =>
-                    Toast.success("Sentado a la mesa!") >> $.modState(
-                      _.copy(gameInProgress = Option(game))
-                    )
-                )
-            )("Juega Con Quien sea"),
             TagMod(
+              Button(onClick = (_, _) =>
+                Callback.log(s"Calling joinRandomGame") >>
+                  calibanCallThroughJsonOpt[Mutations, Game](
+                    Mutations.joinRandomGame,
+                    game =>
+                      Toast.success("Sentado a la mesa!") >> $.modState(
+                        _.copy(gameInProgress = Option(game))
+                      )
+                  )
+              )("Juega Con Quien sea"),
               Button(onClick = (_, _) =>
                 Callback.log(s"Calling newGame") >>
                   calibanCallThroughJsonOpt[Mutations, Game](
@@ -354,16 +370,50 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
             TagMod(
               Container(key = "jugadores")(
                 Header()("Jugadores"),
-                s.loggedInUsers.toVdomArray { player =>
-                  <.div(
-                    ^.key := user.id.fold("")(_.toString),
-                    player.name
+                Table(className = "playersTable")(
+                  TableBody()(
+                    s.loggedInUsers.filter(_.id != user.id).toVdomArray { player =>
+                      TableRow(key = player.id.fold("")(_.toString))(
+                        TableCell()(
+                          if (s.friends.contains(player.id.get))
+                            Icon(className = "icon", name = SemanticICONS.`star outline`)()
+                          else
+                            EmptyVdom,
+                          if(player.userStatus == UserStatus.Playing)
+                            <.img( ^.src:="images/6_6.svg", ^.height := 16.px)
+                          else
+                            EmptyVdom,
+                        ),
+                        TableCell()(player.name),
+                        TableCell()(
+                          Dropdown(
+                            //TODO hide class 'dropdown icon'
+                            trigger = Icon(className = "icon", name = SemanticICONS.`ellipsis vertical`)()
+                          )(
+                            DropdownMenu()(
+                              if(player.userStatus != UserStatus.Playing)
+                                DropdownItem(onClick = {(_, _) => Callback.empty})("Invitar a jugar")
+                              else
+                                EmptyVdom,
+                              if (!s.friends.contains(player.id.get))
+                                DropdownItem(onClick = {(_, _) =>Callback.empty})("Agregar como amigo")
+                              else
+                                EmptyVdom,
+                              if (s.friends.contains(player.id.get))
+                                DropdownItem(onClick = {(_, _) => Callback.empty})("Quitar como amigo")
+                              else
+                                EmptyVdom,
+                            )
+                          )
+                        )
+                      )
+                    }
                   )
+                )
                 //TODO add flags: isFriend, isPlaying
                 //TODO make table, add context menu: invite, friend, unfriend,
-                }
               )
-            ).when(s.friends.nonEmpty),
+            ).when(s.loggedInUsers.nonEmpty),
             s.gameInProgress.toVdomArray { game =>
               game.gameStatus match {
                 case status if status.enJuego =>

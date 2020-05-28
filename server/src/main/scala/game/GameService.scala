@@ -23,33 +23,42 @@ import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti._
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.LoggedInUserRepo.LoggedInUserRepo
+import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
+import mail.Postman
 import mail.Postman.Postman
 import zio._
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
-object LoggedInUserRepo {
-  type LoggedInUserRepo = Has[Service]
+//TODO consider getting rid of userConnectionRepo, and use the userEventQueues instead, they seem to be doing the same thing
+object UserConnectionRepo {
+  type UserConnectionRepo = Has[Service]
 
   trait Service {
-    def addUser(user:      User):   UIO[Boolean]
-    def removeUser(userId: UserId): UIO[Boolean]
-    def userMap: UIO[Map[UserId, User]]
-    def clear:   UIO[Boolean]
+    def addConnection(
+      connectionId: ConnectionId,
+      user:         User
+    ): UIO[Boolean]
+    def removeConnection(connectionId: ConnectionId): UIO[Boolean]
+    def connectionMap: UIO[Map[ConnectionId, User]]
+    def clear:         UIO[Boolean]
   }
 
+  private val connections = scala.collection.mutable.Map.empty[ConnectionId, User]
+
   val live: Service = new Service {
-    private val users = scala.collection.mutable.Map.empty[UserId, User]
-    override def addUser(user: User): UIO[Boolean] =
-      UIO.succeed(users.put(user.id.getOrElse(UserId(0)), user).nonEmpty)
-    override def removeUser(userId: UserId): UIO[Boolean] =
-      UIO.succeed(users.remove(userId).nonEmpty)
-    override def userMap: UIO[Map[UserId, User]] = UIO.succeed(users.toMap)
+    override def addConnection(
+      connectionId: ConnectionId,
+      user:         User
+    ): UIO[Boolean] =
+      UIO.succeed(connections.put(connectionId, user).nonEmpty)
+    override def removeConnection(connectionId: ConnectionId): UIO[Boolean] =
+      UIO.succeed(connections.remove(connectionId).nonEmpty)
+    override def connectionMap: UIO[Map[ConnectionId, User]] = UIO.succeed(connections.toMap)
     override def clear: UIO[Boolean] = UIO.succeed {
-      users.clear()
+      connections.clear()
       true
     }
   }
@@ -69,7 +78,7 @@ object GameService {
   )
 
   type GameLayer = SessionProvider
-    with DatabaseProvider with Repository with LoggedInUserRepo with Postman with Logging
+    with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging
     with TokenHolder
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
@@ -103,8 +112,11 @@ object GameService {
     def acceptFriendship(friend:      User):   ZIO[GameLayer, GameException, Boolean]
     def unfriend(enemy:               User):   ZIO[GameLayer, GameException, Boolean]
 
-    def gameStream(gameId: GameId): ZStream[GameLayer, GameException, GameEvent]
-    def userStream: ZStream[GameLayer, GameException, UserEvent]
+    def gameStream(
+      gameId:       GameId,
+      connectionId: ConnectionId
+    ): ZStream[GameLayer, GameException, GameEvent]
+    def userStream(connectionId: ConnectionId): ZStream[GameLayer, GameException, UserEvent]
   }
 
   lazy val interpreter: GraphQLInterpreter[ZEnv with GameLayer, CalibanError] =
@@ -159,14 +171,20 @@ object GameService {
   ): ZIO[GameService with GameLayer, GameException, Boolean] =
     URIO.accessM(_.get.declineGameInvitation(gameId))
 
-  def gameStream(gameId: GameId): ZStream[GameService with GameLayer, GameException, GameEvent] =
-    ZStream.accessStream(_.get.gameStream(gameId))
-  def userStream: ZStream[GameService with GameLayer, GameException, UserEvent] =
-    ZStream.accessStream(_.get.userStream)
+  def gameStream(
+    gameId:       GameId,
+    connectionId: ConnectionId
+  ): ZStream[GameService with GameLayer, GameException, GameEvent] =
+    ZStream.accessStream(_.get.gameStream(gameId, connectionId))
+  def userStream(
+    connectionId: ConnectionId
+  ): ZStream[GameService with GameLayer, GameException, UserEvent] =
+    ZStream.accessStream(_.get.userStream(connectionId))
 
   case class EventQueue[EventType](
-    user:  User,
-    queue: Queue[EventType]
+    user:         User,
+    connectionId: ConnectionId,
+    queue:        Queue[EventType]
   )
 
   private def broadcast[EventType](
@@ -197,7 +215,7 @@ object GameService {
       def abandonGame(gameId: GameId): ZIO[GameLayer, GameException, Boolean] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           gameOpt    <- repository.gameOperations.get(gameId)
           savedOpt <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.id == user.id)) {
@@ -264,7 +282,7 @@ object GameService {
       def joinRandomGame(): ZIO[GameLayer, GameException, Game] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           gameOpt <- repository.gameOperations
             .gamesWaitingForPlayers().bimap(GameException.apply, _.headOption)
           newOrRetrieved <- gameOpt.fold(
@@ -298,7 +316,7 @@ object GameService {
       def newGame(): ZIO[GameLayer, GameException, Game] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           upserted <- {
             val newGame = Game(
               id = None,
@@ -316,45 +334,45 @@ object GameService {
 
       override def getGame(gameId: GameId): ZIO[GameLayer, GameException, Option[Game]] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           game       <- repository.gameOperations.get(gameId)
         } yield game).mapError(GameException.apply)
 
       override def getGameForUser: ZIO[GameLayer, GameException, Option[Game]] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           game       <- repository.gameOperations.getGameForUser
         } yield game).mapError(GameException.apply)
 
       def getFriends: ZIO[GameLayer, GameException, Seq[UserId]] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           friends    <- repository.userOperations.friends.map(_.flatMap(_.id.toSeq))
         } yield friends).mapError(GameException.apply)
 
       def getGameInvites: ZIO[GameLayer, GameException, Seq[Game]] =
         (for {
-          repository  <- ZIO.access[Repository](_.get)
+          repository  <- ZIO.service[Repository.Service]
           gameInvites <- repository.gameOperations.gameInvites
         } yield gameInvites).mapError(GameException.apply)
 
       def getLoggedInUsers: ZIO[GameLayer, GameException, Seq[User]] =
         for {
-          loggedInUserRepo <- ZIO.access[LoggedInUserRepo](_.get)
-          loggedInUsers    <- loggedInUserRepo.userMap.map(_.values.take(20).toSeq)
+          userConnectionRepo <- ZIO.service[UserConnectionRepo.Service]
+          loggedInUsers      <- userConnectionRepo.connectionMap.map(_.values.take(20).toSeq)
         } yield loggedInUsers
 
       def acceptFriendship(friend: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           friends    <- repository.userOperations.friend(friend, confirmed = true)
         } yield friends).mapError(GameException.apply)
 
       def inviteFriend(friend: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
-          postman    <- ZIO.access[Postman](_.get)
+          repository <- ZIO.service[Repository.Service]
+          postman    <- ZIO.service[Postman.Service]
           //See if the friend exists
           friendOpt <- repository.userOperations.userByEmail(friend.email)
           //If the friend does not exist
@@ -373,7 +391,7 @@ object GameService {
 
       def unfriend(enemy: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           friends    <- repository.userOperations.unfriend(enemy)
         } yield friends).mapError(GameException.apply)
 
@@ -383,8 +401,8 @@ object GameService {
       ): ZIO[GameLayer, GameException, Boolean] = {
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
-          postman    <- ZIO.access[Postman](_.get)
+          repository <- ZIO.service[Repository.Service]
+          postman    <- ZIO.service[Postman.Service]
           gameOpt    <- repository.gameOperations.get(gameId)
           invitedOpt <- repository.userOperations.get(userId)
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
@@ -412,7 +430,7 @@ object GameService {
       def acceptGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Game] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           gameOpt    <- repository.gameOperations.get(gameId)
           //NOTE, this should never really create a new game
           newOrRetrieved <- gameOpt.fold(
@@ -442,7 +460,7 @@ object GameService {
 
       def declineGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Boolean] =
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           gameOpt    <- repository.gameOperations.get(gameId)
           afterEvent <- ZIO.foreach(gameOpt) { game =>
@@ -518,7 +536,7 @@ object GameService {
         playEvent: PlayEvent
       ): ZIO[GameLayer, GameException, Game] = {
         (for {
-          repository <- ZIO.access[Repository](_.get)
+          repository <- ZIO.service[Repository.Service]
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           gameOpt    <- repository.gameOperations.get(gameId)
           played <- gameOpt.fold(throw GameException("Game not found")) { game =>
@@ -535,16 +553,25 @@ object GameService {
         } yield played._1).mapError(GameException.apply)
       }
 
-      override def gameStream(gameId: GameId): ZStream[GameLayer, Nothing, GameEvent] =
+      override def gameStream(
+        gameId:       GameId,
+        connectionId: ConnectionId
+      ): ZStream[GameLayer, Nothing, GameEvent] =
         ZStream.unwrap {
           for {
             user  <- ZIO.access[SessionProvider](_.get.session.user)
             queue <- Queue.sliding[GameEvent](requestedCapacity = 100)
-            _     <- gameEventQueues.update(EventQueue(user, queue) :: _)
+            _     <- gameEventQueues.update(EventQueue(user, connectionId, queue) :: _)
             after <- gameEventQueues.get
             _     <- log.info(s"GameStream started, queues have ${after.length} entries")
           } yield ZStream
             .fromQueue(queue)
+            .ensuring(
+              //TODO log here
+              queue.shutdown *>
+                gameEventQueues.update(_.filterNot(_.connectionId == connectionId)) *>
+                log.debug(s"Shut down game queue")
+            )
             .tap(event => log.debug(event.toString))
             .filter {
               case InviteToGame(invited, eventGameId, _, _) =>
@@ -553,27 +580,44 @@ object GameService {
             }
         }
 
-      override def userStream: ZStream[GameLayer, Nothing, UserEvent] = ZStream.unwrap {
-        for {
-          user             <- ZIO.access[SessionProvider](_.get.session.user)
-          allUserQueues    <- userEventQueues.get
-          loggedInUserRepo <- ZIO.access[LoggedInUserRepo](_.get)
-          _                <- loggedInUserRepo.addUser(user)
-          _ <- {
-            val userEvent = UserEvent(user, UserEventType.Connected)
-            UIO.foreach(allUserQueues.filter(_.user != user)) { userQueue =>
-              userQueue.queue.offer(userEvent)
+      override def userStream(connectionId: ConnectionId): ZStream[GameLayer, Nothing, UserEvent] =
+        ZStream.unwrap {
+          for {
+            user               <- ZIO.access[SessionProvider](_.get.session.user)
+            allUserQueues      <- userEventQueues.get
+            userConnectionRepo <- ZIO.service[UserConnectionRepo.Service]
+            _                  <- userConnectionRepo.addConnection(connectionId, user)
+            _ <- {
+              //Only broadcast connections if the user is not yet in one of the queues, and don't send
+              //the event to the same user that just logged in (no point, they know they logged in)
+              if (!allUserQueues.exists(_.user.id == user.id)) {
+                val userEvent = UserEvent(user, UserEventType.Connected)
+                UIO.foreach(allUserQueues) { userQueue =>
+                  userQueue.queue.offer(userEvent)
+                }
+              } else {
+                ZIO.unit
+              }
             }
-          }
-          queue <- Queue.sliding[UserEvent](requestedCapacity = 100)
-          _     <- userEventQueues.update(EventQueue(user, queue) :: _)
-          after <- userEventQueues.get
-          _     <- log.info(s"UserStream started, queues have ${after.length} entries")
-        } yield ZStream.fromQueue(queue).ensuring {
-          UIO.foreach(user.id)(id => loggedInUserRepo.removeUser(id)) *>
-            broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected))
+            queue <- Queue.sliding[UserEvent](requestedCapacity = 100)
+            _     <- userEventQueues.update(EventQueue(user, connectionId, queue) :: _)
+            after <- userEventQueues.get
+            _     <- log.info(s"UserStream started, queues have ${after.length} entries")
+          } yield ZStream
+            .fromQueue(queue).ensuring {
+              //TODO log here
+              queue.shutdown *>
+                userEventQueues.update(_.filterNot(_.connectionId == connectionId)) *>
+                log.debug(s"Shut down user queue") *>
+                userConnectionRepo.removeConnection(connectionId) *>
+                //Only broadcast disconnects if it's the last entry of the user in the queue of connections
+                broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected))
+                  .whenM(userConnectionRepo.connectionMap.map(!_.values.exists(_.id == user.id)))
+            }.catchAllCause { c =>
+              c.prettyPrint
+              ZStream.halt(c)
+            }
         }
-      }
 
     }
   }

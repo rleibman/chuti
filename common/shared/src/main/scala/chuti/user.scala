@@ -72,3 +72,5 @@ case class UserEvent(
   user:          User,
   userEventType: UserEventType
 )
+
+case class ConnectionId(value: String) extends AnyVal

@@ -16,12 +16,14 @@
 
 package chuti
 
+import java.util.UUID
+
 import api.token.TokenHolder
 import better.files.File
 import courier.Envelope
 import dao.Repository.GameOperations
 import dao.{DatabaseProvider, Repository}
-import game.LoggedInUserRepo
+import game.UserConnectionRepo
 import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -34,6 +36,8 @@ import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 
 trait GameAbstractSpec extends MockitoSugar {
+  val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
+
   val user1: User =
     User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", userStatus = UserStatus.Idle)
   val user2: User =
@@ -43,26 +47,22 @@ trait GameAbstractSpec extends MockitoSugar {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", userStatus = UserStatus.Idle)
 
-  val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  val loggedInUserRepo: LoggedInUserRepo.Service = mock[LoggedInUserRepo.Service]
+  val testRuntime:        zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  val databaseProvider:   DatabaseProvider.Service = mock[DatabaseProvider.Service]
+  val userConnectionRepo: UserConnectionRepo.Service = mock[UserConnectionRepo.Service]
   def createUserOperations: Repository.UserOperations = {
     val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
-    //    when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
-    //    when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
-    //    when(userOperations.get(UserId(3))).thenReturn(ZIO.succeed(Option(user3)))
-    //    when(userOperations.get(UserId(4))).thenReturn(ZIO.succeed(Option(user4)))
     userOperations
   }
-  when(loggedInUserRepo.addUser(*[User])).thenAnswer { user: User =>
+  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer { tuple: (ConnectionId, User) =>
     console
-      .putStrLn(s"User ${user.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
+      .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
         zio.console.Console.live
       )
   }
-  when(loggedInUserRepo.removeUser(*[UserId])).thenAnswer { userId: Int =>
+  when(userConnectionRepo.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
     console
-      .putStrLn(s"User $userId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
+      .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
         zio.console.Console.live
       )
   }
@@ -78,7 +78,7 @@ trait GameAbstractSpec extends MockitoSugar {
     userOps: Repository.UserOperations,
     postman: Postman.Service = new MockPostman
   ): ULayer[
-    DatabaseProvider with Repository with LoggedInUserRepo.LoggedInUserRepo with Postman with Logging with TokenHolder
+    DatabaseProvider with Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder
   ] = {
     ZLayer.succeed(databaseProvider) ++
       ZLayer.succeed(new Repository.Service {
@@ -87,7 +87,7 @@ trait GameAbstractSpec extends MockitoSugar {
       }) ++
       Slf4jLogger.make((_, b) => b) ++
       ZLayer.succeed(TokenHolder.live) ++
-      ZLayer.succeed(loggedInUserRepo) ++
+      ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman)
   }
 

@@ -51,7 +51,7 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
       postmanLayer ++
       Slf4jLogger.make((_, b) => b) ++
       ZLayer.succeed(TokenHolder.live) ++
-      ZLayer.succeed(LoggedInUserRepo.live)
+      ZLayer.succeed(UserConnectionRepo.live)
 
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import GameService._

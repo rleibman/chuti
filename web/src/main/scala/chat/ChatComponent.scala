@@ -50,7 +50,7 @@ object ChatComponent {
     msgInFlux:    String = ""
   )
 
-  private val chatId = UUID.randomUUID()
+  lazy val chatId = UUID.randomUUID()
 
   class Backend($ : BackendScope[Props, State]) extends ScalaJSClientAdapter {
     $.props.map { props =>

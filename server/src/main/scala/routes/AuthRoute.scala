@@ -31,7 +31,7 @@ import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.GameService.GameLayer
-import game.{GameService, LoggedInUserRepo}
+import game.{GameService, UserConnectionRepo}
 import io.circe.generic.auto._
 import mail.CourierPostman
 import mail.Postman.Postman
@@ -75,7 +75,7 @@ trait AuthRoute
       postmanLayer ++
       Slf4jLogger.make((_, b) => b) ++
       ZLayer.succeed(TokenHolder.live) ++
-      ZLayer.succeed(LoggedInUserRepo.live)
+      ZLayer.succeed(UserConnectionRepo.live)
 
   lazy private val adminSession = ChutiSession(GameService.god)
 

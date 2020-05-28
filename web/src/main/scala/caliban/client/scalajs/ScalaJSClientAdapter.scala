@@ -169,6 +169,7 @@ trait ScalaJSClientAdapter {
           onServerError(id.getOrElse(""), payload).runNow()
           println(s"Connection Error from server $payload")
         case Right(GQLOperationMessage(GQL_CONNECTION_KEEP_ALIVE, id, payload)) =>
+          println("ka")
           connectionState = connectionState.copy(reconnectCount = 0)
 
           if (connectionState.lastKAOpt.isEmpty) {
