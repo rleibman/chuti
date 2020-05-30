@@ -314,7 +314,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     override def getGameForUser
       : RepositoryIO[Option[Game]] = { session: ChutiSession => //TODO implement in terms of search
       GamePlayersQuery
-        .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
+        .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
         .join(GameQuery).on(_.gameId === _.id)
         .result
         .map(_.headOption.map(row => GameRow2Game(row._2)))

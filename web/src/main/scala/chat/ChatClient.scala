@@ -22,7 +22,6 @@ import caliban.client.SelectionBuilder._
 import caliban.client._
 import caliban.client.Operations._
 import caliban.client.Value._
-import io.circe.Json
 
 object ChatClient {
 
@@ -58,6 +57,9 @@ object ChatClient {
     def fromUser[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, A] =
       Field("fromUser", Obj(innerSelection))
     def msg: SelectionBuilder[ChatMessage, String] = Field("msg", Scalar())
+    def channelId[A](
+      innerSelection: SelectionBuilder[ChannelId, A]
+    ): SelectionBuilder[ChatMessage, A] = Field("channelId", Obj(innerSelection))
     def toUser[A](
       innerSelection: SelectionBuilder[User, A]
     ):        SelectionBuilder[ChatMessage, Option[A]] = Field("toUser", OptionOf(Obj(innerSelection)))
@@ -68,17 +70,14 @@ object ChatClient {
   object User {
     def id[A](innerSelection: SelectionBuilder[UserId, A]): SelectionBuilder[User, Option[A]] =
       Field("id", OptionOf(Obj(innerSelection)))
-    def email:      SelectionBuilder[User, String] = Field("email", Scalar())
-    def name:       SelectionBuilder[User, String] = Field("name", Scalar())
-    def userStatus: SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
-    def currentChannelId[A](
-      innerSelection: SelectionBuilder[ChannelId, A]
-    ):               SelectionBuilder[User, Option[A]] = Field("currentChannelId", OptionOf(Obj(innerSelection)))
+    def email:       SelectionBuilder[User, String] = Field("email", Scalar())
+    def name:        SelectionBuilder[User, String] = Field("name", Scalar())
+    def userStatus:  SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
     def created:     SelectionBuilder[User, Long] = Field("created", Scalar())
     def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
     def lastLoggedIn: SelectionBuilder[User, Option[Long]] =
       Field("lastLoggedIn", OptionOf(Scalar()))
-    def wallet:  SelectionBuilder[User, Double] = Field("wallet", Scalar())
+    def active:  SelectionBuilder[User, Boolean] = Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
   }
 
@@ -95,6 +94,14 @@ object ChatClient {
       override def typeName: String = "ChannelIdInput"
     }
   }
+  case class ConnectionIdInput(value: String)
+  object ConnectionIdInput {
+    implicit val encoder: ArgEncoder[ConnectionIdInput] = new ArgEncoder[ConnectionIdInput] {
+      override def encode(value: ConnectionIdInput): Value =
+        ObjectValue(List("value" -> implicitly[ArgEncoder[String]].encode(value.value)))
+      override def typeName: String = "ConnectionIdInput"
+    }
+  }
   case class UserIdInput(value: Int)
   object UserIdInput {
     implicit val encoder: ArgEncoder[UserIdInput] = new ArgEncoder[UserIdInput] {
@@ -104,16 +111,15 @@ object ChatClient {
     }
   }
   case class UserInput(
-    id:               Option[UserIdInput] = None,
-    email:            String,
-    name:             String,
-    userStatus:       UserStatus,
-    currentChannelId: Option[ChannelIdInput] = None,
-    created:          Long,
-    lastUpdated:      Long,
-    lastLoggedIn:     Option[Long] = None,
-    wallet:           Double,
-    deleted:          Boolean
+    id:           Option[UserIdInput] = None,
+    email:        String,
+    name:         String,
+    userStatus:   UserStatus,
+    created:      Long,
+    lastUpdated:  Long,
+    lastLoggedIn: Option[Long] = None,
+    active:       Boolean,
+    deleted:      Boolean
   )
   object UserInput {
     implicit val encoder: ArgEncoder[UserInput] = new ArgEncoder[UserInput] {
@@ -123,18 +129,15 @@ object ChatClient {
             "id" -> value.id.fold(NullValue: Value)(value =>
               implicitly[ArgEncoder[UserIdInput]].encode(value)
             ),
-            "email"      -> implicitly[ArgEncoder[String]].encode(value.email),
-            "name"       -> implicitly[ArgEncoder[String]].encode(value.name),
-            "userStatus" -> implicitly[ArgEncoder[UserStatus]].encode(value.userStatus),
-            "currentChannelId" -> value.currentChannelId.fold(NullValue: Value)(value =>
-              implicitly[ArgEncoder[ChannelIdInput]].encode(value)
-            ),
+            "email"       -> implicitly[ArgEncoder[String]].encode(value.email),
+            "name"        -> implicitly[ArgEncoder[String]].encode(value.name),
+            "userStatus"  -> implicitly[ArgEncoder[UserStatus]].encode(value.userStatus),
             "created"     -> implicitly[ArgEncoder[Long]].encode(value.created),
             "lastUpdated" -> implicitly[ArgEncoder[Long]].encode(value.lastUpdated),
             "lastLoggedIn" -> value.lastLoggedIn.fold(NullValue: Value)(value =>
               implicitly[ArgEncoder[Long]].encode(value)
             ),
-            "wallet"  -> implicitly[ArgEncoder[Double]].encode(value.wallet),
+            "active"  -> implicitly[ArgEncoder[Boolean]].encode(value.active),
             "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted)
           )
         )
@@ -147,24 +150,32 @@ object ChatClient {
   type Mutations = RootMutation
   object Mutations {
     def say(
-      msg:    String,
-      toUser: Option[UserInput] = None
+      msg:       String,
+      channelId: ChannelIdInput,
+      toUser:    Option[UserInput] = None
     ): SelectionBuilder[RootMutation, Boolean] =
-      Field("say", Scalar(), arguments = List(Argument("msg", msg), Argument("toUser", toUser)))
+      Field(
+        "say",
+        Scalar(),
+        arguments =
+          List(Argument("msg", msg), Argument("channelId", channelId), Argument("toUser", toUser))
+      )
   }
 
   type Subscriptions = RootSubscription
   object Subscriptions {
     def chatStream[A](
-      channelId: chuti.ChannelId
+      channelId:    ChannelIdInput,
+      connectionId: ConnectionIdInput
     )(
       innerSelection: SelectionBuilder[ChatMessage, A]
     ): SelectionBuilder[RootSubscription, A] =
       Field(
-        name = "chatStream",
-        builder = Obj(innerSelection),
-        arguments = List(Argument("value", channelId.value))
+        "chatStream",
+        Obj(innerSelection),
+        arguments = List(Argument("channelId", channelId), Argument("connectionId", connectionId))
       )
   }
 
 }
+

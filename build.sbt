@@ -45,7 +45,7 @@ lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
 lazy val calibanVersion = "0.8.0"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.0-RC19-2"
+lazy val zioVersion = "1.0.0-RC20"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
@@ -126,7 +126,7 @@ lazy val server: Project = project
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.2.9" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.3.0" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -138,7 +138,7 @@ lazy val server: Project = project
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
       "org.scalatest" %% "scalatest"               % "3.1.2"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.2"   % "it, test" withSources ()
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.3"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -275,11 +275,11 @@ lazy val commonWeb: Project => Project =
         "io.circe" %%% "circe-literal"
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
-        "commons-io"                                    % "commons-io" % "2.6" withSources (),
+        "commons-io"                                    % "commons-io" % "2.7" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.1.4" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.4",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.1.5" withSources (),
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.5",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
@@ -296,18 +296,26 @@ lazy val commonWeb: Project => Project =
       startYear        := Some(2020),
       licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
       scalacOptions ++= Seq(
-        "-deprecation", // Emit warning and location for usages of deprecated APIs.
+        // Feature options
         "-explaintypes", // Explain type errors in more detail.
         "-feature", // Emit warning and location for usages of features that should be imported explicitly.
         "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
         "-language:experimental.macros", // Allow macro definition (besides implementation and application)
         "-language:higherKinds", // Allow higher-kinded types
         "-language:implicitConversions", // Allow definition of implicit functions called views
+        "-Ymacro-annotations",
+        "-encoding",
+        "utf-8",
+        // Warnings as errors!
+//        "-Xfatal-warnings",
+
+        // Linting options
         "-unchecked", // Enable additional warnings where generated code depends on assumptions.
         "-Xcheckinit", // Wrap field accessors to throw an exception on uninitialized access.
         "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
         "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
         "-Xlint:delayedinit-select", // Selecting member of DelayedInit.
+        "-Xlint:deprecation", // Emit warning and location for usages of deprecated APIs.
         "-Xlint:doc-detached", // A Scaladoc comment appears to be detached from its element.
         "-Xlint:inaccessible", // Warn about inaccessible types in method signatures.
         "-Xlint:infer-any", // Warn when a type argument is inferred to be `Any`.
@@ -320,16 +328,16 @@ lazy val commonWeb: Project => Project =
         "-Xlint:private-shadow", // A private field (or class parameter) shadows a superclass field.
         "-Xlint:stars-align", // Pattern sequence wildcard must align with sequence component.
         "-Xlint:type-parameter-shadow", // A local type parameter shadows a type already in scope.
-        "-Ywarn-dead-code", // Warn when dead code is identified.
-        "-Ywarn-extra-implicit", // Warn when more than one implicit parameter section is defined.
-        "-Ywarn-numeric-widen", // Warn when numerics are widened.
-        "-Ywarn-unused:implicits", // Warn if an implicit parameter is unused.
-        "-Ywarn-unused:imports", // Warn if an import selector is not referenced.
-        "-Ywarn-unused:locals", // Warn if a local definition is unused.
-        "-Ywarn-unused:params", // Warn if a value parameter is unused.
-        "-Ywarn-unused:patvars", // Warn if a variable bound in a pattern is unused.
-        "-Ywarn-unused:privates", // Warn if a private member is unused.
-        "-Ywarn-value-discard", // Warn when non-Unit expression results are unused.
+        "-Wdead-code", // Warn when dead code is identified.
+        "-Wextra-implicit", // Warn when more than one implicit parameter section is defined.
+        "-Wnumeric-widen", // Warn when numerics are widened.
+        "-Wunused:implicits", // Warn if an implicit parameter is unused.
+        "-Wunused:imports", // Warn if an import selector is not referenced.
+        "-Wunused:locals", // Warn if a local definition is unused.
+        "-Wunused:params", // Warn if a value parameter is unused.
+        "-Wunused:patvars", // Warn if a variable bound in a pattern is unused.
+        "-Wunused:privates", // Warn if a private member is unused.
+        "-Wvalue-discard", // Warn when non-Unit expression results are unused.
         "-Ybackend-parallelism",
         "8", // Enable paralellisation — change to desired number!
         "-Ycache-plugin-class-loader:last-modified", // Enables caching of classloaders for compiler plugins

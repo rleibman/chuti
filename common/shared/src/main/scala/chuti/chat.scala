@@ -18,17 +18,18 @@ package chuti
 
 import java.time.LocalDateTime
 
-case class ChannelId(value: Int) extends AnyVal
+case class ChannelId(value: Int)
 
 object ChannelId {
-  val lobbyChannel = ChannelId(-1)
-  val emailChannel = ChannelId(-2)
-
+  //some special channels
+  val lobbyChannel: ChannelId = ChannelId(-1)
+  val directChannel: ChannelId = ChannelId(-2)
 }
 
 case class ChatMessage(
-  fromUser: User,
-  msg:      String,
-  toUser:   Option[User] = None,
-  date:     LocalDateTime = LocalDateTime.now
+                        fromUser: User,
+                        msg:      String,
+                        channelId: ChannelId,
+                        toUser:   Option[User] = None,
+                        date:     LocalDateTime = LocalDateTime.now,
 )

@@ -17,10 +17,14 @@
 package web
 
 import akka.event.{Logging, LoggingAdapter}
+import akka.http.javadsl.server.Route
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl._
 import api.Api
+import chat.ChatService
+import chat.ChatService.ChatService
 import core.{Core, CoreActors}
+import zio.{CancelableFuture, Task, UIO, ZIO}
 
 import scala.concurrent.Future
 import scala.util.control.NonFatal
@@ -66,5 +70,35 @@ trait Web {
         }
       })
       .run()
+
+
+  val zRoutes: ZIO[ChatService, Throwable, Route]
+
+  val zBindingFuture =
+    ChatService.TheChatService.use { chatLayer =>
+      for {
+        routes <- zRoutes.provideCustomLayer(chatLayer)
+      } yield routes
+
+      val z: Task[Http.ServerBinding] = ZIO.fromFuture { ec =>
+        serverSource
+          .to(Sink.foreach { connection => // foreach materializes the source
+            log.debug("Accepted new connection from " + connection.remoteAddress)
+            // ... and then actually handle the connection
+            try {
+              connection.flow.joinMat(routes)(Keep.both).run()
+              ()
+            } catch {
+              case NonFatal(e) =>
+                log.error(e, "Could not materialize handling flow for {}", connection)
+                throw e
+            }
+          })
+          .run()
+      }
+
+        val fut: Future = zio.Runtime.default.unsafeRunToFuture(z)
+        fut
+    }
 }
 // $COVERAGE-ON$

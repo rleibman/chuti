@@ -17,12 +17,14 @@
 package chat
 
 import java.net.URI
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatClient.{
+  ChannelIdInput,
+  ConnectionIdInput,
   Mutations,
   Subscriptions,
   ChatMessage => CalibanChatMessage,
@@ -42,48 +44,19 @@ import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-object ChatComponent {
+object ChatComponent extends ScalaJSClientAdapter {
+  private val connectionId: ConnectionIdInput = ConnectionIdInput(UUID.randomUUID().toString)
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(
     chatMessages: Seq[ChatMessage] = Seq.empty,
-    msgInFlux:    String = ""
+    msgInFlux:    String = "",
+    ws:           Option[WebSocketHandler] = None
   )
 
-  lazy val chatId = UUID.randomUUID()
+  lazy private val chatId = UUID.randomUUID().toString
 
-  class Backend($ : BackendScope[Props, State]) extends ScalaJSClientAdapter {
-    $.props.map { props =>
-      val wsHandle = makeWebSocketClient[ChatMessage](
-        uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
-        query = Subscriptions
-          .chatStream(props.channel)(
-            (CalibanChatMessage
-              .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
-              CalibanUser.name
-            ) ~ CalibanChatMessage.msg)
-              .mapN((fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
-                ChatMessage(
-                  fromUser = User(None, "", fromUsername),
-                  msg = msg,
-                  date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
-                  toUser = toUsername.map(name => User(None, "", name))
-                )
-              )
-          ),
-        onData = { (_, data) =>
-          Callback.log(s"got data! $data")
-          data
-            .fold(Callback.empty) { msg =>
-              msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
-                $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
-              }
-            }
-        },
-        operationId = s"chat$chatId"
-      )
-    }.runNow
-
+  class Backend($ : BackendScope[Props, State]) {
     private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
       $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
     }
@@ -94,7 +67,7 @@ object ChatComponent {
     ) = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
       import sttp.client._
       implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
-      val mutation = Mutations.say(s.msgInFlux)
+      val mutation = Mutations.say(s.msgInFlux, ChannelIdInput(p.channel.value))
       val serverUri = uri"http://localhost:8079/api/chat"
       val request = mutation.toRequest(serverUri)
       //TODO add headers as necessary
@@ -105,7 +78,8 @@ object ChatComponent {
         .completeWith {
           case Success(response) if response.code.isSuccess || response.code.isInformational =>
             Callback.log("Message sent")
-          case Failure(exception) => Callback.error(exception) //TODO handle error responses better
+          case Failure(exception) =>
+            Callback.throwException(exception) //TODO handle error responses better
           case Success(response) =>
             Callback.log(s"Error: ${response.statusText}") //TODO handle error responses better
         }
@@ -146,7 +120,43 @@ object ChatComponent {
         FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Button(onClick = onSend(p, s))("Send")))
       )
 
-    def refresh(s: State): Callback = Callback.empty //TODO add ajax initalization stuff here
+    def refresh(p: Props): Callback = {
+      $.modState { s =>
+        s.copy(ws = Option(
+          makeWebSocketClient[ChatMessage](
+            uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
+            query = Subscriptions
+              .chatStream(ChannelIdInput(p.channel.value), connectionId)(
+                (CalibanChatMessage
+                  .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
+                  CalibanUser.name
+                ) ~ CalibanChatMessage.msg)
+                  .mapN(
+                    (fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
+                      ChatMessage(
+                        fromUser = User(None, "", fromUsername),
+                        msg = msg,
+                        channelId = p.channel,
+                        date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
+                        toUser = toUsername.map(name => User(None, "", name))
+                      )
+                  )
+              ),
+            onData = { (_, data) =>
+              Callback.log(s"got data! $data")
+              data
+                .fold(Callback.empty) { msg =>
+                  msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
+                    $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
+                  }
+                }
+            },
+            operationId = s"chat$chatId"
+          )
+        )
+        )
+      }
+    }
   }
 
   case class Props(
@@ -159,7 +169,7 @@ object ChatComponent {
     .builder[Props]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh($.state))
+    .componentDidMount($ => $.backend.refresh($.props))
     .build
 
   def apply(
@@ -167,5 +177,4 @@ object ChatComponent {
     channel:          ChannelId,
     onPrivateMessage: Option[ChatMessage => Callback] = None
   ): Unmounted[Props, State, Backend] = component(Props(user, channel, onPrivateMessage))
-
 }

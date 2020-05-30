@@ -79,22 +79,6 @@ object Content extends ChutiComponent {
             Callback.empty
           //TODO do something more with this here
         }
-//        Ajax
-//          .get(s"/serverVersion")
-//          .and(_.withCredentials = true)
-//          .send
-//          .asAsyncCallback
-//          .map { xhr =>
-//            try {
-//              val serverVersion = Option(read[String](xhr.responseText))
-//              $.modState(s => s.copy(chutiState = s.chutiState.copy(serverVersion = serverVersion)))
-//            } catch {
-//              case e: InvalidData =>
-//                dom.console.error(e.msg + ":" + e.data)
-//                throw e
-//            }
-//          }
-//          .completeWith(_.get)
   }
 
   private val component = ScalaComponent

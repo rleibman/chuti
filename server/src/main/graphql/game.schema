@@ -51,7 +51,7 @@ type Mutations {
 type Queries {
   getGame(value: Int!): Json
   getGameForUser: Json
-  getFriends: [UserId!]
+  getFriends: [User!]
   getGameInvites: [Json!]
   getLoggedInUsers: [User!]
 }

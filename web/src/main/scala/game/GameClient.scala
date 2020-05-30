@@ -142,7 +142,7 @@ object GameClient {
     def getGameForUser: SelectionBuilder[RootQuery, Option[Json]] =
       Field("getGameForUser", OptionOf(Scalar()))
     def getFriends[A](
-      innerSelection: SelectionBuilder[UserId, A]
+      innerSelection: SelectionBuilder[User, A]
     ): SelectionBuilder[RootQuery, Option[List[A]]] =
       Field("getFriends", OptionOf(ListOf(Obj(innerSelection))))
     def getGameInvites: SelectionBuilder[RootQuery, Option[List[Json]]] =

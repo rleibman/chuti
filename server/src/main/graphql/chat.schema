@@ -7,13 +7,17 @@ schema {
 scalar Long
 
 enum UserStatus {
-  InLobby
+  Idle
   Offline
   Playing
 }
 
 input ChannelIdInput {
   value: Int!
+}
+
+input ConnectionIdInput {
+  value: String!
 }
 
 input UserIdInput {
@@ -25,11 +29,10 @@ input UserInput {
   email: String!
   name: String!
   userStatus: UserStatus!
-  currentChannelId: ChannelIdInput
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long
-  wallet: Float!
+  active: Boolean!
   deleted: Boolean!
 }
 
@@ -40,12 +43,13 @@ type ChannelId {
 type ChatMessage {
   fromUser: User!
   msg: String!
+  channelId: ChannelId!
   toUser: User
   date: Long!
 }
 
 type Mutations {
-  say(msg: String!, toUser: UserInput): Boolean!
+  say(msg: String!, channelId: ChannelIdInput!, toUser: UserInput): Boolean!
 }
 
 type Queries {
@@ -53,7 +57,7 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream(value: Int!): ChatMessage!
+  chatStream(channelId: ChannelIdInput!, connectionId: ConnectionIdInput!): ChatMessage!
 }
 
 type User {
@@ -61,11 +65,10 @@ type User {
   email: String!
   name: String!
   userStatus: UserStatus!
-  currentChannelId: ChannelId
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long
-  wallet: Float!
+  active: Boolean!
   deleted: Boolean!
 }
 

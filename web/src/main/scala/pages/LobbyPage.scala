@@ -25,16 +25,28 @@ import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat._
 import chuti._
+import chat._
 import components.{Confirm, Toast}
-import game.GameClient.{ConnectionIdInput, GameIdInput, Mutations, Queries, Subscriptions, ChannelId => CalibanChannelId, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserId => CalibanUserId, UserStatus => CalibanUserStatus}
+import game.GameClient.{
+  ConnectionIdInput,
+  GameIdInput,
+  Mutations,
+  Queries,
+  Subscriptions,
+  UserIdInput,
+  User => CalibanUser,
+  UserEvent => CalibanUserEvent,
+  UserEventType => CalibanUserEventType,
+  UserId => CalibanUserId,
+  UserStatus => CalibanUserStatus
+}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import typings.semanticUiReact.components.{Button, Container, Dropdown, DropdownItem, DropdownMenu, Header, Icon, Loader, Table, TableBody, TableCell, TableRow}
+import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
 
 import scala.concurrent.Future
@@ -44,9 +56,14 @@ import scala.util.{Failure, Success}
 object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
   private val connectionId: ConnectionIdInput = ConnectionIdInput(UUID.randomUUID().toString)
 
-  println(ChatComponent.chatId)
+  case class ExtUser(
+    user:       User,
+    isFriend:   Boolean,
+    isLoggedIn: Boolean
+  )
+
   case class State(
-    friends:        Set[UserId] = Set.empty,
+    friends:        Seq[User] = Seq.empty,
     loggedInUsers:  Seq[User] = Seq.empty,
     privateMessage: Option[ChatMessage] = None,
     gameInProgress: Option[Game] = None,
@@ -54,7 +71,14 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     userStream:     Option[WebSocketHandler] = None,
     gameStream:     Option[WebSocketHandler] = None,
     gameEventQueue: Seq[GameEvent] = Seq.empty
-  )
+  ) {
+    lazy val usersAndFriends: Seq[ExtUser] =
+      loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
+        friends
+          .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
+            ExtUser(_, isFriend = true, isLoggedIn = false)
+          ).sortBy(_.user.name)
+  }
 
   //TODO Move to common area
   import sttp.client._
@@ -125,61 +149,101 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
   )
 
   class Backend($ : BackendScope[Props, State]) {
-    def init(
-      props: Props,
-      state: State
-    ): Callback = {
-      val gameDecoder = implicitly[Decoder[Game]]
-      val gameEventDecoder = implicitly[Decoder[GameEvent]]
+    private val gameDecoder = implicitly[Decoder[Game]]
+    private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
-      def processQueue: Callback = Callback.empty //TODO write this
+    def processGameEventQueue: Callback = Callback.empty //TODO write this
 
-      def onGameEvent(gameEvent: GameEvent): Callback = {
-        Callback.log(gameEvent.toString) >>
-          $.modState(
-            { s =>
-              val moddedGame = s.gameInProgress.map {
-                currentGame: Game =>
-                  gameEvent.index match {
-                    case None =>
-                      throw GameException(
-                        "This clearly could not be happening (event has no index)"
-                      )
-                    case Some(index) if index == currentGame.currentEventIndex => {
-                      //If the game event is the next one to be applied, apply it to the game
-                      currentGame.reapplyEvent(gameEvent)
-                    }
-                    case Some(index) if index > currentGame.currentEventIndex => {
-                      //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                      //In a few seconds, just get the full game.
-                      currentGame
-                    }
-                    case Some(index) => {
-                      //If it's past, mark an error, how could we have a past event???
-                      throw GameException(
-                        s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-                      )
-                    }
-                  }
-              }
-              val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
+    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] = (CalibanUser
+      .id(CalibanUserId.value) ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
+      (
+        id:     Option[Int],
+        name:   String,
+        status: CalibanUserStatus
+      ) => {
+        val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
+          case StringValue(str) => UserStatus.fromString(str)
+          case EnumValue(str)   => UserStatus.fromString(str)
+          case other            => throw DecodingError(s"Can't build UserStatus from input $other")
+        }
+        User(
+          id = id.map(UserId.apply),
+          email = "",
+          name = name,
+          userStatus = userStatus
+        )
+      })
+
+    def onGameEvent(gameEvent: GameEvent): Callback = {
+      Callback.log(gameEvent.toString) >>
+        $.modState(
+          { s =>
+            val moddedGame = s.gameInProgress.map {
+              currentGame: Game =>
                 gameEvent.index match {
-                  case Some(index) if index == currentGame.nextIndex + 1 => {
+                  case None =>
+                    throw GameException(
+                      "This clearly could not be happening (event has no index)"
+                    )
+                  case Some(index) if index == currentGame.currentEventIndex => {
+                    //If the game event is the next one to be applied, apply it to the game
+                    currentGame.reapplyEvent(gameEvent)
+                  }
+                  case Some(index) if index > currentGame.currentEventIndex => {
                     //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                     //In a few seconds, just get the full game.
-                    s.gameEventQueue :+ gameEvent
+                    currentGame
                   }
-                  case _ => s.gameEventQueue
+                  case Some(index) => {
+                    //If it's past, mark an error, how could we have a past event???
+                    throw GameException(
+                      s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+                    )
+                  }
                 }
+            }
+            val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
+              gameEvent.index match {
+                case Some(index) if index == currentGame.nextIndex + 1 => {
+                  //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+                  //In a few seconds, just get the full game.
+                  s.gameEventQueue :+ gameEvent
+                }
+                case _ => s.gameEventQueue
               }
+            }
 
-              s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
-            },
-            processQueue
-          )
-      }
+            s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
+          },
+          processGameEventQueue
+        )
+    }
 
-      Callback.log(s"Initializing ${props.chutiState.user}") >>
+    def init(): Callback = {
+      Callback.log(s"Initializing") >>
+        calibanCall[Queries, Option[List[User]]](
+          Queries.getFriends(userSelectionBuilder),
+          loggedInUsersOpt => $.modState(_.copy(friends = loggedInUsersOpt.toSeq.flatten))
+        ) >>
+        calibanCall[Queries, Option[List[Json]]](
+          Queries.getGameInvites,
+          jsonInvites => {
+            $.modState(
+              _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
+                gameDecoder.decodeJson(json) match {
+                  case Right(game) => game
+                  case Left(error) => throw error
+                }
+              )
+              )
+            )
+          }
+        ) >>
+        calibanCall[Queries, Option[List[User]]](
+          Queries.getLoggedInUsers(userSelectionBuilder),
+          loggedInUsersOpt =>
+            $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id)))
+        ) >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
           game =>
@@ -203,90 +267,42 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               )
             )
         ) >>
-        calibanCall[Queries, Option[List[UserId]]](
-          Queries.getFriends(CalibanUserId.value.map(UserId.apply)),
-          friendsOpt => $.modState(_.copy(friends = friendsOpt.toSet.flatten))
-        ) >>
-        calibanCall[Queries, Option[List[Json]]](
-          Queries.getGameInvites,
-          jsonInvites => {
-            $.modState(
-              _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
-                gameDecoder.decodeJson(json) match {
-                  case Right(game) => game
-                  case Left(error) => throw error
-                }
-              )
-              )
+        $.modState(
+          _.copy(userStream = Option(
+            makeWebSocketClient[(User, CalibanUserEventType)](
+              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+              query = Subscriptions
+                .userStream(connectionId.value)(
+                  (CalibanUserEvent.user(CalibanUser.id(CalibanUserId.value)) ~
+                    CalibanUserEvent.user(CalibanUser.name) ~
+                    CalibanUserEvent.user(CalibanUser.email) ~
+                    CalibanUserEvent.userEventType).map {
+                    case (((idOpt, name), email), eventType) =>
+                      (
+                        User(id = idOpt.map(UserId), name = name, email = email),
+                        eventType
+                      )
+                  }
+                ),
+              onData = { (_, data) =>
+                onUserStreamData(data)
+              },
+              operationId = "-"
             )
-          }
-        ) >>
-        calibanCall[Queries, Option[List[User]]](
-          Queries.getLoggedInUsers(
-            (CalibanUser
-              .id(CalibanUserId.value) ~ CalibanUser.name ~ CalibanUser.userStatus ~ CalibanUser
-              .currentChannelId(CalibanChannelId.value)).mapN(
-              (
-                id:        Option[Int],
-                name:      String,
-                status:    CalibanUserStatus,
-                channelId: Option[Int]
-              ) => {
-                val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
-                  case StringValue(str) => UserStatus.fromString(str)
-                  case EnumValue(str)   => UserStatus.fromString(str)
-                  case other            => throw DecodingError(s"Can't build UserStatus from input $other")
-                }
-                User(
-                  id = id.map(UserId.apply),
-                  email = "",
-                  name = name,
-                  userStatus = userStatus,
-                  currentChannelId = channelId.map(ChannelId.apply)
-                )
-              })
-          ),
-          loggedInUsersOpt =>
-            $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id)))
-        ) >> $.modState(
-        _.copy(userStream = Option(
-          makeWebSocketClient[(User, CalibanUserEventType)](
-            uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-            query = Subscriptions
-              .userStream(connectionId.value)(
-                (CalibanUserEvent.user(CalibanUser.id(CalibanUserId.value)) ~
-                  CalibanUserEvent.user(CalibanUser.name) ~
-                  CalibanUserEvent.user(CalibanUser.email) ~
-                  CalibanUserEvent.userEventType).map {
-                  case (((idOpt, name), email), eventType) =>
-                    (
-                      User(id = idOpt.map(UserId), name = name, email = email),
-                      eventType
-                    )
-                }
-              ),
-            onData = { (_, data) =>
-              onUserStreamData(data)
-            },
-            operationId = "-"
+          )
           )
         )
-        )
-      )
     }
 
     def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
       import CalibanUserEventType._
       Callback.log(data.toString) >> {
         data match {
-          case None                        => Callback.empty
-          case Some((user, AbandonedGame)) => Callback.empty
-          case Some((user, Connected)) =>
-            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id) :+ user))
+          case None => Callback.empty
           case Some((user, Disconnected)) =>
             $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id)))
-          case Some((user, JoinedGame)) => Callback.empty
-          case Some((user, Modified))   => Callback.empty
+          case Some((user, AbandonedGame | Connected | JoinedGame | Modified)) =>
+            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id) :+ user))
         }
       }
     }
@@ -301,7 +317,9 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
-              onPrivateMessage = Option(msg => $.modState(_.copy(privateMessage = Option(msg))))
+              onPrivateMessage = Option(msg =>
+                $.modState(_.copy(privateMessage = Option(msg))) >> init()
+              )
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             TagMod(
@@ -326,24 +344,6 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                   )
               )("Empezar Juego Nuevo")
             ).when(s.gameInProgress.isEmpty),
-            s.gameInProgress.fold(EmptyVdom)(game =>
-              Button(onClick = (_, _) =>
-                Confirm.confirm(
-                  header = Option("Abandonar juego"),
-                  question =
-                    s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty} satoshi",
-                  onConfirm = Callback.log(s"Abandoning game") >>
-                    calibanCall[Mutations, Option[Boolean]](
-                      Mutations.abandonGame(game.id.get.value),
-                      res =>
-                        (
-                          if (res.getOrElse(false)) Toast.success("Juego abandonado!")
-                          else Toast.error("Error abandonando juego!")
-                        ) >> $.modState(_.copy(gameInProgress = None))
-                    )
-                )
-              )("Abandona Juego")
-            ),
             TagMod(
               Container(key = "invitaciones")(
                 Header()("Invitaciones"),
@@ -361,7 +361,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                       calibanCall[Mutations, Option[Boolean]](
                         Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
                         _ => Callback.alert("Invitacion rechazada")
-                      )
+                      ) >> init()
                     })("Rechazar")
                   )
                 }
@@ -372,37 +372,65 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                 Header()("Jugadores"),
                 Table(className = "playersTable")(
                   TableBody()(
-                    s.loggedInUsers.filter(_.id != user.id).toVdomArray { player =>
-                      TableRow(key = player.id.fold("")(_.toString))(
+                    s.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
+                      TableRow(key = player.user.id.fold("")(_.toString))(
                         TableCell()(
-                          if (s.friends.contains(player.id.get))
+                          if (player.isFriend)
                             Icon(className = "icon", name = SemanticICONS.`star outline`)()
                           else
                             EmptyVdom,
-                          if(player.userStatus == UserStatus.Playing)
-                            <.img( ^.src:="images/6_6.svg", ^.height := 16.px)
+                          if (player.user.userStatus == UserStatus.Playing)
+                            <.img(^.src := "images/6_6.svg", ^.height := 16.px)
                           else
                             EmptyVdom,
+                          if (player.isLoggedIn)
+                            Icon(className = "icon", name = SemanticICONS.`user outline`)()
+                          else
+                            EmptyVdom
                         ),
-                        TableCell()(player.name),
+                        TableCell()(player.user.name),
                         TableCell()(
                           Dropdown(
                             //TODO hide class 'dropdown icon'
-                            trigger = Icon(className = "icon", name = SemanticICONS.`ellipsis vertical`)()
+                            trigger =
+                              Icon(className = "icon", name = SemanticICONS.`ellipsis vertical`)()
                           )(
                             DropdownMenu()(
-                              if(player.userStatus != UserStatus.Playing)
-                                DropdownItem(onClick = {(_, _) => Callback.empty})("Invitar a jugar")
+                              (for {
+                                game     <- s.gameInProgress
+                                userId   <- user.id
+                                playerId <- player.user.id
+                                gameId   <- game.id
+                              } yield
+                                if (player.user.userStatus != UserStatus.Playing &&
+                                    game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                    game.jugadores.head.id == user.id &&
+                                    !game.jugadores.exists(_.id == player.user.id))
+                                  DropdownItem(onClick = { (_, _) =>
+                                    calibanCall[Mutations, Option[Boolean]](
+                                      Mutations
+                                        .inviteToGame(
+                                          UserIdInput(playerId.value),
+                                          GameIdInput(gameId.value)
+                                        ),
+                                      res =>
+                                        (
+                                          if (res.getOrElse(false))
+                                            Toast.success("Jugador Invitado!")
+                                          else Toast.error("Error invitando jugador!")
+                                        )
+                                    )
+                                  })("Invitar a jugar"): VdomNode
+                                else
+                                  EmptyVdom).getOrElse(EmptyVdom),
+                              if (player.isFriend)
+                                DropdownItem(onClick = { (_, _) =>
+                                  Callback.empty
+                                })("Quitar como amigo")
                               else
-                                EmptyVdom,
-                              if (!s.friends.contains(player.id.get))
-                                DropdownItem(onClick = {(_, _) =>Callback.empty})("Agregar como amigo")
-                              else
-                                EmptyVdom,
-                              if (s.friends.contains(player.id.get))
-                                DropdownItem(onClick = {(_, _) => Callback.empty})("Quitar como amigo")
-                              else
-                                EmptyVdom,
+                                DropdownItem(onClick = { (_, _) =>
+                                  Callback.empty
+                                })("Agregar como amigo")
                             )
                           )
                         )
@@ -415,26 +443,67 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               )
             ).when(s.loggedInUsers.nonEmpty),
             s.gameInProgress.toVdomArray { game =>
-              game.gameStatus match {
-                case status if status.enJuego =>
-                  EmptyVdom
-                /* //This is not necessary, I don't think. You never get to the lobby if you have a game in progress
+              Container(key = "gameInProgress")(
+                Header()("Juego en Curso"),
+                game.gameStatus match {
+                  case status if status.enJuego =>
+                    EmptyVdom
+                  /* //This is not necessary, I don't think. You never get to the lobby if you have a game in progress
                   Container()(
                     Header()("Juego En Progreso"),
                     game.jugadores.map(_.user.name).mkString(","),
                     Button()("Reanudar Juego"),
                     Button()("Abandonar Juego") //Que ojete!
                   )
-                 */
-                case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
-                  Container(key = "esperandoJugadores")(
-                    <.p(
-                      "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
-                    ),
-                    <.p(s"Hasta ahorita van: ${game.jugadores.map(_.user.name).mkString(",")}")
+                   */
+                  case GameStatus.esperandoJugadoresAzar =>
+                    Container(key = "esperandoJugadores")(
+                      <.p(
+                        "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
+                      ),
+                      <.p(s"Hasta ahorita van: ${game.jugadores.map(_.user.name).mkString(",")}")
+                    )
+                  case GameStatus.esperandoJugadoresInvitados =>
+                    Container(key = "esperandoJugadores")(
+                      <.div(
+                        <.p(
+                          "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
+                        ),
+                        <.p(s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores")
+                          .when(game.jugadores.size < 4 && game.jugadores.head.id == user.id),
+                        <.p(s"Invitados que no han aceptado todavía: ${game.jugadores
+                          .filter(_.invited).map(_.user.name).mkString(",")}")
+                          .when(game.jugadores.exists(_.invited)),
+                        <.p(s"Invitados que ya están listos: ${game.jugadores
+                          .filter(!_.invited).map(_.user.name).mkString(",")}")
+                          .when(game.jugadores.exists(!_.invited)),
+                        Button(onClick = { (_, _) =>
+                          Callback.empty //TODO write this, needs new caliban call
+                        })("Cancelar invitaciones a aquellos que todavía no aceptan")
+                          .when(
+                            game.jugadores.exists(_.invited) && game.jugadores.head.id == user.id
+                          )
+                      )
+                    )
+                  case GameStatus.`requiereSopa` => EmptyVdom //I don't even know how we got here
+                },
+                Button(onClick = (_, _) =>
+                  Confirm.confirm(
+                    header = Option("Abandonar juego"),
+                    question =
+                      s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty} satoshi",
+                    onConfirm = Callback.log(s"Abandoning game") >>
+                      calibanCall[Mutations, Option[Boolean]](
+                        Mutations.abandonGame(game.id.get.value),
+                        res =>
+                          (
+                            if (res.getOrElse(false)) Toast.success("Juego abandonado!")
+                            else Toast.error("Error abandonando juego!")
+                          ) >> $.modState(_.copy(gameInProgress = None))
+                      )
                   )
-                case GameStatus.`requiereSopa` => EmptyVdom //I don't even know how we got here
-              }
+                )("Abandona Juego")
+              )
             }
           )
         }
@@ -447,7 +516,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     .builder[Props]("LobbyPage")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init($.props, $.state))
+    .componentDidMount($ => $.backend.init())
     .build
 
   def apply(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))

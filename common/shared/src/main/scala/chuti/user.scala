@@ -40,18 +40,12 @@ case class User(
   email:            String,
   name:             String,
   userStatus:       UserStatus = UserStatus.Offline,
-  currentChannelId: Option[ChannelId] = None,
   created:          LocalDateTime = LocalDateTime.now,
   lastUpdated:      LocalDateTime = LocalDateTime.now,
   lastLoggedIn:     Option[LocalDateTime] = None,
   active:           Boolean = false,
   deleted:          Boolean = false
 ) {
-  def chatChannel: Option[ChannelId] = userStatus match {
-    case UserStatus.Idle    => Option(ChannelId.lobbyChannel)
-    case UserStatus.Offline => Option(ChannelId.emailChannel)
-    case UserStatus.Playing => currentChannelId
-  }
 }
 
 case class UserWallet(

@@ -22,8 +22,8 @@ import caliban.interop.circe.AkkaHttpCirceAdapter
 import dao.{Repository, SessionProvider}
 import zio.ZLayer
 import zio.duration._
+import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.{LogAnnotation, Logging}
 
 import scala.concurrent.ExecutionContextExecutor
 

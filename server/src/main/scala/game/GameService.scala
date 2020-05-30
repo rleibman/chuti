@@ -21,6 +21,7 @@ import java.time.{LocalDateTime, ZoneOffset}
 import api.ChutiSession
 import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
+import chat._
 import chuti._
 import dao.{DatabaseProvider, Repository, SessionProvider}
 import game.UserConnectionRepo.UserConnectionRepo
@@ -99,7 +100,7 @@ object GameService {
     def getGameForUser: ZIO[GameLayer, GameException, Option[Game]]
     def getGame(gameId:     GameId): ZIO[GameLayer, GameException, Option[Game]]
     def abandonGame(gameId: GameId): ZIO[GameLayer, GameException, Boolean]
-    def getFriends:       ZIO[GameLayer, GameException, Seq[UserId]]
+    def getFriends:       ZIO[GameLayer, GameException, Seq[User]]
     def getGameInvites:   ZIO[GameLayer, GameException, Seq[Game]]
     def getLoggedInUsers: ZIO[GameLayer, GameException, Seq[User]]
     def inviteToGame(
@@ -153,7 +154,7 @@ object GameService {
     URIO.accessM(_.get.getGameForUser)
   def getGame(gameId: GameId): ZIO[GameService with GameLayer, GameException, Option[Game]] =
     URIO.accessM(_.get.getGame(gameId))
-  def getFriends: ZIO[GameService with GameLayer, GameException, Seq[UserId]] =
+  def getFriends: ZIO[GameService with GameLayer, GameException, Seq[User]] =
     URIO.accessM(_.get.getFriends)
   def inviteToGame(
     userId: UserId,
@@ -344,10 +345,10 @@ object GameService {
           game       <- repository.gameOperations.getGameForUser
         } yield game).mapError(GameException.apply)
 
-      def getFriends: ZIO[GameLayer, GameException, Seq[UserId]] =
+      def getFriends: ZIO[GameLayer, GameException, Seq[User]] =
         (for {
           repository <- ZIO.service[Repository.Service]
-          friends    <- repository.userOperations.friends.map(_.flatMap(_.id.toSeq))
+          friends    <- repository.userOperations.friends
         } yield friends).mapError(GameException.apply)
 
       def getGameInvites: ZIO[GameLayer, GameException, Seq[Game]] =
@@ -414,6 +415,8 @@ object GameService {
               game.applyEvent(Option(user), InviteToGame(invited = invitedOpt.get))
             repository.gameOperations.upsert(withInvite).map((_, invitation))
           }
+          _ <- ChatService
+            .sendMessage(s"${user.name} te invito a jugar", ChannelId.directChannel, invitedOpt)
           _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
           envelopeOpt <- ZIO.foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
             case (invited, game) =>
@@ -573,11 +576,7 @@ object GameService {
                 log.debug(s"Shut down game queue")
             )
             .tap(event => log.debug(event.toString))
-            .filter {
-              case InviteToGame(invited, eventGameId, _, _) =>
-                (eventGameId == Option(gameId)) || invited.id == user.id
-              case event => event.gameId == Option(gameId)
-            }
+            .filter(_.gameId == Option(gameId))
         }
 
       override def userStream(connectionId: ConnectionId): ZStream[GameLayer, Nothing, UserEvent] =

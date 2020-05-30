@@ -17,7 +17,7 @@
 package chat
 
 import caliban.{CalibanError, GraphQLInterpreter}
-import chuti.{ChannelId, ChatMessage, User}
+import chuti.{ChannelId, ChatMessage, ConnectionId, User}
 import dao.SessionProvider
 import zio._
 import zio.logging.slf4j.Slf4jLogger
@@ -31,7 +31,8 @@ object ChatService {
   trait Service {
     def say(msg: SayRequest): URIO[SessionProvider with Logging, ChatMessage]
     def chatStream(
-      channelId: ChannelId
+      channelId:    ChannelId,
+      connectionId: ConnectionId
     ): ZStream[SessionProvider with Logging, Nothing, ChatMessage]
   }
 
@@ -44,26 +45,28 @@ object ChatService {
     ChatService.make().memoize
   }
 
+  implicit val runtime2: Runtime.Managed[ChatService] = Runtime.unsafeFromLayer(ChatService.make())
+
   private val logLayer: ZLayer[Any, Nothing, Logging] = Slf4jLogger.make((_, str) => str)
 
   lazy val interpreter: GraphQLInterpreter[ZEnv with SessionProvider with Logging, CalibanError] =
-    runtime.unsafeRun(
-      TheChatService
-        .use(layer =>
+    runtime2.unsafeRun(
+      TheChatService.use(layer =>
           ChatApi.api.interpreter
             .map(_.provideSomeLayer[ZEnv with SessionProvider with Logging](layer))
         )
     )
 
   def sendMessage(
-    msg:    String,
-    toUser: Option[User]
+    msg:       String,
+    channelId: ChannelId,
+    toUser:    Option[User]
   ): ZIO[SessionProvider, Nothing, ChatMessage] = {
     TheChatService.use(layer =>
       (
         for {
-          chat <- ZIO.access[ChatService](_.get)
-          sent <- chat.say(SayRequest(msg, toUser))
+          chat <- ZIO.service[Service]
+          sent <- chat.say(SayRequest(msg, channelId, toUser))
         } yield sent
       ).provideSomeLayer[SessionProvider](layer ++ logLayer)
     )
@@ -73,18 +76,21 @@ object ChatService {
     URIO.accessM(_.get.say(request))
 
   def chatStream(
-    channelId: ChannelId
+    channelId:    ChannelId,
+    connectionId: ConnectionId
   ): ZStream[ChatService with SessionProvider with Logging, Nothing, ChatMessage] =
-    ZStream.accessStream(_.get.chatStream(channelId))
+    ZStream.accessStream(_.get.chatStream(channelId, connectionId))
 
   case class MessageQueue(
-    user:  User,
-    queue: Queue[ChatMessage]
+    user:         User,
+    connectionId: ConnectionId,
+    queue:        Queue[ChatMessage]
   )
 
   def make(): ZLayer[Any, Nothing, ChatService] = ZLayer.fromEffect {
     for {
       chatMessageQueue <- Ref.make(List.empty[MessageQueue])
+      _                <- ZIO.succeed(println("========================== This should only ever be seen once."))
     } yield new Service {
       override def say(
         request: SayRequest
@@ -92,29 +98,56 @@ object ChatService {
         for {
           allSubscriptions <- chatMessageQueue.get
           user             <- ZIO.access[SessionProvider](_.get.session.user)
-          _                <- log.debug(s"Sending ${request.msg}")
+          _                <- log.info(s"Sending ${request.msg}")
           sent <- {
-            val sendMe = ChatMessage(user, request.msg)
+            //TODO make sure the user has rights to listen in on the channel,
+            // basically if the channel is lobby, or the user is the game channel for that game
+            //TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
+            val sendMe =
+              ChatMessage(
+                fromUser = user,
+                msg = request.msg,
+                channelId = request.channelId,
+                toUser = request.toUser
+              )
+
             UIO
-              .foreach(allSubscriptions)(_.queue.offer(sendMe))
+              .foreach(
+                allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id))
+              )(_.queue.offer(sendMe))
               .as(sendMe)
           }
-        } yield {
-          sent
-        }
+        } yield sent
 
       override def chatStream(
-        channelId: ChannelId
+        channelId:    ChannelId,
+        connectionId: ConnectionId
       ): ZStream[SessionProvider with Logging, Nothing, ChatMessage] = ZStream.unwrap {
         for {
-          user  <- ZIO.access[SessionProvider with Logging](_.get.session.user)
+          user <- ZIO.access[SessionProvider with Logging](_.get.session.user)
+          //TODO make sure the user has rights to listen in on the channel,
+          // basically if the channel is lobby, or the user is the game channel for that game
           queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
-          _     <- chatMessageQueue.update(MessageQueue(user, queue) :: _)
+          _     <- chatMessageQueue.update(MessageQueue(user, connectionId, queue) :: _)
+          after <- chatMessageQueue.get
+          _     <- log.info(s"Chat stream started, queues have ${after.length} entries")
         } yield ZStream
           .fromQueue(queue)
-          .ensuring(queue.shutdown *> chatMessageQueue.update(_.filterNot(_.user == user)))
-          .filter(_.fromUser.chatChannel == Option(channelId))
+          .ensuring(
+            log.info(s"Chat queue for user ${user.id} shut down") *>
+              queue.shutdown *> chatMessageQueue.update(_.filterNot(_.connectionId == connectionId))
+          )
+          .filter(m =>
+            m.channelId == channelId ||
+              (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty)
+          ).catchAllCause { c =>
+            c.prettyPrint
+            ZStream.halt(c)
+          }
+
       }
     }
   }
+
+  //TODO keep the last 15 minutes of conversation.
 }

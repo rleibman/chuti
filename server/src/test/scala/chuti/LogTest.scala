@@ -22,7 +22,7 @@ import zio.clock.Clock
 import zio.duration._
 import zio.logging._
 import zio.logging.slf4j._
-import zio.{App, UIO, ZIO, ZLayer}
+import zio.{App, ExitCode, UIO, ZIO, ZLayer}
 
 case class SomethingElse(string: String) {
   def foo: ZIO[Logging, Nothing, Unit] = {
@@ -51,7 +51,7 @@ object LogTest extends App {
     Option(User(Option(UserId(2)), "yoyo2@example.com", "yoyo2"))
   )
 
-  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, Int] = {
+  override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
     val somethingElse = SomethingElse("Yoyo")
     (for {
       _             <- log.info("Start...")
@@ -66,6 +66,6 @@ object LogTest extends App {
             log.info("Stopping operation")
         }
       }
-    } yield 0).provideSomeLayer[Clock](logLayer)
+    } yield ExitCode.success).provideSomeLayer[Clock](logLayer)
   }
 }
