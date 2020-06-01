@@ -36,17 +36,16 @@ object UserStatus {
 }
 
 case class User(
-  id:               Option[UserId],
-  email:            String,
-  name:             String,
-  userStatus:       UserStatus = UserStatus.Offline,
-  created:          LocalDateTime = LocalDateTime.now,
-  lastUpdated:      LocalDateTime = LocalDateTime.now,
-  lastLoggedIn:     Option[LocalDateTime] = None,
-  active:           Boolean = false,
-  deleted:          Boolean = false
-) {
-}
+  id:           Option[UserId],
+  email:        String,
+  name:         String,
+  userStatus:   UserStatus = UserStatus.Offline,
+  created:      LocalDateTime = LocalDateTime.now,
+  lastUpdated:  LocalDateTime = LocalDateTime.now,
+  lastLoggedIn: Option[LocalDateTime] = None,
+  active:       Boolean = false,
+  deleted:      Boolean = false
+) {}
 
 case class UserWallet(
   userId: UserId,

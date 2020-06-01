@@ -26,15 +26,15 @@ import zio._
 import zio.duration._
 
 class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
-  import InMemoryRepository._
+  import dao.InMemoryRepository._
 
   "primera mano" should "work" in {
     val gameId = GameId(1)
 
     val (
-      game: Game,
+      game:       Game,
       gameEvents: List[GameEvent]
-      ) =
+    ) =
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.access[GameService](_.get)
@@ -44,14 +44,14 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameEventsFiber <- gameStream
             .takeUntil {
               case PoisonPill(Some(id), _, _) if id == gameId => true
-              case _ => false
+              case _                                          => false
             }.runCollect.fork
-          _ <- clock.sleep(1.second)
+          _     <- clock.sleep(1.second)
           mano1 <- juegaMano(gameId)
           _ <- gameService
             .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(GameService.god))
-          )
+              SessionProvider.layer(ChutiSession(GameService.god))
+            )
           gameEvents <- gameEventsFiber.join
         } yield (mano1, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
@@ -66,9 +66,9 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     val gameId = GameId(1)
 
     val (
-      game: Game,
+      game:       Game,
       gameEvents: List[GameEvent]
-      ) =
+    ) =
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.access[GameService](_.get)
@@ -78,17 +78,17 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameEventsFiber <- gameStream
             .takeUntil {
               case PoisonPill(Some(id), _, _) if id == gameId => true
-              case _ => false
+              case _                                          => false
             }.runCollect.fork
-          _ <- clock.sleep(1.second)
-          _ <- juegaMano(gameId)
-          _ <- juegaMano(gameId)
-          _ <- juegaMano(gameId)
+          _     <- clock.sleep(1.second)
+          _     <- juegaMano(gameId)
+          _     <- juegaMano(gameId)
+          _     <- juegaMano(gameId)
           mano4 <- juegaMano(gameId)
           _ <- gameService
             .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(GameService.god))
-          )
+              SessionProvider.layer(ChutiSession(GameService.god))
+            )
           gameEvents <- gameEventsFiber.join
         } yield (mano4, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
@@ -106,9 +106,9 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
   "jugando hasta que se haga o sea hoyo" should "work" in {
     val gameId = GameId(1)
     val (
-      game: Game,
+      game:       Game,
       gameEvents: List[GameEvent]
-      ) =
+    ) =
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.access[GameService](_.get)
@@ -118,14 +118,14 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameEventsFiber <- gameStream
             .takeWhile {
               case PoisonPill(Some(id), _, _) if id == gameId => false
-              case _ => true
+              case _                                          => true
             }.runCollect.fork
-          _ <- clock.sleep(1.second)
+          _   <- clock.sleep(1.second)
           end <- juegaHastaElFinal(gameId)
           _ <- gameService
             .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(GameService.god))
-          )
+              SessionProvider.layer(ChutiSession(GameService.god))
+            )
           gameEvents <- gameEventsFiber.join
         } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }

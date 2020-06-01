@@ -22,14 +22,14 @@ case class ChannelId(value: Int)
 
 object ChannelId {
   //some special channels
-  val lobbyChannel: ChannelId = ChannelId(-1)
+  val lobbyChannel:  ChannelId = ChannelId(-1)
   val directChannel: ChannelId = ChannelId(-2)
 }
 
 case class ChatMessage(
-                        fromUser: User,
-                        msg:      String,
-                        channelId: ChannelId,
-                        toUser:   Option[User] = None,
-                        date:     LocalDateTime = LocalDateTime.now,
+  fromUser:  User,
+  msg:       String,
+  channelId: ChannelId,
+  toUser:    Option[User] = None,
+  date:      LocalDateTime = LocalDateTime.now
 )

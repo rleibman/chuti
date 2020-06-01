@@ -18,15 +18,18 @@ package game
 
 import akka.http.scaladsl.server.{Directives, Route}
 import api.token.TokenHolder
-import api.{ChutiSession, HasActorSystem, config}
+import api.{HasActorSystem, config}
 import caliban.interop.circe.AkkaHttpCirceAdapter
+import chat.ChatService.ChatService
 import dao.{DatabaseProvider, Repository, SessionProvider}
-import game.GameService.GameLayer
+import game.UserConnectionRepo.UserConnectionRepo
 import mail.CourierPostman
 import mail.Postman.Postman
+import zio._
+import zio.clock.Clock
+import zio.console.Console
 import zio.duration._
-import zio.logging.slf4j.Slf4jLogger
-import zio.{Layer, ULayer, ZLayer}
+import zio.logging.Logging
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -37,45 +40,41 @@ object GameRoute {
 }
 
 trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
-  this: Repository.Service with DatabaseProvider.Service =>
-
-  def repositoryLayer:       ULayer[Repository] = ZLayer.succeed(this)
-  def databaseProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(this)
-  def postmanLayer:          ULayer[Postman] = GameRoute.postman
-
-  def gameLayer(session: ChutiSession): Layer[Nothing, GameLayer] =
-    zio.console.Console.live ++
-      SessionProvider.layer(session) ++
-      databaseProviderLayer ++
-      repositoryLayer ++
-      postmanLayer ++
-      Slf4jLogger.make((_, b) => b) ++
-      ZLayer.succeed(TokenHolder.live) ++
-      ZLayer.succeed(UserConnectionRepo.live)
-
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import GameService._
   val staticContentDir: String =
     config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
-  def route(session: ChutiSession): Route = pathPrefix("game") {
-    pathEndOrSingleSlash {
-      implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
-      adapter.makeHttpService(
-        interpreter.provideCustomLayer(gameLayer(session))
-      )
-    } ~
-      path("schema") {
-        get(complete(GameApi.api.render))
-      } ~
-      path("ws") {
-        adapter.makeWebSocketService(
-          interpreter.provideCustomLayer(gameLayer(session)),
-          skipValidation = false,
-          keepAliveTime = Option(58.seconds)
-        )
-      } ~ path("graphiql") {
-      getFromFile(s"$staticContentDir/graphiql.html")
+  def route: URIO[
+    Console with Clock with SessionProvider with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService,
+    Route
+  ] =
+    for {
+      runtime <- ZIO.runtime[
+        Console with Clock with SessionProvider with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
+      ]
+    } yield {
+      implicit val r = runtime
+
+      pathPrefix("game") {
+        pathEndOrSingleSlash {
+          implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+          adapter.makeHttpService(
+            interpreter
+          )
+        } ~
+          path("schema") {
+            get(complete(GameApi.api.render))
+          } ~
+          path("ws") {
+            adapter.makeWebSocketService(
+              interpreter,
+              skipValidation = false,
+              keepAliveTime = Option(58.seconds)
+            )
+          } ~ path("graphiql") {
+          getFromFile(s"$staticContentDir/graphiql.html")
+        }
+      }
     }
-  }
 }

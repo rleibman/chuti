@@ -29,7 +29,10 @@ import typings.semanticUiReact.inputInputMod.InputOnChangeData
 import scala.util.{Failure, Success}
 
 object PasswordRecoveryPage {
-  case class State(submitted: Boolean = false, email: String = "")
+  case class State(
+    submitted: Boolean = false,
+    email:     String = ""
+  )
 
   class Backend($ : BackendScope[_, State]) {
     def onSubmitEmailAddress(email: String) =
@@ -42,19 +45,27 @@ object PasswordRecoveryPage {
           case Success(xhr) if xhr.status < 300 =>
             $.modState(_.copy(submitted = true))
           case Success(xhr) =>
-            Toast.error(s"There was an error submitting the email: ${xhr.statusText}, please try again.")
+            Toast.error(
+              s"There was an error submitting the email: ${xhr.statusText}, please try again."
+            )
           case Failure(e: Throwable) =>
-            Toast.error(s"There was an error submitting the email: ${e.getLocalizedMessage}, please try again.")
+            Toast.error(
+              s"There was an error submitting the email: ${e.getLocalizedMessage}, please try again."
+            )
             e.printStackTrace()
             Callback { e.printStackTrace() }
         }
 
     def render(state: State) = LoginControllerState.ctx.consume { context =>
       <.div(
-        if (state.submitted) <.div(
+        if (state.submitted)
+          <.div(
             "We have sent an email to your account with password recovery instructions, you'll have three hours to change your password before you need to try again",
-            Button(onClick = { (_, _) => $.modState(_.copy(submitted = false))})("Try again")
-          ) else {
+            Button(onClick = { (_, _) =>
+              $.modState(_.copy(submitted = false))
+            })("Try again")
+          )
+        else {
           <.div(
             "Please enter your email address, you will get an email with password recovery instructions",
             Form()(
@@ -70,7 +81,9 @@ object PasswordRecoveryPage {
                   }
                 )()
               ),
-              Button(onClick = {(_, _) => onSubmitEmailAddress(state.email)})("Submit")
+              Button(onClick = { (_, _) =>
+                onSubmitEmailAddress(state.email)
+              })("Submit")
             )
           )
         }

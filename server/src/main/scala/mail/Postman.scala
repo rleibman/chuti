@@ -40,7 +40,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser)
       } yield {
-        val linkUrl = s"http://${webHostName}/acceptFriendInvite?token=$token"
+        val linkUrl = s"http://$webHostName/acceptFriendInvite?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -61,7 +61,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(invited, TokenPurpose.FriendToken)
       } yield {
-        val linkUrl = s"http://${webHostName}/newUserAcceptFriend?token=$token"
+        val linkUrl = s"http://$webHostName/newUserAcceptFriend?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -84,7 +84,7 @@ object Postman {
         token       <- tokenHolder.createToken(invited, TokenPurpose.GameInvite)
       } yield {
         val linkUrl =
-          s"http://${webHostName}/acceptGameInvite?gameId=${game.id.getOrElse(0)}&token=$token"
+          s"http://$webHostName/acceptGameInvite?gameId=${game.id.getOrElse(0)}&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -103,7 +103,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(user, TokenPurpose.LostPassword)
       } yield {
-        val linkUrl = s"http://${webHostName}/loginForm?passwordReset=true&token=$token"
+        val linkUrl = s"http://$webHostName/loginForm?passwordReset=true&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
@@ -122,7 +122,7 @@ object Postman {
         token       <- tokenHolder.createToken(user, TokenPurpose.NewUser)
       } yield {
         val linkUrl =
-          s"http://${webHostName}/confirmRegistration?token=$token"
+          s"http://$webHostName/confirmRegistration?token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
@@ -142,6 +142,7 @@ object Postman {
   */
 object CourierPostman {
   def live(config: Config.Service): Postman.Service = new Postman.Service {
+    println("created courier postman")
     lazy val mailer: Mailer = {
       val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
       System.setProperty("mail.smtp.localhost", localhost)

@@ -34,7 +34,7 @@ import zio.duration._
 
 trait ScalaJSClientAdapter {
 
-  private[caliban] lazy val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
+  lazy private[caliban] val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
 
   trait WebSocketHandler {
     def close(): Unit
@@ -205,15 +205,16 @@ trait ScalaJSClientAdapter {
         case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
           connectionState = connectionState.copy(reconnectCount = 0)
           val res = for {
-            payload     <- payloadOpt.toRight(DecodingError("No payload"))
+            payload <- payloadOpt.toRight(DecodingError("No payload"))
             parsed <- graphQLDecoder
               .decodeJson(payload)
               .left
               .map(ex => DecodingError("Json deserialization error", Some(ex)))
-            data <- if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors)) else Right(parsed.data)
+            data <- if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
+            else Right(parsed.data)
             objectValue <- data match {
               case Some(o: ObjectValue) => Right(o)
-              case _                    => Left(DecodingError(s"Result is not an object ($data)"))
+              case _ => Left(DecodingError(s"Result is not an object ($data)"))
             }
             result <- query.fromGraphQL(objectValue)
           } yield result

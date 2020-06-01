@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-package chuti
+package dao
 
-import dao.{Repository, RepositoryIO}
+import chuti._
 import zio.Task
 
 object InMemoryRepository {
@@ -28,7 +28,6 @@ object InMemoryRepository {
     User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", userStatus = UserStatus.Idle)
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", userStatus = UserStatus.Idle)
-
 
 }
 
@@ -56,36 +55,35 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     }
     override def get(pk: GameId): RepositoryIO[Option[Game]] = Task.succeed(games.get(pk))
     override def delete(
-                         pk:         GameId,
-                         softDelete: Boolean
-                       ): RepositoryIO[Boolean] = ???
+      pk:         GameId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = ???
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
       Task.succeed(games.values.toSeq)
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] = Task.succeed(games.size)
 
-    override def updatePlayers(game: Game): RepositoryIO[Game] = ???
+    override def updatePlayers(game: Game): RepositoryIO[Game] = Task.succeed(game)
   }
-
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
     override def login(
-                        email:    String,
-                        password: String
-                      ): RepositoryIO[Option[User]] = ???
+      email:    String,
+      password: String
+    ): RepositoryIO[Option[User]] = ???
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
 
     override def changePassword(
-                                 user:     User,
-                                 password: String
-                               ): RepositoryIO[Boolean] = ???
+      user:     User,
+      password: String
+    ): RepositoryIO[Boolean] = ???
 
     override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
 
     override def friend(
-                         friend:    User,
-                         confirmed: Boolean
-                       ): RepositoryIO[Boolean] = ???
+      friend:    User,
+      confirmed: Boolean
+    ): RepositoryIO[Boolean] = ???
 
     override def friends: RepositoryIO[Seq[User]] = ???
 
@@ -104,9 +102,9 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def get(pk: UserId): RepositoryIO[Option[User]] = Task.succeed(users.get(pk))
 
     override def delete(
-                         pk:         UserId,
-                         softDelete: Boolean
-                       ): RepositoryIO[Boolean] = ???
+      pk:         UserId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = ???
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = ???
 

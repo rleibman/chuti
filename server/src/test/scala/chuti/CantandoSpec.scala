@@ -27,7 +27,7 @@ import zio._
 import zio.duration._
 
 class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
-  import InMemoryRepository._
+  import dao.InMemoryRepository._
   "Printing the game" should "print it" in {
     testRuntime.unsafeRun {
       for {
@@ -46,7 +46,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.jugadores.count(j => j.cuantasCantas.nonEmpty) === 1)
     assert(
       game.jugadores
-        .find(_.cantante).fold(false)(_.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad))
+        .find(_.cantante).fold(false)(
+          _.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad)
+        )
     )
   }
 
@@ -70,9 +72,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -147,9 +150,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -223,9 +227,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -276,9 +281,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -356,9 +362,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -420,9 +427,10 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             .gameStream(GameId(1), connectionId).provideCustomLayer(
               layer ++ SessionProvider.layer(ChutiSession(user1))
             )
-          userStream = gameService.userStream(connectionId).provideCustomLayer(
-            layer ++ SessionProvider.layer(ChutiSession(user1))
-          )
+          userStream = gameService
+            .userStream(connectionId).provideCustomLayer(
+              layer ++ SessionProvider.layer(ChutiSession(user1))
+            )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)

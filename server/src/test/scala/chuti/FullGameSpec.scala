@@ -17,7 +17,7 @@
 package chuti
 
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
-import chuti.InMemoryRepository.{user1, user2, user3, user4}
+import dao.InMemoryRepository.{user1, user2, user3, user4}
 import chuti.Triunfo.SinTriunfos
 import dao.Repository
 import org.scalatest.flatspec.AsyncFlatSpecLike
@@ -39,7 +39,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
   "Playing a full game" should "look all nice" in {
     testRuntime.unsafeRunToFuture {
       ZIO
-        .foreach(1 to 100) { _ =>
+        .foreachPar(1 to 100) { _ =>
           playFullGame
         }.map(l => assert(l.forall(_._1 == Succeeded)))
     }.future

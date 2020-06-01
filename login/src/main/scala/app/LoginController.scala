@@ -91,9 +91,9 @@ object LoginController {
                 Option("Registration confirmation failed, sorry, but you'll have to try again")
               else if (queryParams.has("registrationSucceeded"))
                 Option("Registration succeeded, you can log in now!")
-              else if(queryParams.has("passwordChangeFailed"))
+              else if (queryParams.has("passwordChangeFailed"))
                 Option("Password change failed, sorry, but you'll have to try again")
-              else if(queryParams.has("passwordChangeSucceeded"))
+              else if (queryParams.has("passwordChangeSucceeded"))
                 Option("Password change succeeded, you can log in now!")
               else
                 None

@@ -317,9 +317,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
-              onPrivateMessage = Option(msg =>
-                $.modState(_.copy(privateMessage = Option(msg))) >> init()
-              )
+              onPrivateMessage =
+                Option(msg => $.modState(_.copy(privateMessage = Option(msg))) >> init())
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             TagMod(

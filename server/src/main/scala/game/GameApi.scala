@@ -25,6 +25,7 @@ import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
+import chat.ChatService.ChatService
 import chuti.{ConnectionId, GameId, UserId, _}
 import dao.SessionProvider
 import game.GameService.{GameLayer, GameService}
@@ -37,7 +38,7 @@ import zio.console.Console
 import zio.duration._
 import zio.stream.ZStream
 
-object GameApi extends GenericSchema[GameService with GameLayer] {
+object GameApi extends GenericSchema[GameService with GameLayer with ChatService] {
   import caliban.interop.circe.json._
 
   case class PlayArgs(
@@ -62,10 +63,14 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
     getLoggedInUsers: ZIO[GameService with GameLayer, GameException, Seq[User]]
   )
   case class Mutations(
-    newGame:               ZIO[GameService with GameLayer, GameException, Json],
-    joinRandomGame:        ZIO[GameService with GameLayer, GameException, Json],
-    abandonGame:           GameId => ZIO[GameService with GameLayer, GameException, Boolean],
-    inviteToGame:          GameInviteArgs => ZIO[GameService with GameLayer, GameException, Boolean],
+    newGame:        ZIO[GameService with GameLayer, GameException, Json],
+    joinRandomGame: ZIO[GameService with GameLayer, GameException, Json],
+    abandonGame:    GameId => ZIO[GameService with GameLayer, GameException, Boolean],
+    inviteToGame: GameInviteArgs => ZIO[
+      GameService with GameLayer with ChatService,
+      GameException,
+      Boolean
+    ],
     acceptGameInvitation:  GameId => ZIO[GameService with GameLayer, GameException, Json],
     declineGameInvitation: GameId => ZIO[GameService with GameLayer, GameException, Boolean],
     play:                  PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
@@ -107,7 +112,7 @@ object GameApi extends GenericSchema[GameService with GameLayer] {
       )
     )
 
-  val api: GraphQL[Console with Clock with GameService with GameLayer] =
+  val api: GraphQL[Console with Clock with GameService with GameLayer with ChatService] =
     graphQL(
       RootResolver(
         Queries(

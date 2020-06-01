@@ -17,44 +17,55 @@
 package chat
 
 import akka.http.scaladsl.server.{Directives, Route}
-import api.{ChutiSession, HasActorSystem, config}
+import api.HasActorSystem
+import api.config.Config
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import dao.{Repository, SessionProvider}
-import zio.ZLayer
+import zio.clock.Clock
+import zio.console.Console
 import zio.duration._
 import zio.logging.Logging
-import zio.logging.slf4j.Slf4jLogger
+import zio.{RIO, ZIO}
 
 import scala.concurrent.ExecutionContextExecutor
 
-trait ChatRoute
-    extends Directives with AkkaHttpCirceAdapter with Repository.Service with HasActorSystem {
+trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService._
 
-  val staticContentDir: String =
-    config.live.config.getString(s"${config.live.configKey}.staticContentDir")
+  def route: RIO[
+    Console with Clock with ChatService with SessionProvider with Logging with Config,
+    Route
+  ] = {
+    for {
+      config <- ZIO.service[Config.Service]
+      runtime <- ZIO
+        .runtime[Console with Clock with ChatService with SessionProvider with Logging with Config]
+    } yield {
+      val staticContentDir =
+        config.config.getString(s"${config.configKey}.staticContentDir")
 
-  private val logLayer: ZLayer[Any, Nothing, Logging] = Slf4jLogger.make((_, str) => str)
+      implicit val r = runtime
 
-  def route(session: ChutiSession): Route = pathPrefix("chat") {
-    pathEndOrSingleSlash {
-      implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
-      adapter.makeHttpService(
-        interpreter.provideCustomLayer(SessionProvider.layer(session) ++ logLayer)
-      )
-    } ~
-      path("schema") {
-        get(complete(ChatApi.api.render))
-      } ~
-      path("ws") {
-        adapter.makeWebSocketService(
-          interpreter.provideCustomLayer(SessionProvider.layer(session) ++ logLayer),
-          skipValidation = false,
-          keepAliveTime = Option(58.seconds)
-        )
-      } ~ path("graphiql") {
-      getFromFile(s"$staticContentDir/graphiql.html")
+      pathPrefix("chat") {
+        pathEndOrSingleSlash {
+          adapter.makeHttpService(
+            interpreter
+          )
+        } ~
+          path("schema") {
+            get(complete(ChatApi.api.render))
+          } ~
+          path("ws") {
+            adapter.makeWebSocketService(
+              interpreter,
+              skipValidation = false,
+              keepAliveTime = Option(58.seconds)
+            )
+          } ~ path("graphiql") {
+          getFromFile(s"$staticContentDir/graphiql.html")
+        }
+      }
     }
   }
 }

@@ -20,6 +20,8 @@ import java.util.UUID
 
 import api.token.TokenHolder
 import better.files.File
+import chat.ChatService
+import chat.ChatService.ChatService
 import courier.Envelope
 import dao.Repository.GameOperations
 import dao.{DatabaseProvider, Repository}
@@ -54,11 +56,12 @@ trait GameAbstractSpec extends MockitoSugar {
     val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
     userOperations
   }
-  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer { tuple: (ConnectionId, User) =>
-    console
-      .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-        zio.console.Console.live
-      )
+  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer {
+    tuple: (ConnectionId, User) =>
+      console
+        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
+          zio.console.Console.live
+        )
   }
   when(userConnectionRepo.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
     console
@@ -78,7 +81,7 @@ trait GameAbstractSpec extends MockitoSugar {
     userOps: Repository.UserOperations,
     postman: Postman.Service = new MockPostman
   ): ULayer[
-    DatabaseProvider with Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder
+    DatabaseProvider with Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
   ] = {
     ZLayer.succeed(databaseProvider) ++
       ZLayer.succeed(new Repository.Service {
@@ -88,7 +91,8 @@ trait GameAbstractSpec extends MockitoSugar {
       Slf4jLogger.make((_, b) => b) ++
       ZLayer.succeed(TokenHolder.live) ++
       ZLayer.succeed(userConnectionRepo) ++
-      ZLayer.succeed(postman)
+      ZLayer.succeed(postman) ++
+      ChatService.make()
   }
 
   def writeGame(

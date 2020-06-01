@@ -286,15 +286,15 @@ trait Tables {
   lazy val GamePlayersQuery = new TableQuery(tag => new GamePlayers(tag))
 
   case class UserRow(
-    id:             UserId,
-    name:           String,
-    email:          String,
-    created:        Timestamp,
-    lastupdated:    Timestamp,
-    lastloggedin:   Option[Timestamp] = None,
-    active:         Boolean = false,
-    deleted:        Boolean = false,
-    deleteddate:    Option[Timestamp] = None
+    id:           UserId,
+    name:         String,
+    email:        String,
+    created:      Timestamp,
+    lastupdated:  Timestamp,
+    lastloggedin: Option[Timestamp] = None,
+    active:       Boolean = false,
+    deleted:      Boolean = false,
+    deleteddate:  Option[Timestamp] = None
   )
 
   implicit def GetResultUserRow(

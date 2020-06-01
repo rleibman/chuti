@@ -17,16 +17,17 @@
 package routes
 
 import akka.http.scaladsl.server.{Directives, Route}
+import api.ZIODirectives
 import api.token.TokenHolder
-import api.{ChutiSession, ZIODirectives}
 import chuti.Search
-import dao.{CRUDOperations, DatabaseProvider, SessionProvider}
+import dao._
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import io.circe.parser.decode
 import io.circe.{Decoder, Encoder, Json}
+import mail.Postman.Postman
 import zio._
 import zio.logging.Logging
-import zio.logging.slf4j.Slf4jLogger
+import zioslick.RepositoryException
 
 import scala.util.matching.Regex
 
@@ -45,11 +46,13 @@ object CRUDRoute {
   abstract class Service[E, PK, SEARCH <: Search]
       extends Directives with ZIODirectives with ErrorAccumulatingCirceSupport {
 
+    implicit private val tagE:      Tag[E] = Tag[E]
+    implicit private val tagPK:     Tag[PK] = Tag[PK]
+    implicit private val tagSearch: Tag[SEARCH] = Tag[SEARCH]
+
+    type OpsService = Has[CRUDOperations[E, PK, SEARCH]]
+
     val url: String
-
-    val ops: CRUDOperations[E, PK, SEARCH]
-
-    val databaseProvider: DatabaseProvider.Service
 
     val pkRegex: Regex = "^[0-9]*$".r
 
@@ -58,30 +61,31 @@ object CRUDRoute {
     /**
       * Override this to add other authenticated (i.e. with session) routes
       *
-      * @param session
       * @return
       */
-    def other(session: ChutiSession): Route = reject
+    def other: RIO[DatabaseProvider with SessionProvider with Logging with OpsService, Route] =
+      ZIO.succeed(reject)
 
     /**
       * Override this to add routes that don't require a session
       *
       * @return
       */
-    def unauthRoute: Route = reject
+    def unauthRoute
+      : URIO[Postman with TokenHolder with Logging with DatabaseProvider with OpsService, Route] =
+      ZIO.succeed(reject)
 
     /**
       * Override this to support children routes (e.g. /api/student/classroom)
       *
       * @param obj A Task that will contain the "parent" object
-      * @param session
       * @return
       */
     def childrenRoutes(
-      pk:      PK,
-      obj:     Task[Option[E]],
-      session: ChutiSession
-    ): Seq[Route] = Seq.empty
+      pk:  PK,
+      obj: Option[E]
+    ): RIO[DatabaseProvider with SessionProvider with Logging with OpsService, Seq[Route]] =
+      ZIO.succeed(Seq.empty)
 
     /**
       * You need to override this method so that the architecture knows how to get a primary key from an object
@@ -91,60 +95,72 @@ object CRUDRoute {
       */
     def getPK(obj: E): PK
 
-    def fullLayer(
-      session: ChutiSession
-    ): ULayer[SessionProvider with DatabaseProvider with Logging with TokenHolder] =
-      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
-        (_, b) => b
-      ) ++ ZLayer.succeed(TokenHolder.live)
+//    def fullLayer(
+//      session: ChutiSession
+//    ): ULayer[SessionProvider with DatabaseProvider with Logging with TokenHolder] =
+//      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
+//        (_, b) => b
+//      ) ++ ZLayer.succeed(TokenHolder.live)
 
-    def getOperation(
-      id:      PK,
-      session: ChutiSession
-    ): Task[Option[E]] = {
-      ops.get(id).provideLayer(fullLayer(session))
+    def getOperation(id: PK): ZIO[
+      DatabaseProvider with SessionProvider with Logging with OpsService,
+      RepositoryException,
+      Option[E]
+    ] = {
+      for {
+        ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+        ret <- ops.get(id)
+      } yield ret
     }
 
     def deleteOperation(
-      objTask: Task[Option[E]],
-      session: ChutiSession
-    ): Task[Boolean] =
+      objOpt: Option[E]
+    ): ZIO[DatabaseProvider with SessionProvider with Logging with OpsService, Throwable, Boolean] =
       for {
-        objOpt <- objTask
-        deleted <- objOpt.fold(Task.succeed(false): Task[Boolean])(obj =>
-          ops.delete(getPK(obj), defaultSoftDelete).provideLayer(fullLayer(session))
+        ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+        ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj =>
+          ops.delete(getPK(obj), defaultSoftDelete)
         )
-      } yield deleted
+      } yield ret
 
-    def upsertOperation(
-      obj:     E,
-      session: ChutiSession
-    ): Task[E] =
-      ops.upsert(obj).provideLayer(fullLayer(session))
+    def upsertOperation(obj: E): ZIO[
+      DatabaseProvider with SessionProvider with Logging with OpsService,
+      RepositoryException,
+      E
+    ] =
+      for {
+        ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+        ret <- ops.upsert(obj)
+      } yield ret
 
-    def countOperation(
-      search:  Option[SEARCH],
-      session: ChutiSession
-    ): Task[Long] =
-      ops.count(search).provideLayer(fullLayer(session))
+    def countOperation(search: Option[SEARCH]): ZIO[
+      DatabaseProvider with SessionProvider with Logging with OpsService,
+      RepositoryException,
+      Long
+    ] =
+      for {
+        ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+        ret <- ops.count(search)
+      } yield ret
 
-    def searchOperation(
-      search:  Option[SEARCH],
-      session: ChutiSession
-    ): Task[Seq[E]] =
-      ops.search(search).provideLayer(fullLayer(session))
+    def searchOperation(search: Option[SEARCH]): ZIO[
+      DatabaseProvider with SessionProvider with Logging with OpsService,
+      RepositoryException,
+      Seq[E]
+    ] =
+      for {
+        ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+        ret <- ops.search(search)
+      } yield ret
 
     /**
       * The main route. Note that it takes a pair of upickle ReaderWriter implicits that we need to be able to
       * marshall the objects in-to json.
       * In scala3 we may move these to parameters of the trait instead.
       *
-      * @param session
       * @return
       */
     def route(
-      session: ChutiSession
-    )(
       implicit
       objDecoder:    Decoder[E],
       searchDecoder: Decoder[SEARCH],
@@ -152,51 +168,70 @@ object CRUDRoute {
       objEncoder:    Encoder[E],
       searchEncoder: Encoder[SEARCH],
       pkEncoder:     Encoder[PK]
-    ): Route =
-      pathPrefix(url) {
-        other(session) ~
-          pathEndOrSingleSlash {
-            (post | put) {
-              entity(as[E]) { obj =>
-                complete(upsertOperation(obj, session))
+    ): ZIO[
+      Repository with DatabaseProvider with SessionProvider with Logging with OpsService,
+      Throwable,
+      Route
+    ] =
+      for {
+        other <- other
+        runtime <- ZIO
+          .environment[
+            Repository with DatabaseProvider with SessionProvider with Logging with OpsService
+          ]
+      } yield {
+        pathPrefix(url) {
+          other ~
+            pathEndOrSingleSlash {
+              (post | put) {
+                entity(as[E]) { obj =>
+                  complete(upsertOperation(obj).provide(runtime))
+                }
               }
-            }
-          } ~
-          path("search") {
-            post {
-              entity(as[Option[SEARCH]]) { search =>
-                complete(searchOperation(search, session))
+            } ~
+            path("search") {
+              post {
+                entity(as[Option[SEARCH]]) { search =>
+                  complete(searchOperation(search).provide(runtime))
+                }
               }
-            }
-          } ~
-          path("count") {
-            post {
-              entity(as[Option[SEARCH]]) { search =>
-                complete(countOperation(search, session).map(a => Json.fromDouble(a.toDouble)))
+            } ~
+            path("count") {
+              post {
+                entity(as[Option[SEARCH]]) { search =>
+                  complete(
+                    countOperation(search).map(a => Json.fromDouble(a.toDouble)).provide(runtime)
+                  )
+                }
               }
-            }
-          } ~
-          pathPrefix(pkRegex) { id =>
-            childrenRoutes(
-              decode[PK](id).toOption.get,
-              getOperation(decode[PK](id).toOption.get, session),
-              session
-            ).reduceOption(_ ~ _)
-              .getOrElse(reject) ~
+            } ~
+            pathPrefix(pkRegex) { id =>
+              //TODO fix this
+//              childrenRoutes(
+//                decode[PK](id).toOption.get,
+//                getOperation(decode[PK](id).toOption.get).provide(runtime)
+//              )
+//                .reduceOption(_ ~ _)
+//                .getOrElse(reject) ~
               pathEndOrSingleSlash {
                 get {
                   complete(
-                    getOperation(decode[PK](id).toOption.get, session)
+                    getOperation(decode[PK](id).toOption.get)
+                      .provide(runtime)
                       .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
                   )
                 } ~
                   delete {
                     complete(
-                      deleteOperation(getOperation(decode[PK](id).toOption.get, session), session)
+                      (for {
+                        getted  <- getOperation(decode[PK](id).toOption.get)
+                        deleted <- deleteOperation(getted)
+                      } yield deleted).provide(runtime)
                     )
                   }
               }
-          }
+            }
+        }
       }
   }
 

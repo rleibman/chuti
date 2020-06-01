@@ -20,12 +20,12 @@ import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.{ChannelId, ChatMessage, ConnectionId, User}
 import dao.SessionProvider
 import zio._
-import zio.logging.slf4j.Slf4jLogger
+import zio.clock.Clock
+import zio.console.Console
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
 object ChatService {
-  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   type ChatService = Has[Service]
   trait Service {
@@ -36,41 +36,23 @@ object ChatService {
     ): ZStream[SessionProvider with Logging, Nothing, ChatMessage]
   }
 
-//  dapperwareYesterday at 8:39 PM
-//    What I tend to do (since I use play a lot and it’s difficult to live in the effect) is to shove shared services into my runtime, especially if they are supposed to last the lifetime of the service.
-//  ghostdogprYesterday at 9:55 PM
-//    yeah that's good too, there's Runtime.unsafeFromLayer that makes it convenient
-  lazy val TheChatService: ZManaged[Any, Nothing, ZLayer[Any, Nothing, ChatService]] = {
-    println("You should only see this message once")
-    ChatService.make().memoize
-  }
+  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
-  implicit val runtime2: Runtime.Managed[ChatService] = Runtime.unsafeFromLayer(ChatService.make())
-
-  private val logLayer: ZLayer[Any, Nothing, Logging] = Slf4jLogger.make((_, str) => str)
-
-  lazy val interpreter: GraphQLInterpreter[ZEnv with SessionProvider with Logging, CalibanError] =
-    runtime2.unsafeRun(
-      TheChatService.use(layer =>
-          ChatApi.api.interpreter
-            .map(_.provideSomeLayer[ZEnv with SessionProvider with Logging](layer))
-        )
-    )
+  lazy val interpreter: GraphQLInterpreter[
+    Console with Clock with ChatService with SessionProvider with Logging,
+    CalibanError
+  ] =
+    runtime.unsafeRun(ChatApi.api.interpreter)
 
   def sendMessage(
     msg:       String,
     channelId: ChannelId,
     toUser:    Option[User]
-  ): ZIO[SessionProvider, Nothing, ChatMessage] = {
-    TheChatService.use(layer =>
-      (
-        for {
-          chat <- ZIO.service[Service]
-          sent <- chat.say(SayRequest(msg, channelId, toUser))
-        } yield sent
-      ).provideSomeLayer[SessionProvider](layer ++ logLayer)
-    )
-  }
+  ): ZIO[ChatService with SessionProvider with Logging, Nothing, ChatMessage] =
+    for {
+      chat <- ZIO.service[Service]
+      sent <- chat.say(SayRequest(msg, channelId, toUser))
+    } yield sent
 
   def say(request: SayRequest): URIO[ChatService with SessionProvider with Logging, ChatMessage] =
     URIO.accessM(_.get.say(request))

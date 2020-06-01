@@ -34,7 +34,10 @@ object PasswordRecoveryAfterTokenPage {
   )
 
   class Backend($ : BackendScope[Props, State]) {
-    def handleSubmit(state: State, event: ReactEventFrom[HTMLFormElement]): Callback =
+    def handleSubmit(
+      state: State,
+      event: ReactEventFrom[HTMLFormElement]
+    ): Callback =
       if (state.password.isEmpty)
         Callback(event.preventDefault()) >> Toast.error("The passwords cannot be empty")
       else if (state.password != state.passwordAgain)
@@ -47,12 +50,10 @@ object PasswordRecoveryAfterTokenPage {
       state: State
     ): VdomElement = LoginControllerState.ctx.consume { _ =>
       <.div(
-        ^.width     := 800.px,
-        Form(
-          action    = "passwordReset",
-          method    = "post",
-          onSubmit = {(event, _) => handleSubmit(state, event)})
-        (
+        ^.width := 800.px,
+        Form(action = "passwordReset", method = "post", onSubmit = { (event, _) =>
+          handleSubmit(state, event)
+        })(
           FormField()(
             Label()("Password"),
             Input(

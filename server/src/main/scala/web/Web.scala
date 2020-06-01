@@ -16,17 +16,24 @@
 
 package web
 
-import akka.event.{Logging, LoggingAdapter}
-import akka.http.javadsl.server.Route
+import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl._
 import api.Api
+import api.config.Config
+import api.token.TokenHolder
 import chat.ChatService
-import chat.ChatService.ChatService
 import core.{Core, CoreActors}
-import zio.{CancelableFuture, Task, UIO, ZIO}
+import dao.{DatabaseProvider, LiveRepository, MySQLDatabaseProvider, Repository}
+import game.UserConnectionRepo
+import mail.CourierPostman
+import mail.Postman.Postman
+import zio.logging.slf4j.Slf4jLogger
+import zio.logging.{Logging, log}
+import zio.{ULayer, ZIO, ZLayer}
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 // $COVERAGE-OFF$ This is actual code that we can't test, so we shouldn't report on it
@@ -44,61 +51,77 @@ import scala.util.control.NonFatal
 trait Web {
   this: Api with CoreActors with Core =>
 
-  private val log: LoggingAdapter = Logging.getLogger(actorSystem, this)
+  private val akkaLog: LoggingAdapter = akka.event.Logging.getLogger(actorSystem, this)
 
-  val config = api.config.live
+  private val config: Config.Service = api.config.live
 
-  val serverSource: Source[Http.IncomingConnection, Future[Http.ServerBinding]] =
+  private val serverSource: Source[Http.IncomingConnection, Future[Http.ServerBinding]] =
     Http()
       .bind(
         interface = config.config.getString(s"${config.configKey}.host"),
         port = config.config.getInt(s"${config.configKey}.port")
       )
 
-  val bindingFuture: Future[Http.ServerBinding] =
-    serverSource
-      .to(Sink.foreach { connection => // foreach materializes the source
-        log.debug("Accepted new connection from " + connection.remoteAddress)
-        // ... and then actually handle the connection
-        try {
-          connection.flow.joinMat(routes)(Keep.both).run()
-          ()
-        } catch {
-          case NonFatal(e) =>
-            log.error(e, "Could not materialize handling flow for {}", connection)
-            throw e
+  private val shutdownDeadline: FiniteDuration = 30.seconds
+
+  private val binding: ZIO[Any, Throwable, Http.ServerBinding] = {
+    val postmanLayer: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config))
+    val databaseProviderLayer: ULayer[DatabaseProvider] =
+      ZLayer.succeed(new MySQLDatabaseProvider() {})
+    val configLayer:     ULayer[Config] = ZLayer.succeed(config)
+    val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
+    val repositoryLayer: ULayer[Repository] = ZLayer.succeed(new LiveRepository() {})
+
+    ChatService.make().memoize.use { chatServiceLayer =>
+      val fullLayer = zio.ZEnv.live ++ chatServiceLayer ++ loggingLayer ++ configLayer ++ databaseProviderLayer ++ repositoryLayer ++ ZLayer
+        .succeed(UserConnectionRepo.live) ++ postmanLayer ++ ZLayer.succeed(
+        TokenHolder.live
+      )
+      println("Binding method start")
+      (for {
+        _      <- log.info("Initializing Routes")
+        routes <- routes
+        _      <- log.info("Initializing Binding")
+        binding <- {
+          ZIO.fromFuture { implicit ec =>
+            serverSource
+              .to(Sink.foreach { connection => // foreach materializes the source
+                akkaLog.debug("Accepted new connection from " + connection.remoteAddress)
+                // ... and then actually handle the connection
+                try {
+                  connection.flow.joinMat(routes)(Keep.both).run()
+                  ()
+                } catch {
+                  case NonFatal(e) =>
+                    akkaLog.error(e, "Could not materialize handling flow for {}", connection)
+                    throw e
+                }
+              }).run().map { b =>
+                sys.addShutdownHook {
+                  b.terminate(hardDeadline = shutdownDeadline)
+                    .onComplete { _ =>
+                      actorSystem.terminate()
+                      akkaLog.info("Termination completed")
+                    }
+                  akkaLog.info("Received termination signal")
+                }
+                b
+              }
+
+          }
         }
-      })
-      .run()
-
-
-  val zRoutes: ZIO[ChatService, Throwable, Route]
-
-  val zBindingFuture =
-    ChatService.TheChatService.use { chatLayer =>
-      for {
-        routes <- zRoutes.provideCustomLayer(chatLayer)
-      } yield routes
-
-      val z: Task[Http.ServerBinding] = ZIO.fromFuture { ec =>
-        serverSource
-          .to(Sink.foreach { connection => // foreach materializes the source
-            log.debug("Accepted new connection from " + connection.remoteAddress)
-            // ... and then actually handle the connection
-            try {
-              connection.flow.joinMat(routes)(Keep.both).run()
-              ()
-            } catch {
-              case NonFatal(e) =>
-                log.error(e, "Could not materialize handling flow for {}", connection)
-                throw e
-            }
-          })
-          .run()
-      }
-
-        val fut: Future = zio.Runtime.default.unsafeRunToFuture(z)
-        fut
+      } yield binding).provideLayer(fullLayer)
     }
+  }
+
+  def start: Future[Nothing] = {
+    implicit val ec: ExecutionContext = actorSystem.dispatcher
+    lazy val webRuntime = zio.Runtime.default
+    webRuntime.unsafeRunToFuture(binding).failed.map { ex =>
+      akkaLog.error("server binding error:", ex)
+      actorSystem.terminate()
+      sys.exit(1)
+    }
+  }
 }
 // $COVERAGE-ON$
