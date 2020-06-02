@@ -318,7 +318,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               user,
               ChannelId.lobbyChannel,
               onPrivateMessage =
-                Option(msg => $.modState(_.copy(privateMessage = Option(msg))) >> init())
+                Option(msg => $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(<.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg))  >> init())
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             TagMod(
@@ -353,13 +353,13 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                     Button(onClick = (_, _) => {
                       calibanCallThroughJsonOpt[Mutations, Game](
                         Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
-                        game => $.modState(_.copy(gameInProgress = Option(game)))
+                        game => $.modState(_.copy(gameInProgress = Option(game))) >> init()
                       )
                     })("Aceptar"),
                     Button(onClick = (_, _) => {
                       calibanCall[Mutations, Option[Boolean]](
                         Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
-                        _ => Callback.alert("Invitacion rechazada")
+                        _ => Toast.success("Invitación rechazada") >> init()
                       ) >> init()
                     })("Rechazar")
                   )

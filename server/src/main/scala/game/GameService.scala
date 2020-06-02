@@ -112,7 +112,7 @@ object GameService {
     ): ZIO[GameLayer with ChatService, GameException, Boolean]
     def inviteFriend(friend:          User):   ZIO[GameLayer, GameException, Boolean]
     def acceptGameInvitation(gameId:  GameId): ZIO[GameLayer, GameException, Game]
-    def declineGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Boolean]
+    def declineGameInvitation(gameId: GameId): ZIO[GameLayer with ChatService, GameException, Boolean]
     def acceptFriendship(friend:      User):   ZIO[GameLayer, GameException, Boolean]
     def unfriend(enemy:               User):   ZIO[GameLayer, GameException, Boolean]
 
@@ -176,7 +176,7 @@ object GameService {
     URIO.accessM(_.get.acceptGameInvitation(gameId))
   def declineGameInvitation(
     gameId: GameId
-  ): ZIO[GameService with GameLayer, GameException, Boolean] =
+  ): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
     URIO.accessM(_.get.declineGameInvitation(gameId))
 
   def gameStream(
@@ -370,12 +370,14 @@ object GameService {
           loggedInUsers      <- userConnectionRepo.connectionMap.map(_.values.take(20).toSeq)
         } yield loggedInUsers
 
+      //TODO may want to change to unidirectional friendships
       def acceptFriendship(friend: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
           repository <- ZIO.service[Repository.Service]
           friends    <- repository.userOperations.friend(friend, confirmed = true)
         } yield friends).mapError(GameException.apply)
 
+      //TODO may want to change to unidirectional friendships
       def inviteFriend(friend: User): ZIO[GameLayer, GameException, Boolean] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
@@ -423,7 +425,7 @@ object GameService {
             repository.gameOperations.upsert(withInvite).map((_, invitation))
           }
           _ <- ChatService
-            .sendMessage(s"${user.name} te invito a jugar", ChannelId.directChannel, invitedOpt)
+            .sendMessage(s"${user.name} te invitó a jugar", ChannelId.directChannel, invitedOpt)
           _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
           envelopeOpt <- ZIO.foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
             case (invited, game) =>
@@ -468,7 +470,7 @@ object GameService {
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
         } yield afterApply._1).mapError(GameException.apply)
 
-      def declineGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Boolean] =
+      def declineGameInvitation(gameId: GameId): ZIO[GameLayer with ChatService, GameException, Boolean] =
         (for {
           repository <- ZIO.service[Repository.Service]
           user       <- ZIO.access[SessionProvider](_.get.session.user)
@@ -481,8 +483,14 @@ object GameService {
             if (!game.jugadores.exists(_.user.id == user.id))
               throw GameException(s"User ${user.id} is not even in this game")
             val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
-            repository.gameOperations.upsert(afterEvent).map((_, declinedEvent))
+            repository.gameOperations
+              .upsert(afterEvent).map((_, declinedEvent))
+              .provideSomeLayer[DatabaseProvider with Logging](godLayer)
           }
+          _ <- ZIO.foreachPar(afterEvent.toSeq.flatMap(_._1.jugadores))(jugador =>
+            ChatService
+                 .sendMessage(s"${user.name} rechazó la invitación", ChannelId.directChannel, Option(jugador.user))
+          )
           _ <- ZIO.foreachPar(afterEvent)(g => repository.gameOperations.updatePlayers(g._1))
           _ <- ZIO.foreachPar(afterEvent) {
             case (_, event) =>

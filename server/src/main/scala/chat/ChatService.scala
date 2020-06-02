@@ -69,10 +69,10 @@ object ChatService {
     queue:        Queue[ChatMessage]
   )
 
-  def make(): ZLayer[Any, Nothing, ChatService] = ZLayer.fromEffect {
+  def make(): ZLayer[Logging, Nothing, ChatService] = ZLayer.fromEffect {
     for {
       chatMessageQueue <- Ref.make(List.empty[MessageQueue])
-      _                <- ZIO.succeed(println("========================== This should only ever be seen once."))
+      _                <- log.info("========================== This should only ever be seen once.")
     } yield new Service {
       override def say(
         request: SayRequest

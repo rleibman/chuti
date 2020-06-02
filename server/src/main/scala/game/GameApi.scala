@@ -72,7 +72,7 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
       Boolean
     ],
     acceptGameInvitation:  GameId => ZIO[GameService with GameLayer, GameException, Json],
-    declineGameInvitation: GameId => ZIO[GameService with GameLayer, GameException, Boolean],
+    declineGameInvitation: GameId => ZIO[GameService with GameLayer with ChatService, GameException, Boolean],
     play:                  PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
   )
   case class Subscriptions(

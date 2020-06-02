@@ -83,16 +83,17 @@ trait GameAbstractSpec extends MockitoSugar {
   ): ULayer[
     DatabaseProvider with Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
   ] = {
+    val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(databaseProvider) ++
       ZLayer.succeed(new Repository.Service {
         override val gameOperations: GameOperations = gameOps
         override val userOperations: Repository.UserOperations = userOps
       }) ++
-      Slf4jLogger.make((_, b) => b) ++
+      loggingLayer ++
       ZLayer.succeed(TokenHolder.live) ++
       ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman) ++
-      ChatService.make()
+      (loggingLayer >>> ChatService.make())
   }
 
   def writeGame(

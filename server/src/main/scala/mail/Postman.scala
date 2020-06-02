@@ -45,9 +45,9 @@ object Postman {
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a ser su amigo en chuti.fun")
+          .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
           .content(Multipart().html(s"""<html><body>
-                                     |<p>${user.name.capitalize}<p> Te invito a ser su amigo en chuti.fun</p>
+                                     |<p>${user.name.capitalize}<p> Te invitó a ser su amigo en chuti.fun</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
                                      |</body></html>""".stripMargin))
@@ -66,9 +66,9 @@ object Postman {
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a ser su amigo en chuti.fun")
+          .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
           .content(Multipart().html(s"""<html><body>
-               |<p>${user.name.capitalize}<p> Te invito a ser su amigo en chuti.fun</p>
+               |<p>${user.name.capitalize}<p> Te invitó a ser su amigo en chuti.fun</p>
                |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                |<p>Te esperamos pronto! </p>
                |</body></html>""".stripMargin))
@@ -84,14 +84,14 @@ object Postman {
         token       <- tokenHolder.createToken(invited, TokenPurpose.GameInvite)
       } yield {
         val linkUrl =
-          s"http://$webHostName/acceptGameInvite?gameId=${game.id.getOrElse(0)}&token=$token"
+          s"http://$webHostName/#lobby"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invito a jugar chuti en chuti.fun")
+          .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
           .content(Multipart().html(s"""<html><body>
-                                     |<p>${user.name.capitalize}<p> Te invito a jugar chuti, hasta ahorita se han apuntado en este juego</p>
+                                     |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
                                      |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
@@ -107,12 +107,12 @@ object Postman {
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
-          .subject("chuti.fun: lost password reset")
+          .subject("chuti.fun: perdiste tu contraseña")
           .content(Multipart().html(s"""<html><body>
-                                 | <p>We are sorry you've lost your password</p>
-                                 | <p>We have temporarily created a link for you that will allow you to reset it.</p>
-                                 | <p>Please go here to reset it: <a href="$linkUrl">$linkUrl</a>.</p>
-                                 | <p>Note that this token will expire after a while, please change your password as soon as you can</p>
+                                 | <p>Que triste que perdiste tu contraseña</p>
+                                 | <p>Creamos un enlace por medio del cual podrás elegir una nueva.</p>
+                                 | <p>Por favor haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
+                                 | <p>Nota que este enlace estará activo por un tiempo limitado</p>
                                  |</body></html>""".stripMargin))
       }
 
@@ -126,12 +126,12 @@ object Postman {
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .to(new InternetAddress(user.email))
-          .subject("Welcome to chuti.fun!")
+          .subject("Bienvenido a chuti.fun!")
           .content(Multipart().html(s"""<html><body>
-                                       | <p>Thank you for registering!</p>
-                                       | <p>All you need to do now is go here to confirm your registration.</p>
-                                       | <p>Please go here: <a href="$linkUrl">$linkUrl</a>.</p>
-                                       | <p>Note that this token will expire after a while, if you take too long you'll have to register again</p>
+                                       | <p>Gracias por registrarte!</p>
+                                       | <p>Todo lo que tienes que hacer ahora es ir al siguiente enlace para confirmar tu registro.</p>
+                                       | <p>Por haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
+                                       | <p>Nota que este enlace estará activo por un tiempo limitado, si te tardas mucho tendrás que intentar de nuevo</p>
                                        |</body></html>""".stripMargin))
       }
   }
@@ -142,7 +142,6 @@ object Postman {
   */
 object CourierPostman {
   def live(config: Config.Service): Postman.Service = new Postman.Service {
-    println("created courier postman")
     lazy val mailer: Mailer = {
       val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
       System.setProperty("mail.smtp.localhost", localhost)

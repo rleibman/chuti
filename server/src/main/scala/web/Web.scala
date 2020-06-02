@@ -65,19 +65,23 @@ trait Web {
   private val shutdownDeadline: FiniteDuration = 30.seconds
 
   private val binding: ZIO[Any, Throwable, Http.ServerBinding] = {
-    val postmanLayer: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config))
+      ZLayer.succeed(CourierPostman.live(config))
     val databaseProviderLayer: ULayer[DatabaseProvider] =
       ZLayer.succeed(new MySQLDatabaseProvider() {})
     val configLayer:     ULayer[Config] = ZLayer.succeed(config)
+    val postmanLayer: ZLayer[Config, Nothing, Postman] = ZLayer.fromEffect {
+      for {
+        config <- ZIO.service[Config.Service]
+      } yield CourierPostman.live(config)
+    }
     val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
     val repositoryLayer: ULayer[Repository] = ZLayer.succeed(new LiveRepository() {})
 
     ChatService.make().memoize.use { chatServiceLayer =>
-      val fullLayer = zio.ZEnv.live ++ chatServiceLayer ++ loggingLayer ++ configLayer ++ databaseProviderLayer ++ repositoryLayer ++ ZLayer
-        .succeed(UserConnectionRepo.live) ++ postmanLayer ++ ZLayer.succeed(
+      val fullLayer = zio.ZEnv.live ++ (loggingLayer >>> chatServiceLayer) ++ loggingLayer ++ configLayer ++ databaseProviderLayer ++ repositoryLayer ++ ZLayer
+        .succeed(UserConnectionRepo.live) ++ (configLayer >>> postmanLayer) ++ ZLayer.succeed(
         TokenHolder.live
       )
-      println("Binding method start")
       (for {
         _      <- log.info("Initializing Routes")
         routes <- routes

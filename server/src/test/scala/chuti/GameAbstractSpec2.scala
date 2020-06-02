@@ -146,14 +146,15 @@ trait GameAbstractSpec2 extends MockitoSugar {
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
+    val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(databaseProvider) ++
       repositoryLayer(gameFiles: _*) ++
       ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman) ++
-      Slf4jLogger.make((_, b) => b) ++
+      loggingLayer ++
       ZLayer.succeed(TokenHolder.live) ++
       GameService.make() ++
-      ChatService.make()
+      (loggingLayer >>> ChatService.make())
   }
 
   def writeGame(

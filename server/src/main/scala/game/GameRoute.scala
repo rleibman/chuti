@@ -17,6 +17,7 @@
 package game
 
 import akka.http.scaladsl.server.{Directives, Route}
+import api.config.Config
 import api.token.TokenHolder
 import api.{HasActorSystem, config}
 import caliban.interop.circe.AkkaHttpCirceAdapter
@@ -34,10 +35,6 @@ import zio.logging.Logging
 import scala.concurrent.ExecutionContextExecutor
 
 case class GameArgs()
-
-object GameRoute {
-  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
-}
 
 trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
