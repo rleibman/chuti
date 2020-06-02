@@ -200,11 +200,11 @@ trait GameAbstractSpec2 extends MockitoSugar {
     assert(cantante.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad))
   }
 
-  def newGame(): RIO[TestLayer, Game] =
+  def newGame(satoshiPerPoint: Int): RIO[TestLayer, Game] =
     for {
       gameService <- ZIO.access[GameService](_.get)
       //Start the game
-      game <- gameService.newGame().provideSomeLayer[TestLayer](userLayer(user1))
+      game <- gameService.newGame(satoshiPerPoint).provideSomeLayer[TestLayer](userLayer(user1))
     } yield game
 
   def getReadyToPlay(gameId: GameId): ZIO[TestLayer, Throwable, Game] = {
@@ -280,7 +280,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
   def playFullGame =
     (for {
       gameService <- ZIO.access[GameService](_.get)
-      start       <- newGame()
+      start       <- newGame(satoshiPerPoint = 100)
       _           <- zio.console.putStrLn(s"Game ${start.id.get} started")
       assert1 <- {
         ZIO.succeed {

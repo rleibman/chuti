@@ -488,7 +488,7 @@ case class Da(
     }
     val enJuego = game.enJuego :+ (jugador.id.get, ficha)
     //Si es el cuarto jugador dando la ficha
-    val modifiedGame: Game = if (enJuego.size == 4) {
+    val modifiedGame: Game = if (enJuego.size == game.numPlayers) {
       //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
       //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
       //TODO rewrite this using game.fichaGanadora(

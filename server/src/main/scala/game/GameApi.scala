@@ -55,6 +55,8 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
     connectionId: ConnectionId
   )
 
+  case class NewGameArgs(satoshiPerPoint: Int)
+
   case class Queries(
     getGame:          GameId => ZIO[GameService with GameLayer, GameException, Option[Json]],
     getGameForUser:   ZIO[GameService with GameLayer, GameException, Option[Json]],
@@ -63,7 +65,7 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
     getLoggedInUsers: ZIO[GameService with GameLayer, GameException, Seq[User]]
   )
   case class Mutations(
-    newGame:        ZIO[GameService with GameLayer, GameException, Json],
+    newGame:        NewGameArgs => ZIO[GameService with GameLayer, GameException, Json],
     joinRandomGame: ZIO[GameService with GameLayer, GameException, Json],
     abandonGame:    GameId => ZIO[GameService with GameLayer, GameException, Boolean],
     inviteToGame: GameInviteArgs => ZIO[
@@ -71,9 +73,13 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
       GameException,
       Boolean
     ],
-    acceptGameInvitation:  GameId => ZIO[GameService with GameLayer, GameException, Json],
-    declineGameInvitation: GameId => ZIO[GameService with GameLayer with ChatService, GameException, Boolean],
-    play:                  PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
+    acceptGameInvitation: GameId => ZIO[GameService with GameLayer, GameException, Json],
+    declineGameInvitation: GameId => ZIO[
+      GameService with GameLayer with ChatService,
+      GameException,
+      Boolean
+    ],
+    play: PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
   )
   case class Subscriptions(
     gameStream: GameStreamArgs => ZStream[GameService with GameLayer, GameException, Json],
@@ -133,10 +139,11 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
           getLoggedInUsers = GameService.getLoggedInUsers
         ),
         Mutations(
-          newGame = for {
-            game     <- GameService.newGame()
-            filtered <- filterSecretKnowledge(game)
-          } yield filtered.asJson,
+          newGame = newGameArgs =>
+            for {
+              game     <- GameService.newGame(satoshiPerPoint = newGameArgs.satoshiPerPoint)
+              filtered <- filterSecretKnowledge(game)
+            } yield filtered.asJson,
           joinRandomGame = for {
             game     <- GameService.joinRandomGame()
             filtered <- filterSecretKnowledge(game)
@@ -166,7 +173,9 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
       printSlowQueries(3.seconds) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  Idle\n  Offline\n  Playing\n}\n\ninput ConnectionIdInput {\n  value: String!\n}\n\ninput GameIdInput {\n  value: Int!\n}\n\ninput UserIdInput {\n  value: Int!\n}\n\ntype ChannelId {\n  value: Int!\n}\n\ntype Mutations {\n  newGame: Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  play(gameId: GameIdInput!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: GameIdInput!, connectionId: ConnectionIdInput!): Json!\n  userStream(value: String!): UserEvent!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  currentChannelId: ChannelId\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}\n\ntype UserId {\n  value: Int!\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  Idle\n  Offline\n  Playing\n}\n\ninput ConnectionIdInput {\n  value: String!\n}\n\ninput GameIdInput {\n  value: Int!\n}\n\ninput UserIdInput {\n  value: Int!\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  play(gameId: GameIdInput!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: GameIdInput!, connectionId: ConnectionIdInput!): Json!\n  userStream(value: String!): UserEvent!\n}\n\ntype User {\n  id: UserId\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}\n\ntype UserId {\n  value: Int!\n}"
+
+
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala
 }

@@ -60,7 +60,7 @@ trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
             adapter.makeWebSocketService(
               interpreter,
               skipValidation = false,
-              keepAliveTime = Option(58.seconds)
+              keepAliveTime = Option(5.minutes)
             )
           } ~ path("graphiql") {
           getFromFile(s"$staticContentDir/graphiql.html")

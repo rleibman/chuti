@@ -34,12 +34,8 @@ input UserIdInput {
   value: Int!
 }
 
-type ChannelId {
-  value: Int!
-}
-
 type Mutations {
-  newGame: Json
+  newGame(satoshiPerPoint: Int!): Json
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
   inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean
@@ -66,7 +62,6 @@ type User {
   email: String!
   name: String!
   userStatus: UserStatus!
-  currentChannelId: ChannelId
   created: Long!
   lastUpdated: Long!
   lastLoggedIn: Long

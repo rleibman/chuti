@@ -76,21 +76,13 @@ object GameClient {
     }
   }
 
-  type ChannelId
-  object ChannelId {
-    def value: SelectionBuilder[ChannelId, Int] = Field("value", Scalar())
-  }
-
   type User
   object User {
     def id[A](innerSelection: SelectionBuilder[UserId, A]): SelectionBuilder[User, Option[A]] =
       Field("id", OptionOf(Obj(innerSelection)))
-    def email:      SelectionBuilder[User, String] = Field("email", Scalar())
-    def name:       SelectionBuilder[User, String] = Field("name", Scalar())
-    def userStatus: SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
-    def currentChannelId[A](
-      innerSelection: SelectionBuilder[ChannelId, A]
-    ):               SelectionBuilder[User, Option[A]] = Field("currentChannelId", OptionOf(Obj(innerSelection)))
+    def email:       SelectionBuilder[User, String] = Field("email", Scalar())
+    def name:        SelectionBuilder[User, String] = Field("name", Scalar())
+    def userStatus:  SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
     def created:     SelectionBuilder[User, Long] = Field("created", Scalar())
     def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
     def lastLoggedIn: SelectionBuilder[User, Option[Long]] =
@@ -155,7 +147,12 @@ object GameClient {
 
   type Mutations = RootMutation
   object Mutations {
-    def newGame: SelectionBuilder[RootMutation, Option[Json]] = Field("newGame", OptionOf(Scalar()))
+    def newGame(satoshiPerPoint: Int): SelectionBuilder[RootMutation, Option[Json]] =
+      Field(
+        "newGame",
+        OptionOf(Scalar()),
+        arguments = List(Argument("satoshiPerPoint", satoshiPerPoint))
+      )
     def joinRandomGame: SelectionBuilder[RootMutation, Option[Json]] =
       Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
@@ -204,3 +201,4 @@ object GameClient {
   }
 
 }
+

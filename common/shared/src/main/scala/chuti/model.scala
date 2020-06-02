@@ -250,6 +250,7 @@ object GameStatus {
   }
   case object requiereSopa extends GameStatus {
     override def value: String = "requiereSopa"
+    override def enJuego: Boolean = true
   }
   object abandonado extends GameStatus {
     override def value: String = "abandonado"
@@ -318,20 +319,19 @@ object Game {
         }
     }
   }
-
 }
 
 case class Game(
-  id:                Option[GameId],
-  gameStatus:        GameStatus = comienzo,
-  currentEventIndex: Int = 0,
-  created:           LocalDateTime = LocalDateTime.now,
-  //Game State
-  triunfo:         Option[Triunfo] = None,
-  enJuego:         List[(UserId, Ficha)] = List.empty,
-  estrictaDerecha: Boolean = false,
-  jugadores:       List[Jugador] = List.empty,
-  pointsPerDollar: Double = 100.0
+                 id:                Option[GameId],
+                 gameStatus:        GameStatus = comienzo,
+                 currentEventIndex: Int = 0,
+                 created:           LocalDateTime = LocalDateTime.now,
+                 //Game State
+                 triunfo:          Option[Triunfo] = None,
+                 enJuego:          List[(UserId, Ficha)] = List.empty,
+                 estrictaDerecha:  Boolean = false,
+                 jugadores:        List[Jugador] = List.empty,
+                 satoshiPerPoint: Double = 100.0
 ) {
   //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
@@ -525,7 +525,7 @@ case class Game(
 
   def nextIndex: Int = currentEventIndex + 1
 
-  val abandonedPenalty = 1000 //In satoshi
+  val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
   val numPlayers = 4
 
   def canTransitionTo(transitionState: GameStatus): Boolean = {

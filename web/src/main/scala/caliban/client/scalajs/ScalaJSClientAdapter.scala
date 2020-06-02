@@ -47,7 +47,7 @@ trait ScalaJSClientAdapter {
     operationId:          String,
     onData:               (String, Option[A]) => Callback,
     connectionParams:     Option[Json] = None,
-    timeout:              Duration = 120.seconds, //how long the client should wait in ms for a keep-alive message from the server (default 30000 ms), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
+    timeout:              Duration = 8.minutes, //how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
     onConnected: (String, Option[Json]) => Callback = { (_, _) =>

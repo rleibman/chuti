@@ -25,8 +25,8 @@ import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti._
 import chat._
+import chuti._
 import components.{Confirm, Toast}
 import game.GameClient.{
   ConnectionIdInput,
@@ -46,8 +46,10 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom.raw.HTMLInputElement
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
+import typings.semanticUiReact.inputInputMod.InputOnChangeData
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -62,15 +64,25 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     isLoggedIn: Boolean
   )
 
+  object Dialog extends Enumeration {
+    type Dialog = Value
+    val none, newGame = Value
+  }
+  import Dialog._
+
+  case class NewGameDialogState(satoshiPerPoint: Int = 100)
+
   case class State(
-    friends:        Seq[User] = Seq.empty,
-    loggedInUsers:  Seq[User] = Seq.empty,
-    privateMessage: Option[ChatMessage] = None,
-    gameInProgress: Option[Game] = None,
-    invites:        Seq[Game] = Seq.empty,
-    userStream:     Option[WebSocketHandler] = None,
-    gameStream:     Option[WebSocketHandler] = None,
-    gameEventQueue: Seq[GameEvent] = Seq.empty
+    friends:            Seq[User] = Seq.empty,
+    loggedInUsers:      Seq[User] = Seq.empty,
+    privateMessage:     Option[ChatMessage] = None,
+    gameInProgress:     Option[Game] = None,
+    invites:            Seq[Game] = Seq.empty,
+    userStream:         Option[WebSocketHandler] = None,
+    gameStream:         Option[WebSocketHandler] = None,
+    gameEventQueue:     Seq[GameEvent] = Seq.empty,
+    dlg:                Dialog = none,
+    newGameDialogState: Option[NewGameDialogState] = None
   ) {
     lazy val usersAndFriends: Seq[ExtUser] =
       loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
@@ -311,14 +323,62 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomElement = {
+      def renderNewGameDialog = Modal(open = s.dlg == Dialog.newGame)(
+          ModalHeader()("Juego Nuevo"),
+          ModalContent()(
+            FormField()(
+              Label()("Satoshi por punto"),
+              Input(
+                required = true,
+                name = "satoshiPerPoint",
+                `type` = "number",
+                min = 100,
+                max = 10000,
+                step = 100,
+                value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
+                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                  $.modState(s =>
+                    s.copy(newGameDialogState = s.newGameDialogState
+                      .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
+                    )
+                  )
+                }
+              )()
+            )
+          ),
+          ModalActions()(
+            Button(onClick = { (_, _) =>
+              $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
+            })("Cancelar"),
+            Button(onClick = { (_, _) =>
+              Callback.log(s"Calling newGame") >>
+                calibanCallThroughJsonOpt[Mutations, Game](
+                  Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
+                  game =>
+                    Toast.success("Juego empezado!") >> $.modState(
+                      _.copy(
+                        gameInProgress = Option(game),
+                        dlg = Dialog.none,
+                        newGameDialogState = None
+                      )
+                    )
+                )
+            })("Crear")
+          )
+        )
+
       p.chutiState.user
         .fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) { user =>
           <.div(
+            renderNewGameDialog,
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
-              onPrivateMessage =
-                Option(msg => $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(<.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg))  >> init())
+              onPrivateMessage = Option(msg =>
+                $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(
+                  <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
+                ) >> init()
+              )
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             TagMod(
@@ -333,15 +393,12 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                   )
               )("Juega Con Quien sea"),
               Button(onClick = (_, _) =>
-                Callback.log(s"Calling newGame") >>
-                  calibanCallThroughJsonOpt[Mutations, Game](
-                    Mutations.newGame,
-                    game =>
-                      Toast.success("Juego empezado!") >> $.modState(
-                        _.copy(gameInProgress = Option(game))
-                      )
-                  )
-              )("Empezar Juego Nuevo")
+                $.modState(
+                  _.copy(dlg = Dialog.newGame, newGameDialogState = Option(NewGameDialogState()))
+                )
+              )(
+                "Empezar Juego Nuevo"
+              )
             ).when(s.gameInProgress.isEmpty),
             TagMod(
               Container(key = "invitaciones")(
@@ -445,8 +502,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               Container(key = "gameInProgress")(
                 Header()("Juego en Curso"),
                 game.gameStatus match {
-                  case status if status.enJuego =>
-                    EmptyVdom
+                  case   status if status.enJuego =>
+                    EmptyVdom //TODO enter game
                   /* //This is not necessary, I don't think. You never get to the lobby if you have a game in progress
                   Container()(
                     Header()("Juego En Progreso"),
@@ -484,13 +541,13 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                           )
                       )
                     )
-                  case GameStatus.`requiereSopa` => EmptyVdom //I don't even know how we got here
+                  case GameStatus.abandonado => EmptyVdom
                 },
                 Button(onClick = (_, _) =>
                   Confirm.confirm(
                     header = Option("Abandonar juego"),
                     question =
-                      s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty} satoshi",
+                      s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
                     onConfirm = Callback.log(s"Abandoning game") >>
                       calibanCall[Mutations, Option[Boolean]](
                         Mutations.abandonGame(game.id.get.value),
