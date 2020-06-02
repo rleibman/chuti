@@ -65,10 +65,10 @@ trait Web {
   private val shutdownDeadline: FiniteDuration = 30.seconds
 
   private val binding: ZIO[Any, Throwable, Http.ServerBinding] = {
-      ZLayer.succeed(CourierPostman.live(config))
+    ZLayer.succeed(CourierPostman.live(config))
     val databaseProviderLayer: ULayer[DatabaseProvider] =
       ZLayer.succeed(new MySQLDatabaseProvider() {})
-    val configLayer:     ULayer[Config] = ZLayer.succeed(config)
+    val configLayer: ULayer[Config] = ZLayer.succeed(config)
     val postmanLayer: ZLayer[Config, Nothing, Postman] = ZLayer.fromEffect {
       for {
         config <- ZIO.service[Config.Service]

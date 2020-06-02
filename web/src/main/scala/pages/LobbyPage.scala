@@ -324,48 +324,48 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
       s: State
     ): VdomElement = {
       def renderNewGameDialog = Modal(open = s.dlg == Dialog.newGame)(
-          ModalHeader()("Juego Nuevo"),
-          ModalContent()(
-            FormField()(
-              Label()("Satoshi por punto"),
-              Input(
-                required = true,
-                name = "satoshiPerPoint",
-                `type` = "number",
-                min = 100,
-                max = 10000,
-                step = 100,
-                value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
-                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                  $.modState(s =>
-                    s.copy(newGameDialogState = s.newGameDialogState
-                      .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
+        ModalHeader()("Juego Nuevo"),
+        ModalContent()(
+          FormField()(
+            Label()("Satoshi por punto"),
+            Input(
+              required = true,
+              name = "satoshiPerPoint",
+              `type` = "number",
+              min = 100,
+              max = 10000,
+              step = 100,
+              value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
+              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                $.modState(s =>
+                  s.copy(newGameDialogState = s.newGameDialogState
+                    .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
+                  )
+                )
+              }
+            )()
+          )
+        ),
+        ModalActions()(
+          Button(onClick = { (_, _) =>
+            $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
+          })("Cancelar"),
+          Button(onClick = { (_, _) =>
+            Callback.log(s"Calling newGame") >>
+              calibanCallThroughJsonOpt[Mutations, Game](
+                Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
+                game =>
+                  Toast.success("Juego empezado!") >> $.modState(
+                    _.copy(
+                      gameInProgress = Option(game),
+                      dlg = Dialog.none,
+                      newGameDialogState = None
                     )
                   )
-                }
-              )()
-            )
-          ),
-          ModalActions()(
-            Button(onClick = { (_, _) =>
-              $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
-            })("Cancelar"),
-            Button(onClick = { (_, _) =>
-              Callback.log(s"Calling newGame") >>
-                calibanCallThroughJsonOpt[Mutations, Game](
-                  Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
-                  game =>
-                    Toast.success("Juego empezado!") >> $.modState(
-                      _.copy(
-                        gameInProgress = Option(game),
-                        dlg = Dialog.none,
-                        newGameDialogState = None
-                      )
-                    )
-                )
-            })("Crear")
-          )
+              )
+          })("Crear")
         )
+      )
 
       p.chutiState.user
         .fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) { user =>
@@ -502,7 +502,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               Container(key = "gameInProgress")(
                 Header()("Juego en Curso"),
                 game.gameStatus match {
-                  case   status if status.enJuego =>
+                  case status if status.enJuego =>
                     EmptyVdom //TODO enter game
                   /* //This is not necessary, I don't think. You never get to the lobby if you have a game in progress
                   Container()(

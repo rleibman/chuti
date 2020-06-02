@@ -45,7 +45,9 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
       for {
         gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
         operation <- gameService
-          .newGame(satoshiPerPoint = 100).provideCustomLayer(layer ++ SessionProvider.layer(ChutiSession(user1)))
+          .newGame(satoshiPerPoint = 100).provideCustomLayer(
+            layer ++ SessionProvider.layer(ChutiSession(user1))
+          )
         _ <- writeGame(operation, GAME_NEW)
       } yield operation
     }
