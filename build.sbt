@@ -43,7 +43,7 @@ lazy val akkaVersion = "2.6.5"
 lazy val akkaHttpVersion = "10.1.12"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.8.0"
+lazy val calibanVersion = "0.8.1"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.0-RC20"
 
@@ -138,7 +138,7 @@ lazy val server: Project = project
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
       "org.scalatest" %% "scalatest"               % "3.1.2"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.3"   % "it, test" withSources ()
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.4"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))

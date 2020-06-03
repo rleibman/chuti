@@ -27,12 +27,14 @@ object UserStatus {
     case "Playing" => Playing
     case "Offline" => Offline
     case "Idle"    => Idle
+    case "Invited" => Invited
     case _         => throw new Exception(s"Can't build UserStatus out of $str")
   }
 
   case object Playing extends UserStatus
   case object Offline extends UserStatus
   case object Idle extends UserStatus
+  case object Invited extends UserStatus
 }
 
 case class User(

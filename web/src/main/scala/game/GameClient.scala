@@ -57,11 +57,13 @@ object GameClient {
   sealed trait UserStatus extends scala.Product with scala.Serializable
   object UserStatus {
     case object Idle extends UserStatus
+    case object Invited extends UserStatus
     case object Offline extends UserStatus
     case object Playing extends UserStatus
 
     implicit val decoder: ScalarDecoder[UserStatus] = {
       case StringValue("Idle")    => Right(UserStatus.Idle)
+      case StringValue("Invited") => Right(UserStatus.Invited)
       case StringValue("Offline") => Right(UserStatus.Offline)
       case StringValue("Playing") => Right(UserStatus.Playing)
       case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
@@ -69,6 +71,7 @@ object GameClient {
     implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
       override def encode(value: UserStatus): Value = value match {
         case UserStatus.Idle    => EnumValue("Idle")
+        case UserStatus.Invited => EnumValue("Invited")
         case UserStatus.Offline => EnumValue("Offline")
         case UserStatus.Playing => EnumValue("Playing")
       }
@@ -157,6 +160,17 @@ object GameClient {
       Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("abandonGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def inviteByEmail(
+      name:   String,
+      email:  String,
+      gameId: GameIdInput
+    ): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field(
+        "inviteByEmail",
+        OptionOf(Scalar()),
+        arguments =
+          List(Argument("name", name), Argument("email", email), Argument("gameId", gameId))
+      )
     def inviteToGame(
       userId: UserIdInput,
       gameId: GameIdInput
@@ -170,6 +184,12 @@ object GameClient {
       Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def declineGameInvitation(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field("declineGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def cancelUnacceptedInvitations(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field(
+        "cancelUnacceptedInvitations",
+        OptionOf(Scalar()),
+        arguments = List(Argument("value", value))
+      )
     def play(
       gameId:    GameIdInput,
       gameEvent: Json

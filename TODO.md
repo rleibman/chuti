@@ -1,17 +1,17 @@
 # TODO 
 
 - DONE. Paint all dominos
-- DOSE. Finalize wireframe
-    DONE - Where does the "table" go?
+- DONE. Finalize wireframe
+    - DONE Where does the "table" go?
 - DONE. Database
-    - mysql with json column 
+    - DONE mysql with json column 
 - DONE. Server
     - decide server technology.
-        - Zio, akka-http, caliban, circe
+      - DONE Zio, akka-http, caliban, circe
     - 
 - DONE. Client
-    - decide client technology
-        - Scalajs, scalablytyped, websockets, caliban, circe
+    - DONE decide client technology
+        - DONE Scalajs, scalablytyped, websockets, caliban, circe
     - code pages
         - Set up table
         - Game page

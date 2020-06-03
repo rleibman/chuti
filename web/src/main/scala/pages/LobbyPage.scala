@@ -66,23 +66,29 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
 
   object Dialog extends Enumeration {
     type Dialog = Value
-    val none, newGame = Value
+    val none, newGame, inviteExternal = Value
   }
   import Dialog._
 
   case class NewGameDialogState(satoshiPerPoint: Int = 100)
 
+  case class InviteExternalDialogState(
+    name:  String = "",
+    email: String = ""
+  )
+
   case class State(
-    friends:            Seq[User] = Seq.empty,
-    loggedInUsers:      Seq[User] = Seq.empty,
-    privateMessage:     Option[ChatMessage] = None,
-    gameInProgress:     Option[Game] = None,
-    invites:            Seq[Game] = Seq.empty,
-    userStream:         Option[WebSocketHandler] = None,
-    gameStream:         Option[WebSocketHandler] = None,
-    gameEventQueue:     Seq[GameEvent] = Seq.empty,
-    dlg:                Dialog = none,
-    newGameDialogState: Option[NewGameDialogState] = None
+    friends:                   Seq[User] = Seq.empty,
+    loggedInUsers:             Seq[User] = Seq.empty,
+    privateMessage:            Option[ChatMessage] = None,
+    gameInProgress:            Option[Game] = None,
+    invites:                   Seq[Game] = Seq.empty,
+    userStream:                Option[WebSocketHandler] = None,
+    gameStream:                Option[WebSocketHandler] = None,
+    gameEventQueue:            Seq[GameEvent] = Seq.empty,
+    dlg:                       Dialog = none,
+    newGameDialogState:        Option[NewGameDialogState] = None,
+    inviteExternalDialogState: Option[InviteExternalDialogState] = None
   ) {
     lazy val usersAndFriends: Seq[ExtUser] =
       loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
@@ -367,10 +373,70 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
         )
       )
 
+      def renderInviteExternalDialog = Modal(open = s.dlg == Dialog.inviteExternal)(
+        ModalHeader()("Invitar amigo externo"),
+        ModalContent()(
+          FormField()(
+            Label()("Nombre"),
+            Input(
+              required = true,
+              name = "Nombre",
+              value = s.inviteExternalDialogState.fold("")(_.name),
+              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                $.modState(s =>
+                  s.copy(inviteExternalDialogState = s.inviteExternalDialogState
+                    .map(_.copy(name = data.value.get.asInstanceOf[String]))
+                  )
+                )
+              }
+            )()
+          ),
+          FormField()(
+            Label()("Correo"),
+            Input(
+              required = true,
+              name = "Correo",
+              `type` = "email",
+              value = s.inviteExternalDialogState.fold("")(_.email),
+              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                $.modState(s =>
+                  s.copy(inviteExternalDialogState = s.inviteExternalDialogState
+                    .map(_.copy(email = data.value.get.asInstanceOf[String]))
+                  )
+                )
+              }
+            )()
+          )
+        ),
+        ModalActions()(
+          Button(onClick = { (_, _) =>
+            $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
+          })("Cancelar"),
+          s.gameInProgress.fold(EmptyVdom) { game =>
+            Button(onClick = {
+              (_, _) =>
+                Callback.log(s"Inviting user by email") >>
+                  calibanCall[Mutations, Option[Boolean]](
+                    Mutations.inviteByEmail(
+                      s.inviteExternalDialogState.fold("")(_.name),
+                      s.inviteExternalDialogState.fold("")(_.email),
+                      GameIdInput(game.id.fold(0)(_.value))
+                    ),
+                    _ =>
+                      Toast.success("Invitación mandada!") >> $.modState(
+                        _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                      )
+                  )
+            })("Invitar")
+          }
+        )
+      )
+
       p.chutiState.user
         .fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) { user =>
           <.div(
             renderNewGameDialog,
+            renderInviteExternalDialog,
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
@@ -534,7 +600,10 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                           .filter(!_.invited).map(_.user.name).mkString(",")}")
                           .when(game.jugadores.exists(!_.invited)),
                         Button(onClick = { (_, _) =>
-                          Callback.empty //TODO write this, needs new caliban call
+                          calibanCall[Mutations, Option[Boolean]](
+                            Mutations.cancelUnacceptedInvitations(game.id.get.value),
+                            _ => Toast.success("Jugadores cancelados") >> init()
+                          )
                         })("Cancelar invitaciones a aquellos que todavía no aceptan")
                           .when(
                             game.jugadores.exists(_.invited) && game.jugadores.head.id == user.id
@@ -558,7 +627,15 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                           ) >> $.modState(_.copy(gameInProgress = None))
                       )
                   )
-                )("Abandona Juego")
+                )("Abandona Juego"),
+                Button(onClick = (_, _) =>
+                  $.modState(
+                    _.copy(
+                      dlg = Dialog.inviteExternal,
+                      inviteExternalDialogState = Option(InviteExternalDialogState())
+                    )
+                  )
+                )("Invitar por correo electrónico")
               )
             }
           )

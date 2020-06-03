@@ -18,6 +18,7 @@ enum UserEventType {
 
 enum UserStatus {
   Idle
+  Invited
   Offline
   Playing
 }
@@ -38,9 +39,11 @@ type Mutations {
   newGame(satoshiPerPoint: Int!): Json
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
+  inviteByEmail(name: String!, email: String!, gameId: GameIdInput!): Boolean
   inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean
   acceptGameInvitation(value: Int!): Json
   declineGameInvitation(value: Int!): Boolean
+  cancelUnacceptedInvitations(value: Int!): Boolean
   play(gameId: GameIdInput!, gameEvent: Json!): Boolean
 }
 
