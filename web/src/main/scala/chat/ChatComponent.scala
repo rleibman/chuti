@@ -24,7 +24,6 @@ import java.util.UUID
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatClient.{
   ChannelIdInput,
-  ConnectionIdInput,
   Mutations,
   Subscriptions,
   ChatMessage => CalibanChatMessage,
@@ -45,7 +44,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object ChatComponent extends ScalaJSClientAdapter {
-  private val connectionId: ConnectionIdInput = ConnectionIdInput(UUID.randomUUID().toString)
+  private val connectionId = UUID.randomUUID().toString
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(

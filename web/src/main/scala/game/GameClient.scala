@@ -81,8 +81,7 @@ object GameClient {
 
   type User
   object User {
-    def id[A](innerSelection: SelectionBuilder[UserId, A]): SelectionBuilder[User, Option[A]] =
-      Field("id", OptionOf(Obj(innerSelection)))
+    def id:          SelectionBuilder[User, Option[Int]] = Field("id", OptionOf(Scalar()))
     def email:       SelectionBuilder[User, String] = Field("email", Scalar())
     def name:        SelectionBuilder[User, String] = Field("name", Scalar())
     def userStatus:  SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
@@ -101,35 +100,6 @@ object GameClient {
     def userEventType: SelectionBuilder[UserEvent, UserEventType] = Field("userEventType", Scalar())
   }
 
-  type UserId
-  object UserId {
-    def value: SelectionBuilder[UserId, Int] = Field("value", Scalar())
-  }
-
-  case class ConnectionIdInput(value: String)
-  object ConnectionIdInput {
-    implicit val encoder: ArgEncoder[ConnectionIdInput] = new ArgEncoder[ConnectionIdInput] {
-      override def encode(value: ConnectionIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[String]].encode(value.value)))
-      override def typeName: String = "ConnectionIdInput"
-    }
-  }
-  case class GameIdInput(value: Int)
-  object GameIdInput {
-    implicit val encoder: ArgEncoder[GameIdInput] = new ArgEncoder[GameIdInput] {
-      override def encode(value: GameIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
-      override def typeName: String = "GameIdInput"
-    }
-  }
-  case class UserIdInput(value: Int)
-  object UserIdInput {
-    implicit val encoder: ArgEncoder[UserIdInput] = new ArgEncoder[UserIdInput] {
-      override def encode(value: UserIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
-      override def typeName: String = "UserIdInput"
-    }
-  }
   type Queries = RootQuery
   object Queries {
     def getGame(value: Int): SelectionBuilder[RootQuery, Option[Json]] =
@@ -163,7 +133,7 @@ object GameClient {
     def inviteByEmail(
       name:   String,
       email:  String,
-      gameId: GameIdInput
+      gameId: Int
     ): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field(
         "inviteByEmail",
@@ -172,8 +142,8 @@ object GameClient {
           List(Argument("name", name), Argument("email", email), Argument("gameId", gameId))
       )
     def inviteToGame(
-      userId: UserIdInput,
-      gameId: GameIdInput
+      userId: Int,
+      gameId: Int
     ): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field(
         "inviteToGame",
@@ -191,7 +161,7 @@ object GameClient {
         arguments = List(Argument("value", value))
       )
     def play(
-      gameId:    GameIdInput,
+      gameId:    Int,
       gameEvent: Json
     ): SelectionBuilder[RootMutation, Option[Boolean]] =
       Field(
@@ -204,8 +174,8 @@ object GameClient {
   type Subscriptions = RootSubscription
   object Subscriptions {
     def gameStream(
-      gameId:       GameIdInput,
-      connectionId: ConnectionIdInput
+      gameId:       Int,
+      connectionId: String
     ): SelectionBuilder[RootSubscription, Json] =
       Field(
         "gameStream",
@@ -221,3 +191,4 @@ object GameClient {
   }
 
 }
+

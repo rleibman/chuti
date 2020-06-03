@@ -28,11 +28,13 @@ object ChatClient {
   sealed trait UserStatus extends scala.Product with scala.Serializable
   object UserStatus {
     case object Idle extends UserStatus
+    case object Invited extends UserStatus
     case object Offline extends UserStatus
     case object Playing extends UserStatus
 
     implicit val decoder: ScalarDecoder[UserStatus] = {
       case StringValue("Idle")    => Right(UserStatus.Idle)
+      case StringValue("Invited") => Right(UserStatus.Invited)
       case StringValue("Offline") => Right(UserStatus.Offline)
       case StringValue("Playing") => Right(UserStatus.Playing)
       case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
@@ -40,6 +42,7 @@ object ChatClient {
     implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
       override def encode(value: UserStatus): Value = value match {
         case UserStatus.Idle    => EnumValue("Idle")
+        case UserStatus.Invited => EnumValue("Invited")
         case UserStatus.Offline => EnumValue("Offline")
         case UserStatus.Playing => EnumValue("Playing")
       }
@@ -68,8 +71,7 @@ object ChatClient {
 
   type User
   object User {
-    def id[A](innerSelection: SelectionBuilder[UserId, A]): SelectionBuilder[User, Option[A]] =
-      Field("id", OptionOf(Obj(innerSelection)))
+    def id:          SelectionBuilder[User, Option[Int]] = Field("id", OptionOf(Scalar()))
     def email:       SelectionBuilder[User, String] = Field("email", Scalar())
     def name:        SelectionBuilder[User, String] = Field("name", Scalar())
     def userStatus:  SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
@@ -81,11 +83,6 @@ object ChatClient {
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
   }
 
-  type UserId
-  object UserId {
-    def value: SelectionBuilder[UserId, Int] = Field("value", Scalar())
-  }
-
   case class ChannelIdInput(value: Int)
   object ChannelIdInput {
     implicit val encoder: ArgEncoder[ChannelIdInput] = new ArgEncoder[ChannelIdInput] {
@@ -94,24 +91,8 @@ object ChatClient {
       override def typeName: String = "ChannelIdInput"
     }
   }
-  case class ConnectionIdInput(value: String)
-  object ConnectionIdInput {
-    implicit val encoder: ArgEncoder[ConnectionIdInput] = new ArgEncoder[ConnectionIdInput] {
-      override def encode(value: ConnectionIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[String]].encode(value.value)))
-      override def typeName: String = "ConnectionIdInput"
-    }
-  }
-  case class UserIdInput(value: Int)
-  object UserIdInput {
-    implicit val encoder: ArgEncoder[UserIdInput] = new ArgEncoder[UserIdInput] {
-      override def encode(value: UserIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
-      override def typeName: String = "UserIdInput"
-    }
-  }
   case class UserInput(
-    id:           Option[UserIdInput] = None,
+    id:           Option[Int] = None,
     email:        String,
     name:         String,
     userStatus:   UserStatus,
@@ -127,7 +108,7 @@ object ChatClient {
         ObjectValue(
           List(
             "id" -> value.id.fold(NullValue: Value)(value =>
-              implicitly[ArgEncoder[UserIdInput]].encode(value)
+              implicitly[ArgEncoder[Int]].encode(value)
             ),
             "email"       -> implicitly[ArgEncoder[String]].encode(value.email),
             "name"        -> implicitly[ArgEncoder[String]].encode(value.name),
@@ -166,7 +147,7 @@ object ChatClient {
   object Subscriptions {
     def chatStream[A](
       channelId:    ChannelIdInput,
-      connectionId: ConnectionIdInput
+      connectionId: String
     )(
       innerSelection: SelectionBuilder[ChatMessage, A]
     ): SelectionBuilder[RootSubscription, A] =
@@ -178,3 +159,4 @@ object ChatClient {
   }
 
 }
+

@@ -8,6 +8,7 @@ scalar Long
 
 enum UserStatus {
   Idle
+  Invited
   Offline
   Playing
 }
@@ -16,16 +17,8 @@ input ChannelIdInput {
   value: Int!
 }
 
-input ConnectionIdInput {
-  value: String!
-}
-
-input UserIdInput {
-  value: Int!
-}
-
 input UserInput {
-  id: UserIdInput
+  id: Int
   email: String!
   name: String!
   userStatus: UserStatus!
@@ -57,11 +50,11 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream(channelId: ChannelIdInput!, connectionId: ConnectionIdInput!): ChatMessage!
+  chatStream(channelId: ChannelIdInput!, connectionId: String!): ChatMessage!
 }
 
 type User {
-  id: UserId
+  id: Int
   email: String!
   name: String!
   userStatus: UserStatus!
@@ -70,8 +63,4 @@ type User {
   lastLoggedIn: Long
   active: Boolean!
   deleted: Boolean!
-}
-
-type UserId {
-  value: Int!
 }

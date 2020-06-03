@@ -29,16 +29,12 @@ import chat._
 import chuti._
 import components.{Confirm, Toast}
 import game.GameClient.{
-  ConnectionIdInput,
-  GameIdInput,
   Mutations,
   Queries,
   Subscriptions,
-  UserIdInput,
   User => CalibanUser,
   UserEvent => CalibanUserEvent,
   UserEventType => CalibanUserEventType,
-  UserId => CalibanUserId,
   UserStatus => CalibanUserStatus
 }
 import io.circe.generic.auto._
@@ -56,7 +52,7 @@ import scala.util.{Failure, Success}
 
 //TODO refactor LobbyPage and GamePage into MainPage with GameComponent and LobbyComponent, with modes
 object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
-  private val connectionId: ConnectionIdInput = ConnectionIdInput(UUID.randomUUID().toString)
+  private val connectionId = UUID.randomUUID().toString
 
   case class ExtUser(
     user:       User,
@@ -172,8 +168,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
 
     def processGameEventQueue: Callback = Callback.empty //TODO write this
 
-    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] = (CalibanUser
-      .id(CalibanUserId.value) ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
+    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] = (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
       (
         id:     Option[Int],
         name:   String,
@@ -271,7 +266,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                 gameStream = Option(
                   makeWebSocketClient[Json](
                     uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                    query = Subscriptions.gameStream(GameIdInput(game.id.get.value), connectionId),
+                    query = Subscriptions.gameStream(game.id.get.value, connectionId),
                     onData = { (_, data) =>
                       data.fold(Callback.empty)(json =>
                         gameEventDecoder
@@ -290,8 +285,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
             makeWebSocketClient[(User, CalibanUserEventType)](
               uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
               query = Subscriptions
-                .userStream(connectionId.value)(
-                  (CalibanUserEvent.user(CalibanUser.id(CalibanUserId.value)) ~
+                .userStream(connectionId)(
+                  (CalibanUserEvent.user(CalibanUser.id) ~
                     CalibanUserEvent.user(CalibanUser.name) ~
                     CalibanUserEvent.user(CalibanUser.email) ~
                     CalibanUserEvent.userEventType).map {
@@ -420,7 +415,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                     Mutations.inviteByEmail(
                       s.inviteExternalDialogState.fold("")(_.name),
                       s.inviteExternalDialogState.fold("")(_.email),
-                      GameIdInput(game.id.fold(0)(_.value))
+                      game.id.fold(0)(_.value)
                     ),
                     _ =>
                       Toast.success("Invitación mandada!") >> $.modState(
@@ -530,11 +525,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                                     !game.jugadores.exists(_.id == player.user.id))
                                   DropdownItem(onClick = { (_, _) =>
                                     calibanCall[Mutations, Option[Boolean]](
-                                      Mutations
-                                        .inviteToGame(
-                                          UserIdInput(playerId.value),
-                                          GameIdInput(gameId.value)
-                                        ),
+                                      Mutations.inviteToGame(playerId.value, gameId.value),
                                       res =>
                                         (
                                           if (res.getOrElse(false))

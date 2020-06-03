@@ -23,28 +23,16 @@ enum UserStatus {
   Playing
 }
 
-input ConnectionIdInput {
-  value: String!
-}
-
-input GameIdInput {
-  value: Int!
-}
-
-input UserIdInput {
-  value: Int!
-}
-
 type Mutations {
   newGame(satoshiPerPoint: Int!): Json
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
-  inviteByEmail(name: String!, email: String!, gameId: GameIdInput!): Boolean
-  inviteToGame(userId: UserIdInput!, gameId: GameIdInput!): Boolean
+  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean
+  inviteToGame(userId: Int!, gameId: Int!): Boolean
   acceptGameInvitation(value: Int!): Json
   declineGameInvitation(value: Int!): Boolean
   cancelUnacceptedInvitations(value: Int!): Boolean
-  play(gameId: GameIdInput!, gameEvent: Json!): Boolean
+  play(gameId: Int!, gameEvent: Json!): Boolean
 }
 
 type Queries {
@@ -56,12 +44,12 @@ type Queries {
 }
 
 type Subscriptions {
-  gameStream(gameId: GameIdInput!, connectionId: ConnectionIdInput!): Json!
+  gameStream(gameId: Int!, connectionId: String!): Json!
   userStream(value: String!): UserEvent!
 }
 
 type User {
-  id: UserId
+  id: Int
   email: String!
   name: String!
   userStatus: UserStatus!
@@ -75,8 +63,4 @@ type User {
 type UserEvent {
   user: User!
   userEventType: UserEventType!
-}
-
-type UserId {
-  value: Int!
 }
