@@ -103,3 +103,7 @@ DONE - Reject game invite
 
 ## Bugs
 "Juega con quien sea" is not sending out a game event when joining 
+
+## To test
+- Invite by email, unhappy paths
+- Transfer of ownership when original user abandons game

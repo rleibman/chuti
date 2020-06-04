@@ -40,6 +40,7 @@ object RegistrationPage {
     passwordPair: (String, String) = ("", ""),
     user:         User = User(id = None, email = "", name = "", created = LocalDateTime.now)
   )
+
   class Backend($ : BackendScope[_, State]) {
     private def onUserInputChange(fn: (User, String) => User) = {
       (
@@ -60,7 +61,7 @@ object RegistrationPage {
     private def doCreate(
       state:   State,
       context: LoginControllerState
-    ) = {
+    ): (ReactMouseEventFrom[HTMLButtonElement], ButtonProps) => Callback = {
       (
         _: ReactMouseEventFrom[HTMLButtonElement],
         _: ButtonProps
@@ -129,8 +130,9 @@ object RegistrationPage {
           FormField(width = SemanticWIDTHS.`3`)(
             Label()("Password"),
             Input(
-              `type` = "password",
+              required = true,
               name = "password",
+              `type` = "password",
               value = state.passwordPair._1,
               onChange = { (_, obj) =>
                 $.modState(state =>
@@ -168,6 +170,7 @@ object RegistrationPage {
     def render(state: State): VdomElement = LoginControllerState.ctx.consume { context =>
       <.div(
         Form()(
+          "Text goes here", //TODO
           renderUserInfo(state, context)
         )
       )

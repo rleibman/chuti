@@ -28,8 +28,8 @@ import dao.Repository.UserOperations
 import dao.{DatabaseProvider, SessionProvider}
 import game.GameService
 import io.circe.generic.auto._
-import mail.CourierPostman
 import mail.Postman.Postman
+import mail.{CourierPostman, Postman}
 import zio.Cause.Fail
 import zio._
 import zio.logging.{Logging, log}
@@ -146,11 +146,58 @@ trait AuthRoute
                       }
                     }
                   } ~
+                  path("updateInvitedUser") {
+                    post {
+                      entity(as[UpdateInvitedUserRequest]) { request =>
+                        (for {
+                          validate <- ZIO.succeed(
+                            if (request.user.email.trim.isEmpty)
+                              Option("User Email cannot be empty")
+                            else if (request.user.name.trim.isEmpty)
+                              Option("User Name cannot be empty")
+                            else if (request.password.trim.isEmpty || request.password.trim.length < 3)
+                              Option("Password is invalid")
+                            else
+                              None
+                          )
+                          tokenHolder <- ZIO.service[token.TokenHolder.Service]
+                          userOpt <- validate.fold(
+                            tokenHolder.validateToken(Token(request.token), TokenPurpose.NewUser)
+                          )(_ => ZIO.none)
+                          savedUser <- ZIO.foreach(userOpt)(u =>
+                            userOps.upsert(u.copy(name = request.user.name, active = true))
+                          )
+                          passwordChanged <- ZIO.foreach(savedUser)(user =>
+                            userOps.changePassword(user, request.password)
+                          )
+                        } yield validate.fold(
+                          passwordChanged.fold(
+                            complete(UpdateInvitedUserResponse(None: Option[String]))
+                          )(p =>
+                            complete(
+                              UpdateInvitedUserResponse(Option.when(!p)("Error setting password"))
+                            )
+                          )
+                        )(error => complete(UpdateInvitedUserResponse(Option(error)))))
+                          .tapError(e => log.error("Updating invited user", Fail(e))).provideSomeLayer[
+                            DatabaseProvider with Logging with TokenHolder with Postman
+                          ](SessionProvider.layer(adminSession)).provide(r)
+                      }
+                    }
+                  } ~
+                  path("getInvitedUserByToken") {
+                    parameters(Symbol("token").as[String]) { token =>
+                      (for {
+                        tokenHolder <- ZIO.access[TokenHolder](_.get)
+                        user        <- tokenHolder.peek(Token(token), TokenPurpose.NewUser)
+                      } yield complete(user)).provide(r)
+                    }
+                  } ~
                   path("userCreation") {
                     put {
                       entity(as[UserCreationRequest]) { request =>
                         (for {
-                          postman <- ZIO.access[Postman](_.get)
+                          postman <- ZIO.service[Postman.Service]
                           validate <- ZIO.succeed(
                             if (request.user.email.trim.isEmpty)
                               Option("User Email cannot be empty")
@@ -194,7 +241,7 @@ trait AuthRoute
                         } yield activate.fold(
                           redirect("/loginForm?registrationFailed", StatusCodes.SeeOther)
                         )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
-                          .tapError(e => Task.succeed(akkaLog.error(e, "Confirming registration"))).provideSomeLayer[
+                          .tapError(e => log.error("Confirming registration", Fail(e))).provideSomeLayer[
                             DatabaseProvider with Logging with TokenHolder with Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
@@ -235,12 +282,12 @@ trait AuthRoute
 
                       extractUnmatchedPath { path =>
                         if (allowed(path.toString())) {
-                          log.debug(s"GET $path")
+                          akkaLog.debug(s"GET $path")
                           encodeResponse {
                             getFromDirectory(staticContentDir)
                           }
                         } else {
-                          log.info(s"Trying to get $path, not in $allowed")
+                          akkaLog.info(s"Trying to get $path, not in $allowed")
                           reject(AuthorizationFailedRejection)
                         }
                       }
@@ -263,16 +310,16 @@ trait AuthRoute
             }
           } ~
             path("doLogout") {
-              extractLog { log =>
+              extractLog { akkaLog =>
                 post {
                   myInvalidateSession { ctx =>
-                    log.info(s"Logging out $session")
+                    akkaLog.info(s"Logging out $session")
                     ctx.redirect("/loginForm", StatusCodes.SeeOther)
                   }
                 } ~
                   get {
                     myInvalidateSession { ctx =>
-                      log.info(s"Logging out $session")
+                      akkaLog.info(s"Logging out $session")
                       ctx.redirect("/loginForm", StatusCodes.SeeOther)
                     }
                   }

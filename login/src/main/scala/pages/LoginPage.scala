@@ -38,6 +38,7 @@ object LoginPage {
     ): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
+          "Text goes here", //TODO
           <.span(
             Message(color = SemanticCOLORS.red)(
               "Bad Login! Your email or password did not match, please try again!"

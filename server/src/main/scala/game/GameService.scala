@@ -98,8 +98,8 @@ object GameService {
     with TokenHolder
 
   trait Service {
-    val userQueue: Ref[List[EventQueue[UserEvent]]]
-    val gameQueue: Ref[List[EventQueue[GameEvent]]]
+    protected val userQueue: Ref[List[EventQueue[UserEvent]]]
+    protected val gameQueue: Ref[List[EventQueue[GameEvent]]]
 
     def broadcastGameEvent(gameEvent: GameEvent): ZIO[GameLayer, GameException, GameEvent]
 
@@ -431,7 +431,7 @@ object GameService {
             ZIO.succeed(f)
           )
           // Send an invite to the friend to join the server, or just to become friends if the user already exists
-          envelope <- friendOpt.fold(postman.inviteNewFriendEmail(user, savedFriend))(f =>
+          envelope <- friendOpt.fold(postman.inviteToPlayByEmail(user, savedFriend))(f =>
             postman.inviteExistingUserFriendEmail(user, f)
           )
           _ <- postman.deliver(envelope)
@@ -472,7 +472,7 @@ object GameService {
             .sendMessage(s"${user.name} te invitó a jugar", ChannelId.directChannel, invitedOpt)
           _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
           envelopeOpt <- invitedOpt.fold(
-            postman.inviteNewFriendEmail(user, invited).map(Option(_))
+            postman.inviteToPlayByEmail(user, invited).map(Option(_))
           )(_ =>
             ZIO.foreach(afterInvitation) {
               case (game, _) =>

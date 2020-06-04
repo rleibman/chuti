@@ -58,6 +58,7 @@ object PasswordRecoveryPage {
 
     def render(state: State) = LoginControllerState.ctx.consume { context =>
       <.div(
+        "Text goes here", //TODO
         if (state.submitted)
           <.div(
             "We have sent an email to your account with password recovery instructions, you'll have three hours to change your password before you need to try again",

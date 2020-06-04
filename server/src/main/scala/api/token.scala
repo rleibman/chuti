@@ -30,6 +30,7 @@ package object token {
 
   sealed trait TokenPurpose
   object TokenPurpose {
+    //TODO check which of these are actually being used
     case object NewUser extends TokenPurpose
     case object LostPassword extends TokenPurpose
     case object FriendToken extends TokenPurpose
@@ -44,6 +45,12 @@ package object token {
 
   object TokenHolder {
     trait Service {
+
+      def peek(
+        token:   Token,
+        purpose: TokenPurpose
+      ): Task[Option[User]]
+
       def createToken(
         user:    User,
         purpose: TokenPurpose,
@@ -78,6 +85,13 @@ package object token {
           u <- scalacache.get(token.tok, purpose)
           _ <- scalacache.remove(token.tok, purpose)
         } yield u
+      }
+
+      override def peek(
+        token:   Token,
+        purpose: TokenPurpose
+      ): Task[Option[User]] = {
+        scalacache.get(token.tok, purpose)
       }
     }
   }

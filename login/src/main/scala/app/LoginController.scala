@@ -18,14 +18,21 @@ package app
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, React, ScalaComponent}
-import pages.{LoginPage, PasswordRecoveryAfterTokenPage, PasswordRecoveryPage, RegistrationPage}
+import pages.{
+  LoginPage,
+  NewUserAcceptFriendPage,
+  PasswordRecoveryAfterTokenPage,
+  PasswordRecoveryPage,
+  RegistrationPage
+}
 import react.Toast
 //import react.Toast
 import org.scalajs.dom.window
 
 object Mode extends Enumeration {
   type Mode = Value
-  val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken = Value
+  val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken,
+    newUserAcceptFriend = Value
 }
 import app.Mode._
 object LoginControllerState {
@@ -67,6 +74,7 @@ object LoginController {
             case Mode.passwordRecoveryRequest => PasswordRecoveryPage()
             case Mode.passwordRecoveryAfterToken =>
               PasswordRecoveryAfterTokenPage(state.token)
+            case Mode.newUserAcceptFriend => NewUserAcceptFriendPage(state.token)
           }
         )
       }
@@ -83,6 +91,8 @@ object LoginController {
             mode =
               if (queryParams.has("passwordReset"))
                 Mode.passwordRecoveryAfterToken
+              else if (queryParams.has("newUserAcceptFriend"))
+                Mode.newUserAcceptFriend
               else
                 Mode.login,
             onModeChanged = $.backend.onModeChanged,

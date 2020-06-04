@@ -23,6 +23,7 @@ import courier.{Envelope, Mailer, Multipart}
 import javax.mail.internet.InternetAddress
 import mail.Postman.Postman
 import zio.{Has, RIO, ZIO}
+import scala.concurrent.duration.{Duration, _}
 
 object Postman {
   type Postman = Has[Service]
@@ -32,27 +33,28 @@ object Postman {
     def webHostName: String
 
     //You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
-    def inviteNewFriendEmail(
+    def inviteToPlayByEmail(
       user:    User,
       invited: User
     ): RIO[TokenHolder, Envelope] =
       for {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser)
+        token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser, Option(3.days))
       } yield {
-        val linkUrl = s"http://$webHostName/acceptFriendInvite?token=$token"
+        val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
           .to(new InternetAddress(invited.email, invited.name))
           .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
           .content(Multipart().html(s"""<html><body>
-                                     |<p>${user.name.capitalize}<p> Te invitó a ser su amigo en chuti.fun</p>
+                                     |<p>${user.name.capitalize}<p> Te invitó a ser su amigo y a jugar en chuti.fun</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
                                      |</body></html>""".stripMargin))
       }
 
+    @deprecated
     def inviteExistingUserFriendEmail(
       user:    User,
       invited: User
@@ -61,7 +63,7 @@ object Postman {
         tokenHolder <- ZIO.access[TokenHolder](_.get)
         token       <- tokenHolder.createToken(invited, TokenPurpose.FriendToken)
       } yield {
-        val linkUrl = s"http://$webHostName/newUserAcceptFriend?token=$token"
+        val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
         Envelope
           .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
           .replyTo(new InternetAddress(user.email, user.name))
@@ -78,25 +80,21 @@ object Postman {
       user:    User,
       invited: User,
       game:    Game
-    ): RIO[TokenHolder, Envelope] =
-      for {
-        tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(invited, TokenPurpose.GameInvite)
-      } yield {
-        val linkUrl =
-          s"http://$webHostName/#lobby"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .replyTo(new InternetAddress(user.email, user.name))
-          .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
-          .content(Multipart().html(s"""<html><body>
+    ): RIO[TokenHolder, Envelope] = ZIO.succeed {
+      val linkUrl =
+        s"http://$webHostName/#lobby"
+      Envelope
+        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+        .replyTo(new InternetAddress(user.email, user.name))
+        .to(new InternetAddress(invited.email, invited.name))
+        .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
+        .content(Multipart().html(s"""<html><body>
                                      |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
                                      |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
                                      |</body></html>""".stripMargin))
-      }
+    }
 
     def lostPasswordEmail(user: User): RIO[TokenHolder, Envelope] =
       for {

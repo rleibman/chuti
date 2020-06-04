@@ -16,6 +16,14 @@
 
 package chuti
 
+case class UpdateInvitedUserRequest(
+  user:     User,
+  password: String,
+  token:    String
+)
+
+case class UpdateInvitedUserResponse(error: Option[String])
+
 case class UserCreationRequest(
   user:     User,
   password: String

@@ -51,6 +51,7 @@ object PasswordRecoveryAfterTokenPage {
     ): VdomElement = LoginControllerState.ctx.consume { _ =>
       <.div(
         ^.width := 800.px,
+        "Text goes here", //TODO
         Form(action = "passwordReset", method = "post", onSubmit = { (event, _) =>
           handleSubmit(state, event)
         })(
