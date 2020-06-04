@@ -23,7 +23,6 @@ import java.util.UUID
 
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatClient.{
-  ChannelIdInput,
   Mutations,
   Subscriptions,
   ChatMessage => CalibanChatMessage,
@@ -66,7 +65,7 @@ object ChatComponent extends ScalaJSClientAdapter {
     ) = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
       import sttp.client._
       implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
-      val mutation = Mutations.say(s.msgInFlux, ChannelIdInput(p.channel.value))
+      val mutation = Mutations.say(s.msgInFlux, p.channel.value)
       val serverUri = uri"http://localhost:8079/api/chat"
       val request = mutation.toRequest(serverUri)
       //TODO add headers as necessary
@@ -125,7 +124,7 @@ object ChatComponent extends ScalaJSClientAdapter {
           makeWebSocketClient[ChatMessage](
             uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
             query = Subscriptions
-              .chatStream(ChannelIdInput(p.channel.value), connectionId)(
+              .chatStream(p.channel.value, connectionId)(
                 (CalibanChatMessage
                   .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
                   CalibanUser.name

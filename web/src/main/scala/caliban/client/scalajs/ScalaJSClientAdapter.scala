@@ -33,6 +33,29 @@ import org.scalajs.dom.WebSocket
 import zio.duration._
 
 trait ScalaJSClientAdapter {
+  import GQLOperationMessage._
+
+  case class GQLOperationMessage(
+    `type`:  String,
+    id:      Option[String] = None,
+    payload: Option[Json] = None
+  )
+
+  object GQLOperationMessage {
+    //Client messages
+    val GQL_CONNECTION_INIT = "connection_init"
+    val GQL_START = "start"
+    val GQL_STOP = "stop"
+    val GQL_CONNECTION_TERMINATE = "connection_terminate"
+    //Server messages
+    val GQL_COMPLETE = "complete"
+    val GQL_CONNECTION_ACK = "connection_ack"
+    val GQL_CONNECTION_ERROR = "connection_error"
+    val GQL_CONNECTION_KEEP_ALIVE = "ka"
+    val GQL_DATA = "data"
+    val GQL_ERROR = "error"
+    val GQL_UNKNOWN = "unknown"
+  }
 
   lazy private[caliban] val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
 
@@ -74,45 +97,21 @@ trait ScalaJSClientAdapter {
     }
   )(
     implicit decoder: Decoder[A]
-  ): WebSocketHandler = {
+  ): WebSocketHandler = new WebSocketHandler {
 
-    val graphql = query.toGraphQL()
+    def GQLConnectionInit(): GQLOperationMessage =
+      GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
 
-    object GQLOperationMessage {
-      //Client messages
-      val GQL_CONNECTION_INIT = "connection_init"
-      val GQL_START = "start"
-      val GQL_STOP = "stop"
-      val GQL_CONNECTION_TERMINATE = "connection_terminate"
-      //Server messages
-      val GQL_COMPLETE = "complete"
-      val GQL_CONNECTION_ACK = "connection_ack"
-      val GQL_CONNECTION_ERROR = "connection_error"
-      val GQL_CONNECTION_KEEP_ALIVE = "ka"
-      val GQL_DATA = "data"
-      val GQL_ERROR = "error"
-      val GQL_UNKNOWN = "unknown"
+    def GQLStart(query: GraphQLRequest): GQLOperationMessage =
+      GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.asJson))
 
-      def GQLConnectionInit(): GQLOperationMessage =
-        GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
+    def GQLStop(): GQLOperationMessage =
+      GQLOperationMessage(GQL_STOP, Option(operationId))
 
-      def GQLStart(query: GraphQLRequest): GQLOperationMessage =
-        GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.asJson))
+    def GQLConnectionTerminate(): GQLOperationMessage =
+      GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
 
-      def GQLStop(): GQLOperationMessage =
-        GQLOperationMessage(GQL_STOP, Option(operationId))
-
-      def GQLConnectionTerminate(): GQLOperationMessage =
-        GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
-    }
-
-    import GQLOperationMessage._
-
-    case class GQLOperationMessage(
-      `type`:  String,
-      id:      Option[String] = None,
-      payload: Option[Json] = None
-    )
+    private val graphql: GraphQLRequest = query.toGraphQL()
 
     val socket: WebSocket = uriOrSocket match {
       case Left(uri)        => new dom.WebSocket(uri.toString, "graphql-ws")
@@ -127,7 +126,7 @@ trait ScalaJSClientAdapter {
       reconnectCount:  Int = 0
     )
 
-    var connectionState = ConnectionState()
+    private var connectionState: ConnectionState = ConnectionState()
 
     def doConnect(): Unit = {
       val sendMe = GQLConnectionInit()
@@ -243,16 +242,18 @@ trait ScalaJSClientAdapter {
       onClientError(new Exception(s"We've got a socket error, no further info"))
     }
     socket.onopen = { (e: dom.Event) =>
-      println(socket.protocol)
-      println(e.`type`)
+//      println(socket.protocol)
+//      println(e.`type`)
       onConnecting.runNow()
       doConnect()
     }
 
-    () => {
+    override def close(): Unit = {
+      println("Closing socket")
       connectionState.kaIntervalOpt.foreach(id => dom.window.clearInterval(id))
       socket.send(GQLStop().asJson.noSpaces)
       socket.send(GQLConnectionTerminate().asJson.noSpaces)
+      socket.close()
     }
   }
 

@@ -18,7 +18,7 @@ package chuti
 
 import java.time.LocalDateTime
 
-case class ChannelId(value: Int)
+case class ChannelId(value: Int) extends AnyVal
 
 object ChannelId {
   //some special channels

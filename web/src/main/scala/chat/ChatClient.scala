@@ -50,19 +50,12 @@ object ChatClient {
     }
   }
 
-  type ChannelId
-  object ChannelId {
-    def value: SelectionBuilder[ChannelId, Int] = Field("value", Scalar())
-  }
-
   type ChatMessage
   object ChatMessage {
     def fromUser[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, A] =
       Field("fromUser", Obj(innerSelection))
-    def msg: SelectionBuilder[ChatMessage, String] = Field("msg", Scalar())
-    def channelId[A](
-      innerSelection: SelectionBuilder[ChannelId, A]
-    ): SelectionBuilder[ChatMessage, A] = Field("channelId", Obj(innerSelection))
+    def msg:       SelectionBuilder[ChatMessage, String] = Field("msg", Scalar())
+    def channelId: SelectionBuilder[ChatMessage, Int] = Field("channelId", Scalar())
     def toUser[A](
       innerSelection: SelectionBuilder[User, A]
     ):        SelectionBuilder[ChatMessage, Option[A]] = Field("toUser", OptionOf(Obj(innerSelection)))
@@ -83,14 +76,6 @@ object ChatClient {
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
   }
 
-  case class ChannelIdInput(value: Int)
-  object ChannelIdInput {
-    implicit val encoder: ArgEncoder[ChannelIdInput] = new ArgEncoder[ChannelIdInput] {
-      override def encode(value: ChannelIdInput): Value =
-        ObjectValue(List("value" -> implicitly[ArgEncoder[Int]].encode(value.value)))
-      override def typeName: String = "ChannelIdInput"
-    }
-  }
   case class UserInput(
     id:           Option[Int] = None,
     email:        String,
@@ -126,13 +111,24 @@ object ChatClient {
     }
   }
   type Queries = RootQuery
-  object Queries {}
+  object Queries {
+    def getRecentMessages[A](
+      value: Int
+    )(
+      innerSelection: SelectionBuilder[ChatMessage, A]
+    ): SelectionBuilder[RootQuery, Option[List[A]]] =
+      Field(
+        "getRecentMessages",
+        OptionOf(ListOf(Obj(innerSelection))),
+        arguments = List(Argument("value", value))
+      )
+  }
 
   type Mutations = RootMutation
   object Mutations {
     def say(
       msg:       String,
-      channelId: ChannelIdInput,
+      channelId: Int,
       toUser:    Option[UserInput] = None
     ): SelectionBuilder[RootMutation, Boolean] =
       Field(
@@ -146,7 +142,7 @@ object ChatClient {
   type Subscriptions = RootSubscription
   object Subscriptions {
     def chatStream[A](
-      channelId:    ChannelIdInput,
+      channelId:    Int,
       connectionId: String
     )(
       innerSelection: SelectionBuilder[ChatMessage, A]
@@ -159,4 +155,3 @@ object ChatClient {
   }
 
 }
-

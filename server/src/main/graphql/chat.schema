@@ -13,10 +13,6 @@ enum UserStatus {
   Playing
 }
 
-input ChannelIdInput {
-  value: Int!
-}
-
 input UserInput {
   id: Int
   email: String!
@@ -29,28 +25,24 @@ input UserInput {
   deleted: Boolean!
 }
 
-type ChannelId {
-  value: Int!
-}
-
 type ChatMessage {
   fromUser: User!
   msg: String!
-  channelId: ChannelId!
+  channelId: Int!
   toUser: User
   date: Long!
 }
 
 type Mutations {
-  say(msg: String!, channelId: ChannelIdInput!, toUser: UserInput): Boolean!
+  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!
 }
 
 type Queries {
-
+  getRecentMessages(value: Int!): [ChatMessage!]
 }
 
 type Subscriptions {
-  chatStream(channelId: ChannelIdInput!, connectionId: String!): ChatMessage!
+  chatStream(channelId: Int!, connectionId: String!): ChatMessage!
 }
 
 type User {

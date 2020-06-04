@@ -309,12 +309,16 @@ object GameService {
                   (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
-                .delete(game.id.get, softDelete = false).provideSomeLayer[DatabaseProvider with Logging](
+                .delete(game.id.get, softDelete = false).provideSomeLayer[
+                  DatabaseProvider with Logging
+                ](
                   godLayer
                 )
             case (game, _) if game.jugadores.isEmpty =>
               repository.gameOperations
-                .delete(game.id.get, softDelete = true).provideSomeLayer[DatabaseProvider with Logging](godLayer)
+                .delete(game.id.get, softDelete = true).provideSomeLayer[
+                  DatabaseProvider with Logging
+                ](godLayer)
             case (game, event) => ZIO.succeed(game)
           }
           _ <- ZIO.foreachPar(players) { game =>
@@ -606,7 +610,7 @@ object GameService {
               .upsert(game.copy(jugadores = game.jugadores.filter(!_.invited)))
               .provideSomeLayer[DatabaseProvider with Logging](godLayer)
           }
-          _ <- ZIO.foreachPar(afterEvent.toSeq.flatMap(_.jugadores))(jugador =>
+          _ <- ZIO.foreachPar(gameOpt.toSeq.flatMap(_.jugadores.filter(_.id != user.id)))(jugador =>
             ChatService
               .sendMessage(
                 s"${user.name} canceló las invitaciones de los jugadores que no habían aceptado.",

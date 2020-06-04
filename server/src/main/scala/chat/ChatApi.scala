@@ -28,12 +28,12 @@ import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
 import chuti._
 import dao.SessionProvider
-import zio.URIO
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
 import zio.logging.Logging
 import zio.stream.ZStream
+import zio.{URIO, ZIO}
 
 case class SayRequest(
   msg:       String,
@@ -47,8 +47,11 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider with Loggi
     channelId:    ChannelId,
     connectionId: ConnectionId
   )
-
-  case class Queries()
+  case class Queries(
+    getRecentMessages: ChannelId => ZIO[ChatService with SessionProvider, GameException, Seq[
+      ChatMessage
+    ]]
+  )
   case class Mutations(
     say: SayRequest => URIO[ChatService with SessionProvider with Logging, Boolean]
   )
@@ -73,10 +76,9 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider with Loggi
   lazy val api: GraphQL[Console with Clock with ChatService with SessionProvider with Logging] =
     graphQL(
       RootResolver(
-        Queries(
-          ),
+        Queries(channelId => ChatService.getRecentMessages(channelId)),
         Mutations(
-          say = msg => ChatService.say(msg).as(true)
+          say = sayRequest => ChatService.say(sayRequest).as(true)
         ),
         Subscriptions(
           chatStream = chatStreamArgs =>
@@ -84,13 +86,13 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider with Loggi
         )
       )
     ) @@
-      maxFields(200) @@ // query analyzer that limit query fields
+      maxFields(22) @@ // query analyzer that limit query fields
       maxDepth(30) @@ // query analyzer that limit query depth
       timeout(3.seconds) @@ // wrapper that fails slow queries
       printSlowQueries(500.millis) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\nenum UserStatus {\n  Idle\n  Invited\n  Offline\n  Playing\n}\n\ninput ChannelIdInput {\n  value: Int!\n}\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}\n\ntype ChannelId {\n  value: Int!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: ChannelId!\n  toUser: User\n  date: Long!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: ChannelIdInput!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  \n}\n\ntype Subscriptions {\n  chatStream(channelId: ChannelIdInput!, connectionId: String!): ChatMessage!\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\nenum UserStatus {\n  Idle\n  Invited\n  Offline\n  Playing\n}\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: Long!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage!\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}"
 
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/chat.schema /Volumes/Personal/projects/chuti/web/src/main/scala/chat/ChatClient.scala

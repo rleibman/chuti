@@ -17,7 +17,7 @@
 package chat
 
 import caliban.{CalibanError, GraphQLInterpreter}
-import chuti.{ChannelId, ChatMessage, ConnectionId, User}
+import chuti._
 import dao.SessionProvider
 import zio._
 import zio.clock.Clock
@@ -29,6 +29,9 @@ object ChatService {
 
   type ChatService = Has[Service]
   trait Service {
+    def getRecentMessages(
+      channelId: ChannelId
+    ): ZIO[ChatService with SessionProvider, GameException, Seq[ChatMessage]]
     def say(msg: SayRequest): URIO[SessionProvider with Logging, ChatMessage]
     def chatStream(
       channelId:    ChannelId,
@@ -63,6 +66,11 @@ object ChatService {
   ): ZStream[ChatService with SessionProvider with Logging, Nothing, ChatMessage] =
     ZStream.accessStream(_.get.chatStream(channelId, connectionId))
 
+  def getRecentMessages(
+    channelId: ChannelId
+  ): ZIO[ChatService with SessionProvider, GameException, Seq[ChatMessage]] =
+    URIO.accessM(_.get.getRecentMessages(channelId))
+
   case class MessageQueue(
     user:         User,
     connectionId: ConnectionId,
@@ -74,6 +82,12 @@ object ChatService {
       chatMessageQueue <- Ref.make(List.empty[MessageQueue])
       _                <- log.info("========================== This should only ever be seen once.")
     } yield new Service {
+      def getRecentMessages(
+        channelId: ChannelId
+      ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
+        ZIO.succeed(Seq.empty) //TODO write this
+      }
+
       override def say(
         request: SayRequest
       ): ZIO[SessionProvider with Logging, Nothing, ChatMessage] =
