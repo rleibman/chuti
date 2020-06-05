@@ -46,7 +46,8 @@ case class User(
   lastUpdated:  LocalDateTime = LocalDateTime.now,
   lastLoggedIn: Option[LocalDateTime] = None,
   active:       Boolean = false,
-  deleted:      Boolean = false
+  deleted:      Boolean = false,
+  isAdmin:      Boolean = false
 ) {}
 
 case class UserWallet(

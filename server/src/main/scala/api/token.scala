@@ -30,11 +30,8 @@ package object token {
 
   sealed trait TokenPurpose
   object TokenPurpose {
-    //TODO check which of these are actually being used
     case object NewUser extends TokenPurpose
     case object LostPassword extends TokenPurpose
-    case object FriendToken extends TokenPurpose
-    case object GameInvite extends TokenPurpose
   }
 
   type TokenHolder = Has[TokenHolder.Service]
@@ -54,7 +51,7 @@ package object token {
       def createToken(
         user:    User,
         purpose: TokenPurpose,
-        ttl:     Option[Duration] = Option(3.hours)
+        ttl:     Option[Duration] = Option(5.hours)
       ): Task[Token]
       def validateToken(
         token:   Token,

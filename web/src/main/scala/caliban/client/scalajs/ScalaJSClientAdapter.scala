@@ -20,19 +20,89 @@ import java.net.URI
 import java.time.LocalDateTime
 
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
-import caliban.client.Operations.RootSubscription
+import caliban.client.Operations.{IsOperation, RootSubscription}
 import caliban.client.Value.ObjectValue
 import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
 import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import io.circe.{Decoder, Error, Json}
-import japgolly.scalajs.react.Callback
+import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom
 import org.scalajs.dom.WebSocket
 import zio.duration._
 
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
+
 trait ScalaJSClientAdapter {
+  import sttp.client._
+  val serverUri = uri"http://localhost:8079/api/game"
+  implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
+
+  def calibanCall[Origin, A](
+    selectionBuilder: SelectionBuilder[Origin, A],
+    callback:         A => Callback
+  )(
+    implicit ev: IsOperation[Origin]
+  ): Callback = {
+    val request = selectionBuilder.toRequest(serverUri)
+    //TODO add headers as necessary
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
+    AsyncCallback
+      .fromFuture(request.send())
+      .completeWith {
+        case Success(response) if response.code.isSuccess || response.code.isInformational =>
+          response.body match {
+            case Right(a) =>
+              callback(a)
+            case Left(error) =>
+              Callback.log(s"1 Error: $error") //TODO handle error responses better
+          }
+        case Failure(exception) =>
+          Callback.throwException(exception) //TODO handle error responses better
+        case Success(response) =>
+          Callback.log(s"2 Error: ${response.statusText}") //TODO handle error responses better
+      }
+  }
+
+  def calibanCallThroughJsonOpt[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Option[Json]],
+    callback:         A => Callback
+  )(
+    implicit ev: IsOperation[Origin]
+  ): Callback = calibanCall[Origin, Option[Json]](
+    selectionBuilder, {
+      case Some(json) =>
+        val decoder = implicitly[Decoder[A]]
+        decoder.decodeJson(json) match {
+          case Right(obj) => callback(obj)
+          case Left(error) =>
+            Callback.log(s"3 Error: $error") //TODO handle error responses better
+        }
+      case None =>
+        Callback
+          .log(s"Did not receive a valid json object") //TODO handle error responses better
+    }
+  )
+
+  def calibanCallThroughJson[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Json],
+    callback:         A => Callback
+  )(
+    implicit ev: IsOperation[Origin]
+  ): Callback = calibanCall[Origin, Json](
+    selectionBuilder, { json =>
+      val decoder = implicitly[Decoder[A]]
+      decoder.decodeJson(json) match {
+        case Right(obj) => callback(obj)
+        case Left(error) =>
+          Callback.log(s"4 Error: $error") //TODO handle error responses better
+      }
+    }
+  )
+
   import GQLOperationMessage._
 
   case class GQLOperationMessage(
@@ -114,7 +184,7 @@ trait ScalaJSClientAdapter {
     private val graphql: GraphQLRequest = query.toGraphQL()
 
     val socket: WebSocket = uriOrSocket match {
-      case Left(uri)        => new dom.WebSocket(uri.toString, "graphql-ws")
+      case Left(uri)        => new org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")
       case Right(webSocket) => webSocket
     }
 
@@ -134,14 +204,14 @@ trait ScalaJSClientAdapter {
       socket.send(sendMe.asJson.noSpaces)
     }
 
-    socket.onmessage = { (e: dom.MessageEvent) =>
+    socket.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
       val strMsg = e.data.toString
       val msg: Either[Error, GQLOperationMessage] =
         decode[GQLOperationMessage](strMsg)
 //      println(s"Received: $strMsg")
       msg match {
         case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
-          connectionState.kaIntervalOpt.foreach(id => dom.window.clearInterval(id))
+          connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
           onDisconnected(id.getOrElse(""), payload).runNow()
 //          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
 //            connectionState =
@@ -176,7 +246,7 @@ trait ScalaJSClientAdapter {
             //If we never get this, then the server does not support it
 
             connectionState = connectionState.copy(kaIntervalOpt = Option(
-              dom.window.setInterval(
+              org.scalajs.dom.window.setInterval(
                 () => {
                   connectionState.lastKAOpt.map { lastKA =>
                     val timeFromLastKA =
@@ -238,10 +308,10 @@ trait ScalaJSClientAdapter {
           error.printStackTrace()
       }
     }
-    socket.onerror = { (_: dom.Event) =>
+    socket.onerror = { (_: org.scalajs.dom.Event) =>
       onClientError(new Exception(s"We've got a socket error, no further info"))
     }
-    socket.onopen = { (e: dom.Event) =>
+    socket.onopen = { (_: org.scalajs.dom.Event) =>
 //      println(socket.protocol)
 //      println(e.`type`)
       onConnecting.runNow()
@@ -250,7 +320,7 @@ trait ScalaJSClientAdapter {
 
     override def close(): Unit = {
       println("Closing socket")
-      connectionState.kaIntervalOpt.foreach(id => dom.window.clearInterval(id))
+      connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
       socket.send(GQLStop().asJson.noSpaces)
       socket.send(GQLConnectionTerminate().asJson.noSpaces)
       socket.close()

@@ -333,6 +333,18 @@ case class Game(
   jugadores:       List[Jugador] = List.empty,
   satoshiPerPoint: Double = 100.0
 ) {
+
+  @transient
+  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
+  @transient
+  lazy val mano: Jugador = jugadores.find(_.mano).get
+  @transient
+  lazy val quienCanta: Jugador = jugadores.find(_.cantante).get
+  val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
+  val numPlayers = 4
+
+
+
   //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
     fichas:    Seq[Ficha],
@@ -472,12 +484,6 @@ case class Game(
         throw GameException("Este usuario no esta jugando en este juego")
       )
 
-  lazy val mano: Jugador = {
-    jugadores.find(_.mano).get
-  }
-
-  lazy val quienCanta: Jugador = jugadores.find(_.cantante).get
-
   def modifiedJugadores(
     filter:       Jugador => Boolean,
     ifMatches:    Jugador => Jugador,
@@ -524,9 +530,6 @@ case class Game(
   }
 
   def nextIndex: Int = currentEventIndex + 1
-
-  val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
-  val numPlayers = 4
 
   def canTransitionTo(transitionState: GameStatus): Boolean = {
     //TODO fill this up and follow every place state changes

@@ -27,7 +27,7 @@ import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout
 import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
 import chuti._
-import dao.SessionProvider
+import dao.{DatabaseProvider, Repository, SessionProvider}
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
@@ -41,7 +41,7 @@ case class SayRequest(
   toUser:    Option[User] = None
 )
 
-object ChatApi extends GenericSchema[ChatService with SessionProvider with Logging] {
+object ChatApi extends GenericSchema[ChatService with Repository with DatabaseProvider with SessionProvider with Logging] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -53,12 +53,12 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider with Loggi
     ]]
   )
   case class Mutations(
-    say: SayRequest => URIO[ChatService with SessionProvider with Logging, Boolean]
+    say: SayRequest => URIO[ChatService with Repository with DatabaseProvider with SessionProvider with Logging, Boolean]
   )
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService with SessionProvider with Logging,
-      Nothing,
+      ChatService with Repository with DatabaseProvider with SessionProvider with Logging,
+      GameException,
       ChatMessage
     ]
   )
@@ -73,7 +73,7 @@ object ChatApi extends GenericSchema[ChatService with SessionProvider with Loggi
   implicit val userSchema:        Typeclass[User] = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
-  lazy val api: GraphQL[Console with Clock with ChatService with SessionProvider with Logging] =
+  lazy val api: GraphQL[Console with Clock with ChatService with Repository with DatabaseProvider with SessionProvider with Logging] =
     graphQL(
       RootResolver(
         Queries(channelId => ChatService.getRecentMessages(channelId)),

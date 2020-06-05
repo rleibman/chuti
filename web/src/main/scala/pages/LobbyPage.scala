@@ -21,22 +21,13 @@ import java.util.UUID
 
 import app.ChutiState
 import caliban.client.CalibanClientError.DecodingError
-import caliban.client.Operations.IsOperation
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat._
 import chuti._
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType,
-  UserStatus => CalibanUserStatus
-}
+import game.GameClient.{Mutations, Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserStatus => CalibanUserStatus}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
@@ -46,9 +37,6 @@ import org.scalajs.dom.raw.HTMLInputElement
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
 import typings.semanticUiReact.inputInputMod.InputOnChangeData
-
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
 
 //TODO refactor LobbyPage and GamePage into MainPage with GameComponent and LobbyComponent, with modes
 object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
@@ -94,73 +82,6 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           ).sortBy(_.user.name)
   }
 
-  //TODO Move to common area
-  import sttp.client._
-  val serverUri = uri"http://localhost:8079/api/game"
-  implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
-
-  def calibanCall[Origin, A](
-    selectionBuilder: SelectionBuilder[Origin, A],
-    callback:         A => Callback
-  )(
-    implicit ev: IsOperation[Origin]
-  ): Callback = {
-    val request = selectionBuilder.toRequest(serverUri)
-    //TODO add headers as necessary
-    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
-    AsyncCallback
-      .fromFuture(request.send())
-      .completeWith {
-        case Success(response) if response.code.isSuccess || response.code.isInformational =>
-          response.body match {
-            case Right(a) =>
-              callback(a)
-            case Left(error) =>
-              Callback.log(s"1 Error: $error") //TODO handle error responses better
-          }
-        case Failure(exception) =>
-          Callback.throwException(exception) //TODO handle error responses better
-        case Success(response) =>
-          Callback.log(s"2 Error: ${response.statusText}") //TODO handle error responses better
-      }
-  }
-
-  def calibanCallThroughJsonOpt[Origin, A: Decoder](
-    selectionBuilder: SelectionBuilder[Origin, Option[Json]],
-    callback:         A => Callback
-  )(
-    implicit ev: IsOperation[Origin]
-  ): Callback = calibanCall[Origin, Option[Json]](
-    selectionBuilder, {
-      case Some(json) =>
-        val decoder = implicitly[Decoder[A]]
-        decoder.decodeJson(json) match {
-          case Right(obj) => callback(obj)
-          case Left(error) =>
-            Callback.log(s"3 Error: $error") //TODO handle error responses better
-        }
-      case None =>
-        Callback
-          .log(s"Did not receive a valid json object") //TODO handle error responses better
-    }
-  )
-
-  def calibanCallThroughJson[Origin, A: Decoder](
-    selectionBuilder: SelectionBuilder[Origin, Json],
-    callback:         A => Callback
-  )(
-    implicit ev: IsOperation[Origin]
-  ): Callback = calibanCall[Origin, Json](
-    selectionBuilder, { json =>
-      val decoder = implicitly[Decoder[A]]
-      decoder.decodeJson(json) match {
-        case Right(obj) => callback(obj)
-        case Left(error) =>
-          Callback.log(s"4 Error: $error") //TODO handle error responses better
-      }
-    }
-  )
 
   class Backend($ : BackendScope[Props, State]) {
     private val gameDecoder = implicitly[Decoder[Game]]
@@ -514,9 +435,9 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                         TableCell()(player.user.name),
                         TableCell()(
                           Dropdown(
-                            //TODO hide class 'dropdown icon'
+                            className = "menuBurger",
                             trigger =
-                              Icon(className = "icon", name = SemanticICONS.`ellipsis vertical`)()
+                              Icon(name = SemanticICONS.`ellipsis vertical`)()
                           )(
                             DropdownMenu()(
                               (for {
@@ -567,8 +488,6 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                     }
                   )
                 )
-                //TODO add flags: isFriend, isPlaying
-                //TODO make table, add context menu: invite, friend, unfriend,
               )
             ).when(s.loggedInUsers.nonEmpty),
             s.gameInProgress.toVdomArray { game =>

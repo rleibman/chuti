@@ -85,7 +85,8 @@ object GameService {
     email = "god@chuti.fun",
     name = "Un-namable",
     created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
-    lastUpdated = LocalDateTime.now()
+    lastUpdated = LocalDateTime.now(),
+    isAdmin = true
   )
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default

@@ -112,3 +112,6 @@ Glimpse into queues
 - Invite by email, unhappy paths
 - Transfer of ownership when original user abandons game
 - Add unique constraint to friends
+
+## Other
+- Remove all "Repository with DatabaseProvider", Repository should stand on it's own 

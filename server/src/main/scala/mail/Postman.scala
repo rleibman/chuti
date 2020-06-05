@@ -23,7 +23,8 @@ import courier.{Envelope, Mailer, Multipart}
 import javax.mail.internet.InternetAddress
 import mail.Postman.Postman
 import zio.{Has, RIO, ZIO}
-import scala.concurrent.duration.{Duration, _}
+
+import scala.concurrent.duration._
 
 object Postman {
   type Postman = Has[Service]
@@ -52,28 +53,6 @@ object Postman {
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
                                      |</body></html>""".stripMargin))
-      }
-
-    @deprecated
-    def inviteExistingUserFriendEmail(
-      user:    User,
-      invited: User
-    ): RIO[TokenHolder, Envelope] =
-      for {
-        tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(invited, TokenPurpose.FriendToken)
-      } yield {
-        val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .replyTo(new InternetAddress(user.email, user.name))
-          .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
-          .content(Multipart().html(s"""<html><body>
-               |<p>${user.name.capitalize}<p> Te invitó a ser su amigo en chuti.fun</p>
-               |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
-               |<p>Te esperamos pronto! </p>
-               |</body></html>""".stripMargin))
       }
 
     def inviteToGameEmail(

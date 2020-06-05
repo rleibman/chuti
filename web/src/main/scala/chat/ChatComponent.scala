@@ -119,6 +119,7 @@ object ChatComponent extends ScalaJSClientAdapter {
       )
 
     def refresh(p: Props): Callback = {
+      //TODO call getRecentMessages to prime the list
       $.modState { s =>
         s.copy(ws = Option(
           makeWebSocketClient[ChatMessage](

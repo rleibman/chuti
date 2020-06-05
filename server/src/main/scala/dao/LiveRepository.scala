@@ -167,7 +167,6 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
             .filter(u => u.email.like(s"%${s.text}%"))
         }.length.result.map(_.toLong)
 
-    //TODO add user to cache of users
     override def login(
       email:    String,
       password: String
@@ -266,7 +265,6 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     }
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] = {
-      //TODO game needs to be cached
       val zio = fromDBIO {
         GameQuery
           .filter(_.id === pk)
@@ -303,15 +301,14 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       GameQuery.length.result.map(_.toLong)
 
     override def gamesWaitingForPlayers(
-    ): RepositoryIO[Seq[Game]] = //TODO implement in terms of search
+    ): RepositoryIO[Seq[Game]] =
       GameQuery
         .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus))
         .result
         .map(_.map(row => GameRow2Game(row)))
 
-    //TODO game needs to be cached
     override def getGameForUser
-      : RepositoryIO[Option[Game]] = { session: ChutiSession => //TODO implement in terms of search
+      : RepositoryIO[Option[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
         .join(GameQuery).on(_.gameId === _.id)
@@ -320,7 +317,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     }
 
     override def gameInvites
-      : RepositoryIO[Seq[Game]] = { session: ChutiSession => //TODO implement in terms of search
+      : RepositoryIO[Seq[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(player => player.userId === session.user.id.getOrElse(UserId(-1)) && player.invited)
         .join(GameQuery).on(_.gameId === _.id)
