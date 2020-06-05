@@ -65,8 +65,7 @@ trait Tables {
 
   case class FriendsRow(
     one:       UserId,
-    two:       UserId,
-    confirmed: Boolean
+    two:       UserId
   )
 
   implicit def GetResultFriendsRow(
@@ -74,19 +73,19 @@ trait Tables {
     e1:          GR[Boolean]
   ): GR[FriendsRow] = GR { prs =>
     import prs._
-    FriendsRow.tupled((<<[UserId], <<[UserId], <<[Boolean]))
+    FriendsRow.tupled((<<[UserId], <<[UserId]))
   }
 
   class Friends(_tableTag: Tag)
       extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
     def * : ProvenShape[FriendsRow] =
-      (one, two, confirmed) <> (FriendsRow.tupled, FriendsRow.unapply)
+      (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
 
     def ?
-      : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId], Option[Boolean])] =
-      (Rep.Some(one), Rep.Some(two), Rep.Some(confirmed)).shaped.<>(
+      : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
+      (Rep.Some(one), Rep.Some(two)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get, _3.get)))
+          import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -94,8 +93,6 @@ trait Tables {
     val one: Rep[UserId] = column[UserId]("one")
 
     val two: Rep[UserId] = column[UserId]("two")
-
-    val confirmed: Rep[Boolean] = column[Boolean]("confirmed", O.Default(false))
 
     lazy val userFk1 = foreignKey("friends_user_1", one, UserQuery)(
       r => r.id,

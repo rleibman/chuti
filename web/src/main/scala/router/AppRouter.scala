@@ -64,7 +64,10 @@ object AppRouter extends ChutiComponent {
                 Callback {
                   document.location.href = "/api/auth/doLogout"
                 }
-              })("Log Out"),
+              })("Cerrar sesión"),
+              Button(onClick = { (_, _) =>
+                Callback.alert("en construcción") //TODO write this
+              })("Administración de usuario"),
               resolution.render()
             )
           )

@@ -160,6 +160,10 @@ object GameClient {
         OptionOf(Scalar()),
         arguments = List(Argument("value", value))
       )
+    def friend(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field("friend", OptionOf(Scalar()), arguments = List(Argument("value", value)))
+    def unfriend(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field("unfriend", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def play(
       gameId:    Int,
       gameEvent: Json
@@ -191,3 +195,4 @@ object GameClient {
   }
 
 }
+

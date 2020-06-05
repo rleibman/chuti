@@ -77,7 +77,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
       val rowOpt = for {
         one <- session.user.id
         two <- enemy.id
-      } yield { FriendsRow(one, two, confirmed = true) }
+      } yield { FriendsRow(one, two) }
       DBIO
         .sequence(
           rowOpt.toSeq
@@ -91,13 +91,12 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     }
 
     override def friend(
-      friend:    User,
-      confirmed: Boolean
+      friend:    User
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
       val rowOpt = for {
         one <- session.user.id
         two <- friend.id
-      } yield { FriendsRow(one, two, confirmed) }
+      } yield { FriendsRow(one, two) }
       DBIO
         .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
           _.headOption.getOrElse(false)

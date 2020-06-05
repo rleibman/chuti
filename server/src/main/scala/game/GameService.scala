@@ -76,7 +76,6 @@ object UserConnectionRepo {
 }
 
 object GameService {
-
   lazy val godLayer: ULayer[SessionProvider] = {
     SessionProvider.layer(ChutiSession(GameService.god))
   }
@@ -135,7 +134,9 @@ object GameService {
       gameId: GameId
     ): ZIO[GameLayer with ChatService, GameException, Boolean]
 
-    def inviteFriend(friend: User): ZIO[GameLayer, GameException, Boolean]
+    def friend(userId: UserId): ZIO[GameLayer with ChatService, GameException, Boolean]
+
+    def unfriend(userId: UserId): ZIO[GameLayer with ChatService, GameException, Boolean]
 
     def acceptGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Game]
 
@@ -146,10 +147,6 @@ object GameService {
     def declineGameInvitation(
       gameId: GameId
     ): ZIO[GameLayer with ChatService, GameException, Boolean]
-
-    def acceptFriendship(friend: User): ZIO[GameLayer, GameException, Boolean]
-
-    def unfriend(enemy: User): ZIO[GameLayer, GameException, Boolean]
 
     def gameStream(
       gameId:       GameId,
@@ -238,6 +235,12 @@ object GameService {
     gameId: GameId
   ): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
     URIO.accessM(_.get.cancelUnacceptedInvitations(gameId))
+
+  def friend(userId: UserId): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
+    URIO.accessM(_.get.friend(userId))
+
+  def unfriend(userId: UserId): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
+    URIO.accessM(_.get.unfriend(userId))
 
   def gameStream(
     gameId:       GameId,
@@ -410,40 +413,32 @@ object GameService {
           loggedInUsers      <- userConnectionRepo.connectionMap.map(_.values.take(20).toSeq)
         } yield loggedInUsers
 
-      //TODO may want to change to unidirectional friendships
-      def acceptFriendship(friend: User): ZIO[GameLayer, GameException, Boolean] =
-        (for {
-          repository <- ZIO.service[Repository.Service]
-          friends    <- repository.userOperations.friend(friend, confirmed = true)
-        } yield friends).mapError(GameException.apply)
-
-      //TODO may want to change to unidirectional friendships
-      def inviteFriend(friend: User): ZIO[GameLayer, GameException, Boolean] =
+      def friend(friendId: UserId): ZIO[GameLayer with ChatService, GameException, Boolean] =
         (for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
-          postman    <- ZIO.service[Postman.Service]
-          //See if the friend exists
-          friendOpt <- repository.userOperations.userByEmail(friend.email)
-          //If the friend does not exist
-          //  Add a temporary user for the friend
-          savedFriend <- friendOpt.fold(repository.userOperations.upsert(friend))(f =>
-            ZIO.succeed(f)
+          friendOpt  <- repository.userOperations.get(friendId)
+          friended   <- ZIO.foreach(friendOpt)(friend => repository.userOperations.friend(friend))
+          _ <- ZIO.foreach(friendOpt)(person =>
+            ChatService
+              .sendMessage(s"${user.name} es tu amigo :)", ChannelId.directChannel, Option(person))
           )
-          // Send an invite to the friend to join the server, or just to become friends if the user already exists
-          envelope <- friendOpt.fold(postman.inviteToPlayByEmail(user, savedFriend))(f =>
-            postman.inviteExistingUserFriendEmail(user, f)
-          )
-          _ <- postman.deliver(envelope)
-          //Add a temporary record in the friends table
-          friendRecord <- repository.userOperations.friend(savedFriend, confirmed = false)
-        } yield friendRecord).mapError(GameException.apply)
+        } yield friended.getOrElse(false)).mapError(GameException.apply)
 
-      def unfriend(enemy: User): ZIO[GameLayer, GameException, Boolean] =
+      def unfriend(enemyId: UserId): ZIO[GameLayer with ChatService, GameException, Boolean] =
         (for {
+          user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
-          friends    <- repository.userOperations.unfriend(enemy)
-        } yield friends).mapError(GameException.apply)
+          enemyOpt   <- repository.userOperations.get(enemyId)
+          unfriended <- ZIO.foreach(enemyOpt)(enemy => repository.userOperations.unfriend(enemy))
+          _ <- ZIO.foreach(enemyOpt)(person =>
+            ChatService.sendMessage(
+              s"${user.name} ya no es tu amigo :(",
+              ChannelId.directChannel,
+              Option(person)
+            )
+          )
+        } yield unfriended.getOrElse(false)).mapError(GameException.apply)
 
       def inviteByEmail(
         name:   String,

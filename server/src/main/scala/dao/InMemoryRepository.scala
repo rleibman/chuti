@@ -81,8 +81,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
 
     override def friend(
-      friend:    User,
-      confirmed: Boolean
+      friend:    User
     ): RepositoryIO[Boolean] = ???
 
     override def friends: RepositoryIO[Seq[User]] = ???

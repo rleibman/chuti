@@ -199,30 +199,26 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                     throw GameException(
                       "This clearly could not be happening (event has no index)"
                     )
-                  case Some(index) if index == currentGame.currentEventIndex => {
+                  case Some(index) if index == currentGame.currentEventIndex =>
                     //If the game event is the next one to be applied, apply it to the game
                     currentGame.reapplyEvent(gameEvent)
-                  }
-                  case Some(index) if index > currentGame.currentEventIndex => {
+                  case Some(index) if index > currentGame.currentEventIndex =>
                     //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                     //In a few seconds, just get the full game.
                     currentGame
-                  }
-                  case Some(index) => {
+                  case Some(index) =>
                     //If it's past, mark an error, how could we have a past event???
                     throw GameException(
                       s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
                     )
-                  }
                 }
             }
             val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
               gameEvent.index match {
-                case Some(index) if index == currentGame.nextIndex + 1 => {
+                case Some(index) if index == currentGame.nextIndex + 1 =>
                   //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                   //In a few seconds, just get the full game.
                   s.gameEventQueue :+ gameEvent
-                }
                 case _ => s.gameEventQueue
               }
             }
@@ -537,22 +533,32 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                                     calibanCall[Mutations, Option[Boolean]](
                                       Mutations.inviteToGame(playerId.value, gameId.value),
                                       res =>
-                                        (
-                                          if (res.getOrElse(false))
+                                        if (res.getOrElse(false))
                                             Toast.success("Jugador Invitado!")
                                           else Toast.error("Error invitando jugador!")
-                                        )
                                     )
                                   })("Invitar a jugar"): VdomNode
                                 else
                                   EmptyVdom).getOrElse(EmptyVdom),
                               if (player.isFriend)
                                 DropdownItem(onClick = { (_, _) =>
-                                  Callback.empty
-                                })("Quitar como amigo")
+                                  calibanCall[Mutations, Option[Boolean]](
+                                    Mutations.unfriend(player.user.id.get.value),
+                                    res => if (res.getOrElse(false))
+                                        refresh() >> Toast.success(s"Cortalas, ${player.user.name} ya no es tu amigo!")
+                                      else
+                                        Toast.error("Error haciendo amigos!")
+                                  )
+                                })("Ya no quiero ser tu amigo")
                               else
                                 DropdownItem(onClick = { (_, _) =>
-                                  Callback.empty
+                                  calibanCall[Mutations, Option[Boolean]](
+                                    Mutations.friend(player.user.id.get.value),
+                                    res => if (res.getOrElse(false))
+                                        refresh() >> Toast.success("Un nuevo amiguito!")
+                                      else
+                                        Toast.error("Error haciendo amigos!")
+                                  )
                                 })("Agregar como amigo")
                             )
                           )

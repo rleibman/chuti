@@ -32,6 +32,8 @@ type Mutations {
   acceptGameInvitation(value: Int!): Json
   declineGameInvitation(value: Int!): Boolean
   cancelUnacceptedInvitations(value: Int!): Boolean
+  friend(value: Int!): Boolean
+  unfriend(value: Int!): Boolean
   play(gameId: Int!, gameEvent: Json!): Boolean
 }
 

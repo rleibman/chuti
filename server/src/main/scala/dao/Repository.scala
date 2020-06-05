@@ -34,8 +34,7 @@ object Repository {
 
     def unfriend(enemy: User): RepositoryIO[Boolean]
     def friend(
-      friend:    User,
-      confirmed: Boolean
+      friend:    User
     ):           RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
 
