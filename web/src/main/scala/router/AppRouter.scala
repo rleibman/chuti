@@ -33,8 +33,6 @@ object AppRouter extends ChutiComponent {
 
   case object GameAppPage extends AppPage
 
-  case object LobbyAppPage extends AppPage
-
   case object RulesAppPage extends AppPage
 
   case object UserSettingsAppPage extends AppPage
@@ -79,15 +77,14 @@ object AppRouter extends ChutiComponent {
   private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
     (trimSlashes
-      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
-      | staticRoute("#lobby", LobbyAppPage) ~> renderR(_ =>
+      | staticRoute("#game", GameAppPage) ~> renderR(_ =>
         chutiContext.consume { chutiState =>
-          LobbyPage(chutiState)
+          GamePage(chutiState)
         }
       )
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
-      .notFound(redirectToPage(LobbyAppPage)(SetRouteVia.HistoryReplace))
+      .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
       .renderWith(layout)
   }
   private val baseUrl: BaseUrl = BaseUrl.fromWindowOrigin_/

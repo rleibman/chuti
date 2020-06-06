@@ -32,6 +32,7 @@ import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLInputElement
 import typings.semanticUiReact.components._
@@ -65,11 +66,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     friends:                   Seq[User] = Seq.empty,
     loggedInUsers:             Seq[User] = Seq.empty,
     privateMessage:            Option[ChatMessage] = None,
-    gameInProgress:            Option[Game] = None,
     invites:                   Seq[Game] = Seq.empty,
     userStream:                Option[WebSocketHandler] = None,
-    gameStream:                Option[WebSocketHandler] = None,
-    gameEventQueue:            Seq[GameEvent] = Seq.empty,
     dlg:                       Dialog = none,
     newGameDialogState:        Option[NewGameDialogState] = None,
     inviteExternalDialogState: Option[InviteExternalDialogState] = None
@@ -82,12 +80,9 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           ).sortBy(_.user.name)
   }
 
-
   class Backend($ : BackendScope[Props, State]) {
     private val gameDecoder = implicitly[Decoder[Game]]
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
-
-    def processGameEventQueue: Callback = Callback.empty //TODO write this
 
     lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
       (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
@@ -109,52 +104,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           )
         })
 
-    def onGameEvent(gameEvent: GameEvent): Callback = {
-      Callback.log(gameEvent.toString) >>
-        $.modState(
-          { s =>
-            val moddedGame = s.gameInProgress.map {
-              currentGame: Game =>
-                gameEvent.index match {
-                  case None =>
-                    throw GameException(
-                      "This clearly could not be happening (event has no index)"
-                    )
-                  case Some(index) if index == currentGame.currentEventIndex =>
-                    //If the game event is the next one to be applied, apply it to the game
-                    currentGame.reapplyEvent(gameEvent)
-                  case Some(index) if index > currentGame.currentEventIndex =>
-                    //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                    //In a few seconds, just get the full game.
-                    currentGame
-                  case Some(index) =>
-                    //If it's past, mark an error, how could we have a past event???
-                    throw GameException(
-                      s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-                    )
-                }
-            }
-            val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
-              gameEvent.index match {
-                case Some(index) if index == currentGame.nextIndex + 1 =>
-                  //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                  //In a few seconds, just get the full game.
-                  s.gameEventQueue :+ gameEvent
-                case _ => s.gameEventQueue
-              }
-            }
-
-            s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
-          },
-          processGameEventQueue
-        )
-    }
-
     def refresh(): Callback = {
       //We may have to close an existing stream
-      $.state.map { s: State =>
-        s.gameStream.foreach(_.close())
-      } >>
         calibanCall[Queries, Option[List[User]]](
           Queries.getFriends(userSelectionBuilder),
           loggedInUsersOpt => $.modState(_.copy(friends = loggedInUsersOpt.toSeq.flatten))
@@ -177,29 +128,6 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           Queries.getLoggedInUsers(userSelectionBuilder),
           loggedInUsersOpt =>
             $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id)))
-        ) >>
-        calibanCallThroughJsonOpt[Queries, Game](
-          Queries.getGameForUser,
-          game =>
-            $.modState(
-              _.copy(
-                gameInProgress = Option(game),
-                gameStream = Option(
-                  makeWebSocketClient[Json](
-                    uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                    query = Subscriptions.gameStream(game.id.get.value, connectionId),
-                    onData = { (_, data) =>
-                      data.fold(Callback.empty)(json =>
-                        gameEventDecoder
-                          .decodeJson(json)
-                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
-                      )
-                    },
-                    operationId = "-"
-                  )
-                )
-              )
-            )
         )
     }
 
@@ -282,9 +210,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               calibanCallThroughJsonOpt[Mutations, Game](
                 Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
                 game =>
-                  Toast.success("Juego empezado!") >> $.modState(
+                  Toast.success("Juego empezado!") >> p.gameInProgress.setState(Option(game)) >> $.modState(
                     _.copy(
-                      gameInProgress = Option(game),
                       dlg = Dialog.none,
                       newGameDialogState = None
                     )
@@ -333,7 +260,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           Button(onClick = { (_, _) =>
             $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
           })("Cancelar"),
-          s.gameInProgress.fold(EmptyVdom) { game =>
+          p.gameInProgress.value.fold(EmptyVdom) { game =>
             Button(onClick = {
               (_, _) =>
                 Callback.log(s"Inviting user by email") >>
@@ -358,7 +285,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
           <.div(
             renderNewGameDialog,
             renderInviteExternalDialog,
-            s.gameInProgress.fold("")(_.currentEventIndex.toString),
+            p.gameInProgress.value.fold("")(_.currentEventIndex.toString),
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
@@ -375,9 +302,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                   calibanCallThroughJsonOpt[Mutations, Game](
                     Mutations.joinRandomGame,
                     game =>
-                      Toast.success("Sentado a la mesa!") >> $.modState(
-                        _.copy(gameInProgress = Option(game))
-                      )
+                      Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(Option(game))
                   )
               )("Juega Con Quien sea"),
               Button(onClick = (_, _) =>
@@ -387,7 +312,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
               )(
                 "Empezar Juego Nuevo"
               )
-            ).when(s.gameInProgress.isEmpty),
+            ).when(p.gameInProgress.value.isEmpty),
             TagMod(
               Container(key = "invitaciones")(
                 Header()("Invitaciones"),
@@ -398,7 +323,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                     Button(onClick = (_, _) => {
                       calibanCallThroughJsonOpt[Mutations, Game](
                         Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
-                        game => $.modState(_.copy(gameInProgress = Option(game))) >> refresh()
+                        game => p.gameInProgress.setState(Option(game)) >> refresh()
                       )
                     })("Aceptar"),
                     Button(onClick = (_, _) => {
@@ -436,12 +361,11 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                         TableCell()(
                           Dropdown(
                             className = "menuBurger",
-                            trigger =
-                              Icon(name = SemanticICONS.`ellipsis vertical`)()
+                            trigger = Icon(name = SemanticICONS.`ellipsis vertical`)()
                           )(
                             DropdownMenu()(
                               (for {
-                                game     <- s.gameInProgress
+                                game     <- p.gameInProgress.value
                                 userId   <- user.id
                                 playerId <- player.user.id
                                 gameId   <- game.id
@@ -455,8 +379,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                                       Mutations.inviteToGame(playerId.value, gameId.value),
                                       res =>
                                         if (res.getOrElse(false))
-                                            Toast.success("Jugador Invitado!")
-                                          else Toast.error("Error invitando jugador!")
+                                          Toast.success("Jugador Invitado!")
+                                        else Toast.error("Error invitando jugador!")
                                     )
                                   })("Invitar a jugar"): VdomNode
                                 else
@@ -465,8 +389,11 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                                 DropdownItem(onClick = { (_, _) =>
                                   calibanCall[Mutations, Option[Boolean]](
                                     Mutations.unfriend(player.user.id.get.value),
-                                    res => if (res.getOrElse(false))
-                                        refresh() >> Toast.success(s"Cortalas, ${player.user.name} ya no es tu amigo!")
+                                    res =>
+                                      if (res.getOrElse(false))
+                                        refresh() >> Toast.success(
+                                          s"Cortalas, ${player.user.name} ya no es tu amigo!"
+                                        )
                                       else
                                         Toast.error("Error haciendo amigos!")
                                   )
@@ -475,7 +402,8 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                                 DropdownItem(onClick = { (_, _) =>
                                   calibanCall[Mutations, Option[Boolean]](
                                     Mutations.friend(player.user.id.get.value),
-                                    res => if (res.getOrElse(false))
+                                    res =>
+                                      if (res.getOrElse(false))
                                         refresh() >> Toast.success("Un nuevo amiguito!")
                                       else
                                         Toast.error("Error haciendo amigos!")
@@ -490,7 +418,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                 )
               )
             ).when(s.loggedInUsers.nonEmpty),
-            s.gameInProgress.toVdomArray { game =>
+            p.gameInProgress.value.toVdomArray { game =>
               Container(key = "gameInProgress")(
                 Header()("Juego en Curso"),
                 game.gameStatus match {
@@ -550,7 +478,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
                           (
                             if (res.getOrElse(false)) Toast.success("Juego abandonado!")
                             else Toast.error("Error abandonando juego!")
-                          ) >> $.modState(_.copy(gameInProgress = None))
+                          ) >> p.gameInProgress.setState(None)
                       )
                   )
                 )("Abandona Juego"),
@@ -573,7 +501,7 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     }
   }
 
-  case class Props(chutiState: ChutiState)
+  case class Props(chutiState: ChutiState, gameInProgress: StateSnapshot[Option[Game]])
 
   private val component = ScalaComponent
     .builder[Props]("LobbyPage")
@@ -582,6 +510,6 @@ object LobbyPage extends ChutiPage with ScalaJSClientAdapter {
     .componentDidMount($ => $.backend.init())
     .build
 
-  def apply(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))
+  def apply(chutiState: ChutiState, gameInProgress: StateSnapshot[Option[Game]]): Unmounted[Props, State, Backend] = component(Props(chutiState, gameInProgress))
 
 }
