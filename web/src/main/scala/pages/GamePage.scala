@@ -29,13 +29,20 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.extra.StateSnapshot.SetFn
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom.window
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
 
+  object Mode extends Enumeration {
+    type Mode = Value
+    val lobby, game = Value
+  }
+  import Mode._
+
   case class State(
+    mode:           Mode,
     gameInProgress: Option[Game] = None,
     gameStream:     Option[WebSocketHandler] = None,
     //TODO events have to get applied to the local copy of the game in order, if we receive
@@ -56,7 +63,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       Callback.log(gameEvent.toString) >>
         $.modState(
           { s =>
-            val moddedGame = s.gameInProgress.map {
+            val moddedGame = s.gameInProgress.flatMap {
               currentGame: Game =>
                 gameEvent.index match {
                   case None =>
@@ -65,11 +72,17 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                     )
                   case Some(index) if index == currentGame.currentEventIndex =>
                     //If the game event is the next one to be applied, apply it to the game
-                    currentGame.reapplyEvent(gameEvent)
+                    println("reapplying event")
+                    val reapplied = currentGame.reapplyEvent(gameEvent)
+                    if(reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
+                      None
+                    } else {
+                      Option(reapplied)
+                    }
                   case Some(index) if index > currentGame.currentEventIndex =>
                     //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                     //In a few seconds, just get the full game.
-                    currentGame
+                    Option(currentGame)
                   case Some(index) =>
                     //If it's past, mark an error, how could we have a past event???
                     throw GameException(
@@ -99,7 +112,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       } >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
-          game =>
+          callbackWhenSome = game =>
             $.modState(
               _.copy(
                 gameInProgress = Option(game),
@@ -118,7 +131,8 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                   )
                 )
               )
-            )
+            ),
+          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby))
         )
     }
 
@@ -127,26 +141,51 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
         refresh()
     }
 
-    def onGameInProgressChange(opt: Option[Option[Game]], callback: Callback): Callback = {
-      refresh() >> callback
+    def onGameInProgressChange(
+      opt:      Option[Option[Game]],
+      callback: Callback
+    ): Callback = {
+      $.modState(_.copy(gameInProgress = opt.flatten)) >> refresh() >> callback
     }
 
     def render(
       p: Props,
       s: State
     ): VdomElement = {
-      LobbyPage(p.chutiState, StateSnapshot(s.gameInProgress)(onGameInProgressChange))
+      s.mode match {
+        case Mode.lobby =>
+          LobbyComponent(
+            p.chutiState,
+            StateSnapshot(s.gameInProgress)(onGameInProgressChange),
+            onRequestGameRefresh = refresh()
+          )
+        case Mode.game =>
+          GameComponent(p.chutiState, StateSnapshot(s.gameInProgress)(onGameInProgressChange))
+      }
+
     }
   }
   case class Props(chutiState: ChutiState)
 
-  val component = ScalaComponent
+  private val component = ScalaComponent
     .builder[Props]("GamePage")
-    .initialState(State())
+    .initialState {
+      val modeStr = window.sessionStorage.getItem("gamePageMode")
+      val mode =
+        try {
+          Mode.withName(modeStr)
+        } catch {
+          case _: Throwable =>
+            Mode.lobby
+        }
+      State(mode = mode)
+    }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())
     .build
 
   def apply(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))
+
+//  window.sessionStorage.setItem("gamePageMode", str)
 
 }

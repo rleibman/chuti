@@ -226,6 +226,7 @@ object Triunfo {
 sealed trait GameStatus {
   def value: String
   def enJuego: Boolean = false
+  def acabado: Boolean = false
 }
 
 object GameStatus {
@@ -254,9 +255,11 @@ object GameStatus {
   }
   object abandonado extends GameStatus {
     override def value: String = "abandonado"
+    override def acabado: Boolean = true
   }
   object partidoTerminado extends GameStatus {
     override def value: String = "partidoTerminado"
+    override def acabado: Boolean = true
   }
   def withName(str: String): GameStatus = str match {
     case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
@@ -581,9 +584,11 @@ case class Game(
          |${jugador.fichas.map(_.toString).mkString(" ")}""".stripMargin
 
     s"""
-       |id         = $id
-       |gameStatus = $gameStatus
-       |triunfo    = ${triunfo.getOrElse("")}
+       |id          = $id
+       |gameStatus  = $gameStatus
+       |triunfo     = ${triunfo.getOrElse("")}
+       |quien canta = ${quienCanta.user.name}
+       |mano        = ${mano.user.name}
        |${jugadores.map { jugadorStr }.mkString}
        |""".stripMargin
 

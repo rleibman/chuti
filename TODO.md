@@ -106,7 +106,8 @@ Games playing, game index, event list
 Glimpse into queues
 
 ## Bugs
-"Juega con quien sea" is not sending out a game event when joining 
+- "Juega con quien sea" is not sending out a game event when joining 
+- Last person joining is causing huge issues.
 
 ## To test
 - Invite by email, unhappy paths

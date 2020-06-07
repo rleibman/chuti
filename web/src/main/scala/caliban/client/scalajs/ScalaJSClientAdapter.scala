@@ -28,7 +28,6 @@ import io.circe.parser._
 import io.circe.syntax._
 import io.circe.{Decoder, Error, Json}
 import japgolly.scalajs.react.{AsyncCallback, Callback}
-import org.scalajs.dom
 import org.scalajs.dom.WebSocket
 import zio.duration._
 
@@ -69,7 +68,9 @@ trait ScalaJSClientAdapter {
 
   def calibanCallThroughJsonOpt[Origin, A: Decoder](
     selectionBuilder: SelectionBuilder[Origin, Option[Json]],
-    callback:         A => Callback
+    callbackWhenSome: A => Callback,
+    callbackWhenNone: Callback = Callback
+      .log(s"The result was empty")
   )(
     implicit ev: IsOperation[Origin]
   ): Callback = calibanCall[Origin, Option[Json]](
@@ -77,13 +78,11 @@ trait ScalaJSClientAdapter {
       case Some(json) =>
         val decoder = implicitly[Decoder[A]]
         decoder.decodeJson(json) match {
-          case Right(obj) => callback(obj)
+          case Right(obj) => callbackWhenSome(obj)
           case Left(error) =>
             Callback.log(s"3 Error: $error") //TODO handle error responses better
         }
-      case None =>
-        Callback
-          .log(s"Did not receive a valid json object") //TODO handle error responses better
+      case None => callbackWhenNone
     }
   )
 
