@@ -36,7 +36,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
 //    }.future
 //  }
 
-  "Playing a full game" should "look all nice" in {
+  "Playing a bunch of full games" should "look all nice" in {
     testRuntime.unsafeRunToFuture {
       ZIO
         .foreachPar(1 to 100) { _ =>
@@ -94,7 +94,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
       SinTriunfos,
       Canto7,
-      game => assert(game.quienCanta.cuenta.map(_.puntos).sum == 7)
+      game => assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
     ),
     GameTester(
       "cantar 7 pero no de caida (estan pegadas)",
@@ -102,8 +102,8 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       SinTriunfos,
       Canto7,
       game => {
-        assert(game.quienCanta.cuenta.head.esHoyo)
-        assert(game.quienCanta.cuenta.map(_.puntos).sum == -7)
+        assert(game.quienCanta.get.cuenta.head.esHoyo)
+        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -7)
       }
     ),
     GameTester(
@@ -112,7 +112,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       SinTriunfos,
       CantoTodas,
       game => {
-        assert(game.quienCanta.cuenta.map(_.puntos).sum == 21)
+        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 21)
         assert(game.gameStatus == GameStatus.partidoTerminado)
       }
     ),
@@ -122,8 +122,8 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       SinTriunfos,
       CantoTodas,
       game => {
-        assert(game.quienCanta.cuenta.head.esHoyo)
-        assert(game.quienCanta.cuenta.map(_.puntos).sum == -21)
+        assert(game.quienCanta.get.cuenta.head.esHoyo)
+        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -21)
       }
     ),
     GameTester(
@@ -131,7 +131,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
       SinTriunfos,
       Casa,
-      game => assert(game.quienCanta.cuenta.map(_.puntos).sum == 7)
+      game => assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
     )
   )
 

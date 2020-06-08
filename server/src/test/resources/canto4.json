@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 11,
-  "created" : "2020-05-16T08:57:25.041006",
+  "created" : "2020-06-07T22:41:35.298716",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -26,39 +26,22 @@
             
           }
         },
-        "currentChannelId" : null,
-        "created" : "2020-05-16T08:57:21.782135",
-        "lastUpdated" : "2020-05-16T08:57:21.784305",
+        "created" : "2020-06-07T22:41:32.345991",
+        "lastUpdated" : "2020-06-07T22:41:32.347723",
         "lastLoggedIn" : null,
-        "deleted" : false
+        "active" : false,
+        "deleted" : false,
+        "isAdmin" : false
       },
       "invited" : false,
       "fichas" : [
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 6
+            "value" : 5
           },
           "abajo" : {
             "value" : 4
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 2
-          },
-          "abajo" : {
-            "value" : 2
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 4
-          },
-          "abajo" : {
-            "value" : 3
           }
         },
         {
@@ -68,6 +51,24 @@
           },
           "abajo" : {
             "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 1
+          },
+          "abajo" : {
+            "value" : 0
           }
         },
         {
@@ -82,10 +83,10 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 5
+            "value" : 3
           },
           "abajo" : {
-            "value" : 5
+            "value" : 1
           }
         },
         {
@@ -94,7 +95,7 @@
             "value" : 5
           },
           "abajo" : {
-            "value" : 1
+            "value" : 0
           }
         }
       ],
@@ -119,45 +120,19 @@
             
           }
         },
-        "currentChannelId" : null,
-        "created" : "2020-05-16T08:57:21.784351",
-        "lastUpdated" : "2020-05-16T08:57:21.784373",
+        "created" : "2020-06-07T22:41:32.347772",
+        "lastUpdated" : "2020-06-07T22:41:32.34778",
         "lastLoggedIn" : null,
-        "deleted" : false
+        "active" : false,
+        "deleted" : false,
+        "isAdmin" : false
       },
       "invited" : false,
       "fichas" : [
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 4
-          },
-          "abajo" : {
-            "value" : 2
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 6
-          },
-          "abajo" : {
-            "value" : 2
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 4
-          },
-          "abajo" : {
-            "value" : 4
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 5
+            "value" : 3
           },
           "abajo" : {
             "value" : 3
@@ -166,6 +141,42 @@
         {
           "type" : "conocida",
           "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 5
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
             "value" : 5
           },
           "abajo" : {
@@ -175,19 +186,10 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 6
+            "value" : 4
           },
           "abajo" : {
-            "value" : 1
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 6
-          },
-          "abajo" : {
-            "value" : 0
+            "value" : 4
           }
         }
       ],
@@ -212,48 +214,40 @@
             
           }
         },
-        "currentChannelId" : null,
-        "created" : "2020-05-16T08:57:21.784386",
-        "lastUpdated" : "2020-05-16T08:57:21.784393",
+        "created" : "2020-06-07T22:41:32.347791",
+        "lastUpdated" : "2020-06-07T22:41:32.347796",
         "lastLoggedIn" : null,
-        "deleted" : false
+        "active" : false,
+        "deleted" : false,
+        "isAdmin" : false
       },
       "invited" : false,
       "fichas" : [
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 3
-          },
-          "abajo" : {
-            "value" : 3
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 0
-          },
-          "abajo" : {
-            "value" : 0
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
             "value" : 2
           },
           "abajo" : {
-            "value" : 1
+            "value" : 2
           }
         },
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 4
+            "value" : 6
           },
           "abajo" : {
-            "value" : 1
+            "value" : 5
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 4
           }
         },
         {
@@ -268,7 +262,16 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 1
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
           },
           "abajo" : {
             "value" : 0
@@ -277,10 +280,10 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 3
+            "value" : 5
           },
           "abajo" : {
-            "value" : 2
+            "value" : 3
           }
         }
       ],
@@ -289,7 +292,11 @@
       "turno" : false,
       "cantante" : false,
       "mano" : false,
-      "cuantasCantas" : null,
+      "cuantasCantas" : {
+        "Buenas" : {
+          
+        }
+      },
       "cuenta" : [
       ]
     },
@@ -305,18 +312,28 @@
             
           }
         },
-        "currentChannelId" : null,
-        "created" : "2020-05-16T08:57:21.784404",
-        "lastUpdated" : "2020-05-16T08:57:21.78441",
+        "created" : "2020-06-07T22:41:32.347806",
+        "lastUpdated" : "2020-06-07T22:41:32.34781",
         "lastLoggedIn" : null,
-        "deleted" : false
+        "active" : false,
+        "deleted" : false,
+        "isAdmin" : false
       },
       "invited" : false,
       "fichas" : [
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 5
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 6
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 0
           },
           "abajo" : {
             "value" : 0
@@ -325,25 +342,7 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 5
-          },
-          "abajo" : {
-            "value" : 4
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 4
-          },
-          "abajo" : {
-            "value" : 0
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 3
+            "value" : 6
           },
           "abajo" : {
             "value" : 1
@@ -352,28 +351,37 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 6
+            "value" : 4
           },
           "abajo" : {
-            "value" : 6
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 6
-          },
-          "abajo" : {
-            "value" : 5
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
             "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
           },
           "abajo" : {
             "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 2
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 1
           }
         }
       ],
@@ -391,5 +399,5 @@
       ]
     }
   ],
-  "pointsPerDollar" : 100.0
+  "satoshiPerPoint" : 100.0
 }

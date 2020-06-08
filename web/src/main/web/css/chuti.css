@@ -1,24 +1,63 @@
-.domino {
-    height: 150px
-}
-
-.domino_jugado {
-    height: 80px
-}
-
-.jugador {
+.jugador0{
     flex: 50%;
     padding: 10px;
     min-height: 300px;
     max-width: 550px;
     /*border:1px solid red;*/
 }
+.jugador1{
+    flex: 50%;
+    padding: 10px;
+    min-height: 300px;
+    max-width: 550px;
+    /*border:1px solid red;*/
+}
+.jugador2{
+    flex: 50%;
+    padding: 10px;
+    min-height: 300px;
+    max-width: 550px;
+    /*border:1px solid red;*/
+}
+.jugador3{
+    flex: 50%;
+    padding: 10px;
+    min-height: 300px;
+    max-width: 550px;
+    /*border:1px solid red;*/
+}
+.self {
 
-.jugador.mano {
+}
+.actionExpected {
     background-color: green;
 }
+.playerName {
 
-.centro {
+}
+.actionBar {
+
+}
+.statusBar{
+
+}
+.fichas {
+
+}
+.domino{
+    height: 150px;
+    padding: 3px;
+}
+.filas {
+
+}
+.fila {
+
+}
+.domino_jugado {
+    height: 80px
+}
+.fichasEnJuego {
     display: flex;
     width: 100%;
     align-items: center;
@@ -26,7 +65,31 @@
     border: 1px solid red;
     padding: 10px;
 }
+.fichaEnJuego {
+
+}
+.domino_enjuego {
+    height: 150px
+}
 
 .menuBurger i.dropdown.icon {
     display: none;
+}
+.hoyo {
+    border-radius: 100px;
+    border: 3px solid red;
+    background: white;
+    color : black;
+    padding : 10px 15px;
+}
+.chuti {
+    border-radius: 100px;
+    border: 3px solid green;
+    background: white;
+    color : black;
+    padding : 10px 15px;
+}
+
+.ui.selection.dropdown.cantaDropdown {
+    min-width: 18em;
 }

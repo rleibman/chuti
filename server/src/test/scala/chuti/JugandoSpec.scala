@@ -60,7 +60,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     assert(game.jugadores.count(_.fichas.size == 6) === 4) //Todos dieron una ficha.
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
-    assert(gameEvents.size === 5) //Including the poison pill
+    assert(gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size === 5) //Including the poison pill
   }
   "jugando 4 manos" should "work" in {
     val gameId = GameId(1)
@@ -95,11 +95,11 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
 
     assert(game.id === Option(gameId))
     val numFilas = game.jugadores.map(_.filas.size).sum
-    assert(game.quienCanta.fichas.size === (numFilas - 7))
-    if (game.quienCanta.yaSeHizo) {
-      println(s"${game.quienCanta.user.name} se hizo con ${game.quienCanta.filas.size}!")
+    assert(game.quienCanta.get.fichas.size + numFilas === 7)
+    if (game.quienCanta.get.yaSeHizo) {
+      println(s"${game.quienCanta.get.user.name} se hizo con ${game.quienCanta.get.filas.size}!")
     } else {
-      println(s"Fue hoyo para ${game.quienCanta.user.name}!")
+      println(s"Fue hoyo para ${game.quienCanta.get.user.name}!")
     }
     assert(gameEvents.nonEmpty)
   }

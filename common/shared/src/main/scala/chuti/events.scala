@@ -345,12 +345,31 @@ case class Canta(
     }
 
     //El turno no cambia,
-    val jugadoresNuevos =
+    val jugadoresNuevos1 =
       game.modifiedJugadores(
         _.id == nuevoCantante.id,
         _ => nuevoCantante,
         _.copy(cantante = false, mano = false, cuantasCantas = None)
       )
+
+    val nextJugador = game.nextPlayer(jugador)
+    //El turno no cambia, pero la mano si
+    val jugadoresNuevos = game.jugadores.map { other =>
+      val a = if (other.id == nuevoCantante.id) {
+        nuevoCantante
+      } else {
+        other.copy(cantante = false, mano = false)
+      }
+      if (a.id == jugador.id && cuantasCantas == CuantasCantas.Buenas) {
+        //Si canto buenas marcalo asi
+        a.copy(cuantasCantas = Option(CuantasCantas.Buenas))
+      } else if (a.id == nextJugador.id && !(nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas)) {
+        //Pasale la mano al siquiente jugador, a menos que sea el ultimo jugador
+        a.copy(mano = true)
+      } else {
+        a
+      }
+    }
 
     val newGameStatus =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas) {
@@ -709,7 +728,7 @@ case class TerminaJuego(
       gameStatus = if (game.partidoOver) GameStatus.partidoTerminado else GameStatus.requiereSopa,
       jugadores = game.modifiedJugadores(
         _.cantante, { victima =>
-          if (game.quienCanta.yaSeHizo) {
+          if (game.quienCanta.fold(false)(_.yaSeHizo)) {
             victima.copy(cuenta = victima.cuenta ++ victima.filas.headOption.map(_ =>
               Cuenta(
                 Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)),

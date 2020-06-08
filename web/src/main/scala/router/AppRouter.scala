@@ -58,12 +58,12 @@ object AppRouter extends ChutiComponent {
               ^.height   := 100.pct,
               ^.maxWidth := 1500.px,
               ^.padding  := 5.px,
-              Button(onClick = { (_, _) =>
+              Button(compact = true, onClick = { (_, _) =>
                 Callback {
                   document.location.href = "/api/auth/doLogout"
                 }
               })("Cerrar sesión"),
-              Button(onClick = { (_, _) =>
+              Button(compact = true, onClick = { (_, _) =>
                 Callback.alert("en construcción") //TODO write this
               })("Administración de usuario"),
               resolution.render()

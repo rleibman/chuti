@@ -76,12 +76,19 @@ object Numero {
 }
 
 object CuantasCantas {
+  def posibilidades(min: CuantasCantas): Seq[CuantasCantas] = {
+    values.filter(_.prioridad >= min.prioridad)
+  }
+
   def byNum(cuantas: Int): CuantasCantas = cuantas match {
     case 5 => Canto5
     case 6 => Canto6
     case 7 => CantoTodas
     case _ => Casa
   }
+
+  def byPriority(prioridad: Int): CuantasCantas =
+    (Buenas +: values).find(_.prioridad == prioridad).get
 
   sealed abstract class CuantasCantas protected (
     val numFilas:  Int,
@@ -107,6 +114,9 @@ object CuantasCantas {
   case object Buenas extends CuantasCantas(-1, 0, -1) {
     override def toString: String = "Buenas"
   }
+
+  val values = Seq(Casa, Canto5, Canto6, Canto7, CantoTodas)
+
 }
 
 object Ficha {
@@ -254,11 +264,11 @@ object GameStatus {
     override def enJuego: Boolean = true
   }
   object abandonado extends GameStatus {
-    override def value: String = "abandonado"
+    override def value:   String = "abandonado"
     override def acabado: Boolean = true
   }
   object partidoTerminado extends GameStatus {
-    override def value: String = "partidoTerminado"
+    override def value:   String = "partidoTerminado"
     override def acabado: Boolean = true
   }
   def withName(str: String): GameStatus = str match {
@@ -340,13 +350,11 @@ case class Game(
   @transient
   lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
   @transient
-  lazy val mano: Jugador = jugadores.find(_.mano).get
+  lazy val mano: Option[Jugador] = jugadores.find(_.mano).fold(quienCanta)(Option(_))
   @transient
-  lazy val quienCanta: Jugador = jugadores.find(_.cantante).get
+  lazy val quienCanta: Option[Jugador] = jugadores.find(_.cantante)
   val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
   val numPlayers = 4
-
-
 
   //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
@@ -445,18 +453,20 @@ case class Game(
       true
     } else {
       val cuantas = cuantasDeCaida(jugador.fichas, jugadores.filter(_ != jugador).flatMap(_.fichas))
-      val cantante = quienCanta
-      if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
-            .fold(0)(
-              _.numFilas
-            )) {
-        true //Eres el cantante y ya estas hecho, caete!
-      } else if (jugador.id != cantante.id &&
-                 (jugador.fichas.size + cantante.filas.size - cuantas.size) < cantante.cuantasCantas
-                   .fold(0)(_.numFilas)) {
-        true //Ya es hoyo, deten esa masacre
-      } else {
-        false //No sabemos mas alla de las que cantaste.
+
+      quienCanta.fold(false) { cantante =>
+        if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
+              .fold(0)(
+                _.numFilas
+              )) {
+          true //Eres el cantante y ya estas hecho, caete!
+        } else if (jugador.id != cantante.id &&
+                   (jugador.fichas.size + cantante.filas.size - cuantas.size) < cantante.cuantasCantas
+                     .fold(0)(_.numFilas)) {
+          true //Ya es hoyo, deten esa masacre
+        } else {
+          false //No sabemos mas alla de las que cantaste.
+        }
       }
     }
   }
@@ -580,15 +590,16 @@ case class Game(
   override def toString: String = {
     def jugadorStr(jugador: Jugador): String =
       s"""
-         |${jugador.user.name}: ${if (jugador.mano) "Me toca cantar" else ""}
+         |${jugador.user.name}: ${if (jugador.mano) "Me toca cantar" else ""} ${jugador.cuantasCantas
+           .fold("")(c => s"canto: $c")}
          |${jugador.fichas.map(_.toString).mkString(" ")}""".stripMargin
 
     s"""
        |id          = $id
        |gameStatus  = $gameStatus
        |triunfo     = ${triunfo.getOrElse("")}
-       |quien canta = ${quienCanta.user.name}
-       |mano        = ${mano.user.name}
+       |quien canta = ${quienCanta.map(_.user.name)}
+       |mano        = ${mano.map(_.user.name)}
        |${jugadores.map { jugadorStr }.mkString}
        |""".stripMargin
 

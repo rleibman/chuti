@@ -34,6 +34,9 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
+
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -67,6 +70,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -121,6 +126,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -192,6 +199,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -261,13 +270,15 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
     }
     val wallet = UserWallet(user2.id.get)
     when(userOperations.getWallet).thenReturn(ZIO.succeed(Option(wallet)))
-    when(userOperations.updateWallet(UserWallet(user2.id.get, BigDecimal(-0.10))))
+    when(userOperations.updateWallet(UserWallet(user2.id.get, BigDecimal(-1000))))
       .thenReturn(ZIO.succeed(true))
     val layer = fullLayer(gameOperations, userOperations)
 
@@ -332,6 +343,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
     val layer = fullLayer(gameOperations, userOperations)
@@ -391,6 +404,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
 //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
@@ -488,7 +503,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.jugadores.length == 4)
     assert(game.jugadores.forall(!_.invited))
     assert(game.jugadores.forall(_.user.userStatus === UserStatus.Playing))
-    assert(gameEvents.size === 8)
+    assert(gameEvents.size === 9)
     assert(userEvents.size === 3)
   }
 
@@ -497,6 +512,8 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
+      ZIO.succeed(game))
     val userOperations = createUserOperations
     //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))

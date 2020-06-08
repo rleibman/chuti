@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 1,
-  "created" : "2020-05-16T08:57:25.041006",
+  "created" : "2020-06-07T22:41:35.298716",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -26,11 +26,12 @@
             
           }
         },
-        "currentChannelId" : null,
-        "created" : "2020-05-16T08:57:21.782135",
-        "lastUpdated" : "2020-05-16T08:57:21.784305",
+        "created" : "2020-06-07T22:41:32.345991",
+        "lastUpdated" : "2020-06-07T22:41:32.347723",
         "lastLoggedIn" : null,
-        "deleted" : false
+        "active" : false,
+        "deleted" : false,
+        "isAdmin" : false
       },
       "invited" : false,
       "fichas" : [
@@ -45,5 +46,5 @@
       ]
     }
   ],
-  "pointsPerDollar" : 100.0
+  "satoshiPerPoint" : 100.0
 }

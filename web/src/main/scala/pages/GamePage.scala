@@ -37,7 +37,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
 
   object Mode extends Enumeration {
     type Mode = Value
-    val lobby, game = Value
+    val lobby, game, none = Value
   }
   import Mode._
 
@@ -74,7 +74,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                     //If the game event is the next one to be applied, apply it to the game
                     println("reapplying event")
                     val reapplied = currentGame.reapplyEvent(gameEvent)
-                    if(reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
+                    if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
                       None
                     } else {
                       Option(reapplied)
@@ -132,13 +132,20 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                 )
               )
             ),
-          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby))
+          callbackWhenNone = $.modState(_.copy(mode = Mode.none))
         )
     }
 
     def init(): Callback = {
       Callback.log(s"Initializing") >>
         refresh()
+    }
+
+    def onModeChanged(
+      opt:      Option[Mode],
+      callback: Callback
+    ): Callback = {
+      $.modState(_.copy(mode = opt.getOrElse(Mode.none))) >> callback
     }
 
     def onGameInProgressChange(
@@ -151,16 +158,31 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     def render(
       p: Props,
       s: State
-    ): VdomElement = {
-      s.mode match {
+    ): VdomNode = {
+      val mode = if (s.gameInProgress.isEmpty && s.mode == game) none else s.mode
+
+      window.sessionStorage.setItem("gamePageMode", mode.toString)
+      mode match {
         case Mode.lobby =>
-          LobbyComponent(
-            p.chutiState,
-            StateSnapshot(s.gameInProgress)(onGameInProgressChange),
-            onRequestGameRefresh = refresh()
+          <.div(
+            LobbyComponent(
+              p.chutiState,
+              StateSnapshot(s.gameInProgress)(onGameInProgressChange),
+              onRequestGameRefresh = refresh(),
+              StateSnapshot(mode)(onModeChanged)
+            )
           )
         case Mode.game =>
-          GameComponent(p.chutiState, StateSnapshot(s.gameInProgress)(onGameInProgressChange))
+          <.div(
+            GameComponent(
+              p.chutiState,
+              StateSnapshot(s.gameInProgress)(onGameInProgressChange),
+              onRequestGameRefresh = refresh(),
+              StateSnapshot(mode)(onModeChanged)
+            )
+          )
+        case _ =>
+          EmptyVdom
       }
 
     }
@@ -185,7 +207,4 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     .build
 
   def apply(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))
-
-//  window.sessionStorage.setItem("gamePageMode", str)
-
 }

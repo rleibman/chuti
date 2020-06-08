@@ -51,24 +51,29 @@ trait GameAbstractSpec extends MockitoSugar {
 
   val testRuntime:        zio.Runtime[zio.ZEnv] = zio.Runtime.default
   val databaseProvider:   DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  val userConnectionRepo: UserConnectionRepo.Service = mock[UserConnectionRepo.Service]
+  val userConnectionRepo: UserConnectionRepo.Service = UserConnectionRepo.live
   def createUserOperations: Repository.UserOperations = {
     val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
     userOperations
   }
-  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer {
-    tuple: (ConnectionId, User) =>
-      console
-        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-          zio.console.Console.live
-        )
-  }
-  when(userConnectionRepo.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
-    console
-      .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
-        zio.console.Console.live
-      )
-  }
+
+//  def addConnection(
+//                     connectionId: ConnectionId,
+//                     user:         User
+//                   ): UIO[Boolean]
+//  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer {
+//    tuple: (ConnectionId, User) =>
+//      console
+//        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
+//          zio.console.Console.live
+//        )
+//  }
+//  when(userConnectionRepo.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
+//    console
+//      .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
+//        zio.console.Console.live
+//      )
+//  }
 
   class MockPostman extends Postman.Service {
     override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] = ZIO.succeed(())

@@ -17,6 +17,7 @@
 package chuti
 
 import api.ChutiSession
+import chuti.CuantasCantas.Buenas
 import dao.{Repository, SessionProvider}
 import game.GameService
 import game.GameService.GameService
@@ -43,7 +44,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.jugadores.count(_.cantante) === 1)
     assert(game.jugadores.count(_.mano) === 1)
     assert(game.jugadores.count(_.turno) === 1)
-    assert(game.jugadores.count(j => j.cuantasCantas.nonEmpty) === 1)
+    assert(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) === 1)
     assert(
       game.jugadores
         .find(_.cantante).fold(false)(
