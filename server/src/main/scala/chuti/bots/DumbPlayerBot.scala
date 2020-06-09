@@ -98,9 +98,9 @@ case object DumbPlayerBot extends PlayerBot {
     if (hypotheticalGame.puedesCaerte(jugador)) {
       Caite(Option(triunfo))
     } else {
-      PideInicial(
-        hypotheticalGame.maxByTriunfo(jugador.fichas).get,
-        triunfo,
+      Pide(
+        hypotheticalGame.maxByTriunfo(jugador.fichas),
+        Option(triunfo),
         estrictaDerecha = false
       )
     }
@@ -114,14 +114,16 @@ case object DumbPlayerBot extends PlayerBot {
       case None => throw GameException("Should never happen!")
       case Some(SinTriunfos) =>
         Pide(
-          jugador.fichas.maxBy(ficha => if (ficha.esMula) 100 else ficha.arriba.value),
+          jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value),
+          triunfo = None,
           estrictaDerecha = false
         )
       case Some(TriunfoNumero(triunfo)) =>
         Pide(
-          jugador.fichas.maxBy(ficha =>
+          jugador.fichas.maxByOption(ficha =>
             (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value
           ),
+          triunfo = None,
           estrictaDerecha = false
         )
     }

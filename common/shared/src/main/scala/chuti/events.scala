@@ -390,28 +390,26 @@ case class Canta(
 //////////////////////////////////////////////////////////////////////////////////////
 // Jugando
 
-case class PideInicial(
-  ficha:           Ficha,
-  triunfo:         Triunfo,
-  estrictaDerecha: Boolean,
+case class Pide(
+  ficha:           Option[Ficha] = None,
+  triunfo:         Option[Triunfo] = None,
+  estrictaDerecha: Boolean = false,
   hoyoTecnico:     Option[String] = None,
   gameId:          Option[GameId] = None,
   userId:          Option[UserId] = None,
   index:           Option[Int] = None
 ) extends PlayEvent {
-  override def doEvent(
-    jugador: Jugador,
-    game:    Game
-  ): (Game, GameEvent) = {
-    //Restricciones
-    if (!jugador.fichas.contains(ficha)) {
-      throw GameException("No puedes jugar una ficha que no tienes!")
-    }
-    if (game.enJuego.nonEmpty || game.jugadores
-          .flatMap(_.filas).nonEmpty || jugador.fichas.size != 7) {
-      throw GameException("No puedes pedir si ya hay fichas en la mesa")
-    }
 
+  private def pideInicial(
+    ficha:           Ficha,
+    triunfo:         Triunfo,
+    estrictaDerecha: Boolean,
+    jugador:         Jugador,
+    game:            Game
+  ): (Game, Pide) = {
+    if (game.triunfo.nonEmpty) {
+      throw GameException("No puedes cambiar triunfos cuando se te antoje.")
+    }
     val conTriunfo = game
       .copy(
         triunfo = Option(triunfo),
@@ -442,30 +440,14 @@ case class PideInicial(
           else None
       )
     )
+
   }
-}
-
-case class Pide(
-  ficha:           Ficha,
-  estrictaDerecha: Boolean,
-  hoyoTecnico:     Option[String] = None,
-  gameId:          Option[GameId] = None,
-  userId:          Option[UserId] = None,
-  index:           Option[Int] = None
-) extends PlayEvent {
-
-  override def doEvent(
-    jugador: Jugador,
-    game:    Game
-  ): (Game, GameEvent) = {
-    //Restricciones
-    if (!jugador.fichas.contains(ficha)) {
-      throw GameException("No puedes jugar una ficha que no tienes!")
-    }
-    if (game.enJuego.nonEmpty) {
-      throw GameException("No puedes pedir si hay fichas en la mesa")
-    }
-
+  private def pide(
+    ficha:           Ficha,
+    estrictaDerecha: Boolean,
+    jugador:         Jugador,
+    game:            Game
+  ): (Game, Pide) = {
     (
       //transfiere la ficha al centro
       game
@@ -483,6 +465,22 @@ case class Pide(
         hoyoTecnico =
           if (game.puedesCaerte(jugador)) Option("Podias haberte caido, no lo hiciste") else None
       )
+    )
+  }
+
+  override def doEvent(
+    jugador: Jugador,
+    game:    Game
+  ): (Game, GameEvent) = {
+    //Restricciones
+    if (!jugador.fichas.contains(ficha)) {
+      throw GameException("No puedes jugar una ficha que no tienes!")
+    }
+    if (game.enJuego.nonEmpty) {
+      throw GameException("No puedes pedir si hay fichas en la mesa")
+    }
+    triunfo.fold(pide(ficha.get, estrictaDerecha, jugador, game))(triunfo =>
+      pideInicial(ficha.get, triunfo, estrictaDerecha, jugador, game)
     )
   }
 }
@@ -634,7 +632,7 @@ case class Caite(
                 fichas = j.fichas.filter(_ != fichaMerecedora)
               )
               //Nota que es posible auto-regalarse si nadie mas tiene otra de esas
-            } else if ((j.id == jugador.id && regalo == fichaMerecedora)) {
+            } else if (j.id == jugador.id && regalo == fichaMerecedora) {
               j.copy(
                 filas = j.filas :+ Fila(fichaMerecedora),
                 fichas = j.fichas.filter(_ != fichaMerecedora)
@@ -764,3 +762,5 @@ case class TerminaJuego(
     }
   }
 }
+
+

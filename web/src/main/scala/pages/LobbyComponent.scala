@@ -47,7 +47,7 @@ import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
 import typings.semanticUiReact.inputInputMod.InputOnChangeData
 
-//TODO things that change the state indirectly need to ask the snapshot to regen
+//NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   import GamePage.Mode._
 

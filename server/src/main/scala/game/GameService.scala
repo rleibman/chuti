@@ -635,8 +635,6 @@ object GameService {
         playEvent match {
           case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
-          case e: PideInicial if e.hoyoTecnico.isDefined =>
-            applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Da if e.ficha == Game.campanita =>
             val a = game.applyEvent(Option(user), BorloteEvent(Borlote.CampanitaSeJuega))
             (a._1, Seq(a._2))

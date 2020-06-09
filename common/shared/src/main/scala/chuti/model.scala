@@ -63,7 +63,7 @@ object Numero {
 
   case object Numero6 extends Numero(6)
 
-  def values = Seq(Numero0, Numero1, Numero2, Numero3, Numero4, Numero5, Numero6)
+  def values: Seq[Numero] = Seq(Numero0, Numero1, Numero2, Numero3, Numero4, Numero5, Numero6)
 
   def apply(num: Int): Numero = values(num)
 
@@ -147,7 +147,7 @@ object Ficha {
     }
 }
 
-sealed trait Ficha {
+sealed trait Ficha  extends Product with Serializable{
   def arriba: Numero
   def abajo:  Numero
   def esMula: Boolean
@@ -229,11 +229,22 @@ case class Jugador(
 sealed trait Triunfo extends Product with Serializable
 
 object Triunfo {
-  case object SinTriunfos extends Triunfo
-  case class TriunfoNumero(num: Numero) extends Triunfo
+  case object SinTriunfos extends Triunfo {
+    override def toString: String = "SinTriunfos"
+  }
+  case class TriunfoNumero(num: Numero) extends Triunfo {
+    override def toString: String = num.value.toString
+  }
+
+  lazy val posibilidades: Seq[Triunfo] = Seq(SinTriunfos) ++ Numero.values.map(TriunfoNumero)
+
+  def apply(str: String): Triunfo = str match {
+    case "SinTriunfos" => SinTriunfos
+    case str => TriunfoNumero(Numero(str.toInt))
+  }
 }
 
-sealed trait GameStatus {
+sealed trait GameStatus  extends Product with Serializable{
   def value: String
   def enJuego: Boolean = false
   def acabado: Boolean = false
@@ -263,11 +274,11 @@ object GameStatus {
     override def value:   String = "requiereSopa"
     override def enJuego: Boolean = true
   }
-  object abandonado extends GameStatus {
+  case object abandonado extends GameStatus {
     override def value:   String = "abandonado"
     override def acabado: Boolean = true
   }
-  object partidoTerminado extends GameStatus {
+  case object partidoTerminado extends GameStatus {
     override def value:   String = "partidoTerminado"
     override def acabado: Boolean = true
   }
@@ -287,7 +298,7 @@ object GameStatus {
 
 import chuti.GameStatus._
 
-sealed trait Borlote
+sealed trait Borlote  extends Product with Serializable
 object Borlote {
   case object Hoyo extends Borlote
   case object HoyoTecnico extends Borlote
