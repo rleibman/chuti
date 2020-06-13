@@ -24,7 +24,7 @@ import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
 import core.{Core, CoreActors}
-import dao.{DatabaseProvider, LiveRepository, MySQLDatabaseProvider, Repository}
+import dao.{DatabaseProvider, MySQLDatabaseProvider, Repository, SlickRepository}
 import game.UserConnectionRepo
 import mail.CourierPostman
 import mail.Postman.Postman
@@ -66,19 +66,18 @@ trait Web {
 
   private val binding: ZIO[Any, Throwable, Http.ServerBinding] = {
     ZLayer.succeed(CourierPostman.live(config))
-    val databaseProviderLayer: ULayer[DatabaseProvider] =
-      ZLayer.succeed(new MySQLDatabaseProvider() {})
     val configLayer: ULayer[Config] = ZLayer.succeed(config)
     val postmanLayer: ZLayer[Config, Nothing, Postman] = ZLayer.fromEffect {
       for {
         config <- ZIO.service[Config.Service]
       } yield CourierPostman.live(config)
     }
+    val dbProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(new MySQLDatabaseProvider() {})
     val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
-    val repositoryLayer: ULayer[Repository] = ZLayer.succeed(new LiveRepository() {})
+    val repositoryLayer: ULayer[Repository] = dbProviderLayer >>> SlickRepository.live
 
     ChatService.make().memoize.use { chatServiceLayer =>
-      val fullLayer = zio.ZEnv.live ++ (loggingLayer >>> chatServiceLayer) ++ loggingLayer ++ configLayer ++ databaseProviderLayer ++ repositoryLayer ++ ZLayer
+      val fullLayer = zio.ZEnv.live ++ (loggingLayer >>> chatServiceLayer) ++ loggingLayer ++ configLayer ++ repositoryLayer ++ ZLayer
         .succeed(UserConnectionRepo.live) ++ (configLayer >>> postmanLayer) ++ ZLayer.succeed(
         TokenHolder.live
       )

@@ -147,7 +147,7 @@ object Ficha {
     }
 }
 
-sealed trait Ficha  extends Product with Serializable{
+sealed trait Ficha extends Product with Serializable {
   def arriba: Numero
   def abajo:  Numero
   def esMula: Boolean
@@ -240,11 +240,11 @@ object Triunfo {
 
   def apply(str: String): Triunfo = str match {
     case "SinTriunfos" => SinTriunfos
-    case str => TriunfoNumero(Numero(str.toInt))
+    case str           => TriunfoNumero(Numero(str.toInt))
   }
 }
 
-sealed trait GameStatus  extends Product with Serializable{
+sealed trait GameStatus extends Product with Serializable {
   def value: String
   def enJuego: Boolean = false
   def acabado: Boolean = false
@@ -298,7 +298,7 @@ object GameStatus {
 
 import chuti.GameStatus._
 
-sealed trait Borlote  extends Product with Serializable
+sealed trait Borlote extends Product with Serializable
 object Borlote {
   case object Hoyo extends Borlote
   case object HoyoTecnico extends Borlote

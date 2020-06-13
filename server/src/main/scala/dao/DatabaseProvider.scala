@@ -16,15 +16,25 @@
 
 package dao
 
-import chuti.{Game, GameException, GameId, UserId}
-import game.GameService.{GameLayer, GameService}
-import io.circe.Json
+import com.typesafe.config.Config
 import slick.basic.BasicBackend
-import zio.{UIO, ZIO}
+import slick.jdbc.JdbcBackend
+import zio.{UIO, ZIO, ZLayer, _}
 
 object DatabaseProvider {
   trait Service {
-
     def db: UIO[BasicBackend#DatabaseDef]
   }
+
+  val live: ZLayer[Has[Config] with Has[JdbcBackend], Throwable, DatabaseProvider] =
+    ZLayer.fromServicesManaged[Config, JdbcBackend, Any, Throwable, Service] {
+      (cfg: Config, backend: JdbcBackend) =>
+        ZManaged
+          .make(ZIO.effect(backend.Database.forConfig("", cfg)))(db => ZIO.effectTotal(db.close()))
+          .map(d =>
+            new DatabaseProvider.Service {
+              val db: UIO[BasicBackend#DatabaseDef] = ZIO.effectTotal(d)
+            }
+          )
+    }
 }

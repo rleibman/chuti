@@ -25,9 +25,9 @@ import dao._
 import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
+import zio.logging.log
 import zio.logging.slf4j.Slf4jLogger
-import zio.logging.{Logging, log}
-import zio.{Task, ZIO, ZLayer}
+import zio.{Task, ULayer, ZIO, ZLayer}
 import zioslick.RepositoryException
 
 import scala.concurrent.duration._
@@ -46,21 +46,28 @@ trait SessionUtils extends Directives {
   import scalacache.ZioEffect.modes._
   import SessionUtils._
 
-  private val dbProvider: DatabaseProvider.Service = new MySQLDatabaseProvider() {}
-  private val repository: Repository.Service = new LiveRepository() {}
+//  private val dbProvider: DatabaseProvider.Service = new MySQLDatabaseProvider() {}
+//  private val repository: Repository.Service = new SlickRepository() {}
+  private val dbProviderLayer: ULayer[DatabaseProvider] =
+    ZLayer.succeed(new MySQLDatabaseProvider() {})
 
-  lazy private val godLayer = ZLayer
-    .succeed(dbProvider) ++ SessionProvider
-    .layer(ChutiSession(GameService.god)) ++ Slf4jLogger.make((_, str) => str)
+  lazy private val godLayer =
+    (dbProviderLayer >>> SlickRepository.live) ++
+      SessionProvider.layer(ChutiSession(GameService.god)) ++
+      Slf4jLogger.make((_, str) => str)
 
   def getUser(id: Int): Task[Option[User]] = memoizeF(Option(1.hour)) {
-    repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
-      case e: RepositoryException =>
-        ZIO.succeed {
-          e.printStackTrace()
-          None
-        }
-    }
+    val me: Task[Option[User]] = (for {
+      repository <- ZIO.service[Repository.Service]
+      user <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
+        case e: RepositoryException =>
+          ZIO.succeed {
+            e.printStackTrace()
+            None
+          }
+      }
+    } yield user).provideLayer(godLayer)
+    me
   }
 
   implicit def sessionSerializer: SessionSerializer[ChutiSession, String] =

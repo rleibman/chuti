@@ -95,9 +95,9 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
       GameException,
       Boolean
     ],
-    friend: UserId => ZIO[GameService with GameLayer with ChatService, GameException, Boolean],
+    friend:   UserId => ZIO[GameService with GameLayer with ChatService, GameException, Boolean],
     unfriend: UserId => ZIO[GameService with GameLayer with ChatService, GameException, Boolean],
-    play: PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
+    play:     PlayArgs => ZIO[GameService with GameLayer, GameException, Boolean]
   )
   case class Subscriptions(
     gameStream: GameStreamArgs => ZStream[GameService with GameLayer, GameException, Json],
@@ -182,8 +182,8 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
             } yield filtered.asJson,
           declineGameInvitation = gameId => GameService.declineGameInvitation(gameId),
           cancelUnacceptedInvitations = gameId => GameService.cancelUnacceptedInvitations(gameId),
-          friend =  userId => GameService.friend(userId),
-          unfriend =  userId => GameService.unfriend(userId),
+          friend = userId => GameService.friend(userId),
+          unfriend = userId => GameService.unfriend(userId),
           play = playArgs => GameService.play(playArgs.gameId, playArgs.gameEvent.asJson)
         ),
         Subscriptions(

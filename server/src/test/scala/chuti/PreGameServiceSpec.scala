@@ -34,8 +34,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
 
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
@@ -70,8 +69,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -126,8 +124,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -199,8 +196,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -270,8 +266,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
       ZIO.succeed(u)
@@ -343,8 +338,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
     val layer = fullLayer(gameOperations, userOperations)
@@ -404,8 +398,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
 //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
@@ -512,8 +505,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
       ZIO.succeed(game.copy(Some(GameId(1))))
     )
-    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game))
+    when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))

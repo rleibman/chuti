@@ -33,9 +33,7 @@ object Repository {
     ): RepositoryIO[Boolean]
 
     def unfriend(enemy: User): RepositoryIO[Boolean]
-    def friend(
-      friend:    User
-    ):           RepositoryIO[Boolean]
+    def friend(friend:  User): RepositoryIO[Boolean]
     def friends: RepositoryIO[Seq[User]]
 
     def getWallet: RepositoryIO[Option[UserWallet]]

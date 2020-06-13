@@ -63,7 +63,7 @@ object CRUDRoute {
       *
       * @return
       */
-    def other: RIO[DatabaseProvider with SessionProvider with Logging with OpsService, Route] =
+    def other: RIO[SessionProvider with Logging with OpsService, Route] =
       ZIO.succeed(reject)
 
     /**
@@ -71,8 +71,7 @@ object CRUDRoute {
       *
       * @return
       */
-    def unauthRoute
-      : URIO[Postman with TokenHolder with Logging with DatabaseProvider with OpsService, Route] =
+    def unauthRoute: URIO[Postman with TokenHolder with Logging with OpsService, Route] =
       ZIO.succeed(reject)
 
     /**
@@ -84,7 +83,7 @@ object CRUDRoute {
     def childrenRoutes(
       pk:  PK,
       obj: Option[E]
-    ): RIO[DatabaseProvider with SessionProvider with Logging with OpsService, Seq[Route]] =
+    ): RIO[SessionProvider with Logging with OpsService, Seq[Route]] =
       ZIO.succeed(Seq.empty)
 
     /**
@@ -97,13 +96,13 @@ object CRUDRoute {
 
 //    def fullLayer(
 //      session: ChutiSession
-//    ): ULayer[SessionProvider with DatabaseProvider with Logging with TokenHolder] =
+//    ): ULayer[SessionProvider  with Logging with TokenHolder] =
 //      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
 //        (_, b) => b
 //      ) ++ ZLayer.succeed(TokenHolder.live)
 
     def getOperation(id: PK): ZIO[
-      DatabaseProvider with SessionProvider with Logging with OpsService,
+      SessionProvider with Logging with OpsService,
       RepositoryException,
       Option[E]
     ] = {
@@ -115,7 +114,7 @@ object CRUDRoute {
 
     def deleteOperation(
       objOpt: Option[E]
-    ): ZIO[DatabaseProvider with SessionProvider with Logging with OpsService, Throwable, Boolean] =
+    ): ZIO[SessionProvider with Logging with OpsService, Throwable, Boolean] =
       for {
         ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
         ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj =>
@@ -124,7 +123,7 @@ object CRUDRoute {
       } yield ret
 
     def upsertOperation(obj: E): ZIO[
-      DatabaseProvider with SessionProvider with Logging with OpsService,
+      SessionProvider with Logging with OpsService,
       RepositoryException,
       E
     ] =
@@ -134,7 +133,7 @@ object CRUDRoute {
       } yield ret
 
     def countOperation(search: Option[SEARCH]): ZIO[
-      DatabaseProvider with SessionProvider with Logging with OpsService,
+      SessionProvider with Logging with OpsService,
       RepositoryException,
       Long
     ] =
@@ -144,7 +143,7 @@ object CRUDRoute {
       } yield ret
 
     def searchOperation(search: Option[SEARCH]): ZIO[
-      DatabaseProvider with SessionProvider with Logging with OpsService,
+      SessionProvider with Logging with OpsService,
       RepositoryException,
       Seq[E]
     ] =
@@ -169,7 +168,7 @@ object CRUDRoute {
       searchEncoder: Encoder[SEARCH],
       pkEncoder:     Encoder[PK]
     ): ZIO[
-      Repository with DatabaseProvider with SessionProvider with Logging with OpsService,
+      Repository with SessionProvider with Logging with OpsService,
       Throwable,
       Route
     ] =
@@ -177,7 +176,7 @@ object CRUDRoute {
         other <- other
         runtime <- ZIO
           .environment[
-            Repository with DatabaseProvider with SessionProvider with Logging with OpsService
+            Repository with SessionProvider with Logging with OpsService
           ]
       } yield {
         pathPrefix(url) {

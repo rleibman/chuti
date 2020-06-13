@@ -24,7 +24,7 @@ import caliban.{CalibanError, GraphQLInterpreter}
 import chat.ChatService.ChatService
 import chat._
 import chuti._
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
 import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
@@ -94,8 +94,7 @@ object GameService {
   type GameService = Has[GameService.Service]
 
   private[game] type GameLayer = SessionProvider
-    with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging
-    with TokenHolder
+    with Repository with UserConnectionRepo with Postman with Logging with TokenHolder
 
   trait Service {
     protected val userQueue: Ref[List[EventQueue[UserEvent]]]
@@ -237,10 +236,14 @@ object GameService {
   ): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
     URIO.accessM(_.get.cancelUnacceptedInvitations(gameId))
 
-  def friend(userId: UserId): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
+  def friend(
+    userId: UserId
+  ): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
     URIO.accessM(_.get.friend(userId))
 
-  def unfriend(userId: UserId): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
+  def unfriend(
+    userId: UserId
+  ): ZIO[GameService with GameLayer with ChatService, GameException, Boolean] =
     URIO.accessM(_.get.unfriend(userId))
 
   def gameStream(
@@ -299,7 +302,7 @@ object GameService {
               //God needs to save this user, because the user has already left the game
               repository.gameOperations
                 .upsert(gameAfterApply).map((_, appliedEvent)).provideSomeLayer[
-                  DatabaseProvider with Logging
+                  Logging
                 ](godLayer)
             }
           }
@@ -314,14 +317,14 @@ object GameService {
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
                 .delete(game.id.get, softDelete = false).provideSomeLayer[
-                  DatabaseProvider with Logging
+                  Logging
                 ](
                   godLayer
                 )
             case (game, _) if game.jugadores.isEmpty =>
               repository.gameOperations
                 .delete(game.id.get, softDelete = true).provideSomeLayer[
-                  DatabaseProvider with Logging
+                  Logging
                 ](godLayer)
             case (game, event) => ZIO.succeed(game)
           }
@@ -455,7 +458,7 @@ object GameService {
           invited <- invitedOpt.fold(
             repository.userOperations
               .upsert(User(None, email, name, userStatus = UserStatus.Invited))
-              .provideSomeLayer[DatabaseProvider with Logging](godLayer)
+              .provideSomeLayer[Logging](godLayer)
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.user.id == user.id))
@@ -525,7 +528,7 @@ object GameService {
             //The game may have no players yet, so god needs to save it
             repository.gameOperations
               .upsert(Game(None, gameStatus = GameStatus.esperandoJugadoresAzar)).provideSomeLayer[
-                DatabaseProvider with Logging
+                Logging
               ](godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
@@ -573,7 +576,7 @@ object GameService {
             val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
             repository.gameOperations
               .upsert(afterEvent).map((_, declinedEvent))
-              .provideSomeLayer[DatabaseProvider with Logging](godLayer)
+              .provideSomeLayer[Logging](godLayer)
           }
           _ <- ZIO.foreachPar(afterEvent.toSeq.flatMap(_._1.jugadores))(jugador =>
             ChatService
@@ -604,7 +607,7 @@ object GameService {
               )
             repository.gameOperations
               .upsert(game.copy(jugadores = game.jugadores.filter(!_.invited)))
-              .provideSomeLayer[DatabaseProvider with Logging](godLayer)
+              .provideSomeLayer[Logging](godLayer)
           }
           _ <- ZIO.foreachPar(gameOpt.toSeq.flatMap(_.jugadores.filter(_.id != user.id)))(jugador =>
             ChatService

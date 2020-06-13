@@ -21,7 +21,7 @@ import java.time.temporal.ChronoUnit
 
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti._
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
 import zio._
 import zio.clock.Clock
 import zio.console.Console
@@ -30,21 +30,19 @@ import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
 object ChatService {
-  private lazy val ttl: Duration = 15.minutes
+  lazy private val ttl: Duration = 15.minutes
 
   type ChatService = Has[Service]
   trait Service {
     def getRecentMessages(
       channelId: ChannelId
     ): ZIO[SessionProvider, GameException, Seq[ChatMessage]]
-    def say(
-      msg: SayRequest
-    ): URIO[Repository with DatabaseProvider with SessionProvider with Logging, ChatMessage]
+    def say(msg: SayRequest): URIO[Repository with SessionProvider with Logging, ChatMessage]
     def chatStream(
       channelId:    ChannelId,
       connectionId: ConnectionId
     ): ZStream[
-      Repository with DatabaseProvider with SessionProvider with Logging,
+      Repository with SessionProvider with Logging,
       GameException,
       ChatMessage
     ]
@@ -53,7 +51,7 @@ object ChatService {
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   lazy val interpreter: GraphQLInterpreter[
-    Console with Clock with ChatService with Repository with DatabaseProvider with SessionProvider with Logging,
+    Console with Clock with ChatService with Repository with SessionProvider with Logging,
     CalibanError
   ] =
     runtime.unsafeRun(ChatApi.api.interpreter)
@@ -63,7 +61,7 @@ object ChatService {
     channelId: ChannelId,
     toUser:    Option[User]
   ): ZIO[
-    ChatService with Repository with DatabaseProvider with SessionProvider with Logging,
+    ChatService with Repository with SessionProvider with Logging,
     Nothing,
     ChatMessage
   ] =
@@ -73,7 +71,7 @@ object ChatService {
     } yield sent
 
   def say(request: SayRequest): URIO[
-    ChatService with Repository with DatabaseProvider with SessionProvider with Logging,
+    ChatService with Repository with SessionProvider with Logging,
     ChatMessage
   ] =
     URIO.accessM(_.get.say(request))
@@ -82,7 +80,7 @@ object ChatService {
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    ChatService with Repository with DatabaseProvider with SessionProvider with Logging,
+    ChatService with Repository with SessionProvider with Logging,
     GameException,
     ChatMessage
   ] =
@@ -121,7 +119,7 @@ object ChatService {
       }
 
       override def say(request: SayRequest): ZIO[
-        Repository with DatabaseProvider with SessionProvider with Logging,
+        Repository with SessionProvider with Logging,
         Nothing,
         ChatMessage
       ] =
@@ -158,7 +156,7 @@ object ChatService {
         channelId:    ChannelId,
         connectionId: ConnectionId
       ): ZStream[
-        Repository with DatabaseProvider with SessionProvider with Logging,
+        Repository with SessionProvider with Logging,
         GameException,
         ChatMessage
       ] =

@@ -20,7 +20,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import api.HasActorSystem
 import api.config.Config
 import caliban.interop.circe.AkkaHttpCirceAdapter
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
@@ -34,13 +34,15 @@ trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
   import ChatService._
 
   def route: RIO[
-    Console with Clock with ChatService with Repository with DatabaseProvider with SessionProvider with Logging with Config,
+    Console with Clock with ChatService with Repository with SessionProvider with Logging with Config,
     Route
   ] = {
     for {
       config <- ZIO.service[Config.Service]
       runtime <- ZIO
-        .runtime[Console with Clock with ChatService with Repository with DatabaseProvider with SessionProvider with Logging with Config]
+        .runtime[
+          Console with Clock with ChatService with Repository with SessionProvider with Logging with Config
+        ]
     } yield {
       val staticContentDir =
         config.config.getString(s"${config.configKey}.staticContentDir")

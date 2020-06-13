@@ -24,7 +24,7 @@ import api.token.TokenHolder
 import chat.ChatRoute
 import chat.ChatService.ChatService
 import chuti.{PagedStringSearch, User, UserId}
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
 import game.GameRoute
 import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
@@ -52,8 +52,7 @@ trait ModelRoutes extends Directives {
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 
-  def unauthRoute
-    : RIO[Repository with Postman with TokenHolder with Logging with DatabaseProvider, Route] =
+  def unauthRoute: RIO[Repository with Postman with TokenHolder with Logging, Route] =
     for {
       repo <- ZIO.access[Repository](_.get)
       auth <- {
@@ -61,7 +60,7 @@ trait ModelRoutes extends Directives {
           : Layer[Nothing, CRUDRoute.Service[User, UserId, PagedStringSearch]#OpsService] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.unauthRoute.provideSomeLayer[
-          Repository with Postman with TokenHolder with Logging with DatabaseProvider
+          Repository with Postman with TokenHolder with Logging
         ](opsLayer)
       }
     } yield auth
@@ -78,7 +77,7 @@ trait ModelRoutes extends Directives {
   //  }
 
   def apiRoute: ZIO[
-    Console with Clock with ChatService with SessionProvider with Logging with Config with DatabaseProvider with Repository with UserConnectionRepo with Postman with TokenHolder,
+    Console with Clock with ChatService with SessionProvider with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
     Throwable,
     Route
   ] = {
@@ -90,7 +89,7 @@ trait ModelRoutes extends Directives {
           : Layer[Nothing, CRUDRoute.Service[User, UserId, PagedStringSearch]#OpsService] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
-          .provideSomeLayer[Repository with DatabaseProvider with SessionProvider with Logging](
+          .provideSomeLayer[Repository with SessionProvider with Logging](
             opsLayer
           )
       }

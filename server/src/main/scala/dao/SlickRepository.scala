@@ -30,24 +30,28 @@ import scalacache.caffeine.CaffeineCache
 import slick.SlickException
 import slick.dbio.DBIO
 import slick.jdbc.MySQLProfile.api._
-import zio.ZIO
+import zio.{URLayer, ZIO, ZLayer}
 import zioslick.RepositoryException
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 
-object LiveRepository {
+object SlickRepository {
   implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
+  val live: URLayer[DatabaseProvider, Repository] =
+    ZLayer.fromFunction(db => new SlickRepository(db))
 }
 
-trait LiveRepository extends Repository.Service with SlickToModelInterop {
-  import LiveRepository.gameCache
+final class SlickRepository(databaseProvider: DatabaseProvider)
+    extends Repository.Service with SlickToModelInterop {
+  val dbProviderLayer = ZLayer.succeed(databaseProvider)
+  import SlickRepository.gameCache
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
-    for {
-      db <- ZIO.accessM[DatabaseProvider](_.get.db)
+    (for {
+      db <- databaseProvider.get.db
       ret <- ZIO.fromFuture(implicit ec => db.run(dbio)).mapError {
         case e: SlickException =>
           e.printStackTrace()
@@ -56,12 +60,12 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
           e.printStackTrace()
           RepositoryException("SQL Repository Error", Some(e))
       }
-    } yield ret
+    } yield ret)
 
   implicit def fromDBIO[A](fn: ChutiSession => DBIO[A]): RepositoryIO[A] =
-    for {
+    (for {
       session <- ZIO.access[SessionProvider](_.get.session)
-      db      <- ZIO.accessM[DatabaseProvider](_.get.db)
+      db      <- databaseProvider.get.db
       ret <- ZIO.fromFuture(implicit ec => db.run(fn(session))).mapError {
         case e: SlickException =>
           e.printStackTrace()
@@ -70,7 +74,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
           e.printStackTrace()
           RepositoryException("SQL Repository Error", Some(e))
       }
-    } yield ret
+    } yield ret)
 
   override val userOperations: Repository.UserOperations = new UserOperations {
     override def unfriend(enemy: User): RepositoryIO[Boolean] = { session: ChutiSession =>
@@ -90,9 +94,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         ).map(_.headOption.getOrElse(false))
     }
 
-    override def friend(
-      friend:    User
-    ): RepositoryIO[Boolean] = { session: ChutiSession =>
+    override def friend(friend: User): RepositoryIO[Boolean] = { session: ChutiSession =>
       val rowOpt = for {
         one <- session.user.id
         two <- friend.id
@@ -300,15 +302,13 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
       GameQuery.length.result.map(_.toLong)
 
-    override def gamesWaitingForPlayers(
-    ): RepositoryIO[Seq[Game]] =
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
       GameQuery
         .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus))
         .result
         .map(_.map(row => GameRow2Game(row)))
 
-    override def getGameForUser
-      : RepositoryIO[Option[Game]] = { session: ChutiSession =>
+    override def getGameForUser: RepositoryIO[Option[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
         .join(GameQuery).on(_.gameId === _.id)
@@ -316,8 +316,7 @@ trait LiveRepository extends Repository.Service with SlickToModelInterop {
         .map(_.headOption.map(row => GameRow2Game(row._2)))
     }
 
-    override def gameInvites
-      : RepositoryIO[Seq[Game]] = { session: ChutiSession =>
+    override def gameInvites: RepositoryIO[Seq[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(player => player.userId === session.user.id.getOrElse(UserId(-1)) && player.invited)
         .join(GameQuery).on(_.gameId === _.id)

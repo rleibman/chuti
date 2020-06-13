@@ -213,20 +213,23 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
           Button(compact = true, onClick = { (_, _) =>
             $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
           })("Cancelar"),
-          Button(compact = true, onClick = { (_, _) =>
-            Callback.log(s"Calling newGame") >>
-              calibanCallThroughJsonOpt[Mutations, Game](
-                Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
-                game =>
-                  Toast.success("Juego empezado!") >> p.gameInProgress
-                    .setState(Option(game)) >> $.modState(
-                    _.copy(
-                      dlg = Dialog.none,
-                      newGameDialogState = None
+          Button(
+            compact = true,
+            onClick = { (_, _) =>
+              Callback.log(s"Calling newGame") >>
+                calibanCallThroughJsonOpt[Mutations, Game](
+                  Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
+                  game =>
+                    Toast.success("Juego empezado!") >> p.gameInProgress
+                      .setState(Option(game)) >> $.modState(
+                      _.copy(
+                        dlg = Dialog.none,
+                        newGameDialogState = None
+                      )
                     )
-                  )
-              )
-          })("Crear")
+                )
+            }
+          )("Crear")
         )
       )
 
@@ -270,21 +273,24 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
           })("Cancelar"),
           p.gameInProgress.value.fold(EmptyVdom) { game =>
-            Button(compact = true, onClick = {
-              (_, _) =>
-                Callback.log(s"Inviting user by email") >>
-                  calibanCall[Mutations, Option[Boolean]](
-                    Mutations.inviteByEmail(
-                      s.inviteExternalDialogState.fold("")(_.name),
-                      s.inviteExternalDialogState.fold("")(_.email),
-                      game.id.fold(0)(_.value)
-                    ),
-                    _ =>
-                      Toast.success("Invitación mandada!") >> $.modState(
-                        _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
-                      )
-                  )
-            })("Invitar")
+            Button(
+              compact = true,
+              onClick = {
+                (_, _) =>
+                  Callback.log(s"Inviting user by email") >>
+                    calibanCall[Mutations, Option[Boolean]](
+                      Mutations.inviteByEmail(
+                        s.inviteExternalDialogState.fold("")(_.name),
+                        s.inviteExternalDialogState.fold("")(_.email),
+                        game.id.fold(0)(_.value)
+                      ),
+                      _ =>
+                        Toast.success("Invitación mandada!") >> $.modState(
+                          _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                        )
+                    )
+              }
+            )("Invitar")
           }
         )
       )
@@ -306,18 +312,24 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             ),
             Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
             TagMod(
-              Button(compact = true, onClick = (_, _) =>
-                Callback.log(s"Calling joinRandomGame") >>
-                  calibanCallThroughJsonOpt[Mutations, Game](
-                    Mutations.joinRandomGame,
-                    game =>
-                      Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(Option(game))
-                  )
+              Button(
+                compact = true,
+                onClick = (_, _) =>
+                  Callback.log(s"Calling joinRandomGame") >>
+                    calibanCallThroughJsonOpt[Mutations, Game](
+                      Mutations.joinRandomGame,
+                      game =>
+                        Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(
+                          Option(game)
+                        )
+                    )
               )("Juega Con Quien sea"),
-              Button(compact = true, onClick = (_, _) =>
-                $.modState(
-                  _.copy(dlg = Dialog.newGame, newGameDialogState = Option(NewGameDialogState()))
-                )
+              Button(
+                compact = true,
+                onClick = (_, _) =>
+                  $.modState(
+                    _.copy(dlg = Dialog.newGame, newGameDialogState = Option(NewGameDialogState()))
+                  )
               )(
                 "Empezar Juego Nuevo"
               )
@@ -329,20 +341,26 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   <.div(
                     ^.key := game.id.fold("")(_.toString),
                     game.jugadores.map(_.user.name).mkString(","),
-                    Button(compact = true, onClick = (_, _) => {
-                      calibanCallThroughJsonOpt[Mutations, Game](
-                        Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
-                        game => p.gameInProgress.setState(Option(game)) >> refresh()
-                      )
-                    })("Aceptar"),
-                    Button(compact = true, onClick = (_, _) => {
-                      calibanCall[Mutations, Option[Boolean]](
-                        Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
-                        _ =>
-                          Toast.success("Invitación rechazada") >>
-                            p.gameInProgress.setState(None) >> refresh()
-                      )
-                    })("Rechazar")
+                    Button(
+                      compact = true,
+                      onClick = (_, _) => {
+                        calibanCallThroughJsonOpt[Mutations, Game](
+                          Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
+                          game => p.gameInProgress.setState(Option(game)) >> refresh()
+                        )
+                      }
+                    )("Aceptar"),
+                    Button(
+                      compact = true,
+                      onClick = (_, _) => {
+                        calibanCall[Mutations, Option[Boolean]](
+                          Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
+                          _ =>
+                            Toast.success("Invitación rechazada") >>
+                              p.gameInProgress.setState(None) >> refresh()
+                        )
+                      }
+                    )("Rechazar")
                   )
                 }
               )
@@ -440,7 +458,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   case status if status.enJuego =>
                     <.div(
                       s"Jugando con ${game.jugadores.map(_.user.name).mkString(",")}",
-                      Button(compact = true, onClick = {(_,_) => p.mode.setState(GamePage.Mode.game)})("Sentarse a la mesa de juego")
+                      Button(compact = true, onClick = { (_, _) =>
+                        p.mode.setState(GamePage.Mode.game)
+                      })("Sentarse a la mesa de juego")
                     )
                   case GameStatus.esperandoJugadoresAzar =>
                     Container(key = "esperandoJugadores")(
@@ -463,24 +483,29 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         <.p(s"Invitados que ya están listos: ${game.jugadores
                           .filter(!_.invited).map(_.user.name).mkString(",")}")
                           .when(game.jugadores.exists(!_.invited)),
-                        Button(compact = true, onClick = { (_, _) =>
-                          calibanCall[Mutations, Option[Boolean]](
-                            Mutations.cancelUnacceptedInvitations(game.id.get.value),
-                            _ => Toast.success("Jugadores cancelados") >> refresh() >> p.onRequestGameRefresh
-                          )
-                        })("Cancelar invitaciones a aquellos que todavía no aceptan")
+                        Button(
+                          compact = true,
+                          onClick = { (_, _) =>
+                            calibanCall[Mutations, Option[Boolean]](
+                              Mutations.cancelUnacceptedInvitations(game.id.get.value),
+                              _ => Toast.success("Jugadores cancelados") >> refresh() >> p.onRequestGameRefresh
+                            )
+                          }
+                        )("Cancelar invitaciones a aquellos que todavía no aceptan")
                           .when(
                             game.jugadores.exists(_.invited) && game.jugadores.head.id == user.id
                           )
                       ),
                       if (game.jugadores.head.id == user.id) {
-                        Button(compact = true, onClick = (_, _) =>
-                          $.modState(
-                            _.copy(
-                              dlg = Dialog.inviteExternal,
-                              inviteExternalDialogState = Option(InviteExternalDialogState())
+                        Button(
+                          compact = true,
+                          onClick = (_, _) =>
+                            $.modState(
+                              _.copy(
+                                dlg = Dialog.inviteExternal,
+                                inviteExternalDialogState = Option(InviteExternalDialogState())
+                              )
                             )
-                          )
                         )("Invitar por correo electrónico")
                       } else {
                         EmptyVdom
@@ -488,21 +513,23 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     )
                   case GameStatus.abandonado => EmptyVdom
                 },
-                Button(compact = true, onClick = (_, _) =>
-                  Confirm.confirm(
-                    header = Option("Abandonar juego"),
-                    question =
-                      s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
-                    onConfirm = Callback.log(s"Abandoning game") >>
-                      calibanCall[Mutations, Option[Boolean]](
-                        Mutations.abandonGame(game.id.get.value),
-                        res =>
-                          (
-                            if (res.getOrElse(false)) Toast.success("Juego abandonado!")
-                            else Toast.error("Error abandonando juego!")
-                          ) //>> p.gameInProgress.setState(None)
-                      )
-                  )
+                Button(
+                  compact = true,
+                  onClick = (_, _) =>
+                    Confirm.confirm(
+                      header = Option("Abandonar juego"),
+                      question =
+                        s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
+                      onConfirm = Callback.log(s"Abandoning game") >>
+                        calibanCall[Mutations, Option[Boolean]](
+                          Mutations.abandonGame(game.id.get.value),
+                          res =>
+                            (
+                              if (res.getOrElse(false)) Toast.success("Juego abandonado!")
+                              else Toast.error("Error abandonando juego!")
+                            ) //>> p.gameInProgress.setState(None)
+                        )
+                    )
                 )("Abandona Juego")
               )
             }

@@ -64,8 +64,8 @@ trait Tables {
     : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema ++ UserWalletQuery.schema
 
   case class FriendsRow(
-    one:       UserId,
-    two:       UserId
+    one: UserId,
+    two: UserId
   )
 
   implicit def GetResultFriendsRow(
@@ -81,8 +81,7 @@ trait Tables {
     def * : ProvenShape[FriendsRow] =
       (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
 
-    def ?
-      : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
+    def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
       (Rep.Some(one), Rep.Some(two)).shaped.<>(
         { r =>
           import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))

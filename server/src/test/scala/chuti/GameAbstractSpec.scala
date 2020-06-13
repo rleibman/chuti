@@ -86,7 +86,7 @@ trait GameAbstractSpec extends MockitoSugar {
     userOps: Repository.UserOperations,
     postman: Postman.Service = new MockPostman
   ): ULayer[
-    DatabaseProvider with Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
+    Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
   ] = {
     val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(databaseProvider) ++

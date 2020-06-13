@@ -17,14 +17,12 @@
 package game
 
 import akka.http.scaladsl.server.{Directives, Route}
-import api.config.Config
 import api.token.TokenHolder
 import api.{HasActorSystem, config}
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import chat.ChatService.ChatService
-import dao.{DatabaseProvider, Repository, SessionProvider}
+import dao.{Repository, SessionProvider}
 import game.UserConnectionRepo.UserConnectionRepo
-import mail.CourierPostman
 import mail.Postman.Postman
 import zio._
 import zio.clock.Clock
@@ -43,12 +41,12 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
     config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
   def route: URIO[
-    Console with Clock with SessionProvider with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService,
+    Console with Clock with SessionProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService,
     Route
   ] =
     for {
       runtime <- ZIO.runtime[
-        Console with Clock with SessionProvider with DatabaseProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
+        Console with Clock with SessionProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
       ]
     } yield {
       implicit val r = runtime
