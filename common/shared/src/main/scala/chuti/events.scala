@@ -87,6 +87,23 @@ case class NoOp(
     )
 }
 
+case class NoOpPlay(
+  gameId: Option[GameId] = None,
+  userId: Option[UserId] = None,
+  index:  Option[Int] = None
+) extends PlayEvent {
+  override def expectedStatus: Option[GameStatus] = Option(GameStatus.jugando)
+
+  override def doEvent(
+    jugador: Jugador,
+    game:    Game
+  ): (Game, GameEvent) =
+    (
+      game,
+      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+    )
+}
+
 case class BorloteEvent(
   borlote: Borlote,
   gameId:  Option[GameId] = None,
@@ -762,5 +779,3 @@ case class TerminaJuego(
     }
   }
 }
-
-

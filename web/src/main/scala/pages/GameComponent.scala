@@ -53,12 +53,31 @@ object GameComponent {
   }
   import Dialog._
 
+  object State {
+    def defaultEvent(p: Props): PlayEvent =
+      (for {
+        game <- p.gameInProgress.value
+        user <- p.chutiState.user
+      } yield {
+        val jugador = game.jugador(user.id)
+        game.gameStatus match {
+          case GameStatus.cantando =>
+            Canta(if (jugador.cantante) CuantasCantas.Casa else CuantasCantas.Buenas)
+          case GameStatus.jugando =>
+            if (jugador.mano && jugador.filas.isEmpty)
+              Pide()
+            else
+              NoOpPlay()
+          case _ => NoOpPlay()
+        }
+      }).getOrElse(NoOpPlay())
+  }
   case class State(
-    currentPlayEvent: Option[PlayEvent] = None,
+    currentPlayEvent: PlayEvent,
     privateMessage:   Option[ChatMessage] = None,
     dlg:              Dialog = Dialog.none
   ) {
-    def currentEvent[Event <: PlayEvent] = currentPlayEvent.asInstanceOf[Option[Event]]
+    def currentEvent[Event <: PlayEvent]: Event = currentPlayEvent.asInstanceOf[Event]
   }
 
   class Backend($ : BackendScope[Props, State]) {
@@ -71,20 +90,18 @@ object GameComponent {
         refresh()
     }
 
-    def modEvent[Event <: PlayEvent](fn: Option[Event] => Event): Callback = $.modState { s =>
-      s.copy(currentPlayEvent = Option(fn(s.currentEvent[Event]))) //Hiding the ugliness of the cast
+    def modEvent[Event <: PlayEvent](fn: Event => Event): Callback = $.modState { s =>
+      s.copy(currentPlayEvent = fn(s.currentEvent[Event])) //Hiding the ugliness of the cast
     }
 
     def play(
-      gameId:   GameId,
-      eventOpt: Option[PlayEvent]
+      gameId: GameId,
+      event:  PlayEvent
     ): Callback = {
-      eventOpt.fold(Callback.empty) { event =>
-        calibanCall[Mutations, Option[Boolean]](
-          Mutations.play(gameId.value, event.asJson),
-          _ => Toast.success("Listo!")
-        )
-      }
+      calibanCall[Mutations, Option[Boolean]](
+        Mutations.play(gameId.value, event.asJson),
+        _ => Toast.success("Listo!")
+      )
     }
 
     def render(
@@ -134,189 +151,199 @@ object GameComponent {
 
       <.div(
         renderCuentasDialog,
-        Button(compact = true, onClick = { (_, _) =>
-          p.mode.setState(GamePage.Mode.lobby)
-        })("Regresa al lobby"),
-        Button(compact = true, onClick = { (_, _) =>
-          $.modState(_.copy(dlg = Dialog.cuentas))
-        })("Cuentas"),
-        p.gameInProgress.value.fold(EmptyVdom) { game =>
-          game.jugadores.zipWithIndex.toVdomArray {
-            case (jugador, playerIndex) =>
-              val actionExpected = game.gameStatus match {
-                case GameStatus.cantando =>
-                  jugador.mano
-                case GameStatus.jugando =>
-                  jugador.mano || (game.enJuego.nonEmpty && !game.estrictaDerecha) /*|| estricta derecha y es tu turno */
-              }
-              val isSelf = p.chutiState.user.fold(false)(_.id == jugador.id)
-              Container(
-                key = s"playerContainer$playerIndex",
-                className =
-                  s"jugador$playerIndex ${if (isSelf) " self" else ""}${if (actionExpected) " mano"
-                  else ""}"
-              )(
-                Header(className = "playerName")(jugador.user.name),
-                if (isSelf) {
-                  <.div(
-                    Container(className = "actionBar")(
-                      game.gameStatus match {
-                        case GameStatus.cantando =>
-                          if (jugador.mano && jugador.cuantasCantas.isEmpty) {
-                            val cantanteActual =
-                              game.jugadores.find(_.cantante).getOrElse(jugador)
-                            val min = cantanteActual.cuantasCantas
-                              .map(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
-                                Canto5
-                              )
-                            val cantasOptions = ((if (jugador.turno) CuantasCantas.Casa
-                                                  else CuantasCantas.Buenas) +: CuantasCantas
-                              .posibilidades(min)).map { cuantas =>
-                              DropdownItemProps(
-                                StringDictionary = StringDictionary("key" -> cuantas.prioridad),
-                                value = cuantas.prioridad,
-                                text = cuantas.toString
-                              )
-                            }.toJSArray
+        Container(className = "navBar")(
+          Button(compact = true, onClick = { (_, _) =>
+            p.mode.setState(GamePage.Mode.lobby)
+          })("Regresa al lobby"),
+          Button(compact = true, onClick = { (_, _) =>
+            $.modState(_.copy(dlg = Dialog.cuentas))
+          })("Cuentas")
+        ),
+        p.gameInProgress.value.fold(EmptyVdom) {
+          game =>
+            game.jugadores.zipWithIndex.toVdomArray {
+              case (jugador, playerIndex) =>
+                val actionExpected = game.gameStatus match {
+                  case GameStatus.cantando =>
+                    jugador.mano
+                  case GameStatus.jugando =>
+                    jugador.mano || (game.enJuego.nonEmpty && !game.estrictaDerecha) /*|| estricta derecha y es tu turno */
+                }
+                val isSelf = p.chutiState.user.fold(false)(_.id == jugador.id)
 
-                            <.div(
-                              Dropdown(
-                                className = "cantaDropdown",
-                                compact = true,
-                                fluid = false,
-                                placeholder = "Cuantas Cantas?",
-                                selection = true,
-                                value = s
-                                  .currentEvent[Canta].map(_.cuantasCantas.prioridad).getOrElse(
-                                    0
-                                  ).toDouble,
-                                options = cantasOptions,
-                                onChange = { (_, dropDownProps) =>
-                                  val value = dropDownProps.value.asInstanceOf[Double].toInt
-                                  modEvent[Canta](_ =>
-                                    Canta(cuantasCantas = CuantasCantas.byPriority(value))
-                                  )
-                                }
-                              )(),
-                              Button(compact = true, onClick = { (_, _) =>
-                                play(game.id.get, s.currentEvent[Canta])
-                              })("Canta")
-                            )
-                          } else {
-                            EmptyVdom
-                          }
-                        case GameStatus.jugando =>
-                          <.div(
-                            "Triunfan",
-                            if (jugador.cantante && jugador.mano && jugador.filas.isEmpty) {
-                              Dropdown(
-                                placeholder = "Triunfo",
-                                icon =
-                                  s.currentEvent[Pide].fold(EmptyVdom.asInstanceOf[js.Any]) {
-                                    e =>
-                                      e.triunfo match {
-                                        case Some(TriunfoNumero(num)) =>
-                                          <.img(^.src := s"images/${num.value}.svg")
-                                            .asInstanceOf[js.Any]
-                                        case _ => EmptyVdom.asInstanceOf[js.Any]
-                                      }
-                                  },
-                                value = s
-                                  .currentEvent[Pide].fold(null: String)(_.triunfo.toString),
-                                options = Triunfo.posibilidades
-                                  .map(triunfo =>
-                                    DropdownItemProps(
-                                      StringDictionary = StringDictionary("key" -> triunfo.toString),
-                                      image = triunfo match {
-                                        case SinTriunfos => null
-                                        case TriunfoNumero(num) =>
-                                          ImageProps(StringDictionary =
-                                            StringDictionary("src" -> s"images/${num.value}.svg")
-                                          )
-                                      },
-                                      value = triunfo.toString,
-                                      text = triunfo.toString
+                val playerPosition =
+                  if (isSelf)
+                    0
+                  else if (p.chutiState.user.fold(false)(game.nextPlayer(_).id == jugador.id))
+                    1
+                  else if (p.chutiState.user.fold(false)(game.prevPlayer(_).id == jugador.id))
+                    3
+                  else
+                    2
+
+                Container(
+                  key = s"playerContainer$playerPosition",
+                  className =
+                    s"jugador$playerPosition ${if (isSelf) " self" else ""}${if (actionExpected) " mano"
+                    else ""}"
+                )(
+                  Header(className = "playerName")(jugador.user.name),
+                  if (isSelf) {
+                    <.div(
+                      Container(className = "actionBar")(
+                        game.gameStatus match {
+                          case GameStatus.cantando =>
+                            if (jugador.mano && jugador.cuantasCantas.isEmpty) {
+                              val cantanteActual =
+                                game.jugadores.find(_.cantante).getOrElse(jugador)
+                              val min = cantanteActual.cuantasCantas
+                                .map(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
+                                  Canto5
+                                )
+                              val cantasOptions = ((if (jugador.turno) CuantasCantas.Casa
+                                                    else CuantasCantas.Buenas) +: CuantasCantas
+                                .posibilidades(min)).map { cuantas =>
+                                DropdownItemProps(
+                                  StringDictionary = StringDictionary("key" -> cuantas.prioridad),
+                                  value = cuantas.prioridad,
+                                  text = cuantas.toString
+                                )
+                              }.toJSArray
+
+                              <.div(
+                                Dropdown(
+                                  className = "cantaDropdown",
+                                  compact = true,
+                                  fluid = false,
+                                  placeholder = "Cuantas Cantas?",
+                                  selection = true,
+                                  value = s.currentEvent[Canta].cuantasCantas.prioridad.toDouble,
+                                  options = cantasOptions,
+                                  onChange = { (_, dropDownProps) =>
+                                    val value = dropDownProps.value.asInstanceOf[Double].toInt
+                                    modEvent[Canta](
+                                      _.copy(cuantasCantas = CuantasCantas.byPriority(value))
                                     )
-                                  ).toJSArray
-                              )()
-                            } else {
-                              EmptyVdom
-                            },
-                            if (jugador.mano) {
-                              <.span(
-                                Checkbox(
-                                  toggle = true,
-                                  label = "Estricta Derecha",
-                                  checked =
-                                    s.currentEvent[Pide].fold(false)(_.estrictaDerecha)
+                                  }
                                 )(),
-                                Button(compact = true)("Pide")
+                                Button(compact = true, onClick = { (_, _) =>
+                                  play(game.id.get, s.currentEvent[Canta])
+                                })("Canta")
                               )
                             } else {
                               EmptyVdom
                             }
-                          )
-                        case _ => EmptyVdom
-                      }
-                    )
-                  )
-                } else if (actionExpected) {
-                  EmptyVdom //Segment()(Loader(active = true, indeterminate = true)("Esperando"))
-                } else {
-                  EmptyVdom
-                },
-                Container(className = "statusBar")(
-                  if (jugador.turno) "Le toco cantar, " else "",
-                  jugador.cuantasCantas.fold("")(c => s"canto $c")
-                ),
-                <.div(
-                  ^.className := "fichas",
-                  jugador.fichas.zipWithIndex.toVdomArray {
-                    case (FichaTapada, fichaIndex) =>
-                      <.img(
-                        ^.key       := s"ficha_${playerIndex}_$fichaIndex",
-                        ^.src       := s"images/blank_uia.svg",
-                        ^.className := "domino"
-                      )
-                    case (FichaConocida(arriba, abajo), fichaIndex) =>
-                      val selectable = true
-                      <.img(
-                        if (selectable) ^.cursor.pointer else ^.cursor.auto,
-                        ^.key := s"ficha_${playerIndex}_$fichaIndex",
-//                        ^.transform := "rotate(45deg)", //TODO allow user to flip the domino
-                        ^.src       := s"images/${abajo}_$arriba.svg",
-                        ^.className := "domino"
-                      )
-                  }
-                ),
-                <.div(
-                  ^.className := "filas",
-                  jugador.filas.zipWithIndex.toVdomArray {
-                    case (fila, filaIndex) =>
-                      <.div(
-                        ^.key       := s"fila_${playerIndex}_$filaIndex",
-                        ^.className := "fila",
-                        fila.fichas.zipWithIndex.toVdomArray {
-                          case (ficha, fichaIndex) =>
-                            if (fila.abierta) {
-                              <.img(
-                                ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
-                                ^.src       := s"images/${ficha.abajo}_${ficha.arriba}.svg",
-                                ^.className := "domino_jugado"
-                              )
-                            } else {
-                              <.img(
-                                ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
-                                ^.src       := s"images/blank_uia.svg",
-                                ^.className := "domino_jugado"
-                              )
-                            }
+                          case GameStatus.jugando =>
+                            <.div(
+                              "Triunfan",
+                              if (jugador.cantante && jugador.mano && jugador.filas.isEmpty) {
+                                Dropdown(
+                                  placeholder = "Triunfo",
+                                  icon = s.currentEvent[Pide].triunfo match {
+                                    case Some(TriunfoNumero(num)) =>
+                                      <.img(^.src := s"images/${num.value}.svg")
+                                        .asInstanceOf[js.Any]
+                                    case _ => EmptyVdom.asInstanceOf[js.Any]
+                                  },
+                                  value = s.currentEvent[Pide].triunfo.toString,
+                                  options = Triunfo.posibilidades
+                                    .map(triunfo =>
+                                      DropdownItemProps(
+                                        StringDictionary =
+                                          StringDictionary("key" -> triunfo.toString),
+                                        image = triunfo match {
+                                          case SinTriunfos => null
+                                          case TriunfoNumero(num) =>
+                                            ImageProps(StringDictionary =
+                                              StringDictionary("src" -> s"images/${num.value}.svg")
+                                            )
+                                        },
+                                        value = triunfo.toString,
+                                        text = triunfo.toString
+                                      )
+                                    ).toJSArray
+                                )()
+                              } else {
+                                EmptyVdom
+                              },
+                              if (jugador.mano) {
+                                <.span(
+                                  Checkbox(
+                                    toggle = true,
+                                    label = "Estricta Derecha",
+                                    checked = s.currentEvent[Pide].estrictaDerecha
+                                  )(),
+                                  Button(
+                                    compact = true,
+                                    disabled = s.currentEvent[Pide].ficha.isEmpty ||
+                                      (s.currentEvent[Pide].triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty))
+                                  )("Pide")
+                                )
+                              } else {
+                                EmptyVdom
+                              }
+                            )
+                          case _ => EmptyVdom
                         }
                       )
-                  }
+                    )
+                  } else if (actionExpected) {
+                    EmptyVdom //Segment()(Loader(active = true, indeterminate = true)("Esperando"))
+                  } else {
+                    EmptyVdom
+                  },
+                  Container(className = "statusBar")(
+                    if (jugador.turno) "Le toco cantar, " else "",
+                    jugador.cuantasCantas.fold("")(c => s"canto $c")
+                  ),
+                  <.div(
+                    ^.className := "fichas",
+                    jugador.fichas.zipWithIndex.toVdomArray {
+                      case (FichaTapada, fichaIndex) =>
+                        <.img(
+                          ^.key       := s"ficha_${playerIndex}_$fichaIndex",
+                          ^.src       := s"images/backx150.png",
+                          ^.className := "domino"
+                        )
+                      case (FichaConocida(arriba, abajo), fichaIndex) =>
+                        val selectable = true
+                        <.img(
+                          if (selectable) ^.cursor.pointer else ^.cursor.auto,
+                          ^.key := s"ficha_${playerIndex}_$fichaIndex",
+//                        ^.transform := "rotate(45deg)", //TODO allow user to flip the domino
+                          ^.src       := s"images/${abajo}_${arriba}x150.png",
+                          ^.className := "domino"
+                        )
+                    }
+                  ),
+                  <.div(
+                    ^.className := "filas",
+                    jugador.filas.zipWithIndex.toVdomArray {
+                      case (fila, filaIndex) =>
+                        <.div(
+                          ^.key       := s"fila_${playerIndex}_$filaIndex",
+                          ^.className := "fila",
+                          fila.fichas.zipWithIndex.toVdomArray {
+                            case (ficha, fichaIndex) =>
+                              if (fila.abierta) {
+                                <.img(
+                                  ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
+                                  ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
+                                  ^.className := "domino_jugado"
+                                )
+                              } else {
+                                <.img(
+                                  ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
+                                  ^.src       := s"images/backx75.png",
+                                  ^.className := "domino_jugado"
+                                )
+                              }
+                          }
+                        )
+                    }
+                  )
                 )
-              )
-          }
+            }
         },
         Container(className = "fichasEnJuego")(
           p.gameInProgress.value.toVdomArray(game =>
@@ -327,7 +354,7 @@ object GameComponent {
                   ^.className := "fichaEnJuego",
                   game.jugador(Option(user)).user.name,
                   <.img(
-                    ^.src       := s"images/${ficha.abajo}_${ficha.arriba}.svg",
+                    ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
                     ^.className := "domino_enjuego"
                   )
                 )
@@ -351,7 +378,7 @@ object GameComponent {
 
   private val component = ScalaComponent
     .builder[Props]
-    .initialState(State())
+    .initialStateFromProps(props => State(State.defaultEvent(props)))
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())
     .build

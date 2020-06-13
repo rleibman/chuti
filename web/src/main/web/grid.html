@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jura:wght@500&display=swap" rel="stylesheet">
+</head>
+
+<style>
+    html {
+        height: 100%;
+    }
+
+    body {
+        min-height: 100%;
+        font-family: 'Jura', sans-serif;
+    }
+
+    #gameTable {
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 8fr 410px 8fr 250px;
+        grid-template-rows: 2em 10fr 410px 10fr 1em;
+    }
+
+    #chat {
+        color: #8C2255;
+        background-color: #EAAFCB;
+        border: 5px solid #BB5C8A;
+        border-radius: 20px;
+        grid-column-start: 4;
+        grid-column-end: span 1;
+        grid-row-start: 2;
+        grid-row-end: span 3;
+        padding: 5px;
+        text-align: center;
+    }
+
+    #player0 {
+        /*background-color: white;*/
+        grid-column-start: 2;
+        grid-column-end: span 2;
+        grid-row-start: 4;
+        grid-row-end: span 1;
+        padding: 5px;
+    }
+
+    #player0Inner {
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 3em 3em 1fr;
+    }
+
+    #player1 {
+        /*background-color: red;*/
+        grid-column-start: 3;
+        grid-column-end: span 1;
+        grid-row-start: 2;
+        grid-row-end: span 2;
+        position: relative;
+        padding: 5px;
+    }
+
+    #player1Inner {
+        display: grid;
+        transform-origin: top left;
+        transform: rotate(-90deg) translate(-130%);
+
+        /*grid-template-columns: 1fr;*/
+        grid-template-rows: 3em 4fr 5fr;
+        margin: 20px;
+    }
+
+    #player2 {
+        /*background-color: blue;*/
+        grid-column-start: 1;
+        grid-column-end: span 2;
+        grid-row-start: 2;
+        grid-row-end: span 1;
+        display: block;
+        padding: 5px;
+    }
+
+    #player2Inner {
+        width: 100%;
+        height: 100%;
+        transform: rotate(180deg);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 3em 1fr;
+    }
+
+    #player3 {
+        /*background-color: green;*/
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 3;
+        grid-row-end: span 2;
+        padding: 5px;
+    }
+
+    #player3Inner {
+        width: 100%;
+        margin: 20px;
+        display: grid;
+        transform-origin: bottom center;
+        transform: translate(-22%) rotate(90deg) translate(-10%);
+
+        /*grid-template-columns: 1fr;*/
+        grid-template-rows: 3em 4fr 5fr;
+    }
+
+    #header {
+        grid-area: header;
+        /*background-color: cyan;*/
+        grid-column-start: 1;
+        grid-column-end: span 4;
+        grid-row-start: 1;
+        grid-row-end: span 1;
+        padding: 5px;
+        color: #8C2255;
+    }
+
+    #footer {
+        grid-area: footer;
+        /*background-color: hotpink;*/
+        grid-column-start: 1;
+        grid-column-end: span 4;
+        grid-row-start: 5;
+        grid-row-end: 5;
+    }
+
+    #center {
+        grid-column-start: 2;
+        grid-column-end: span 1;
+        grid-row-start: 3;
+        grid-row-end: span 1;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: left;
+    }
+
+    #centerInner {
+        width: 100%;
+        height: 80%;
+        margin: 20px;
+        padding: 20px;
+        display: grid;
+        border: 10px solid darkgreen;
+        border-radius: 20px;
+        background-color: forestgreen;
+        grid-template-rows: 6em 1fr;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .domino {
+        height: 120px;
+        padding-right: 2px;
+        padding-left: 2px;
+    }
+
+    .domino_enjuego {
+        height: 120px;
+        align-self: start;
+        justify-self: center;
+        padding: 4px;
+    }
+
+    .domino_jugado {
+        height: 60px;
+    }
+
+    .fichas {
+        white-space: nowrap;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: left;
+        /*display: none;*/
+    }
+
+    .filasEven {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        grid-column-start: 2;
+        grid-column-end: span 1;
+        /*display: none;*/
+    }
+
+    .filasOdd {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        /*display: none;*/
+    }
+
+    .fila_fichas {
+        padding-left: 5px;
+        padding-right: 5px;
+        white-space: nowrap;
+    }
+
+    #playerActionBar {
+        /*background-color: lightcoral;*/
+        grid-column-end: span 2;
+        grid-column-start: 1;
+        align-self: center;
+    }
+
+    .statusBarEven {
+        display: flex;
+        grid-column-start: 1;
+        grid-column-end: span 2;
+        align-items: center;
+    }
+
+    .statusBarOdd {
+        display: flex;
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        align-items: center;
+    }
+
+    .username {
+        color: #59228C;
+        background-color: #CDAFEA;
+        border: 3px solid #59228C;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .username.mano {
+        color: #CDAFEA;
+        background-color: #59228C;
+        border: 3px solid #CDAFEA;
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .userStatus {
+        margin-left: 2em;
+        font-style: italic;
+    }
+
+    .centerName {
+        align-self: end;
+        text-align: center;
+        color: #AFEAB0;
+        padding: 2px
+    }
+</style>
+<body>
+
+<div id="gameTable">
+    <div id="header">&#9776; Menu</div>
+    <div id="chat">
+        <h1>Chuti Chat</h1>
+    </div>
+    <div id="player0">
+        <div id="player0Inner">
+            <div class="statusBarEven">
+                <div class="username mano">Roberto Leibman</div>
+                <div class="userStatus">Canto casa, triunfan 5</div>
+            </div>
+            <div id="playerActionBar"><input type="button" value="Listo... Los Regalos!"/>
+                <input type="button" value="Me rindo... hoyo!"/>
+                <label for="canta">Canta:</label> <select id="canta">
+                    <option value="4">Casa</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">TODAS!</option>
+                </select>
+                <input type="button" value="Pide"/>
+                <label for="triunfa">Triunfa</label> <select id="triunfa">
+                    <option value="">Elije...</option>
+                    <option value="0">blancas</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="Sin triunfos">Sin Triunfos</option>
+                </select>
+                <input type="button" value="Da"/>
+            </div>
+            <div class="fichas">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+                <img src="images/5_6x75.png" class="domino" alt="">
+            </div>
+            <div class="filasEven">
+                <div class="fila_fichas">
+                    <img src="images/3_6x75.png" class="domino_jugado" alt="">
+                    <img src="images/3_6x75.png" class="domino_jugado" alt="">
+                    <img src="images/3_6x75.png" class="domino_jugado" alt="">
+                    <img src="images/3_6x75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="player1">
+        <div id="player1Inner" style="">
+            <div class="statusBarOdd">
+                <div class="username">Roberto Leibman</div>
+                <div class="userStatus">Esperando</div>
+            </div>
+            <div class="fichas">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+            </div>
+            <div class="filasOdd">
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="player2">
+        <div id="player2Inner" style="">
+            <div class="statusBarEven">
+                <div class="username">Roberto Leibman</div>
+                <div class="userStatus">Esperando</div>
+            </div>
+            <div class="fichas">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+            </div>
+            <div class="filasEven">
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="player3" style="">
+        <div id="player3Inner" style="">
+            <div class="statusBarOdd">
+                <div class="username">Roberto Leibman</div>
+                <div class="userStatus">Esperando</div>
+            </div>
+            <div class="fichas">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+                <img src="images/backx150.png" class="domino" alt="">
+            </div>
+            <div class="filasOdd">
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+                <div class="fila_fichas">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                    <img src="images/backx75.png" class="domino_jugado" alt="">
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="center">
+        <div id="centerInner">
+            <div class="centerName">Roberto Leibman</div>
+            <div class="centerName">Roberto Leibman</div>
+            <div class="centerName">Roberto Leibman</div>
+            <div class="centerName">Roberto Leibman</div>
+            <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
+            <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
+            <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
+            <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
+        </div>
+    </div>
+    <div id="footer"></div>
+</div>
+
+</body>
+</html>
