@@ -72,9 +72,8 @@ trait Web {
         config <- ZIO.service[Config.Service]
       } yield CourierPostman.live(config)
     }
-    val dbProviderLayer: ULayer[DatabaseProvider] = ZLayer.succeed(new MySQLDatabaseProvider() {})
     val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
-    val repositoryLayer: ULayer[Repository] = dbProviderLayer >>> SlickRepository.live
+    val repositoryLayer: ULayer[Repository] = (configLayer ++ loggingLayer) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live
 
     ChatService.make().memoize.use { chatServiceLayer =>
       val fullLayer = zio.ZEnv.live ++ (loggingLayer >>> chatServiceLayer) ++ loggingLayer ++ configLayer ++ repositoryLayer ++ ZLayer

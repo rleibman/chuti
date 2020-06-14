@@ -16,17 +16,41 @@
 
 package dao
 
+import api.config
+import api.config.Config
 import slick.basic.BasicBackend
 import slick.jdbc.JdbcBackend._
-import zio.{UIO, ZIO}
-import api.config
+import zio.Cause.Fail
+import zio.logging.{Logger, Logging}
+import zio.{Has, Layer, UIO, ULayer, URLayer, ZIO, ZLayer, ZManaged}
 
 object MySQLDatabaseProvider {
+  private lazy val privateDB = {
+    println(">>>>>>>>>>>>>>>>>>>>>>>>>> This should only ever be seen once")
+    Database.forConfig(config.live.configKey)
+  }
+  lazy val liveLayer: ULayer[DatabaseProvider] = ZLayer.succeed(new DatabaseProvider.Service {
+    override def db: UIO[BasicBackend#DatabaseDef] = ZIO.succeed(privateDB)
+  })
 
-  private val db = Database.forConfig(config.live.configKey)
+  // TODO this doesn't work as expected, what we should do instead is bubble up the zmanaged and use that in the
+  //  same way that we do the memoized chat and game layers
+  @deprecated
+  val liveManagedLayer: URLayer[Config with Logging, DatabaseProvider] =
+    ZLayer
+      .fromServicesManaged[Config.Service, Logger[String], Any, Nothing, DatabaseProvider.Service] {
+        (cfg, log) =>
+          ZManaged
+            .make(
+              log.info(">>>>>>>>>>>>>>>>>>>>>>>>>> This should only ever be seen once") *>
+                ZIO.effect { Database.forConfig(cfg.configKey) }
+            )(db => log.info("Closing the database") *> ZIO.effectTotal(db.close()))
+            .map(d =>
+              new DatabaseProvider.Service {
+                val db: UIO[BasicBackend#DatabaseDef] = ZIO.effectTotal(d)
+              }
+            ).tapError(e => ZManaged.fromEffect(log.error("Error opening database!", Fail(e))))
+            .orDie // No use going on if you can't connect to the database, is there?
+      }
 
-}
-
-trait MySQLDatabaseProvider extends DatabaseProvider.Service {
-  override def db: UIO[BasicBackend#DatabaseDef] = ZIO.succeed(MySQLDatabaseProvider.db)
 }

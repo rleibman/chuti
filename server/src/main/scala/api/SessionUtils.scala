@@ -27,7 +27,7 @@ import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import zio.logging.log
 import zio.logging.slf4j.Slf4jLogger
-import zio.{Task, ULayer, ZIO, ZLayer}
+import zio.{Task, ZIO, ZLayer}
 import zioslick.RepositoryException
 
 import scala.concurrent.duration._
@@ -39,20 +39,13 @@ object SessionUtils {
 
 trait SessionUtils extends Directives {
   this: HasActorSystem =>
-  import scalacache._
-  import scalacache.memoization._
-  import scalacache.caffeine.CaffeineCache
+  import SessionUtils._
   import actorSystem.dispatcher
   import scalacache.ZioEffect.modes._
-  import SessionUtils._
-
-//  private val dbProvider: DatabaseProvider.Service = new MySQLDatabaseProvider() {}
-//  private val repository: Repository.Service = new SlickRepository() {}
-  private val dbProviderLayer: ULayer[DatabaseProvider] =
-    ZLayer.succeed(new MySQLDatabaseProvider() {})
+  import scalacache.memoization._
 
   lazy private val godLayer =
-    (dbProviderLayer >>> SlickRepository.live) ++
+    ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(config.live)) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
       SessionProvider.layer(ChutiSession(GameService.god)) ++
       Slf4jLogger.make((_, str) => str)
 
