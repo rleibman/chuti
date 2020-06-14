@@ -159,9 +159,13 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomNode = {
-      val mode = if (s.gameInProgress.isEmpty && s.mode == game) none else s.mode
+      val mode = if (s.gameInProgress.isEmpty && s.mode == game) {
+        none
+      } else {
+        window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+        s.mode
+      }
 
-      window.sessionStorage.setItem("gamePageMode", mode.toString)
       mode match {
         case Mode.lobby =>
           <.div(
@@ -182,7 +186,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
             )
           )
         case _ =>
-          EmptyVdom
+          <.div("We should never, ever get here, you should not be seeing this")
       }
 
     }
@@ -200,7 +204,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
           case _: Throwable =>
             Mode.lobby
         }
-      State(mode = mode)
+      State(mode = if(mode == none) Mode.lobby else mode)
     }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())
