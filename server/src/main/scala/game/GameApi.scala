@@ -130,8 +130,9 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
         identity,
         j =>
           j.copy(
-            fichas = j.fichas.map(_ => FichaTapada),
-            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
+            fichas = j.fichas.map(_ => FichaTapada)
+//            , //TODO probablemente tengamos que taparlas
+//            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
           )
       )
     )

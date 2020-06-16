@@ -24,7 +24,7 @@ import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
 import chuti.CuantasCantas.Buenas
-import chuti.bots.DumbPlayerBot
+import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
 import game.GameService.GameService
@@ -106,7 +106,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
   }
 
   def juegaMano(gameId: GameId): RIO[TestLayer, Game] = {
-    val bot = DumbPlayerBot
+    val bot = DumbChutiBot
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
       game <- gameOperations
@@ -240,7 +240,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
   }
 
   def canto(gameId: GameId): ZIO[TestLayer, Throwable, Game] = {
-    val bot = DumbPlayerBot
+    val bot = DumbChutiBot
     for {
       gameService <- ZIO.service[GameService.Service]
       game        <- gameService.getGame(gameId).provideSomeLayer[TestLayer](godLayer).map(_.get)
@@ -300,8 +300,8 @@ trait GameAbstractSpec2 extends MockitoSugar {
         .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
       gameEventsFiber <- gameStream
         .takeUntil {
-          case PoisonPill(Some(id), _, _) if id == start.id.get => true
-          case _                                                => false
+          case PoisonPill(Some(id), _) if id == start.id.get => true
+          case _                                             => false
         }.runCollect.fork
       _           <- clock.sleep(1.second)
       readyToPlay <- getReadyToPlay(start.id.get)
@@ -382,8 +382,8 @@ trait GameAbstractSpec2 extends MockitoSugar {
         .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
       gameEventsFiber <- gameStream
         .takeUntil {
-          case PoisonPill(Some(id), _, _) if id == game.id.get => true
-          case _                                               => false
+          case PoisonPill(Some(id), _) if id == game.id.get => true
+          case _                                            => false
         }.runCollect.fork
       _                 <- clock.sleep(1.second)
       (assert4, played) <- juegaHastaElFinal(game.id.get)

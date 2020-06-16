@@ -204,7 +204,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
           case _: Throwable =>
             Mode.lobby
         }
-      State(mode = if(mode == none) Mode.lobby else mode)
+      State(mode = if (mode == none) Mode.lobby else mode)
     }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())

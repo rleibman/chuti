@@ -39,11 +39,11 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.5"
+lazy val akkaVersion = "2.6.6"
 lazy val akkaHttpVersion = "10.1.12"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.8.1"
+lazy val calibanVersion = "0.8.2"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.0-RC20"
 
@@ -113,7 +113,7 @@ lazy val server: Project = project
       "com.typesafe.akka"                  %% "akka-actor-typed" % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-http"        % akkaHttpVersion withSources (),
-      "de.heikoseeberger"                  %% "akka-http-circe"  % "1.32.0" withSources (),
+      "de.heikoseeberger"                  %% "akka-http-circe"  % "1.33.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
@@ -126,7 +126,7 @@ lazy val server: Project = project
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.3.0" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.3.1" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -278,15 +278,15 @@ lazy val commonWeb: Project => Project =
         "commons-io"                                    % "commons-io" % "2.7" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.1.5" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.1.5",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.0" withSources (),
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.2.0",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "1.0.0" withSources (),
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.0" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.0" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.1" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.1" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),

@@ -19,7 +19,7 @@ package chuti.bots
 import chuti.Triunfo._
 import chuti._
 
-case object DumbPlayerBot extends PlayerBot {
+case object DumbChutiBot extends ChutiBot {
   private def calculaCasa(
     jugador: Jugador,
     game:    Game
@@ -96,11 +96,11 @@ case object DumbPlayerBot extends PlayerBot {
     val (_, triunfo) = calculaCanto(jugador, game)
     val hypotheticalGame = game.copy(triunfo = Option(triunfo))
     if (hypotheticalGame.puedesCaerte(jugador)) {
-      Caite(Option(triunfo))
+      Caite(triunfo = Option(triunfo))
     } else {
       Pide(
-        hypotheticalGame.maxByTriunfo(jugador.fichas),
-        Option(triunfo),
+        ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
+        triunfo = Option(triunfo),
         estrictaDerecha = false
       )
     }
@@ -114,15 +114,16 @@ case object DumbPlayerBot extends PlayerBot {
       case None => throw GameException("Should never happen!")
       case Some(SinTriunfos) =>
         Pide(
-          jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value),
+          jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value).get,
           triunfo = None,
           estrictaDerecha = false
         )
       case Some(TriunfoNumero(triunfo)) =>
         Pide(
-          jugador.fichas.maxByOption(ficha =>
-            (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value
-          ),
+          jugador.fichas
+            .maxByOption(ficha =>
+              (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value
+            ).get,
           triunfo = None,
           estrictaDerecha = false
         )
@@ -207,11 +208,11 @@ case object DumbPlayerBot extends PlayerBot {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
       case GameStatus.jugando =>
-        if (jugador.cantante && jugador.mano && jugador.filas.isEmpty) {
+        if (game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty) {
           Option(pideInicial(jugador, game))
         } else if (jugador.mano && game.puedesCaerte(jugador)) {
           Option(caite())
-        } else if (jugador.mano) {
+        } else if (jugador.mano && game.enJuego.isEmpty) {
           Option(pide(jugador, game))
         } else if (game.enJuego.isEmpty && game.jugadores.exists(
                      _.cuantasCantas == Option(CuantasCantas.CantoTodas)

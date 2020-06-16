@@ -30,7 +30,7 @@ class ZIOStreamSpec extends AsyncFlatSpec {
       queue <- zioQueue
       consumeQueue = ZStream.fromQueue(queue).foreach(e => putStrLn(e.toString))
       //Sleep without blocking threads thanks to ZIO fibers
-      feedQueue = ZIO.foreachPar(Range(1, 1000)) { e =>
+      feedQueue = ZIO.foreach(Range(1, 1000)) { e =>
         if (e == 999) {
           queue.shutdown.as(true)
         } else {

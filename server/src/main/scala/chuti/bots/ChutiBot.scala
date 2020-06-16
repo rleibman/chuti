@@ -21,7 +21,7 @@ import dao.{Repository, SessionProvider}
 import game.GameService.GameService
 import zio.ZIO
 
-trait PlayerBot {
+trait ChutiBot {
   def decideTurn(
     user: User,
     game: Game

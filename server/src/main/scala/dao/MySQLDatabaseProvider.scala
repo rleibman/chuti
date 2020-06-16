@@ -25,7 +25,7 @@ import zio.logging.{Logger, Logging}
 import zio.{Has, Layer, UIO, ULayer, URLayer, ZIO, ZLayer, ZManaged}
 
 object MySQLDatabaseProvider {
-  private lazy val privateDB = {
+  lazy private val privateDB = {
     println(">>>>>>>>>>>>>>>>>>>>>>>>>> This should only ever be seen once")
     Database.forConfig(config.live.configKey)
   }

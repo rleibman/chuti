@@ -43,8 +43,8 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeUntil {
-              case PoisonPill(Some(id), _, _) if id == gameId => true
-              case _                                          => false
+              case PoisonPill(Some(id), _) if id == gameId => true
+              case _                                       => false
             }.runCollect.fork
           _     <- clock.sleep(1.second)
           mano1 <- juegaMano(gameId)
@@ -77,8 +77,8 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeUntil {
-              case PoisonPill(Some(id), _, _) if id == gameId => true
-              case _                                          => false
+              case PoisonPill(Some(id), _) if id == gameId => true
+              case _                                       => false
             }.runCollect.fork
           _     <- clock.sleep(1.second)
           _     <- juegaMano(gameId)
@@ -117,8 +117,8 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
           gameEventsFiber <- gameStream
             .takeWhile {
-              case PoisonPill(Some(id), _, _) if id == gameId => false
-              case _                                          => true
+              case PoisonPill(Some(id), _) if id == gameId => false
+              case _                                       => true
             }.runCollect.fork
           _   <- clock.sleep(1.second)
           end <- juegaHastaElFinal(gameId)

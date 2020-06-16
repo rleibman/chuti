@@ -27,6 +27,7 @@ import chuti._
 import dao.{Repository, SessionProvider}
 import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
+import io.circe.syntax._
 import io.circe.{Decoder, Json}
 import mail.Postman
 import mail.Postman.Postman
@@ -661,13 +662,53 @@ object GameService {
                 (regalosGame, regalosBorlote)
               }
 
-            if (helechoGame.jugadores.exists(_.fichas.isEmpty)) {
+            if (helechoGame.jugadores.exists(_.fichas.nonEmpty)) {
+              (helechoGame, helechoBorlote)
+            } else {
               //Ya se acabo el juego, a nadie le quedan fichas
               val a = helechoGame.applyEvent(Option(user), TerminaJuego())
               (a._1, helechoBorlote :+ a._2)
-            } else {
-              (helechoGame, helechoBorlote)
             }
+        }
+      }
+
+      //TODO comment this out once we've tested redo.
+      def testRedoEvent(
+        before: Game,
+        after:  Game,
+        event:  GameEvent,
+        user:   User
+      ): Unit = {
+        def sanitize(
+          game:    Game,
+          forUser: User
+        ) = {
+          game.copy(jugadores = game.modifiedJugadores(
+            _.user.id == user.id,
+            identity,
+            j =>
+              j.copy(
+                fichas = j.fichas.map(_ => FichaTapada)
+                //            , //TODO probablemente tengamos que taparlas
+                //            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
+              )
+          )
+          )
+        }
+        if (!event.isInstanceOf[Sopa]) { //Sopa is special, it isn't redone
+          before.jugadores.foreach { jugador =>
+            val sanitizedBefore = sanitize(before, jugador.user)
+            val sanitizedAfter = sanitize(after, jugador.user)
+            val redone =
+              event
+                .redoEvent(Option(user), sanitizedBefore)
+                .copy(currentEventIndex = before.nextIndex)
+            if (sanitizedAfter != redone) {
+              println(sanitizedAfter.asJson.noSpaces)
+              println(redone.asJson.noSpaces)
+              throw new GameException("Done and ReDone should be the same")
+            }
+          }
         }
       }
 
@@ -684,6 +725,8 @@ object GameService {
               throw GameException("This user isn't playing in this game!!")
             }
             val (played, event) = game.applyEvent(Option(user), playEvent)
+
+            testRedoEvent(game, played, event, user)
 
             val (transitioned, transitionEvents) = checkPlayTransition(user, played, event)
 

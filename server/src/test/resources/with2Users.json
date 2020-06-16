@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 3,
-  "created" : "2020-06-07T22:41:35.298716",
+  "created" : "2020-06-16T09:58:06.114871",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -26,8 +26,8 @@
             
           }
         },
-        "created" : "2020-06-07T22:41:32.345991",
-        "lastUpdated" : "2020-06-07T22:41:32.347723",
+        "created" : "2020-06-16T09:58:01.019921",
+        "lastUpdated" : "2020-06-16T09:58:01.019929",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -42,6 +42,7 @@
       "cantante" : false,
       "mano" : false,
       "cuantasCantas" : null,
+      "statusString" : "",
       "cuenta" : [
       ]
     },
@@ -57,8 +58,8 @@
             
           }
         },
-        "created" : "2020-06-07T22:41:32.347772",
-        "lastUpdated" : "2020-06-07T22:41:32.34778",
+        "created" : "2020-06-16T09:58:01.01999",
+        "lastUpdated" : "2020-06-16T09:58:01.019995",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -73,9 +74,11 @@
       "cantante" : false,
       "mano" : false,
       "cuantasCantas" : null,
+      "statusString" : "",
       "cuenta" : [
       ]
     }
   ],
+  "statusString" : "",
   "satoshiPerPoint" : 100.0
 }

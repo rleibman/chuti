@@ -17,8 +17,8 @@
 package chuti
 
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
+import chuti.Triunfo.TriunfoNumero
 import dao.InMemoryRepository.{user1, user2, user3, user4}
-import chuti.Triunfo.SinTriunfos
 import dao.Repository
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
@@ -49,7 +49,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     def apply(
       description:   String,
       hands:         Seq[String],
-      triunfo:       Triunfo,
+      triunfo:       Option[Triunfo],
       cuantasCantas: CuantasCantas,
       testEndState:  Game => Assertion
     ): GameTester = {
@@ -77,7 +77,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
             )
           }
       }
-      val game = Game(None, GameStatus.jugando, triunfo = Option(triunfo), jugadores = jugadores)
+      val game = Game(None, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
 
       new GameTester(description, game, testEndState)
     }
@@ -91,17 +91,23 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
   val gamesToTest = Seq(
     GameTester(
       "cantar 7 pero no de caida (no estan pegadas)",
-      Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
-      SinTriunfos,
+      Seq("3:3,5:3,4:3,3:2,3:1,6:6,6:4", "6:3,4:5,1:2,2:0,1:4,1:5,6:5"),
+      None,
       Canto7,
-      game => assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+      game => {
+        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
+        assert(game.gameStatus == GameStatus.requiereSopa)
+        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+      }
     ),
     GameTester(
       "cantar 7 pero no de caida (estan pegadas)",
-      Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,3:0,1:2,2:0,1:4,1:5,1:6"),
-      SinTriunfos,
+      Seq("3:3,5:3,4:3,3:2,3:1,6:6,6:4", "6:3,1:0,2:1,6:0,6:1,6:2,6:5"),
+      None,
       Canto7,
       game => {
+        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
+        assert(game.gameStatus == GameStatus.requiereSopa)
         assert(game.quienCanta.get.cuenta.head.esHoyo)
         assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -7)
       }
@@ -109,9 +115,11 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     GameTester(
       "cantar chuti pero no de caida (no estan pegadas)",
       Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
-      SinTriunfos,
+      None,
       CantoTodas,
       game => {
+        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
+        assert(game.gameStatus == GameStatus.partidoTerminado)
         assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 21)
         assert(game.gameStatus == GameStatus.partidoTerminado)
       }
@@ -119,19 +127,25 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     GameTester(
       "cantar chuti pero no de caida (estan pegadas)",
       Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,3:0,1:2,2:0,1:4,1:5,1:6"),
-      SinTriunfos,
+      None,
       CantoTodas,
       game => {
+        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
+        assert(game.gameStatus == GameStatus.requiereSopa)
         assert(game.quienCanta.get.cuenta.head.esHoyo)
         assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -21)
       }
     ),
     GameTester(
       "cantar 4, pero hacer 7",
-      Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
-      SinTriunfos,
+      Seq("3:3,3:5,3:4,3:2,3:1,6:6,6:5", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
+      None,
       Casa,
-      game => assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+      game => {
+        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
+        assert(game.gameStatus == GameStatus.requiereSopa)
+        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+      }
     )
   )
 

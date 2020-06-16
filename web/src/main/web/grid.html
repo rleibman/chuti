@@ -16,7 +16,7 @@
         font-family: 'Jura', sans-serif;
     }
 
-    #gameTable {
+    .gameTable {
         position: absolute;
         height: 100%;
         width: 100%;
@@ -25,7 +25,7 @@
         grid-template-rows: 2em 10fr 410px 10fr 1em;
     }
 
-    #chat {
+    .chat {
         color: #8C2255;
         background-color: #EAAFCB;
         border: 5px solid #BB5C8A;
@@ -38,7 +38,7 @@
         text-align: center;
     }
 
-    #player0 {
+    .jugador0 {
         /*background-color: white;*/
         grid-column-start: 2;
         grid-column-end: span 2;
@@ -47,7 +47,7 @@
         padding: 5px;
     }
 
-    #player0Inner {
+    .jugador0Inner {
         width: 100%;
         height: 100%;
         display: grid;
@@ -55,7 +55,7 @@
         grid-template-rows: 3em 3em 1fr;
     }
 
-    #player1 {
+    .jugador1 {
         /*background-color: red;*/
         grid-column-start: 3;
         grid-column-end: span 1;
@@ -65,7 +65,7 @@
         padding: 5px;
     }
 
-    #player1Inner {
+    .jugador1Inner {
         display: grid;
         transform-origin: top left;
         transform: rotate(-90deg) translate(-130%);
@@ -75,7 +75,7 @@
         margin: 20px;
     }
 
-    #player2 {
+    .jugador2 {
         /*background-color: blue;*/
         grid-column-start: 1;
         grid-column-end: span 2;
@@ -85,7 +85,7 @@
         padding: 5px;
     }
 
-    #player2Inner {
+    .jugador2Inner {
         width: 100%;
         height: 100%;
         transform: rotate(180deg);
@@ -94,7 +94,7 @@
         grid-template-rows: 3em 1fr;
     }
 
-    #player3 {
+    .jugador3 {
         /*background-color: green;*/
         grid-column-start: 1;
         grid-column-end: span 1;
@@ -103,7 +103,7 @@
         padding: 5px;
     }
 
-    #player3Inner {
+    .jugador3Inner {
         width: 100%;
         margin: 20px;
         display: grid;
@@ -114,67 +114,9 @@
         grid-template-rows: 3em 4fr 5fr;
     }
 
-    #header {
-        grid-area: header;
-        /*background-color: cyan;*/
-        grid-column-start: 1;
-        grid-column-end: span 4;
-        grid-row-start: 1;
-        grid-row-end: span 1;
-        padding: 5px;
-        color: #8C2255;
-    }
-
-    #footer {
-        grid-area: footer;
-        /*background-color: hotpink;*/
-        grid-column-start: 1;
-        grid-column-end: span 4;
-        grid-row-start: 5;
-        grid-row-end: 5;
-    }
-
-    #center {
-        grid-column-start: 2;
-        grid-column-end: span 1;
-        grid-row-start: 3;
-        grid-row-end: span 1;
-        display: flex;
-        flex-wrap: nowrap;
-        align-items: center;
-        justify-content: left;
-    }
-
-    #centerInner {
-        width: 100%;
-        height: 80%;
-        margin: 20px;
-        padding: 20px;
-        display: grid;
-        border: 10px solid darkgreen;
+    .self {
+        border: 1px solid #186992;
         border-radius: 20px;
-        background-color: forestgreen;
-        grid-template-rows: 6em 1fr;
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .domino {
-        height: 120px;
-        padding-right: 2px;
-        padding-left: 2px;
-    }
-
-    .domino_enjuego {
-        height: 120px;
-        align-self: start;
-        justify-self: center;
-        padding: 4px;
-    }
-
-    .domino_jugado {
-        height: 60px;
     }
 
     .fichas {
@@ -204,13 +146,59 @@
         /*display: none;*/
     }
 
+    .header {
+        grid-area: header;
+        /*background-color: cyan;*/
+        grid-column-start: 1;
+        grid-column-end: span 4;
+        grid-row-start: 1;
+        grid-row-end: span 1;
+        padding: 5px;
+        color: #8C2255;
+    }
+
+    .footer {
+        grid-area: footer;
+        /*background-color: hotpink;*/
+        grid-column-start: 1;
+        grid-column-end: span 4;
+        grid-row-start: 5;
+        grid-row-end: 5;
+    }
+
+    .fichasEnJuego {
+        grid-column-start: 2;
+        grid-column-end: span 1;
+        grid-row-start: 3;
+        grid-row-end: span 1;
+        display: flex;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: left;
+    }
+
+    .fichasEnJuegoInner {
+        width: 100%;
+        height: 80%;
+        margin: 20px;
+        padding: 20px;
+        display: grid;
+        border: 10px solid darkgreen;
+        border-radius: 20px;
+        background-color: forestgreen;
+        grid-template-rows: 6em 1fr;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        align-items: center;
+        justify-content: center;
+    }
+
     .fila_fichas {
         padding-left: 5px;
         padding-right: 5px;
         white-space: nowrap;
     }
 
-    #playerActionBar {
+    .jugadorActionBar {
         /*background-color: lightcoral;*/
         grid-column-end: span 2;
         grid-column-start: 1;
@@ -231,7 +219,7 @@
         align-items: center;
     }
 
-    .username {
+    .playerName {
         color: #59228C;
         background-color: #CDAFEA;
         border: 3px solid #59228C;
@@ -239,7 +227,7 @@
         padding: 10px;
     }
 
-    .username.mano {
+    .playerName.canPlay {
         color: #CDAFEA;
         background-color: #59228C;
         border: 3px solid #CDAFEA;
@@ -247,12 +235,35 @@
         padding: 10px;
     }
 
+    .domino {
+        height: 120px;
+        padding: 5px;
+        margin: 0px;
+    }
+
+    .domino.selected {
+        border: 5px solid orange;
+        padding: 0px;
+        border-radius: 10px;
+    }
+
+    .domino_enjuego {
+        height: 120px;
+        align-self: start;
+        justify-self: center;
+        padding: 4px;
+    }
+
+    .domino_jugado {
+        height: 60px;
+    }
+
     .userStatus {
         margin-left: 2em;
         font-style: italic;
     }
 
-    .centerName {
+    .fichasEnJuegoName {
         align-self: end;
         text-align: center;
         color: #AFEAB0;
@@ -261,27 +272,27 @@
 </style>
 <body>
 
-<div id="gameTable">
-    <div id="header">&#9776; Menu</div>
-    <div id="chat">
+<div class="gameTable">
+    <div class="header">&#9776; Menu</div>
+    <div class="chat">
         <h1>Chuti Chat</h1>
     </div>
-    <div id="player0">
-        <div id="player0Inner">
+    <div class="jugador0">
+        <div class="jugador0Inner">
             <div class="statusBarEven">
-                <div class="username mano">Roberto Leibman</div>
+                <div class="playerName mano canPlay">Roberto Leibman</div>
                 <div class="userStatus">Canto casa, triunfan 5</div>
             </div>
-            <div id="playerActionBar"><input type="button" value="Listo... Los Regalos!"/>
+            <div class="jugadorActionBar"><input type="button" value="Listo... Los Regalos!"/>
                 <input type="button" value="Me rindo... hoyo!"/>
-                <label for="canta">Canta:</label> <select id="canta">
+                <label for="canta">Canta:</label> <select class="canta">
                     <option value="4">Casa</option>
                     <option value="5">5</option>
                     <option value="6">6</option>
                     <option value="7">TODAS!</option>
                 </select>
                 <input type="button" value="Pide"/>
-                <label for="triunfa">Triunfa</label> <select id="triunfa">
+                <label for="triunfa">Triunfa</label> <select class="triunfa">
                     <option value="">Elije...</option>
                     <option value="0">blancas</option>
                     <option value="1">1</option>
@@ -344,10 +355,10 @@
             </div>
         </div>
     </div>
-    <div id="player1">
-        <div id="player1Inner" style="">
+    <div class="jugador1">
+        <div class="jugador1Inner" style="">
             <div class="statusBarOdd">
-                <div class="username">Roberto Leibman</div>
+                <div class="playerName">Roberto Leibman</div>
                 <div class="userStatus">Esperando</div>
             </div>
             <div class="fichas">
@@ -399,10 +410,10 @@
             </div>
         </div>
     </div>
-    <div id="player2">
-        <div id="player2Inner" style="">
+    <div class="jugador2">
+        <div class="jugador2Inner" style="">
             <div class="statusBarEven">
-                <div class="username">Roberto Leibman</div>
+                <div class="playerName">Roberto Leibman</div>
                 <div class="userStatus">Esperando</div>
             </div>
             <div class="fichas">
@@ -454,10 +465,10 @@
             </div>
         </div>
     </div>
-    <div id="player3" style="">
-        <div id="player3Inner" style="">
+    <div class="jugador3" style="">
+        <div class="jugador3Inner" style="">
             <div class="statusBarOdd">
-                <div class="username">Roberto Leibman</div>
+                <div class="playerName">Roberto Leibman</div>
                 <div class="userStatus">Esperando</div>
             </div>
             <div class="fichas">
@@ -509,19 +520,19 @@
             </div>
         </div>
     </div>
-    <div id="center">
-        <div id="centerInner">
-            <div class="centerName">Roberto Leibman</div>
-            <div class="centerName">Roberto Leibman</div>
-            <div class="centerName">Roberto Leibman</div>
-            <div class="centerName">Roberto Leibman</div>
+    <div class="fichasEnJuego">
+        <div class="fichasEnJuegoInner">
+            <div class="fichasEnJuegoName">Roberto Leibman</div>
+            <div class="fichasEnJuegoName">Roberto Leibman</div>
+            <div class="fichasEnJuegoName">Roberto Leibman</div>
+            <div class="fichasEnJuegoName">Roberto Leibman</div>
             <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
             <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
             <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
             <img style="" src="images/5_6x75.png" class="domino_enjuego" alt="">
         </div>
     </div>
-    <div id="footer"></div>
+    <div class="footer"></div>
 </div>
 
 </body>

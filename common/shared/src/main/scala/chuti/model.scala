@@ -203,6 +203,7 @@ case class Jugador(
   cantante:      Boolean = false, //Quien esta cantando este juego
   mano:          Boolean = false, //Quien tiene la mano en este momento
   cuantasCantas: Option[CuantasCantas] = None,
+  statusString:  String = "",
   cuenta:        Seq[Cuenta] = Seq.empty
 ) {
   lazy val yaSeHizo: Boolean = {
@@ -212,6 +213,14 @@ case class Jugador(
     filas.size >= cuantasCantas.fold(throw GameException("Si no canta no se puede hacer!!"))(
       _.numFilas
     )
+  }
+
+  def filterFichas(dropMe: Seq[Fila]): List[Ficha] = {
+    fichas.headOption match {
+      case None              => fichas
+      case Some(FichaTapada) => fichas.drop(dropMe.size)
+      case _                 => fichas.diff(dropMe.flatMap(_.fichas))
+    }
   }
 
   def dropFicha(ficha: Ficha): List[Ficha] = {
@@ -325,15 +334,16 @@ object Game {
     pidiendo: Ficha,
     triunfo:  Triunfo
   ): (UserId, Ficha) = {
+    //TODO use fichaGanadora instead
     triunfo match {
       case SinTriunfos =>
         if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get
-        else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.arriba.value)
+        else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.abajo.value)
       case TriunfoNumero(triunfoVal) =>
         val triunfos = fichas.filter(_._2.es(triunfoVal))
         if (triunfos.isEmpty) {
           if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get
-          else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.arriba.value)
+          else fichas.filter(_._2.es(pidiendo.arriba)).maxBy(_._2.abajo.value)
         } else {
           if (pidiendo.esMula && pidiendo.es(triunfoVal)) fichas.find(_._2 == pidiendo).get
           else
@@ -355,6 +365,7 @@ case class Game(
   enJuego:         List[(UserId, Ficha)] = List.empty,
   estrictaDerecha: Boolean = false,
   jugadores:       List[Jugador] = List.empty,
+  statusString:    String = "",
   satoshiPerPoint: Double = 100.0
 ) {
 
@@ -463,7 +474,13 @@ case class Game(
     if (jugador.fichas.isEmpty) {
       true
     } else {
-      val cuantas = cuantasDeCaida(jugador.fichas, jugadores.filter(_ != jugador).flatMap(_.fichas))
+      //Calcula cuantas puedes hacer de caida, dadas las fichas que tienes y las fichas que ya se jugaron,
+      //primero calcula las fichas que quedan
+      val resto = Game.todaLaFicha
+        .diff(jugador.fichas).diff(
+          jugadores.filter(_ != jugador).flatMap(_.filas.flatMap(_.fichas))
+        ) //TODO just changed this recently, test it
+      val cuantas = cuantasDeCaida(jugador.fichas, resto)
 
       quienCanta.fold(false) { cantante =>
         if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
@@ -587,15 +604,11 @@ case class Game(
     //TODO: Write this
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
     val user = jugadores.find(_.user.id == event.userId).map(_.user)
-    val processed = event.doEvent(user, game = this)
-    if (processed._2.index.getOrElse(-1) != currentEventIndex) {
-      throw GameException("Error! the event did not gather the correct index")
+    val processed = event.redoEvent(user, game = this)
+    if (event.index.getOrElse(-1) != currentEventIndex - 1) {
+      throw GameException("Error! You cannot reapply this event to the game!")
     }
-    if (processed._2 != event) {
-      //For all events, test that reapplying the event to the same original game doesn't change the event, Sopa in particular
-      throw GameException(s"Should not have modified event on reapply!\n$event\n${processed._2}")
-    }
-    processed._1.copy(currentEventIndex = nextIndex)
+    processed.copy(currentEventIndex = nextIndex)
   }
 
   override def toString: String = {

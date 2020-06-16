@@ -1,56 +1,146 @@
-.jugador0{
+html {
+    height: 100%;
+}
+
+body {
+    min-height: 100%;
+    font-family: 'Jura', sans-serif;
+}
+
+.gameTable {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 8fr 410px 8fr 250px;
+    grid-template-rows: 2em 10fr 410px 10fr 1em;
+}
+
+.chat {
+    color: #8C2255;
+    background-color: #EAAFCB;
+    border: 5px solid #BB5C8A;
+    border-radius: 20px;
+    grid-column-start: 4;
+    grid-column-end: span 1;
+    grid-row-start: 2;
+    grid-row-end: span 3;
+    padding: 5px;
+    text-align: center;
+}
+
+.jugador0 {
     padding: 5px;
     min-height: 200px;
     max-width: 550px;
 }
-.jugador1{
+
+.jugador0Inner {
+
+}
+
+.jugador1 {
     padding: 5px;
     min-height: 200px;
     max-width: 550px;
 }
-.jugador2{
+
+.jugador1Inner {
+
+}
+
+.jugador2 {
     padding: 5px;
     min-height: 200px;
     max-width: 550px;
 }
-.jugador3{
+
+.jugador2Inner {
+}
+
+.jugador3 {
     padding: 5px;
     min-height: 200px;
     max-width: 550px;
 }
+
+.jugador3Inner {
+
+}
+
 .self {
     border: 1px solid #186992;
     border-radius: 20px;
 }
+
+.fichas {
+    white-space: nowrap;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: left;
+    /*display: none;*/
+}
+
+.filasEven {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    grid-column-start: 2;
+    grid-column-end: span 1;
+    /*display: none;*/
+}
+
+.filasOdd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    /*display: none;*/
+}
+
+.header {
+    grid-area: header;
+    /*background-color: cyan;*/
+    grid-column-start: 1;
+    grid-column-end: span 4;
+    grid-row-start: 1;
+    grid-row-end: span 1;
+    padding: 5px;
+    color: #8C2255;
+}
+
+.footer {
+    grid-area: footer;
+    /*background-color: hotpink;*/
+    grid-column-start: 1;
+    grid-column-end: span 4;
+    grid-row-start: 5;
+    grid-row-end: 5;
+}
+
 .mano {
     border: 10px solid #186992;
     border-radius: 20px;
 }
+
 .playerName {
+    color: #59228C;
+    background-color: #CDAFEA;
+    border: 3px solid #59228C;
+    border-radius: 10px;
+    padding: 10px;
+}
 
+.playerName.canPlay {
+    color: #CDAFEA;
+    background-color: #59228C;
+    border: 3px solid #CDAFEA;
+    border-radius: 10px;
+    padding: 10px;
 }
-.actionBar {
 
-}
-.statusBar{
-
-}
-.fichas {
-
-}
-.domino{
-    height: 150px;
-    padding: 3px;
-}
-.filas {
-
-}
-.fila {
-
-}
-.domino_jugado {
-    height: 80px
-}
 .fichasEnJuego {
     padding: 5px;
     min-height: 200px;
@@ -60,9 +150,61 @@
     border-radius: 20px;
     background-color: forestgreen;
 }
-.fichaEnJuego {
+
+.fichaEnJuegoInner {
 
 }
+
+.jugadorActionBar {
+        /*background-color: lightcoral;*/
+        grid-column-end: span 2;
+        grid-column-start: 1;
+        align-self: center;
+}
+
+.statusBarEven {
+    display: flex;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+    align-items: center;
+}
+
+.statusBarOdd {
+    display: flex;
+    grid-column-start: 1;
+    grid-column-end: span 1;
+    align-items: center;
+}
+
+.userStatus {
+    margin-left: 2em;
+    font-style: italic;
+}
+
+.domino {
+    height: 120px;
+    padding: 5px;
+    margin: 0px;
+}
+
+.domino.selected {
+    border: 5px solid orange;
+    padding: 0px;
+    border-radius: 10px;
+}
+
+.filas {
+
+}
+
+.fila {
+
+}
+
+.domino_jugado {
+    height: 80px
+}
+
 .domino_enjuego {
     height: 150px
 }
@@ -70,19 +212,21 @@
 .menuBurger i.dropdown.icon {
     display: none;
 }
+
 .hoyo {
     border-radius: 100px;
     border: 3px solid red;
     background: white;
-    color : black;
-    padding : 10px 15px;
+    color: black;
+    padding: 10px 15px;
 }
+
 .chuti {
     border-radius: 100px;
     border: 3px solid green;
     background: white;
-    color : black;
-    padding : 10px 15px;
+    color: black;
+    padding: 10px 15px;
 }
 
 .ui.selection.dropdown.cantaDropdown {

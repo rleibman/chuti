@@ -27,6 +27,7 @@ class ManoGanadoraSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSp
     ("6:6,5:5,4:4,1:0", "1:0", SinTriunfos)              -> "1:0",
     ("5:5,2:2,4:4,1:0", "2:2", SinTriunfos)              -> "2:2",
     ("5:5,1:6,4:4,1:0", "1:0", SinTriunfos)              -> "1:6",
+    ("6:4,6:5,4:4,0:0", "6:4", TriunfoNumero(Numero(3))) -> "6:5",
     ("6:6,5:5,4:4,3:3", "6:6", TriunfoNumero(Numero(6))) -> "6:6",
     ("6:6,5:5,4:4,3:3", "6:6", TriunfoNumero(Numero(3))) -> "3:3",
     ("6:6,5:5,4:4,1:0", "6:6", TriunfoNumero(Numero(1))) -> "1:0",
