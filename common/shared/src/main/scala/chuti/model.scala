@@ -21,6 +21,7 @@ import java.time.LocalDateTime
 import chuti.Numero._
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import io.circe.{Decoder, Encoder}
+import monocle.Lens
 
 import scala.annotation.tailrec
 
@@ -518,6 +519,31 @@ case class Game(
   def partidoOver: Boolean = {
     jugadores.exists(_.cuenta.map(_.puntos).sum >= 21)
   }
+
+//  import monocle.Optional
+//  import monocle.macros.GenLens
+//  private def jugadorLens(userId: UserId): Optional[List[Jugador], Jugador] =
+//    Optional[List[Jugador], Jugador] {
+//      case Nil => None
+//      case l   => l.find(_.id == Option(userId))
+//    } { a =>
+//      {
+//        case Nil => Nil
+//        case l   => l.map(j => if (j.id == Option(userId)) a else j)
+//      }
+//    }
+//
+//  @transient
+//  lazy private val jugadoresLens: Lens[Game, List[Jugador]] = GenLens[Game](_.jugadores)
+//  @transient
+//  lazy private val statusStringLens: Lens[Jugador, String] = GenLens[Jugador](_.statusString)
+//  private def joined(userId: UserId): Optional[Game, String] =
+//    jugadoresLens composeOptional jugadorLens(userId) composeLens statusStringLens
+//  def setJugadorStatusString(
+//    userId: UserId,
+//    str:    String
+//  ): Game = joined(userId).set(str)(this)
+//  def clearJugadorStatusString(userId: UserId): Game = joined(userId).set("")(this)
 
   def jugador(id: Option[UserId]): Jugador =
     jugadores

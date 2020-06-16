@@ -121,21 +121,27 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
 //  implicit private val gameStateSchema:  GameApi.Typeclass[GameState] = gen[GameState]
   //  implicit private val jugadaSchema:     GameApi.Typeclass[GameEvent] = gen[GameEvent]
 
-  private def filterSecretKnowledge(game: Game) =
-    for {
-      user <- ZIO.access[SessionProvider](_.get.session.user)
-    } yield game.copy(
+  def sanitizeGame(
+    game: Game,
+    user: User
+  ): Game =
+    game.copy(
       jugadores = game.modifiedJugadores(
         _.user.id == user.id,
         identity,
         j =>
           j.copy(
             fichas = j.fichas.map(_ => FichaTapada)
-//            , //TODO probablemente tengamos que taparlas
-//            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
+            //            , //TODO probablemente tengamos que taparlas
+            //            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
           )
       )
     )
+
+  def sanitizeGame(game: Game): ZIO[SessionProvider, Nothing, Game] =
+    for {
+      user <- ZIO.access[SessionProvider](_.get.session.user)
+    } yield sanitizeGame(game, user)
 
   val api: GraphQL[Console with Clock with GameService with GameLayer with ChatService] =
     graphQL(
@@ -144,16 +150,16 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
           getGame = gameId =>
             for {
               gameOpt  <- GameService.getGame(gameId)
-              filtered <- ZIO.foreach(gameOpt)(filterSecretKnowledge)
+              filtered <- ZIO.foreach(gameOpt)(sanitizeGame)
             } yield filtered.map(_.asJson),
           getGameForUser = for {
             gameOpt  <- GameService.getGameForUser
-            filtered <- ZIO.foreach(gameOpt)(filterSecretKnowledge)
+            filtered <- ZIO.foreach(gameOpt)(sanitizeGame)
           } yield filtered.map(_.asJson),
           getFriends = GameService.getFriends,
           getGameInvites = for {
             gameSeq  <- GameService.getGameInvites
-            filtered <- ZIO.foreach(gameSeq)(filterSecretKnowledge)
+            filtered <- ZIO.foreach(gameSeq)(sanitizeGame)
           } yield filtered.map(_.asJson),
           getLoggedInUsers = GameService.getLoggedInUsers
         ),
@@ -161,11 +167,11 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
           newGame = newGameArgs =>
             for {
               game     <- GameService.newGame(satoshiPerPoint = newGameArgs.satoshiPerPoint)
-              filtered <- filterSecretKnowledge(game)
+              filtered <- sanitizeGame(game)
             } yield filtered.asJson,
           joinRandomGame = for {
             game     <- GameService.joinRandomGame()
-            filtered <- filterSecretKnowledge(game)
+            filtered <- sanitizeGame(game)
           } yield filtered.asJson,
           abandonGame = gameId => GameService.abandonGame(gameId),
           inviteToGame = userInviteArgs =>
@@ -179,7 +185,7 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
           acceptGameInvitation = gameId =>
             for {
               game     <- GameService.acceptGameInvitation(gameId)
-              filtered <- filterSecretKnowledge(game)
+              filtered <- sanitizeGame(game)
             } yield filtered.asJson,
           declineGameInvitation = gameId => GameService.declineGameInvitation(gameId),
           cancelUnacceptedInvitations = gameId => GameService.cancelUnacceptedInvitations(gameId),

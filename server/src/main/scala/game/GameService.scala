@@ -679,26 +679,10 @@ object GameService {
         event:  GameEvent,
         user:   User
       ): Unit = {
-        def sanitize(
-          game:    Game,
-          forUser: User
-        ) = {
-          game.copy(jugadores = game.modifiedJugadores(
-            _.user.id == user.id,
-            identity,
-            j =>
-              j.copy(
-                fichas = j.fichas.map(_ => FichaTapada)
-                //            , //TODO probablemente tengamos que taparlas
-                //            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
-              )
-          )
-          )
-        }
         if (!event.isInstanceOf[Sopa]) { //Sopa is special, it isn't redone
           before.jugadores.foreach { jugador =>
-            val sanitizedBefore = sanitize(before, jugador.user)
-            val sanitizedAfter = sanitize(after, jugador.user)
+            val sanitizedBefore = GameApi.sanitizeGame(before, jugador.user)
+            val sanitizedAfter = GameApi.sanitizeGame(after, jugador.user)
             val redone =
               event
                 .redoEvent(Option(user), sanitizedBefore)

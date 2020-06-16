@@ -46,6 +46,7 @@ lazy val circeVersion = "0.13.0"
 lazy val calibanVersion = "0.8.2"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.0-RC20"
+lazy val monocleVersion = "2.0.5"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
@@ -65,7 +66,16 @@ lazy val commonVmSettings = commonSettings ++ Seq(
     "io.circe" %% "circe-generic",
     "io.circe" %% "circe-parser",
     "io.circe" %% "circe-literal"
-  ).map(_ % circeVersion)
+  ).map(_ % circeVersion),
+  libraryDependencies ++= Seq(
+    "com.github.julien-truffaut" %% "monocle-core"    % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-generic" % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-macro"   % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-state"   % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-refined" % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-unsafe"  % monocleVersion,
+    "com.github.julien-truffaut" %% "monocle-law"     % monocleVersion % "test"
+  )
 )
 
 lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
@@ -90,7 +100,15 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
         "io.circe" %%% "circe-generic",
         "io.circe" %%% "circe-parser",
         "io.circe" %%% "circe-literal"
-      ).map(_ % circeVersion)
+      ).map(_ % circeVersion),
+      libraryDependencies ++= Seq(
+        "com.github.julien-truffaut" %%% "monocle-core"    % monocleVersion,
+        "com.github.julien-truffaut" %%% "monocle-generic" % monocleVersion,
+        "com.github.julien-truffaut" %%% "monocle-macro"   % monocleVersion,
+        "com.github.julien-truffaut" %%% "monocle-state"   % monocleVersion,
+        "com.github.julien-truffaut" %%% "monocle-refined" % monocleVersion,
+        "com.github.julien-truffaut" %%% "monocle-unsafe"  % monocleVersion
+      )
     )
   )
 
