@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jura:wght@500&display=swap" rel="stylesheet">
+</head>
+
+<style>
+    html {
+        height: 100%;
+    }
+
+    body {
+        min-height: 100%;
+
+        font-family: 'Jura', sans-serif;
+        margin: 0px;
+        padding: 0px;
+    }
+
+    .content {
+        /*border: 1px solid black;*/
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 3fr minmax(250px, 1fr);
+        grid-template-rows: 2em 1fr;
+    }
+
+    .header {
+        /*border: 1px solid black;*/
+        grid-area: header;
+        /*background-color: cyan;*/
+        grid-column-start: 1;
+        grid-column-end: span 2;
+        grid-row-start: 1;
+        grid-row-end: span 1;
+        padding: 5px;
+        color: #59228C;
+        background-color: #CDAFEA;
+        margin: 0px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .header .menu {
+        grid-column-start: 1;
+        text-align: left;
+    }
+
+    .header .user {
+        grid-column-start: 2;
+        text-align: right;
+    }
+
+    .chat {
+        color: #8C2255;
+        background-color: #EAAFCB;
+        border: 5px solid #BB5C8A;
+        border-radius: 20px;
+        grid-column-start: 2;
+        grid-column-end: span 1;
+        grid-row-start: 2;
+        grid-row-end: span 1;
+        padding: 5px;
+        margin: 5px;
+        text-align: center;
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(2em, auto) 1fr minmax(8em, auto);
+    }
+
+    .chat .title {
+        /*border: 1px solid black;*/
+        grid-row-start: 1;
+        grid-row-end: span 1;
+        padding: 5px;
+        margin: 5px;
+    }
+
+    .chat .messages {
+        border: 1px solid #BB5C8A;
+        grid-row-start: 2;
+        grid-row-end: span 1;
+        padding: 0px;
+        margin: 5px;
+        overflow-y: scroll;
+        max-height: calc(100vh - 290px);
+    }
+
+    .chat .sendMessage {
+        /*border: 1px solid black;*/
+        grid-row-start: 3;
+        grid-row-end: span 1;
+        padding: 5px;
+        margin: 5px;
+    }
+
+    .chat .sendMessage textArea {
+        width: 100%;
+        padding: 0%;
+        margin: 0%;
+    }
+
+    .chat .receivedMessage {
+        /*border: 1px solid black;*/
+        margin-bottom: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr auto;
+        text-align: left;
+        padding: 4px;
+    }
+
+    .chat .receivedMessage .sentBy {
+        font-weight: bold;
+        font-size: larger;
+    }
+
+    .chat .receivedMessage .sentAt {
+        text-align: right;
+    }
+
+    .chat .receivedMessage .msgText {
+        grid-column-end: span 2;
+        font-size: smaller;
+
+    }
+
+    .lobby {
+        /*border: 1px solid black;*/
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 2;
+        grid-row-end: span 1;
+        padding: 5px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        width: 100%;
+
+    }
+
+    .gameInProgress {
+        border-right-color: #EAAFCB;
+        border-right-width: 2px;
+        border-right-style: solid;
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    .gameInProgress button {
+        width: 100px;
+    }
+
+    .users {
+        grid-column-start: 2;
+        grid-column-end: span 1;
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    .users table {
+        border: 1px solid black;
+    }
+
+    .users td {
+        padding: 4px;
+    }
+
+</style>
+<body>
+<div class="content">
+    <div class="header"><div class="menu">&#9776; Menu</div><div class="user">Hola Roberto!</div></div>
+    <div class="chat">
+        <h1 class="title">Chuti Chat</h1>
+        <div class="messages">
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">This is a message that was sent</div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+                    incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation
+                    ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in
+                    voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
+                    proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+                </div>
+            </div>
+            <div class="receivedMessage">
+                <div class="sentBy">Roberto</div>
+                <div class="sentAt">06/19 15:56</div>
+                <div class="msgText">This is a message that was sent</div>
+            </div>
+        </div>
+        <div class="sendMessage"><textarea rows="4"></textarea>
+            <button>Send</button>
+        </div>
+    </div>
+    <div class="lobby">
+        <div class="gameInProgress">
+            <h1>Juego en Curso</h1>
+            <div class="gameStatus"></div>
+            <div class="gamePlayers">
+                <div class="gameActions">
+                    <button>Abandona Juego</button>
+                    <button>Aceptar</button>
+                    <button>Rechazar</button>
+                    <button>Empezar Juego Nuevo</button>
+                    <button>Juega con quien sea</button>
+                    <button>Cancelar Invitaciones</button>
+                    <button>Invitar por correo electrónico</button>
+                </div>
+                <div>
+                    <h2>Jugadores</h2>
+                    <table>
+                        <thead>
+
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Hugo</td>
+                            <td>Acepto</td>
+                        </tr>
+                        <tr>
+                            <td>Paco</td>
+                            <td>Esperando</td>
+                        </tr>
+                        <tr>
+                            <td>Luis</td>
+                            <td>Esperando</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="users">
+            <h1>Jugadores</h1>
+            <table>
+                <thead></thead>
+                <tbody>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td width="100%">Willy Cruz</td>
+                </tr>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td>Hiram Garcia</td>
+                </tr>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td>Paul Uribe</td>
+                </tr>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td>Alfredo Galindo</td>
+                </tr>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td>Juan Carlos Garfias</td>
+                </tr>
+                <tr>
+                    <td>icons</td>
+                    <td>Menu</td>
+                    <td>Juan Carlos Escobar</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

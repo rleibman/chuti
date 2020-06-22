@@ -536,7 +536,11 @@ object GameService {
             val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
             val (started, startGame: GameEvent) =
               if (joined.canTransitionTo(GameStatus.requiereSopa)) {
-                joined.copy(gameStatus = GameStatus.requiereSopa).applyEvent(Option(user), Sopa())
+                joined
+                  .copy(gameStatus = GameStatus.requiereSopa).applyEvent(
+                    Option(user),
+                    Sopa(firstSopa = true)
+                  )
                 //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
               } else {
                 joined.applyEvent(Option(user), NoOp())
@@ -710,9 +714,12 @@ object GameService {
             }
             val (played, event) = game.applyEvent(Option(user), playEvent)
 
-            testRedoEvent(game, played, event, user)
+            val withStatus = event.processStatusMessages(played)
 
-            val (transitioned, transitionEvents) = checkPlayTransition(user, played, event)
+            //TODO comment this out, or move it somewhere, or something.
+            testRedoEvent(game, withStatus, event, user)
+
+            val (transitioned, transitionEvents) = checkPlayTransition(user, withStatus, event)
 
             repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
           }

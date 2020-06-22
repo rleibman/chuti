@@ -73,9 +73,19 @@ object GameComponent {
     }
 
     def init(): Callback = {
-      Callback.log(s"Initializing") >>
+      Callback.log(s"Initializing GameComponent") >>
         refresh()
     }
+
+    def clearPlayState(): Callback =
+      $.modState(
+        _.copy(
+          cuantasCantas = None,
+          triunfo = None,
+          estrictaDerecha = false,
+          fichaSeleccionada = None
+        )
+      )
 
     def play(
       gameId: GameId,
@@ -83,7 +93,7 @@ object GameComponent {
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
         Mutations.play(gameId.value, event.asJson),
-        _ => Toast.success("Listo!")
+        _ => clearPlayState() >> Toast.success("Listo!")
       )
     }
 
@@ -115,7 +125,7 @@ object GameComponent {
                             <.span(
                               ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
                               ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                              s"${if (cuenta.puntos > 0) "+" else ""} cuenta.puntos"
+                              s"${if (cuenta.puntos > 0) "+" else ""} ${cuenta.puntos}"
                             )
                         }
                       ),
@@ -193,9 +203,9 @@ object GameComponent {
                   ),
                   <.div(
                     ^.className := "userStatus",
-                    if (jugador.turno) "Le toco cantar. " else "", //TODO add these dynamically instead
+                    if (jugador.turno) "Le toco cantar. " else "",
                     jugador.cuantasCantas
-                      .fold("")(c => s"Canto $c"), //TODO status should change depending on JugadorState
+                      .fold("")(c => s"Canto $c"),
                     jugador.statusString
                   )
                 ),
@@ -320,15 +330,27 @@ object GameComponent {
                                 )
                               }
                             )("Pide"),
+                            if (game.jugadores.flatMap(_.filas).size < 2) {
+                              Button(compact = true, onClick = { (_, _) =>
+                                play(game.id.get, MeRindo())
+                              })("Me Rindo")
+                            } else {
+                              EmptyVdom
+                            },
                             if (p == JugadorState.pidiendo && game.puedesCaerte(jugador)) {
-                              Button(compact = true)("Cáete")
+                              Button(compact = true, onClick = { (_, _) =>
+                                play(game.id.get, Caete())
+                              })("Cáete")
                             } else {
                               EmptyVdom
                             }
                           )
                         )
-                      case JugadorState.haciendoSopa => EmptyVdom
-                      case JugadorState.esperando    => EmptyVdom
+                      case JugadorState.haciendoSopa =>
+                        Button(compact = true, onClick = { (_, _) =>
+                          play(game.id.get, Sopa())
+                        })("Sopa")
+                      case JugadorState.esperando => EmptyVdom
                     }
                   )
                 } else {
@@ -348,7 +370,7 @@ object GameComponent {
                       <.img(
                         if (selectable) ^.cursor.pointer else ^.cursor.auto,
                         ^.key := s"ficha_${playerIndex}_$fichaIndex",
-//                        ^.transform := "rotate(45deg)", //TODO allow user to flip the domino
+//                        ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
                         ^.src := s"images/${abajo}_${arriba}x150.png",
                         ^.onClick --> { $.modState(_.copy(fichaSeleccionada = Option(ficha))) },
                         ^.className := s"domino ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
@@ -365,7 +387,8 @@ object GameComponent {
                         ^.className := "fila",
                         fila.fichas.zipWithIndex.toVdomArray {
                           case (ficha, fichaIndex) =>
-                            if (fila.abierta) {
+                            val abierta = fila.index <= 0
+                            if (abierta) {
                               <.img(
                                 ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                 ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x75.png",

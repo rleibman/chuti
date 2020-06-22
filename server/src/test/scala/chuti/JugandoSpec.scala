@@ -19,7 +19,6 @@ package chuti
 import api.ChutiSession
 import dao.SessionProvider
 import game.GameService
-import game.GameService.GameService
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 import zio._
@@ -37,7 +36,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.access[GameService](_.get)
+          gameService <- ZIO.service[GameService.Service]
           gameStream = gameService
             .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
@@ -71,7 +70,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.access[GameService](_.get)
+          gameService <- ZIO.service[GameService.Service]
           gameStream = gameService
             .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
@@ -111,7 +110,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.access[GameService](_.get)
+          gameService <- ZIO.service[GameService.Service]
           gameStream = gameService
             .gameStream(gameId, connectionId)
             .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))

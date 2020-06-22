@@ -96,7 +96,7 @@ case object DumbChutiBot extends ChutiBot {
     val (_, triunfo) = calculaCanto(jugador, game)
     val hypotheticalGame = game.copy(triunfo = Option(triunfo))
     if (hypotheticalGame.puedesCaerte(jugador)) {
-      Caite(triunfo = Option(triunfo))
+      Caete(triunfo = Option(triunfo))
     } else {
       Pide(
         ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
@@ -173,7 +173,7 @@ case object DumbChutiBot extends ChutiBot {
     }
   }
 
-  def caite(): Caite = Caite()
+  def caite(): Caete = Caete()
 
   def canta(
     jugador: Jugador,

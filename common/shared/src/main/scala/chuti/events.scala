@@ -21,7 +21,6 @@ import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import scala.annotation.tailrec
 import scala.util.Random
 
-//TODO all events need to figure out what messages have to be sent about each user and about the game as a whole
 //////////////////////////////////////////////////////////////////////////////////////
 // General stuff and parents
 sealed trait EventInfo[T <: GameEvent] {
@@ -32,12 +31,20 @@ sealed trait EventInfo[T <: GameEvent] {
   val values: Seq[EventInfo[_]] = Seq(NoOp)
 }
 
+object ReapplyMode extends Enumeration {
+  type ReapplyMode = Value
+  val none, fullRefresh, reapply = Value
+}
+
+import chuti.ReapplyMode._
+
 sealed trait GameEvent {
   val gameId:              Option[GameId]
   val userId:              Option[UserId]
   val index:               Option[Int]
   val gameStatusString:    Option[String]
   val jugadorStatusString: Seq[(UserId, String)]
+  val reapplyMode: ReapplyMode = reapply
   def expectedStatus: Option[GameStatus]
   def redoEvent(
     userOpt: Option[User],
@@ -47,6 +54,10 @@ sealed trait GameEvent {
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent)
+
+  def processStatusMessages(game: Game): Game = {
+    game.setStatusStrings(gameStatusString, jugadorStatusString)
+  }
 }
 
 sealed trait PreGameEvent extends GameEvent
@@ -62,15 +73,16 @@ sealed trait PlayEvent extends GameEvent {
   ): Game
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.jugando)
+
   final def redoEvent(
     userOpt: Option[User],
     game:    Game
   ): Game = {
     userOpt.fold(throw GameException("Play events require a user")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameException(s"No es el momento de ${game.gameStatus}, que onda?")
+        throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
-      redoEvent(game.jugador(user.id), game)
+      processStatusMessages(redoEvent(game.jugador(user.id), game))
     }
   }
 
@@ -80,7 +92,7 @@ sealed trait PlayEvent extends GameEvent {
   ): (Game, GameEvent) = {
     userOpt.fold(throw GameException("Play events require a user")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameException(s"No es el momento de ${game.gameStatus}, que onda?")
+        throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
       doEvent(game.jugador(user.id), game)
     }
@@ -102,6 +114,7 @@ case class NoOp(
   gameStatusString:    Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends GameEvent {
+  override val reapplyMode:    ReapplyMode = none
   override def expectedStatus: Option[GameStatus] = None
   override def doEvent(
     userOpt: Option[User],
@@ -130,6 +143,7 @@ case class NoOpPlay(
   gameStatusString:    Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
+  override val reapplyMode:    ReapplyMode = none
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.jugando)
 
   override def doEvent(
@@ -168,7 +182,7 @@ case class BorloteEvent(
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = game
+  ): Game = processStatusMessages(game)
 }
 
 //This event ends the game and shuts down the server... it can only be called by god
@@ -226,13 +240,18 @@ case class AbandonGame(
           },
         jugadores = game.jugadores.filter(_.id != user.id)
       ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = userOpt.flatMap(_.id),
+        gameStatusString = Option(s"${user.name} abandono el juego")
+      )
     )
   }
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = doEvent(userOpt, game)._1
+  ): Game = processStatusMessages(doEvent(userOpt, game)._1)
 }
 
 case class DeclineInvite(
@@ -250,14 +269,19 @@ case class DeclineInvite(
     val user = userOpt.getOrElse(throw GameException("User required for this move"))
     (
       game.copy(jugadores = game.jugadores.filter(_.id != user.id)),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = userOpt.flatMap(_.id),
+        gameStatusString = Option(s"${user.name} no quizo jugar")
+      )
     )
   }
 
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = doEvent(userOpt, game)._1
+  ): Game = processStatusMessages(doEvent(userOpt, game)._1)
 }
 
 case class InviteToGame(
@@ -281,13 +305,18 @@ case class InviteToGame(
       throw GameException("The game is already full")
     (
       game.copy(jugadores = game.jugadores :+ Jugador(invited, invited = true)),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = userOpt.flatMap(_.id),
+        gameStatusString = Option(s"invitamos a ${invited.name} a jugar")
+      )
     )
   }
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = doEvent(userOpt, game)._1
+  ): Game = processStatusMessages(doEvent(userOpt, game)._1)
 }
 
 case class JoinGame(
@@ -315,19 +344,31 @@ case class JoinGame(
       }
 
     (
-      game.copy(jugadores = game.jugadores.filter(_.id != user.id) :+ newPlayer),
+      game.copy(
+        jugadores = game.jugadores.filter(_.id != user.id) :+ newPlayer
+      ),
       copy(
         joinedUser = Option(user),
         index = Option(game.currentEventIndex),
         gameId = game.id,
-        userId = user.id
+        userId = user.id,
+        gameStatusString = Option(s"${user.name} entro al juego")
       )
     )
   }
+
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = doEvent(userOpt, game)._1
+  ): Game = processStatusMessages {
+    val done = doEvent(userOpt, game)._1
+    done.copy(
+      jugadores = done.jugadores.map(_.copy(invited = false)),
+      gameStatus =
+        if (done.canTransitionTo(GameStatus.requiereSopa)) GameStatus.requiereSopa
+        else done.gameStatus
+    )
+  }
 }
 
 case class NuevoPartido(
@@ -357,13 +398,18 @@ case class NuevoPartido(
           )
         )
       ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = userOpt.flatMap(_.id))
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = userOpt.flatMap(_.id),
+        gameStatusString = Option(s"Nuevo partido con los mismos jugadores")
+      )
     )
   }
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = doEvent(userOpt, game)._1
+  ): Game = processStatusMessages(doEvent(userOpt, game)._1)
 }
 
 case class Sopa(
@@ -372,8 +418,9 @@ case class Sopa(
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
-  turno:               Option[User] = None
+  firstSopa:           Boolean = false
 ) extends PlayEvent {
+  override val reapplyMode: ReapplyMode = fullRefresh
   import Game._
   def sopa:                    List[Ficha] = Random.shuffle(todaLaFicha)
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.requiereSopa)
@@ -383,9 +430,10 @@ case class Sopa(
   ): (Game, GameEvent) = {
     //La sopa siempre la debe de hacer el jugador anterior al turno
     //Realmente no importa, pero hay que mantener la tradición :)
-    if (turno.fold(false)(t => jugador.id != game.prevPlayer(t).id)) {
+    if (!firstSopa && !jugador.turno) {
       throw GameException("Quien canto la ultima vez tiene que hacer la sopa")
     }
+    val nextTurno: Jugador = game.nextPlayer(jugador)
 
     val jugadores = game.jugadores
     val newJugadores = sopa
@@ -397,22 +445,34 @@ case class Sopa(
             user = jugador.user,
             fichas = fichas,
             filas = List.empty,
-            cantante = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
-            turno = turno.fold(fichas.contains(laMulota))(_ == jugador.user),
-            mano = false,
+            cantante = (firstSopa && fichas
+              .contains(laMulota)) || (!firstSopa && nextTurno.id == jugador.id),
+            turno = (firstSopa && fichas
+              .contains(laMulota)) || (!firstSopa && nextTurno.id == jugador.id),
+            mano = (firstSopa && fichas
+              .contains(laMulota)) || (!firstSopa && nextTurno.id == jugador.id),
             cuantasCantas = None
           )
       }
       .toList
 
+    val newGame = game.copy(
+      jugadores = newJugadores,
+      gameStatus = GameStatus.cantando,
+      enJuego = List.empty,
+      triunfo = None
+    )
+
     (
-      game.copy(
-        jugadores = newJugadores,
-        gameStatus = GameStatus.cantando,
-        enJuego = List.empty,
-        triunfo = None
-      ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+      newGame,
+      copy(
+        index = Option(newGame.currentEventIndex),
+        gameId = game.id,
+        userId = jugador.id,
+        gameStatusString = Option(
+          s"${jugador.user.name} hizo la sopa${newGame.quienCanta.fold("")(j => s", ${j.user.name} canta")}"
+        )
+      )
     )
   }
 
@@ -420,8 +480,8 @@ case class Sopa(
     jugador: Jugador,
     game:    Game
   ): Game = {
-    // necesitas basicamente todo el juego, sopa should call for a reload of the game
-    game
+    // necesitas básicamente el juego completo, sopa should call for a reload of the game
+    throw GameException("You can't redo sopa... you need to get the game from scratch")
   }
 }
 
@@ -481,6 +541,14 @@ case class Canta(
       }
     }
 
+    val salvoString = if (nuevoCantante != cantanteActual) {
+      Option(
+        s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
+      )
+    } else {
+      Option(s"${cantanteActual.user.name} canto $cuantasCantas")
+    }
+
     val newGameStatus =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas) {
         //jugador es el ultimo en cantar, juego listo para empezar
@@ -498,7 +566,12 @@ case class Canta(
           j.copy(cuantasCantas = Option(CuantasCantas.Buenas))
         } else j
       }),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = jugador.id,
+        gameStatusString = salvoString
+      )
     )
   }
 
@@ -663,48 +736,52 @@ case class Da(
     }
     val enJuego = game.enJuego :+ (jugador.id.get, ficha)
     //Si es el cuarto jugador dando la ficha
-    val (modifiedGame, ganador): (Game, Option[UserId]) = if (enJuego.size == game.numPlayers) {
-      //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
-      //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
-      //TODO rewrite this using game.fichaGanadora(
-      val (ganador, fichaGanadora): (UserId, Ficha) =
-        Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
-      //I'm not sure who has it, but the code b
-      val a = game.copy(
-        enJuego = List.empty,
-        jugadores = game.modifiedJugadores(
-          _.id == Option(ganador), { j =>
-            j.copy(
-              mano = true,
-              filas = j.filas :+ Fila(
-                enJuego.map(_._2),
-                abierta = game.jugadores.flatMap(_.filas).isEmpty
+    val (modifiedGame, ganador, gameStatusString): (Game, Option[UserId], Option[String]) =
+      if (enJuego.size == game.numPlayers) {
+        //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
+        //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
+        //TODO rewrite this using game.fichaGanadora(
+        val (ganador, fichaGanadora): (UserId, Ficha) =
+          Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
+        val totalFilas = game.jugadores.flatMap(_.filas).size
+        //I'm not sure who has it, but the code b
+        val a = game.copy(
+          enJuego = List.empty,
+          jugadores = game.modifiedJugadores(
+            _.id == Option(ganador), { j =>
+              j.copy(
+                mano = true,
+                filas = j.filas :+ Fila(
+                  enJuego.map(_._2),
+                  totalFilas
+                )
               )
-            )
-          }
+            }
+          )
         )
-      )
-      (
-        a.copy(
-          jugadores = a.modifiedJugadores(_.id == jugador.id, { j =>
-            j.copy(fichas = j.dropFicha(ficha))
-          })
-        ),
-        Option(ganador)
-      )
-    } else {
-      //transfiere la ficha al centro
-      (
-        game
-          .copy(
-            enJuego = enJuego,
-            jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
+        (
+          a.copy(
+            jugadores = a.modifiedJugadores(_.id == jugador.id, { j =>
               j.copy(fichas = j.dropFicha(ficha))
             })
           ),
-        None
-      )
-    }
+          Option(ganador),
+          Option(s"${game.jugador(Option(ganador)).user.name} se llevo la ultima fila")
+        )
+      } else {
+        //transfiere la ficha al centro
+        (
+          game
+            .copy(
+              enJuego = enJuego,
+              jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
+                j.copy(fichas = j.dropFicha(ficha))
+              })
+            ),
+          None,
+          None
+        )
+      }
 
     //Checar hoyo tecnico (el jugador dio una ficha que no fue pedida, o teniendo triunfo no lo solto)
     val pidióFicha = enJuego.head._2
@@ -738,7 +815,8 @@ case class Da(
         hoyoTecnico = hoyoTecnico,
         index = Option(game.currentEventIndex),
         gameId = game.id,
-        userId = jugador.id
+        userId = jugador.id,
+        gameStatusString = gameStatusString
       )
     )
   }
@@ -751,6 +829,7 @@ case class Da(
     if (enJuego.size == game.numPlayers) {
       //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
       //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
+      val totalFilas = game.jugadores.flatMap(_.filas).size
       val a = game.copy(
         enJuego = List.empty,
         jugadores = game.modifiedJugadores(
@@ -759,7 +838,7 @@ case class Da(
               mano = true,
               filas = j.filas :+ Fila(
                 enJuego.map(_._2),
-                abierta = game.jugadores.flatMap(_.filas).isEmpty
+                index = totalFilas
               )
             )
           }
@@ -784,9 +863,9 @@ case class Da(
 }
 
 //Acuerdate de los regalos
-case class Caite(
+case class Caete(
   regalos:             Seq[(UserId, Seq[Fila])] = Seq.empty,
-  deCaída:             Seq[Fila] = Seq.empty,
+  deCaida:             Seq[Fila] = Seq.empty,
   triunfo:             Option[Triunfo] = None,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -841,19 +920,19 @@ case class Caite(
             if (j._1.fichas.contains(fichaMerecedora)) {
               (
                 j._1.copy(
-                  filas = j._1.filas :+ Fila(fichaMerecedora, regalo),
+                  filas = j._1.filas :+ Fila(-1, fichaMerecedora, regalo),
                   fichas = j._1.fichas.filter(_ != fichaMerecedora)
                 ),
-                j._2 :+ Fila(fichaMerecedora, regalo)
+                j._2 :+ Fila(-1, fichaMerecedora, regalo)
               )
               //Nota que es posible auto-regalarse si nadie mas tiene otra de esas
             } else if (j._1.id == jugador.id && regalo == fichaMerecedora) {
               (
                 j._1.copy(
-                  filas = j._1.filas :+ Fila(fichaMerecedora),
+                  filas = j._1.filas :+ Fila(-1, fichaMerecedora),
                   fichas = j._1.fichas.filter(_ != fichaMerecedora)
                 ),
-                j._2 :+ Fila(fichaMerecedora)
+                j._2 :+ Fila(-1, fichaMerecedora)
               )
             } else {
               j
@@ -868,11 +947,16 @@ case class Caite(
 
     val returnEvent = copy(
       triunfo = conTriunfos.triunfo,
-      deCaída = deCaída,
+      deCaida = deCaída,
       regalos = regalosRegalados.map(r => r._1.id.get -> r._2).toSeq,
       index = Option(game.currentEventIndex),
       gameId = game.id,
-      userId = jugador.id
+      userId = jugador.id,
+      gameStatusString = Option(s"${jugador.user} acabo. ${if (regalosRegalados.nonEmpty) {
+        s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}"
+      } else {
+        ""
+      }}")
     )
 
     (
@@ -892,7 +976,7 @@ case class Caite(
         _.id == jugador.id,
         j =>
           j.copy(
-            filas = j.filas ++ deCaída ++ regalosMap.getOrElse(j.id.get, Seq.empty),
+            filas = j.filas ++ deCaida ++ regalosMap.getOrElse(j.id.get, Seq.empty),
             fichas = List.empty
           ),
         j =>
@@ -931,7 +1015,12 @@ case class MeRindo(
           guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
         )
       ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = jugador.id,
+        gameStatusString = Option(s"${jugador.user.name} se rindió...con su respectivo hoyo")
+      )
     )
   }
 
@@ -963,7 +1052,12 @@ case class HoyoTecnico(
           guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
         )
       ),
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+      copy(
+        index = Option(game.currentEventIndex),
+        gameId = game.id,
+        userId = jugador.id,
+        gameStatusString = Option(s"Hoyo tecnico para ${jugador.user.name}!! $razon")
+      )
     )
   }
 
@@ -1013,15 +1107,42 @@ case class TerminaJuego(
       )
     )
 
+    val statusStr = game.quienCanta.fold("") { j =>
+      val regalados =
+        game.jugadores.filter(j => !j.cantante && j.filas.nonEmpty).map(_.user.name).mkString(",")
+
+      if (j.yaSeHizo) {
+        s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados"
+        else ""}"
+      } else {
+        s"Fue hoyo de ${j.cuantasCantas} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados"
+        else ""}"
+      }
+    }
+
+    val leTocaLaSopa = game.jugadores.find(_.turno).map(j => game.nextPlayer(j))
+
     if (conCuentas.partidoOver) {
       (
         conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
-        copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+        copy(
+          index = Option(game.currentEventIndex),
+          gameId = game.id,
+          userId = jugador.id,
+          gameStatusString = Option(s"$statusStr Se termino el partido!")
+        )
       )
     } else {
       (
         conCuentas,
-        copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+        copy(
+          index = Option(game.currentEventIndex),
+          gameId = game.id,
+          userId = jugador.id,
+          gameStatusString = leTocaLaSopa.map(j =>
+            s"$statusStr Se termino el juego, esperando a que ${game.turno} haga la sopa"
+          )
+        )
       )
     }
   }

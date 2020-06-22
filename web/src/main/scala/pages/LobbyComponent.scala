@@ -140,7 +140,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     }
 
     def init(): Callback = {
-      Callback.log(s"Initializing") >>
+      Callback.log(s"Initializing LobbyComponent") >>
         refresh() >>
         $.modState(
           _.copy(userStream = Option(

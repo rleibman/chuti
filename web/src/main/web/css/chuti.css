@@ -151,8 +151,11 @@ body {
     background-color: forestgreen;
 }
 
-.fichaEnJuegoInner {
-
+.fichasEnJuegoName {
+    align-self: end;
+    text-align: center;
+    color: #AFEAB0;
+    padding: 2px
 }
 
 .jugadorActionBar {
@@ -205,7 +208,7 @@ body {
     height: 80px
 }
 
-.domino_enjuego {
+.dominoEnJuego {
     height: 150px
 }
 

@@ -347,10 +347,9 @@ trait GameAbstractSpec2 extends MockitoSugar {
     for {
       gameService <- ZIO.service[GameService.Service]
       start <- if (game.gameStatus == GameStatus.requiereSopa) {
-        val turno = game.nextPlayer(game.quienCanta.get).user
         gameService
-          .play(game.id.get, Sopa(turno = Option(turno))).provideSomeLayer[TestLayer](
-            userLayer(game.quienCanta.get.user)
+          .play(game.id.get, Sopa()).provideSomeLayer[TestLayer](
+            userLayer(game.jugadores.find(_.turno).get.user)
           )
       } else {
         ZIO.succeed(game)

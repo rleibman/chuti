@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 11,
-  "created" : "2020-06-15T20:31:26.167592",
+  "created" : "2020-06-17T13:08:13.757417",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -26,8 +26,8 @@
             
           }
         },
-        "created" : "2020-06-15T20:31:23.041488",
-        "lastUpdated" : "2020-06-15T20:31:23.043083",
+        "created" : "2020-06-17T13:08:06.87555",
+        "lastUpdated" : "2020-06-17T13:08:06.875558",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -38,16 +38,16 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 4
+            "value" : 6
           },
           "abajo" : {
-            "value" : 4
+            "value" : 3
           }
         },
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 6
+            "value" : 2
           },
           "abajo" : {
             "value" : 2
@@ -56,10 +56,19 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 4
+            "value" : 5
           },
           "abajo" : {
-            "value" : 3
+            "value" : 0
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 0
           }
         },
         {
@@ -74,38 +83,29 @@
         {
           "type" : "conocida",
           "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
             "value" : 4
-          },
-          "abajo" : {
-            "value" : 0
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 3
-          },
-          "abajo" : {
-            "value" : 3
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 6
-          },
-          "abajo" : {
-            "value" : 6
           }
         }
       ],
       "filas" : [
       ],
-      "turno" : true,
-      "cantante" : true,
-      "mano" : true,
+      "turno" : false,
+      "cantante" : false,
+      "mano" : false,
       "cuantasCantas" : {
-        "Casa" : {
+        "Buenas" : {
           
         }
       },
@@ -125,8 +125,8 @@
             
           }
         },
-        "created" : "2020-06-15T20:31:23.043129",
-        "lastUpdated" : "2020-06-15T20:31:23.043137",
+        "created" : "2020-06-17T13:08:06.875611",
+        "lastUpdated" : "2020-06-17T13:08:06.875612",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -137,16 +137,7 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 3
-          },
-          "abajo" : {
-            "value" : 1
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 2
+            "value" : 4
           },
           "abajo" : {
             "value" : 2
@@ -155,7 +146,7 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 2
+            "value" : 0
           },
           "abajo" : {
             "value" : 0
@@ -164,16 +155,16 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 2
+            "value" : 3
           },
           "abajo" : {
-            "value" : 1
+            "value" : 0
           }
         },
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 3
+            "value" : 1
           },
           "abajo" : {
             "value" : 0
@@ -185,16 +176,25 @@
             "value" : 6
           },
           "abajo" : {
-            "value" : 3
+            "value" : 5
           }
         },
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 5
+            "value" : 1
           },
           "abajo" : {
-            "value" : 3
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 0
           }
         }
       ],
@@ -224,8 +224,8 @@
             
           }
         },
-        "created" : "2020-06-15T20:31:23.043148",
-        "lastUpdated" : "2020-06-15T20:31:23.043154",
+        "created" : "2020-06-17T13:08:06.87562",
+        "lastUpdated" : "2020-06-17T13:08:06.875621",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -236,43 +236,16 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 1
-          },
-          "abajo" : {
-            "value" : 0
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
             "value" : 4
           },
           "abajo" : {
-            "value" : 1
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 1
-          },
-          "abajo" : {
-            "value" : 1
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 6
-          },
-          "abajo" : {
-            "value" : 5
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
             "value" : 4
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 3
           },
           "abajo" : {
             "value" : 2
@@ -290,10 +263,37 @@
         {
           "type" : "conocida",
           "arriba" : {
+            "value" : 3
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 3
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
             "value" : 6
           },
           "abajo" : {
-            "value" : 0
+            "value" : 2
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 1
           }
         }
       ],
@@ -323,8 +323,8 @@
             
           }
         },
-        "created" : "2020-06-15T20:31:23.043163",
-        "lastUpdated" : "2020-06-15T20:31:23.043168",
+        "created" : "2020-06-17T13:08:06.87564",
+        "lastUpdated" : "2020-06-17T13:08:06.875641",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -335,7 +335,25 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 0
+            "value" : 4
+          },
+          "abajo" : {
+            "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 6
+          },
+          "abajo" : {
+            "value" : 6
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 2
           },
           "abajo" : {
             "value" : 0
@@ -344,10 +362,10 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 5
+            "value" : 3
           },
           "abajo" : {
-            "value" : 4
+            "value" : 3
           }
         },
         {
@@ -362,47 +380,29 @@
         {
           "type" : "conocida",
           "arriba" : {
-            "value" : 3
-          },
-          "abajo" : {
             "value" : 2
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 5
-          },
-          "abajo" : {
-            "value" : 5
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 5
-          },
-          "abajo" : {
-            "value" : 0
-          }
-        },
-        {
-          "type" : "conocida",
-          "arriba" : {
-            "value" : 5
           },
           "abajo" : {
             "value" : 1
+          }
+        },
+        {
+          "type" : "conocida",
+          "arriba" : {
+            "value" : 5
+          },
+          "abajo" : {
+            "value" : 5
           }
         }
       ],
       "filas" : [
       ],
-      "turno" : false,
-      "cantante" : false,
-      "mano" : false,
+      "turno" : true,
+      "cantante" : true,
+      "mano" : true,
       "cuantasCantas" : {
-        "Buenas" : {
+        "Casa" : {
           
         }
       },

@@ -60,51 +60,61 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     def processGameEventQueue: Callback = Callback.empty //TODO write this
 
     def onGameEvent(gameEvent: GameEvent): Callback = {
-      Callback.log(gameEvent.toString) >>
-        $.modState(
-          { s =>
-            val moddedGame = s.gameInProgress.flatMap {
-              currentGame: Game =>
-                gameEvent.index match {
-                  case None =>
-                    throw GameException(
-                      "This clearly could not be happening (event has no index)"
-                    )
-                  case Some(index) if index == currentGame.currentEventIndex =>
-                    //If the game event is the next one to be applied, apply it to the game
-                    println("reapplying event")
-                    val reapplied = currentGame.reapplyEvent(gameEvent)
-                    if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
-                      None
-                    } else {
-                      Option(reapplied)
-                    }
-                  case Some(index) if index > currentGame.currentEventIndex =>
-                    //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                    //In a few seconds, just get the full game.
-                    Option(currentGame)
-                  case Some(index) =>
-                    //If it's past, mark an error, how could we have a past event???
-                    throw GameException(
-                      s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-                    )
-                }
-            }
-            val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
+      Callback.log(gameEvent.toString) >> {
+        gameEvent.reapplyMode match {
+          case ReapplyMode.none        => Callback.empty
+          case ReapplyMode.fullRefresh => refresh()
+          case ReapplyMode.reapply     => reapplyEvent(gameEvent)
+        }
+      }
+    }
+
+    private def reapplyEvent(gameEvent: GameEvent): Callback = {
+      $.modState(
+        { s =>
+          val moddedGame = s.gameInProgress.flatMap {
+            currentGame: Game =>
               gameEvent.index match {
-                case Some(index) if index == currentGame.nextIndex + 1 =>
+                case None =>
+                  throw GameException(
+                    "This clearly could not be happening (event has no index)"
+                  )
+                case Some(index) if index == currentGame.currentEventIndex =>
+                  //If the game event is the next one to be applied, apply it to the game
+                  println("reapplying event")
+                  val reapplied = currentGame.reapplyEvent(gameEvent)
+                  if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
+                    None
+                  } else {
+                    Option(reapplied)
+                  }
+                case Some(index) if index > currentGame.currentEventIndex =>
                   //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                   //In a few seconds, just get the full game.
-                  s.gameEventQueue :+ gameEvent
-                case _ => s.gameEventQueue
+                  Option(currentGame)
+                case Some(index) =>
+                  //If it's past, mark an error, how could we have a past event???
+                  throw GameException(
+                    s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+                  )
               }
+          }
+          val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
+            gameEvent.index match {
+              case Some(index) if index == currentGame.nextIndex + 1 =>
+                //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+                //In a few seconds, just get the full game.
+                s.gameEventQueue :+ gameEvent
+              case _ => s.gameEventQueue
             }
+          }
 
-            s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
-          },
-          processGameEventQueue
-        )
+          s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
+        },
+        processGameEventQueue
+      )
     }
+
     def refresh(): Callback = {
       //We may have to close an existing stream
       $.state.map { s: State =>
@@ -132,12 +142,12 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                 )
               )
             ),
-          callbackWhenNone = $.modState(_.copy(mode = Mode.none))
+          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby))
         )
     }
 
     def init(): Callback = {
-      Callback.log(s"Initializing") >>
+      Callback.log(s"Initializing GamePage") >>
         refresh()
     }
 
@@ -159,16 +169,32 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomNode = {
+      def renderDebugBar = s.gameInProgress.fold(EmptyVdom) { game =>
+        <.div(
+          ^.className := "debugBar",
+          ^.border    := "10px solid orange",
+          <.span(s"Game Status = ${game.gameStatus}, "),
+          <.span(s"Game Index = ${game.currentEventIndex}, "),
+          <.span(s"Quien canta = ${game.quienCanta.map(_.user.name)}, "),
+          <.span(s"Mano = ${game.mano.map(_.user.name)}, "),
+          <.span(s"Turno = ${game.turno.map(_.user.name)}, ")
+        )
+      }
+
       val mode = if (s.gameInProgress.isEmpty && s.mode == game) {
+        //I don't want to be in the lobby if the game is loading
         none
       } else {
-        window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+        if (s.mode != Mode.none) {
+          window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+        }
         s.mode
       }
 
       mode match {
         case Mode.lobby =>
           <.div(
+            renderDebugBar,
             LobbyComponent(
               p.chutiState,
               StateSnapshot(s.gameInProgress)(onGameInProgressChange),
@@ -178,6 +204,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
           )
         case Mode.game =>
           <.div(
+            renderDebugBar,
             GameComponent(
               p.chutiState,
               StateSnapshot(s.gameInProgress)(onGameInProgressChange),
@@ -186,7 +213,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
             )
           )
         case _ =>
-          <.div("We should never, ever get here, you should not be seeing this")
+          <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
       }
 
     }
@@ -197,14 +224,23 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     .builder[Props]("GamePage")
     .initialState {
       val modeStr = window.sessionStorage.getItem("gamePageMode")
-      val mode =
-        try {
-          Mode.withName(modeStr)
-        } catch {
-          case _: Throwable =>
-            Mode.lobby
+      val mode = {
+        val ret =
+          try {
+            Mode.withName(modeStr)
+          } catch {
+            case _: Throwable =>
+              Mode.lobby
+          }
+        if (ret == none) {
+          //Should not happen, but let's be sure it doesn't happen again
+          window.sessionStorage.setItem("gamePageMode", Mode.lobby.toString)
+          Mode.lobby
+        } else {
+          ret
         }
-      State(mode = if (mode == none) Mode.lobby else mode)
+      }
+      State(mode = mode)
     }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())

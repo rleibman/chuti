@@ -21,7 +21,6 @@ import java.time.LocalDateTime
 import chuti.Numero._
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import io.circe.{Decoder, Encoder}
-import monocle.Lens
 
 import scala.annotation.tailrec
 
@@ -182,22 +181,21 @@ case class FichaConocida private[chuti] (
 
 object Fila {
   def apply(
-    abierta: Boolean,
-    fichas:  Ficha*
-  ): Fila = new Fila(fichas.toSeq, abierta)
-  def apply(fichas: Ficha*): Fila = new Fila(fichas.toSeq, true)
+    index:  Int,
+    fichas: Ficha*
+  ): Fila = new Fila(fichas.toSeq, index)
 }
 
 case class Fila private[chuti] (
-  fichas:  Seq[Ficha],
-  abierta: Boolean = false
+  fichas: Seq[Ficha],
+  index:  Int = 0
 )
 
 import chuti.CuantasCantas._
 
 case class Jugador(
   user:          User,
-  invited:       Boolean = false,
+  invited:       Boolean = false, //Should really reverse this and call it "accepted"
   fichas:        List[Ficha] = List.empty,
   filas:         List[Fila] = List.empty,
   turno:         Boolean = false, //A quien le tocaba cantar este juego
@@ -373,7 +371,9 @@ case class Game(
   @transient
   lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
   @transient
-  lazy val mano: Option[Jugador] = jugadores.find(_.mano).fold(quienCanta)(Option(_))
+  lazy val mano: Option[Jugador] = jugadores.find(_.mano)
+  @transient
+  lazy val turno: Option[Jugador] = jugadores.find(_.turno)
   @transient
   lazy val quienCanta: Option[Jugador] = jugadores.find(_.cantante)
   val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
@@ -477,11 +477,13 @@ case class Game(
     } else {
       //Calcula cuantas puedes hacer de caida, dadas las fichas que tienes y las fichas que ya se jugaron,
       //primero calcula las fichas que quedan
-      val resto = Game.todaLaFicha
-        .diff(jugador.fichas).diff(
-          jugadores.filter(_ != jugador).flatMap(_.filas.flatMap(_.fichas))
-        ) //TODO just changed this recently, test it
+      val resto = Game.todaLaFicha.diff(
+        jugador.fichas ++ jugadores.flatMap(_.filas.flatMap(_.fichas))
+      ) //TODO just changed this recently, test it
       val cuantas = cuantasDeCaida(jugador.fichas, resto)
+      println(jugador.fichas)
+      println(resto)
+      println(s"cuantas = $cuantas")
 
       quienCanta.fold(false) { cantante =>
         if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
@@ -545,6 +547,21 @@ case class Game(
 //  ): Game = joined(userId).set(str)(this)
 //  def clearJugadorStatusString(userId: UserId): Game = joined(userId).set("")(this)
 
+  def setStatusStrings(
+    gameStatusString:     Option[String],
+    jugadorStatusStrings: Seq[(UserId, String)]
+  ): Game = {
+    val a = jugadorStatusStrings.headOption.fold(this) { _ =>
+      val map = jugadorStatusStrings.toMap
+      val newJugadores = jugadores.map { j =>
+        val strOpt = map.get(j.id.get)
+        strOpt.fold(j)(str => j.copy(statusString = str))
+      }
+      copy(jugadores = newJugadores)
+    }
+    gameStatusString.fold(a)(str => a.copy(statusString = str))
+  }
+
   def jugador(id: Option[UserId]): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
@@ -606,7 +623,7 @@ case class Game(
           (gameStatus == GameStatus.jugando ||
             gameStatus == GameStatus.esperandoJugadoresAzar ||
             gameStatus == GameStatus.esperandoJugadoresInvitados) &&
-          jugadores.forall(_.invited == false) //Not everyone has accepted
+          jugadores.forall(!_.invited) //Not everyone has accepted
       case _ => false
     }
   }
@@ -627,11 +644,10 @@ case class Game(
   //very similar to apply event, but for the client, this re-applies an event that the server has already processed
   //No new events are generated
   def reapplyEvent(event: GameEvent): Game = {
-    //TODO: Write this
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
     val user = jugadores.find(_.user.id == event.userId).map(_.user)
     val processed = event.redoEvent(user, game = this)
-    if (event.index.getOrElse(-1) != currentEventIndex - 1) {
+    if (event.index.getOrElse(-1) != currentEventIndex) {
       throw GameException("Error! You cannot reapply this event to the game!")
     }
     processed.copy(currentEventIndex = nextIndex)
