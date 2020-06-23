@@ -21,11 +21,11 @@ import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 
 case class ChutiState(
-  onUserChanged:   Option[Option[User] => Callback] = None,
-  user:            Option[User] = None,
-  serverVersion:   Option[String] = None,
-  sidebarVisible:  Boolean = false,
-  onToggleSidebar: Option[Callback] = None
+  onUserChanged:          Option[Option[User] => Callback] = None,
+  user:                   Option[User] = None,
+  pageMenuItems:          Seq[(String, Callback)] = Seq.empty,
+  onPageMenuItemsChanged: Option[Seq[(String, Callback)] => Callback] = None,
+  serverVersion:          Option[String] = None
 ) {}
 
 object ChutiState {

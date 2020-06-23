@@ -38,10 +38,9 @@ object Content extends ChutiComponent {
   case class State(chutiState: ChutiState = ChutiState())
 
   class Backend($ : BackendScope[_, State]) {
-    val onToggleSidebar: Callback = {
-      $.modState(s =>
-        s.copy(chutiState = s.chutiState.copy(sidebarVisible = !s.chutiState.sidebarVisible))
-      )
+    def onPageMenuItemsChanged(pageMenuItems: Seq[(String, Callback)]): Callback = {
+      Callback.log("Changing Menu Items") >>
+        $.modState(s => s.copy(chutiState = s.chutiState.copy(pageMenuItems = pageMenuItems)))
     }
 
     def onUserChanged(userOpt: Option[User]): Callback =
@@ -59,26 +58,35 @@ object Content extends ChutiComponent {
       }
 
     def render(s: State): VdomElement =
-      chutiContext.provide(s.chutiState) {
+      ChutiState.ctx.provide(s.chutiState) {
         <.div(^.height := 100.pct, Confirm.render(), Toast.render(), AppRouter.router())
       }
 
     def refresh(s: State): Callback =
-      $.modState(s =>
-        s.copy(chutiState = s.chutiState.copy(onToggleSidebar = Some(onToggleSidebar)))
-      ) >>
+      Callback.log("Refreshing Content Component") >>
+        $.modState(s =>
+          s.copy(chutiState =
+            s.chutiState.copy(onPageMenuItemsChanged = Option(onPageMenuItemsChanged))
+          )
+        ) >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
-            $.modState(s =>
-              s.copy(
-                chutiState = s.chutiState.copy(onUserChanged = Some(onUserChanged), user = user)
+            $.modState { s =>
+              val copy = s.copy(
+                chutiState = s.chutiState.copy(
+                  onPageMenuItemsChanged = Option(onPageMenuItemsChanged),
+                  onUserChanged = Some(onUserChanged),
+                  user = user
+                )
               )
-            )
+              copy
+            }
           case Failure(e) =>
             e.printStackTrace()
             Callback.empty
           //TODO do something more with this here
         }
+
   }
 
   private val component = ScalaComponent

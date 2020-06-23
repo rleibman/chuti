@@ -185,7 +185,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     def render(
       p: Props,
       s: State
-    ): VdomElement = {
+    ) = {
       def renderNewGameDialog = Modal(open = s.dlg == Dialog.newGame)(
         ModalHeader()("Juego Nuevo"),
         ModalContent()(
@@ -296,11 +296,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
       )
 
       p.chutiState.user
-        .fold(<.div(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) { user =>
-          <.div(
-            renderNewGameDialog,
-            renderInviteExternalDialog,
-            p.gameInProgress.value.fold("")(_.currentEventIndex.toString),
+        .fold(VdomArray(Loader(active = true, size = SemanticSIZES.massive)("Cargando"))) { user =>
+          VdomArray(
             ChatComponent(
               user,
               ChannelId.lobbyChannel,
@@ -310,229 +307,249 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                 ) >> p.onRequestGameRefresh >> refresh()
               )
             ),
-            Container(key = "privateMessage")(s.privateMessage.fold("")(_.msg)),
-            TagMod(
-              Button(
-                compact = true,
-                onClick = (_, _) =>
-                  Callback.log(s"Calling joinRandomGame") >>
-                    calibanCallThroughJsonOpt[Mutations, Game](
-                      Mutations.joinRandomGame,
-                      game =>
-                        Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(
-                          Option(game)
-                        )
-                    )
-              )("Juega Con Quien sea"),
-              Button(
-                compact = true,
-                onClick = (_, _) =>
-                  $.modState(
-                    _.copy(dlg = Dialog.newGame, newGameDialogState = Option(NewGameDialogState()))
-                  )
-              )(
-                "Empezar Juego Nuevo"
-              )
-            ).when(p.gameInProgress.value.isEmpty),
-            TagMod(
-              Container(key = "invitaciones")(
-                Header()("Invitaciones"),
-                s.invites.toVdomArray { game =>
+            <.div(
+              ^.className := "lobby",
+              p.gameInProgress.value.toVdomArray { game =>
+                <.div(
+                  ^.key       := "gameInProgress",
+                  ^.className := "gameInProgress",
+                  <.h1("Juego en Curso"),
                   <.div(
-                    ^.key := game.id.fold("")(_.toString),
-                    game.jugadores.map(_.user.name).mkString(","),
-                    Button(
-                      compact = true,
-                      onClick = (_, _) => {
-                        calibanCallThroughJsonOpt[Mutations, Game](
-                          Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
-                          game => p.gameInProgress.setState(Option(game)) >> refresh()
+                    <.h2("En este juego"),
+                    <.table(
+                      <.tbody(
+                        game.jugadores.toVdomArray { jugador =>
+                          <.tr(<.td(jugador.user.name), <.td())
+                        }
+                      )
+                    ),
+                    game.gameStatus match {
+                      case status if status.enJuego =>
+                        Button(compact = true, onClick = { (_, _) =>
+                          p.mode.setState(GamePage.Mode.game)
+                        })("Sentarse a la mesa de juego")
+                      case GameStatus.esperandoJugadoresAzar =>
+                        <.p(
+                          "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
                         )
-                      }
-                    )("Aceptar"),
-                    Button(
-                      compact = true,
-                      onClick = (_, _) => {
-                        calibanCall[Mutations, Option[Boolean]](
-                          Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
-                          _ =>
-                            Toast.success("Invitación rechazada") >>
-                              p.gameInProgress.setState(None) >> refresh()
-                        )
-                      }
-                    )("Rechazar")
-                  )
-                }
-              )
-            ).when(s.invites.nonEmpty),
-            TagMod(
-              Container(key = "jugadores")(
-                Header()("Jugadores"),
-                Table(className = "playersTable")(
-                  TableBody()(
-                    s.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
-                      TableRow(key = player.user.id.fold("")(_.toString))(
-                        TableCell()(
-                          if (player.isFriend)
-                            Icon(className = "icon", name = SemanticICONS.`star outline`)()
-                          else
-                            EmptyVdom,
-                          if (player.user.userStatus == UserStatus.Playing)
-                            <.img(^.src := "images/6_6.svg", ^.height := 16.px)
-                          else
-                            EmptyVdom,
-                          if (player.isLoggedIn)
-                            Icon(className = "icon", name = SemanticICONS.`user outline`)()
-                          else
+                      case GameStatus.esperandoJugadoresInvitados =>
+                        <.div(^.key := "esperandoJugadores")(
+                          <.div(
+                            <.p(
+                              "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
+                            ),
+                            <.p(s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores")
+                              .when(game.jugadores.size < 4 && game.jugadores.head.id == user.id),
+                            <.p(s"Invitados que no han aceptado todavía: ${game.jugadores
+                              .filter(_.invited).map(_.user.name).mkString(",")}")
+                              .when(game.jugadores.exists(_.invited)),
+                            <.p(s"Invitados que ya están listos: ${game.jugadores
+                              .filter(!_.invited).map(_.user.name).mkString(",")}")
+                              .when(game.jugadores.exists(!_.invited)),
+                            Button(
+                              compact = true,
+                              onClick = { (_, _) =>
+                                calibanCall[Mutations, Option[Boolean]](
+                                  Mutations.cancelUnacceptedInvitations(game.id.get.value),
+                                  _ => Toast.success("Jugadores cancelados") >> refresh() >> p.onRequestGameRefresh
+                                )
+                              }
+                            )("Cancelar invitaciones a aquellos que todavía no aceptan")
+                              .when(
+                                game.jugadores
+                                  .exists(_.invited) && game.jugadores.head.id == user.id
+                              )
+                          ),
+                          if (game.jugadores.head.id == user.id) {
+                            Button(
+                              compact = true,
+                              onClick = (_, _) =>
+                                $.modState(
+                                  _.copy(
+                                    dlg = Dialog.inviteExternal,
+                                    inviteExternalDialogState = Option(InviteExternalDialogState())
+                                  )
+                                )
+                            )("Invitar por correo electrónico")
+                          } else {
                             EmptyVdom
-                        ),
-                        TableCell()(player.user.name),
-                        TableCell()(
-                          Dropdown(
-                            className = "menuBurger",
-                            trigger = Icon(name = SemanticICONS.`ellipsis vertical`)()
-                          )(
-                            DropdownMenu()(
-                              (for {
-                                game     <- p.gameInProgress.value
-                                userId   <- user.id
-                                playerId <- player.user.id
-                                gameId   <- game.id
-                              } yield
-                                if (player.user.userStatus != UserStatus.Playing &&
-                                    game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
-                                    game.jugadores.head.id == user.id &&
-                                    !game.jugadores.exists(_.id == player.user.id))
-                                  DropdownItem(onClick = { (_, _) =>
-                                    calibanCall[Mutations, Option[Boolean]](
-                                      Mutations.inviteToGame(playerId.value, gameId.value),
-                                      res =>
-                                        if (res.getOrElse(false))
-                                          Toast.success("Jugador Invitado!")
-                                        else Toast.error("Error invitando jugador!")
-                                    )
-                                  })("Invitar a jugar"): VdomNode
-                                else
-                                  EmptyVdom).getOrElse(EmptyVdom),
-                              if (player.isFriend)
-                                DropdownItem(onClick = { (_, _) =>
-                                  calibanCall[Mutations, Option[Boolean]](
-                                    Mutations.unfriend(player.user.id.get.value),
-                                    res =>
-                                      if (res.getOrElse(false))
-                                        refresh() >> Toast.success(
-                                          s"Cortalas, ${player.user.name} ya no es tu amigo!"
-                                        )
-                                      else
-                                        Toast.error("Error haciendo amigos!")
-                                  )
-                                })("Ya no quiero ser tu amigo")
-                              else
-                                DropdownItem(onClick = { (_, _) =>
-                                  calibanCall[Mutations, Option[Boolean]](
-                                    Mutations.friend(player.user.id.get.value),
-                                    res =>
-                                      if (res.getOrElse(false))
-                                        p.onRequestGameRefresh >> refresh() >> Toast
-                                          .success("Un nuevo amiguito!")
-                                      else
-                                        Toast.error("Error haciendo amigos!")
-                                  )
-                                })("Agregar como amigo")
-                            )
-                          )
+                          }
                         )
+                      case GameStatus.abandonado => EmptyVdom
+                    },
+                    Button(
+                      compact = true,
+                      onClick = (_, _) =>
+                        Confirm.confirm(
+                          header = Option("Abandonar juego"),
+                          question =
+                            s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
+                          onConfirm = Callback.log(s"Abandoning game") >>
+                            calibanCall[Mutations, Option[Boolean]](
+                              Mutations.abandonGame(game.id.get.value),
+                              res =>
+                                (
+                                  if (res.getOrElse(false)) Toast.success("Juego abandonado!")
+                                  else Toast.error("Error abandonando juego!")
+                                ) //>> p.gameInProgress.setState(None)
+                            )
+                        )
+                    )("Abandona Juego")
+                  )
+                )
+              },
+              <.div(
+                ^.className := "users",
+                renderNewGameDialog,
+                renderInviteExternalDialog,
+                <.div(^.key := "privateMessage", s.privateMessage.fold("")(_.msg)),
+                TagMod(
+                  Button(
+                    compact = true,
+                    onClick = (_, _) =>
+                      Callback.log(s"Calling joinRandomGame") >>
+                        calibanCallThroughJsonOpt[Mutations, Game](
+                          Mutations.joinRandomGame,
+                          game =>
+                            Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(
+                              Option(game)
+                            )
+                        )
+                  )("Juega Con Quien sea"),
+                  Button(
+                    compact = true,
+                    onClick = (_, _) =>
+                      $.modState(
+                        _.copy(
+                          dlg = Dialog.newGame,
+                          newGameDialogState = Option(NewGameDialogState())
+                        )
+                      )
+                  )(
+                    "Empezar Juego Nuevo"
+                  )
+                ).when(p.gameInProgress.value.isEmpty),
+                TagMod(
+                  <.div(
+                    ^.key := "invitaciones",
+                    <.h1("Invitaciones"),
+                    s.invites.toVdomArray { game =>
+                      <.div(
+                        ^.key := game.id.fold("")(_.toString),
+                        game.jugadores.map(_.user.name).mkString(","),
+                        Button(
+                          compact = true,
+                          onClick = (_, _) => {
+                            calibanCallThroughJsonOpt[Mutations, Game](
+                              Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
+                              game => p.gameInProgress.setState(Option(game)) >> refresh()
+                            )
+                          }
+                        )("Aceptar"),
+                        Button(
+                          compact = true,
+                          onClick = (_, _) => {
+                            calibanCall[Mutations, Option[Boolean]](
+                              Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
+                              _ =>
+                                Toast.success("Invitación rechazada") >>
+                                  p.gameInProgress.setState(None) >> refresh()
+                            )
+                          }
+                        )("Rechazar")
                       )
                     }
                   )
-                )
-              )
-            ).when(s.loggedInUsers.nonEmpty), {
-              println(p.gameInProgress)
-              ""
-            },
-            p.gameInProgress.value.toVdomArray { game =>
-              Container(key = "gameInProgress")(
-                Header()("Juego en Curso"),
-                game.gameStatus match {
-                  case status if status.enJuego =>
-                    <.div(
-                      s"Jugando con ${game.jugadores.map(_.user.name).mkString(",")}",
-                      Button(compact = true, onClick = { (_, _) =>
-                        p.mode.setState(GamePage.Mode.game)
-                      })("Sentarse a la mesa de juego")
-                    )
-                  case GameStatus.esperandoJugadoresAzar =>
-                    Container(key = "esperandoJugadores")(
-                      <.p(
-                        "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
-                      ),
-                      <.p(s"Hasta ahorita van: ${game.jugadores.map(_.user.name).mkString(",")}")
-                    )
-                  case GameStatus.esperandoJugadoresInvitados =>
-                    Container(key = "esperandoJugadores")(
-                      <.div(
-                        <.p(
-                          "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
-                        ),
-                        <.p(s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores")
-                          .when(game.jugadores.size < 4 && game.jugadores.head.id == user.id),
-                        <.p(s"Invitados que no han aceptado todavía: ${game.jugadores
-                          .filter(_.invited).map(_.user.name).mkString(",")}")
-                          .when(game.jugadores.exists(_.invited)),
-                        <.p(s"Invitados que ya están listos: ${game.jugadores
-                          .filter(!_.invited).map(_.user.name).mkString(",")}")
-                          .when(game.jugadores.exists(!_.invited)),
-                        Button(
-                          compact = true,
-                          onClick = { (_, _) =>
-                            calibanCall[Mutations, Option[Boolean]](
-                              Mutations.cancelUnacceptedInvitations(game.id.get.value),
-                              _ => Toast.success("Jugadores cancelados") >> refresh() >> p.onRequestGameRefresh
-                            )
-                          }
-                        )("Cancelar invitaciones a aquellos que todavía no aceptan")
-                          .when(
-                            game.jugadores.exists(_.invited) && game.jugadores.head.id == user.id
-                          )
-                      ),
-                      if (game.jugadores.head.id == user.id) {
-                        Button(
-                          compact = true,
-                          onClick = (_, _) =>
-                            $.modState(
-                              _.copy(
-                                dlg = Dialog.inviteExternal,
-                                inviteExternalDialogState = Option(InviteExternalDialogState())
+                ).when(s.invites.nonEmpty),
+                TagMod(
+                  <.div(
+                    ^.key := "jugadores",
+                    <.h1("Jugadores"),
+                    <.table(
+                      ^.className := "playersTable",
+                      <.tbody(
+                        s.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
+                          TableRow(key = player.user.id.fold("")(_.toString))(
+                            TableCell()(
+                              if (player.isFriend)
+                                Icon(className = "icon", name = SemanticICONS.`star outline`)()
+                              else
+                                EmptyVdom,
+                              if (player.user.userStatus == UserStatus.Playing)
+                                <.img(^.src := "images/6_6.svg", ^.height := 16.px)
+                              else
+                                EmptyVdom,
+                              if (player.isLoggedIn)
+                                Icon(className = "icon", name = SemanticICONS.`user outline`)()
+                              else
+                                EmptyVdom
+                            ),
+                            TableCell()(
+                              Dropdown(
+                                className = "menuBurger",
+                                trigger = Icon(name = SemanticICONS.`ellipsis vertical`)()
+                              )(
+                                DropdownMenu()(
+                                  (for {
+                                    game     <- p.gameInProgress.value
+                                    userId   <- user.id
+                                    playerId <- player.user.id
+                                    gameId   <- game.id
+                                  } yield
+                                    if (player.user.userStatus != UserStatus.Playing &&
+                                        game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                        game.jugadores.head.id == user.id &&
+                                        !game.jugadores.exists(_.id == player.user.id))
+                                      DropdownItem(onClick = { (_, _) =>
+                                        calibanCall[Mutations, Option[Boolean]](
+                                          Mutations.inviteToGame(playerId.value, gameId.value),
+                                          res =>
+                                            if (res.getOrElse(false))
+                                              Toast.success("Jugador Invitado!")
+                                            else Toast.error("Error invitando jugador!")
+                                        )
+                                      })("Invitar a jugar"): VdomNode
+                                    else
+                                      EmptyVdom).getOrElse(EmptyVdom),
+                                  if (player.isFriend)
+                                    DropdownItem(onClick = { (_, _) =>
+                                      calibanCall[Mutations, Option[Boolean]](
+                                        Mutations.unfriend(player.user.id.get.value),
+                                        res =>
+                                          if (res.getOrElse(false))
+                                            refresh() >> Toast.success(
+                                              s"Cortalas, ${player.user.name} ya no es tu amigo!"
+                                            )
+                                          else
+                                            Toast.error("Error haciendo amigos!")
+                                      )
+                                    })("Ya no quiero ser tu amigo")
+                                  else
+                                    DropdownItem(onClick = { (_, _) =>
+                                      calibanCall[Mutations, Option[Boolean]](
+                                        Mutations.friend(player.user.id.get.value),
+                                        res =>
+                                          if (res.getOrElse(false))
+                                            p.onRequestGameRefresh >> refresh() >> Toast
+                                              .success("Un nuevo amiguito!")
+                                          else
+                                            Toast.error("Error haciendo amigos!")
+                                      )
+                                    })("Agregar como amigo")
+                                )
                               )
-                            )
-                        )("Invitar por correo electrónico")
-                      } else {
-                        EmptyVdom
-                      }
+                            ),
+                            TableCell()(player.user.name)
+                          )
+                        }
+                      )
                     )
-                  case GameStatus.abandonado => EmptyVdom
-                },
-                Button(
-                  compact = true,
-                  onClick = (_, _) =>
-                    Confirm.confirm(
-                      header = Option("Abandonar juego"),
-                      question =
-                        s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
-                      onConfirm = Callback.log(s"Abandoning game") >>
-                        calibanCall[Mutations, Option[Boolean]](
-                          Mutations.abandonGame(game.id.get.value),
-                          res =>
-                            (
-                              if (res.getOrElse(false)) Toast.success("Juego abandonado!")
-                              else Toast.error("Error abandonando juego!")
-                            ) //>> p.gameInProgress.setState(None)
-                        )
-                    )
-                )("Abandona Juego")
+                  )
+                ).when(s.loggedInUsers.nonEmpty), {
+                  ""
+                }
               )
-            }
+            )
           )
         }
     }

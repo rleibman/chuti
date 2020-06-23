@@ -45,8 +45,6 @@ import scala.scalajs.js
   * place to put in global implicits, common code that should be in all pages, etc.
   */
 trait ChutiComponent {
-  val chutiContext: Context[ChutiState] = ChutiState.ctx
-
   def doPrint(
     event: ReactMouseEventFrom[HTMLButtonElement],
     data:  ButtonProps

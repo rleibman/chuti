@@ -1,19 +1,71 @@
+:root {
+    --domino-height: 120px;
+    --domino-width: 60px;
+    --domino-jugado-height: 60px;
+    --domino-jugado-width: 30px;
+}
+
 html {
     height: 100%;
 }
 
 body {
     min-height: 100%;
+
+    font-family: 'Jura', sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
     font-family: 'Jura', sans-serif;
 }
 
-.gameTable {
+h2 {
+    font-family: 'Jura', sans-serif;
+}
+
+h3 {
+    font-family: 'Jura', sans-serif;
+}
+
+h4 {
+    font-family: 'Jura', sans-serif;
+}
+
+.innerContent {
     position: absolute;
     height: 100%;
     width: 100%;
     display: grid;
-    grid-template-columns: 8fr 410px 8fr 250px;
-    grid-template-rows: 2em 10fr 410px 10fr 1em;
+    grid-template-columns: 4fr minmax(200px, 1fr);
+    grid-template-rows: auto 1fr;
+}
+
+.header {
+    grid-area: header;
+    grid-column-start: 1;
+    grid-column-end: span 2;
+    grid-row-start: 1;
+    grid-row-end: span 1;
+    padding: 5px;
+    color: #59228C;
+    background-color: #CDAFEA;
+    margin: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.header .headerMenu {
+    grid-column-start: 1;
+    text-align: left;
+}
+
+.header .user {
+    grid-column-start: 2;
+    align-self: center;
+    justify-self: right;
+    margin-right: 30px;
 }
 
 .chat {
@@ -21,217 +73,345 @@ body {
     background-color: #EAAFCB;
     border: 5px solid #BB5C8A;
     border-radius: 20px;
-    grid-column-start: 4;
-    grid-column-end: span 1;
-    grid-row-start: 2;
-    grid-row-end: span 3;
-    padding: 5px;
-    text-align: center;
-}
-
-.jugador0 {
-    padding: 5px;
-    min-height: 200px;
-    max-width: 550px;
-}
-
-.jugador0Inner {
-
-}
-
-.jugador1 {
-    padding: 5px;
-    min-height: 200px;
-    max-width: 550px;
-}
-
-.jugador1Inner {
-
-}
-
-.jugador2 {
-    padding: 5px;
-    min-height: 200px;
-    max-width: 550px;
-}
-
-.jugador2Inner {
-}
-
-.jugador3 {
-    padding: 5px;
-    min-height: 200px;
-    max-width: 550px;
-}
-
-.jugador3Inner {
-
-}
-
-.self {
-    border: 1px solid #186992;
-    border-radius: 20px;
-}
-
-.fichas {
-    white-space: nowrap;
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: left;
-    /*display: none;*/
-}
-
-.filasEven {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
     grid-column-start: 2;
     grid-column-end: span 1;
-    /*display: none;*/
+    grid-row-start: 2;
+    grid-row-end: span 1;
+    padding: 5px;
+    margin: 5px;
+    text-align: center;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(2em, auto) 1fr minmax(8em, auto);
 }
 
-.filasOdd {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    /*display: none;*/
-}
-
-.header {
-    grid-area: header;
-    /*background-color: cyan;*/
-    grid-column-start: 1;
-    grid-column-end: span 4;
+.chat .title {
     grid-row-start: 1;
     grid-row-end: span 1;
     padding: 5px;
-    color: #8C2255;
+    margin: 5px;
 }
 
-.footer {
-    grid-area: footer;
-    /*background-color: hotpink;*/
-    grid-column-start: 1;
-    grid-column-end: span 4;
-    grid-row-start: 5;
-    grid-row-end: 5;
+.chat .messages {
+    border: 1px solid #BB5C8A;
+    grid-row-start: 2;
+    grid-row-end: span 1;
+    padding: 0;
+    margin: 5px;
+    overflow-y: scroll;
+    max-height: calc(100vh - 290px);
 }
 
-.mano {
-    border: 10px solid #186992;
-    border-radius: 20px;
-}
-
-.playerName {
-    color: #59228C;
-    background-color: #CDAFEA;
-    border: 3px solid #59228C;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-.playerName.canPlay {
-    color: #CDAFEA;
-    background-color: #59228C;
-    border: 3px solid #CDAFEA;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-.fichasEnJuego {
+.chat .sendMessage {
+    grid-row-start: 3;
+    grid-row-end: span 1;
     padding: 5px;
-    min-height: 200px;
-    max-width: 550px;
-    border: 10px solid;
-    border-color: darkgreen;
-    border-radius: 20px;
-    background-color: forestgreen;
+    margin: 5px;
 }
 
-.fichasEnJuegoName {
-    align-self: end;
-    text-align: center;
-    color: #AFEAB0;
-    padding: 2px
+.chat .sendMessage textArea {
+    width: 100%;
+    padding: 0;
+    margin: 0;
 }
 
-.jugadorActionBar {
-        /*background-color: lightcoral;*/
-        grid-column-end: span 2;
-        grid-column-start: 1;
-        align-self: center;
+.chat .receivedMessage {
+    margin-bottom: 10px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr auto;
+    text-align: left;
+    padding: 4px;
 }
 
-.statusBarEven {
-    display: flex;
-    grid-column-start: 1;
+.chat .receivedMessage .sentBy {
+    font-weight: bold;
+    font-size: larger;
+}
+
+.chat .receivedMessage .sentAt {
+    text-align: right;
+}
+
+.chat .receivedMessage .msgText {
     grid-column-end: span 2;
-    align-items: center;
+    font-size: smaller;
 }
 
-.statusBarOdd {
-    display: flex;
+.lobby {
     grid-column-start: 1;
     grid-column-end: span 1;
-    align-items: center;
-}
-
-.userStatus {
-    margin-left: 2em;
-    font-style: italic;
-}
-
-.domino {
-    height: 120px;
+    grid-row-start: 2;
+    grid-row-end: span 1;
     padding: 5px;
-    margin: 0px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
 }
 
-.domino.selected {
-    border: 5px solid orange;
-    padding: 0px;
-    border-radius: 10px;
+.gameInProgress {
+    border-right-color: #EAAFCB;
+    border-right-width: 2px;
+    border-right-style: solid;
+    grid-column-start: 1;
+    grid-column-end: span 1;
+    padding-right: 10px;
+    padding-left: 10px;
 }
 
-.filas {
-
+.gameInProgress button {
+    width: 100px;
 }
 
-.fila {
-
+.users {
+    grid-column-start: 2;
+    grid-column-end: span 1;
+    padding-right: 10px;
+    padding-left: 10px;
 }
 
-.domino_jugado {
-    height: 80px
+.users table {
+    border: 1px solid black;
 }
 
-.dominoEnJuego {
-    height: 150px
+.users td {
+    padding: 4px;
 }
 
-.menuBurger i.dropdown.icon {
-    display: none;
-}
+/*html {*/
+/*    height: 100%;*/
+/*}*/
 
-.hoyo {
-    border-radius: 100px;
-    border: 3px solid red;
-    background: white;
-    color: black;
-    padding: 10px 15px;
-}
+/*body {*/
+/*    min-height: 100%;*/
+/*    font-family: 'Jura', sans-serif;*/
+/*}*/
 
-.chuti {
-    border-radius: 100px;
-    border: 3px solid green;
-    background: white;
-    color: black;
-    padding: 10px 15px;
-}
+/*.gameTable {*/
+/*    position: absolute;*/
+/*    height: 100%;*/
+/*    width: 100%;*/
+/*    display: grid;*/
+/*    grid-template-columns: 8fr 410px 8fr 250px;*/
+/*    grid-template-rows: 2em 10fr 410px 10fr 1em;*/
+/*}*/
 
-.ui.selection.dropdown.cantaDropdown {
-    min-width: 18em;
-}
+/*.chat {*/
+/*    color: #8C2255;*/
+/*    background-color: #EAAFCB;*/
+/*    border: 5px solid #BB5C8A;*/
+/*    border-radius: 20px;*/
+/*    grid-column-start: 4;*/
+/*    grid-column-end: span 1;*/
+/*    grid-row-start: 2;*/
+/*    grid-row-end: span 3;*/
+/*    padding: 5px;*/
+/*    text-align: center;*/
+/*}*/
+
+/*.jugador0 {*/
+/*    padding: 5px;*/
+/*    min-height: 200px;*/
+/*    max-width: 550px;*/
+/*}*/
+
+/*.jugador0Inner {*/
+
+/*}*/
+
+/*.jugador1 {*/
+/*    padding: 5px;*/
+/*    min-height: 200px;*/
+/*    max-width: 550px;*/
+/*}*/
+
+/*.jugador1Inner {*/
+
+/*}*/
+
+/*.jugador2 {*/
+/*    padding: 5px;*/
+/*    min-height: 200px;*/
+/*    max-width: 550px;*/
+/*}*/
+
+/*.jugador2Inner {*/
+/*}*/
+
+/*.jugador3 {*/
+/*    padding: 5px;*/
+/*    min-height: 200px;*/
+/*    max-width: 550px;*/
+/*}*/
+
+/*.jugador3Inner {*/
+
+/*}*/
+
+/*.self {*/
+/*    border: 1px solid #186992;*/
+/*    border-radius: 20px;*/
+/*}*/
+
+/*.fichas {*/
+/*    white-space: nowrap;*/
+/*    display: flex;*/
+/*    flex-wrap: nowrap;*/
+/*    align-items: center;*/
+/*    justify-content: left;*/
+/*    !*display: none;*!*/
+/*}*/
+
+/*.filasEven {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    align-items: center;*/
+/*    justify-content: center;*/
+/*    grid-column-start: 2;*/
+/*    grid-column-end: span 1;*/
+/*    !*display: none;*!*/
+/*}*/
+
+/*.filasOdd {*/
+/*    display: flex;*/
+/*    flex-wrap: wrap;*/
+/*    align-items: center;*/
+/*    justify-content: center;*/
+/*    !*display: none;*!*/
+/*}*/
+
+/*.header {*/
+/*    grid-area: header;*/
+/*    !*background-color: cyan;*!*/
+/*    grid-column-start: 1;*/
+/*    grid-column-end: span 4;*/
+/*    grid-row-start: 1;*/
+/*    grid-row-end: span 1;*/
+/*    padding: 5px;*/
+/*    color: #8C2255;*/
+/*}*/
+
+/*.footer {*/
+/*    grid-area: footer;*/
+/*    !*background-color: hotpink;*!*/
+/*    grid-column-start: 1;*/
+/*    grid-column-end: span 4;*/
+/*    grid-row-start: 5;*/
+/*    grid-row-end: 5;*/
+/*}*/
+
+/*.mano {*/
+/*    border: 10px solid #186992;*/
+/*    border-radius: 20px;*/
+/*}*/
+
+/*.playerName {*/
+/*    color: #59228C;*/
+/*    background-color: #CDAFEA;*/
+/*    border: 3px solid #59228C;*/
+/*    border-radius: 10px;*/
+/*    padding: 10px;*/
+/*}*/
+
+/*.playerName.canPlay {*/
+/*    color: #CDAFEA;*/
+/*    background-color: #59228C;*/
+/*    border: 3px solid #CDAFEA;*/
+/*    border-radius: 10px;*/
+/*    padding: 10px;*/
+/*}*/
+
+/*.fichasEnJuego {*/
+/*    padding: 5px;*/
+/*    min-height: 200px;*/
+/*    max-width: 550px;*/
+/*    border: 10px solid;*/
+/*    border-color: darkgreen;*/
+/*    border-radius: 20px;*/
+/*    background-color: forestgreen;*/
+/*}*/
+
+/*.fichasEnJuegoName {*/
+/*    align-self: end;*/
+/*    text-align: center;*/
+/*    color: #AFEAB0;*/
+/*    padding: 2px*/
+/*}*/
+
+/*.jugadorActionBar {*/
+/*        !*background-color: lightcoral;*!*/
+/*        grid-column-end: span 2;*/
+/*        grid-column-start: 1;*/
+/*        align-self: center;*/
+/*}*/
+
+/*.statusBarEven {*/
+/*    display: flex;*/
+/*    grid-column-start: 1;*/
+/*    grid-column-end: span 2;*/
+/*    align-items: center;*/
+/*}*/
+
+/*.statusBarOdd {*/
+/*    display: flex;*/
+/*    grid-column-start: 1;*/
+/*    grid-column-end: span 1;*/
+/*    align-items: center;*/
+/*}*/
+
+/*.userStatus {*/
+/*    margin-left: 2em;*/
+/*    font-style: italic;*/
+/*}*/
+
+/*.domino {*/
+/*    height: 120px;*/
+/*    padding: 5px;*/
+/*    margin: 0px;*/
+/*}*/
+
+/*.domino.selected {*/
+/*    border: 5px solid orange;*/
+/*    padding: 0px;*/
+/*    border-radius: 10px;*/
+/*}*/
+
+/*.filas {*/
+
+/*}*/
+
+/*.fila {*/
+
+/*}*/
+
+/*.domino_jugado {*/
+/*    height: 80px*/
+/*}*/
+
+/*.dominoEnJuego {*/
+/*    height: 150px*/
+/*}*/
+
+/*.menuBurger i.dropdown.icon {*/
+/*    display: none;*/
+/*}*/
+
+/*.hoyo {*/
+/*    border-radius: 100px;*/
+/*    border: 3px solid red;*/
+/*    background: white;*/
+/*    color: black;*/
+/*    padding: 10px 15px;*/
+/*}*/
+
+/*.chuti {*/
+/*    border-radius: 100px;*/
+/*    border: 3px solid green;*/
+/*    background: white;*/
+/*    color: black;*/
+/*    padding: 10px 15px;*/
+/*}*/
+
+/*.ui.selection.dropdown.cantaDropdown {*/
+/*    min-width: 18em;*/
+/*}*/

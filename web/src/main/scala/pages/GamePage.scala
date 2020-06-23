@@ -31,6 +31,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
+import typings.semanticUiReact.components.Button
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
@@ -59,11 +60,14 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
 
     def processGameEventQueue: Callback = Callback.empty //TODO write this
 
-    def onGameEvent(gameEvent: GameEvent): Callback = {
+    def onGameEvent(
+      props:     Props,
+      gameEvent: GameEvent
+    ): Callback = {
       Callback.log(gameEvent.toString) >> {
         gameEvent.reapplyMode match {
           case ReapplyMode.none        => Callback.empty
-          case ReapplyMode.fullRefresh => refresh()
+          case ReapplyMode.fullRefresh => refresh(props)
           case ReapplyMode.reapply     => reapplyEvent(gameEvent)
         }
       }
@@ -81,7 +85,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                   )
                 case Some(index) if index == currentGame.currentEventIndex =>
                   //If the game event is the next one to be applied, apply it to the game
-                  println("reapplying event")
                   val reapplied = currentGame.reapplyEvent(gameEvent)
                   if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
                     None
@@ -115,7 +118,32 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       )
     }
 
-    def refresh(): Callback = {
+    def pageMenuItems(
+      game:          Option[Game],
+      pageMenuItems: Seq[(String, Callback)]
+    ): Seq[(String, Callback)] = {
+      val items: Seq[(String, Callback)] =
+        game.toSeq.flatMap(_ =>
+          Seq(
+            (
+              "Entrar al juego",
+              Callback.log("Got here!") >> $.modState { s =>
+                window.alert("Is this thing on?")
+                s.copy(mode = GamePage.Mode.game)
+              }
+            )
+          )
+        ) ++
+          Seq(
+            ("Lobby", $.modState(_.copy(mode = GamePage.Mode.lobby)))
+          )
+      val names = items.map(_._1).toSet
+
+      items ++ pageMenuItems
+        .filter(i => !names.contains(i._1)) //Remove all of the same ones
+    }
+
+    def refresh(p: Props): Callback = {
       //We may have to close an existing stream
       $.state.map { s: State =>
         s.gameStream.foreach(_.close())
@@ -134,21 +162,30 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
                       data.fold(Callback.empty)(json =>
                         gameEventDecoder
                           .decodeJson(json)
-                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                          .fold(failure => Callback.throwException(failure), g => onGameEvent(p, g))
                       )
                     },
                     operationId = "-"
                   )
                 )
               )
-            ),
-          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby))
+            ) >>
+              Callback.when(!p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego"))(
+                p.chutiState.onPageMenuItemsChanged
+                  .fold(Callback.empty)(_(pageMenuItems(Option(game), p.chutiState.pageMenuItems)))
+              ),
+          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby)) >> Callback.when(
+            p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego")
+          )(
+            p.chutiState.onPageMenuItemsChanged
+              .fold(Callback.empty)(_(pageMenuItems(None, p.chutiState.pageMenuItems)))
+          )
         )
     }
 
-    def init(): Callback = {
-      Callback.log(s"Initializing GamePage") >>
-        refresh()
+    def init(p: Props): Callback = {
+      Callback.log(s"Initializing GamePage with ${p.chutiState}") >>
+        refresh(p)
     }
 
     def onModeChanged(
@@ -159,69 +196,77 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     }
 
     def onGameInProgressChange(
+      p: Props
+    )(
       opt:      Option[Option[Game]],
       callback: Callback
     ): Callback = {
-      $.modState(_.copy(gameInProgress = opt.flatten)) >> refresh() >> callback
+      $.modState(_.copy(gameInProgress = opt.flatten)) >> refresh(p) >> callback
     }
 
     def render(
       p: Props,
       s: State
     ): VdomNode = {
-      def renderDebugBar = s.gameInProgress.fold(EmptyVdom) { game =>
-        <.div(
-          ^.className := "debugBar",
-          ^.border    := "10px solid orange",
-          <.span(s"Game Status = ${game.gameStatus}, "),
-          <.span(s"Game Index = ${game.currentEventIndex}, "),
-          <.span(s"Quien canta = ${game.quienCanta.map(_.user.name)}, "),
-          <.span(s"Mano = ${game.mano.map(_.user.name)}, "),
-          <.span(s"Turno = ${game.turno.map(_.user.name)}, ")
-        )
-      }
+      println(s"ReRendering GamePage with state $s")
 
-      val mode = if (s.gameInProgress.isEmpty && s.mode == game) {
-        //I don't want to be in the lobby if the game is loading
-        none
-      } else {
-        if (s.mode != Mode.none) {
-          window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+      ChutiState.ctx.consume { chutiState =>
+        def renderDebugBar = s.gameInProgress.fold(EmptyVdom) { game =>
+          <.div(
+            ^.className := "debugBar",
+            ^.border    := "10px solid orange",
+            <.span(s"Game Status = ${game.gameStatus}, "),
+            <.span(s"Game Index = ${game.currentEventIndex}, "),
+            <.span(s"Quien canta = ${game.quienCanta.map(_.user.name)}, "),
+            <.span(s"Mano = ${game.mano.map(_.user.name)}, "),
+            <.span(s"Turno = ${game.turno.map(_.user.name)}, ")
+          )
         }
-        s.mode
-      }
 
-      mode match {
-        case Mode.lobby =>
-          <.div(
-            renderDebugBar,
-            LobbyComponent(
-              p.chutiState,
-              StateSnapshot(s.gameInProgress)(onGameInProgressChange),
-              onRequestGameRefresh = refresh(),
-              StateSnapshot(mode)(onModeChanged)
-            )
-          )
-        case Mode.game =>
-          <.div(
-            renderDebugBar,
-            GameComponent(
-              p.chutiState,
-              StateSnapshot(s.gameInProgress)(onGameInProgressChange),
-              onRequestGameRefresh = refresh(),
-              StateSnapshot(mode)(onModeChanged)
-            )
-          )
-        case _ =>
-          <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
-      }
+        val mode = if (s.gameInProgress.isEmpty && s.mode == game) {
+          //I don't want to be in the lobby if the game is loading
+          none
+        } else {
+          if (s.mode != Mode.none) {
+            window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+          }
+          s.mode
+        }
 
+        mode match {
+          case Mode.lobby =>
+            VdomArray(
+              Button(onClick = { (_, _) =>
+                $.modState(_.copy(mode = Mode.game))
+              })("Push me"),
+              //            renderDebugBar,
+              LobbyComponent(
+                p.chutiState,
+                StateSnapshot(s.gameInProgress)(onGameInProgressChange(p)),
+                onRequestGameRefresh = refresh(p),
+                StateSnapshot(mode)(onModeChanged)
+              )
+            )
+          case Mode.game =>
+            VdomArray(
+              //            renderDebugBar,
+              GameComponent(
+                p.chutiState,
+                StateSnapshot(s.gameInProgress)(onGameInProgressChange(p)),
+                onRequestGameRefresh = refresh(p),
+                StateSnapshot(mode)(onModeChanged)
+              )
+            )
+          case _ =>
+            <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
+        }
+      }
     }
   }
   case class Props(chutiState: ChutiState)
 
   private val component = ScalaComponent
-    .builder[Props]("GamePage")
+    .builder[Props]("GamePageInner")
     .initialState {
       val modeStr = window.sessionStorage.getItem("gamePageMode")
       val mode = {
@@ -243,8 +288,20 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       State(mode = mode)
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init())
+    .componentDidMount($ => $.backend.init($.props))
     .build
 
-  def apply(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))
+  private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =
+    component(Props(chutiState))
+  private def innerComponent =
+    ScalaComponent
+      .builder[Unit]
+      .renderStatic {
+        ChutiState.ctx.consume { chutiState =>
+          inner(chutiState)
+        }
+      }
+      .build
+
+  def apply(): Unmounted[Unit, Unit, Unit] = innerComponent()
 }

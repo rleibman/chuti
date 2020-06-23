@@ -16,14 +16,16 @@
 
 package router
 
+import app.ChutiState
 import components.components.ChutiComponent
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom._
 import pages._
-import typings.semanticUiReact.components.{Button, Sidebar, SidebarPushable, SidebarPusher}
-import typings.semanticUiReact.semanticUiReactStrings.push
+import typings.semanticUiReact.components._
+import typings.semanticUiReact.genericMod.SemanticICONS
+import typings.semanticUiReact.semanticUiReactStrings.{labeled, mini}
 
 object AppRouter extends ChutiComponent {
 
@@ -42,46 +44,96 @@ object AppRouter extends ChutiComponent {
     resolution: Resolution[AppPage]
   ) = {
     assert(page != null)
-    chutiContext.consume { chutiState =>
-      def renderMenu =
-        <.div(
-          ^.height    := 100.pct,
-          ^.className := "no-print"
-        )
-
-      <.div(
-        ^.height := 100.pct,
-        SidebarPushable()(
-          Sidebar(animation = push, visible = chutiState.sidebarVisible)(renderMenu),
-          SidebarPusher()(
-            <.div(
-              ^.height   := 100.pct,
-              ^.maxWidth := 1500.px,
-              ^.padding  := 5.px,
-              Button(compact = true, onClick = { (_, _) =>
-                Callback {
-                  document.location.href = "/api/auth/doLogout"
-                }
-              })("Cerrar sesión"),
-              Button(compact = true, onClick = { (_, _) =>
-                Callback.alert("en construcción") //TODO write this
-              })("Administración de usuario"),
-              resolution.render()
+    ChutiState.ctx.consume { chutiState =>
+      def renderMenu = {
+        VdomArray(
+          <.div(
+            ^.key       := "menu",
+            ^.height    := 100.pct,
+            ^.className := "no-print headerMenu",
+            Menu(
+              attached = false,
+              compact = true,
+              text = true,
+              icon = labeled,
+              borderless = true,
+              size = mini
+            )(
+              Dropdown(
+                item = true,
+//                simple = true,
+                compact = true,
+                text = "☰ Menu",
+              )(
+                DropdownMenu()(
+                  chutiState.pageMenuItems.toVdomArray {
+                    case (item, action) =>
+                      MenuItem(onClick = { (_, _) =>
+                        action
+                      })(item)
+                  },
+                  Divider()(),
+                  MenuItem(onClick = { (_, _) =>
+                    Callback.alert("en construcción") //TODO write this
+                  })("Reglas de Chuti"),
+                  MenuItem(onClick = { (_, _) =>
+                    Callback {
+                      document.location.href = "/api/auth/doLogout"
+                    }
+                  })("Cerrar sesión"),
+                  MenuItem(onClick = { (_, _) =>
+                    Callback.alert("en construcción") //TODO write this
+                  })("Administración de usuario"),
+                  MenuItem(onClick = { (_, _) =>
+                    Callback.alert("en construcción") //TODO write this
+                  })("Acerca de Chuti")
+                )
+              )
             )
+          ),
+          <.div(
+            ^.key       := "user",
+            ^.className := "user",
+            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}"
           )
         )
+      }
+
+      <.div(
+        ^.className := "innerContent",
+        <.div(^.className := "header", renderMenu),
+        resolution.render()
       )
+
+//      <.div(
+//        ^.height := 100.pct,
+//        SidebarPushable()(
+//          Sidebar(animation = push, visible = chutiState.sidebarVisible)(renderMenu),
+//          SidebarPusher()(
+//            <.div(
+//              ^.height   := 100.pct,
+//              ^.maxWidth := 1500.px,
+//              ^.padding  := 5.px,
+//              Button(compact = true, onClick = { (_, _) =>
+//                Callback {
+//                  document.location.href = "/api/auth/doLogout"
+//                }
+//              })("Cerrar sesión"),
+//              Button(compact = true, onClick = { (_, _) =>
+//                Callback.alert("en construcción") //TODO write this
+//              })("Administración de usuario"),
+//              resolution.render()
+//            )
+//          )
+//        )
+//      )
     }
   }
 
   private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
     (trimSlashes
-      | staticRoute("#game", GameAppPage) ~> renderR(_ =>
-        chutiContext.consume { chutiState =>
-          GamePage(chutiState)
-        }
-      )
+      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))

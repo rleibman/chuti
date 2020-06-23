@@ -87,35 +87,32 @@ object ChatComponent extends ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomNode =
-      Form()(
-        FormGroup()(
-          FormField(width = SemanticWIDTHS.`16`)(
-            Label()(s"User: ${p.user.name}")
-          )
-        ),
-        Header()("Messages"),
+      Form(className = "chat")(
+        Header(className = "title")("Chuti Chat"),
         FormGroup()(
           FormField(width = SemanticWIDTHS.`16`)(
             s.chatMessages.toVdomArray(msg =>
               <.div(
-                <.div(
-                  ^.fontWeight.bold,
-                  msg.fromUser.name,
-                  " ",
-                  <.span(^.fontWeight.lighter, df.format(msg.date))
-                ),
-                <.div(msg.msg)
+                ^.className := "receivedMessage",
+                <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
+                <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
+                <.div(^.className := "messageText", msg.msg)
               )
             )
           )
         ),
-        FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Label()("Message"))),
-        FormGroup()(
-          FormField(width = SemanticWIDTHS.`16`)(
-            TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)()
+        <.div(
+          ^.className := "sendMessage",
+          FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Label()("Message"))),
+          FormGroup()(
+            FormField(width = SemanticWIDTHS.`16`)(
+              TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)()
+            )
+          ),
+          FormGroup()(
+            FormField(width = SemanticWIDTHS.`16`)(Button(onClick = onSend(p, s))("Send"))
           )
-        ),
-        FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Button(onClick = onSend(p, s))("Send")))
+        )
       )
 
     def refresh(p: Props): Callback = {
