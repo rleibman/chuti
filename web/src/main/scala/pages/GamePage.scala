@@ -28,12 +28,15 @@ import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.StateSnapshot
+import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
 import typings.semanticUiReact.components.Button
+import scala.concurrent.duration._
 
-object GamePage extends ChutiPage with ScalaJSClientAdapter {
+import scala.scalajs.js.timers._
+
+object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   private val connectionId = UUID.randomUUID().toString
 
   object Mode extends Enumeration {
@@ -122,21 +125,12 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
       game:          Option[Game],
       pageMenuItems: Seq[(String, Callback)]
     ): Seq[(String, Callback)] = {
-      val items: Seq[(String, Callback)] =
+      val items =
         game.toSeq.flatMap(_ =>
-          Seq(
-            (
-              "Entrar al juego",
-              Callback.log("Got here!") >> $.modState { s =>
-                window.alert("Is this thing on?")
-                s.copy(mode = GamePage.Mode.game)
-              }
-            )
-          )
+          Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
         ) ++
-          Seq(
-            ("Lobby", $.modState(_.copy(mode = GamePage.Mode.lobby)))
-          )
+          Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
+
       val names = items.map(_._1).toSet
 
       items ++ pageMenuItems
@@ -210,7 +204,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
     ): VdomNode = {
       println(s"ReRendering GamePage with state $s")
 
-      ChutiState.ctx.consume { chutiState =>
+      ChutiState.ctx.consume { _ =>
         def renderDebugBar = s.gameInProgress.fold(EmptyVdom) { game =>
           <.div(
             ^.className := "debugBar",
@@ -236,9 +230,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter {
         mode match {
           case Mode.lobby =>
             VdomArray(
-              Button(onClick = { (_, _) =>
-                $.modState(_.copy(mode = Mode.game))
-              })("Push me"),
               //            renderDebugBar,
               LobbyComponent(
                 p.chutiState,
