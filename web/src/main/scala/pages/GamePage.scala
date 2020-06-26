@@ -31,10 +31,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
-import typings.semanticUiReact.components.Button
-import scala.concurrent.duration._
-
-import scala.scalajs.js.timers._
+import pages.GamePage.{Props, State}
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   private val connectionId = UUID.randomUUID().toString
@@ -58,7 +55,15 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   )
 
   class Backend($ : BackendScope[Props, State]) {
-//    private val gameDecoder = implicitly[Decoder[Game]]
+
+    def pageMenuItemListener(): Seq[(String, Callback)] = {
+      Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
+    }
+
+    def registerPageMenuItemListeners(props: Props): Callback =
+      props.chutiState.addPageMenuItemListener(pageMenuItemListener)
+
+    //    private val gameDecoder = implicitly[Decoder[Game]]
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
     def processGameEventQueue: Callback = Callback.empty //TODO write this
@@ -126,9 +131,10 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       pageMenuItems: Seq[(String, Callback)]
     ): Seq[(String, Callback)] = {
       val items =
-        game.filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
-          Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
-        ) ++
+        game
+          .filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
+            Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
+          ) ++
           Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
 
       val names = items.map(_._1).toSet
@@ -163,17 +169,8 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
                   )
                 )
               )
-            ) >>
-              Callback.when(!p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego"))(
-                p.chutiState.onPageMenuItemsChanged
-                  .fold(Callback.empty)(_(pageMenuItems(Option(game), p.chutiState.pageMenuItems)))
-            ) ,
-          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby)) >> Callback.when(
-            p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego")
-          )(
-            p.chutiState.onPageMenuItemsChanged
-              .fold(Callback.empty)(_(pageMenuItems(None, p.chutiState.pageMenuItems)))
-          )
+            ),
+          callbackWhenNone = $.modState(_.copy(mode = Mode.lobby))
         )
     }
 
@@ -279,7 +276,9 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       State(mode = mode)
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init($.props))
+    .componentDidMount($ =>
+      $.backend.registerPageMenuItemListeners($.props) >> $.backend.init($.props)
+    )
     .build
 
   private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =
@@ -296,3 +295,4 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
   def apply(): Unmounted[Unit, Unit, Unit] = innerComponent()
 }
+

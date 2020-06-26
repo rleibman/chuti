@@ -38,9 +38,32 @@ object Content extends ChutiComponent {
   case class State(chutiState: ChutiState = ChutiState())
 
   class Backend($ : BackendScope[_, State]) {
-    def onPageMenuItemsChanged(pageMenuItems: Seq[(String, Callback)]): Callback = {
-      Callback.log("Changing Menu Items") >>
-        $.modState(s => s.copy(chutiState = s.chutiState.copy(pageMenuItems = pageMenuItems)))
+    def setupMenuListeners(): Callback = {
+      $.modState { s =>
+        s.copy(chutiState = s.chutiState.copy(
+          addPageMenuItemListener = { listener =>
+            $.modState { ss =>
+              if (ss.chutiState.pageMenuItemListeners.contains(listener)) {
+                ss
+              } else {
+                ss.copy(chutiState = ss.chutiState
+                  .copy(pageMenuItemListeners = ss.chutiState.pageMenuItemListeners :+ listener)
+                )
+              }
+            }
+          },
+          removePageMenuItemListener = { listener =>
+            $.modState(ss =>
+              ss.copy(chutiState = ss.chutiState
+                .copy(pageMenuItemListeners =
+                  ss.chutiState.pageMenuItemListeners.filter(_ != listener)
+                )
+              )
+            )
+          }
+        )
+        )
+      }
     }
 
     def onUserChanged(userOpt: Option[User]): Callback =
@@ -59,22 +82,21 @@ object Content extends ChutiComponent {
 
     def render(s: State): VdomElement =
       ChutiState.ctx.provide(s.chutiState) {
-        <.div(^.height := 100.pct, Confirm.render(), Toast.render(), AppRouter.router())
+        <.div(
+          ^.height := 100.pct,
+          Confirm.render(),
+          Toast.render(),
+          AppRouter.router(s.chutiState)()
+        )
       }
 
-    def refresh(s: State): Callback =
+    def refresh(): Callback =
       Callback.log("Refreshing Content Component") >>
-        $.modState(s =>
-          s.copy(chutiState =
-            s.chutiState.copy(onPageMenuItemsChanged = Option(onPageMenuItemsChanged))
-          )
-        ) >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
             $.modState { s =>
               val copy = s.copy(
                 chutiState = s.chutiState.copy(
-                  onPageMenuItemsChanged = Option(onPageMenuItemsChanged),
                   onUserChanged = Some(onUserChanged),
                   user = user
                 )
@@ -93,7 +115,7 @@ object Content extends ChutiComponent {
     .builder[Unit]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh($.state))
+    .componentDidMount($ => $.backend.setupMenuListeners() >> $.backend.refresh())
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()

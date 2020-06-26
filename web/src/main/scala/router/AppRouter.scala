@@ -39,12 +39,11 @@ object AppRouter extends ChutiComponent {
 
   case object UserSettingsAppPage extends AppPage
 
-  private def layout(
+  private def layout(chutiState: ChutiState)(
     page:       RouterCtl[AppPage],
     resolution: Resolution[AppPage]
   ) = {
     assert(page != null)
-    ChutiState.ctx.consume { chutiState =>
       def renderMenu = {
         VdomArray(
           <.div(
@@ -64,7 +63,7 @@ object AppRouter extends ChutiComponent {
                 text = "☰ Menu",
               )(
                 DropdownMenu()(
-                  chutiState.pageMenuItems.toVdomArray {
+                  chutiState.pageMenuItemListeners.flatMap(_()).toVdomArray {
                     case (item, action) =>
                       MenuItem(onClick = { (_, _) =>
                         action
@@ -102,19 +101,20 @@ object AppRouter extends ChutiComponent {
         <.div(^.className := "header", renderMenu),
         resolution.render()
       )
-    }
   }
 
-  private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
+  private def config(chutiState: ChutiState): RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
-      .renderWith(layout)
+      .renderWith(layout(chutiState))
   }
   private val baseUrl: BaseUrl = BaseUrl.fromWindowOrigin_/
 
-  val router: Router[AppPage] = Router.apply(baseUrl, config)
+  def router(chutiState: ChutiState): Router[AppPage] = Router.apply(baseUrl, config(chutiState))
 }
+
+
