@@ -126,7 +126,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       pageMenuItems: Seq[(String, Callback)]
     ): Seq[(String, Callback)] = {
       val items =
-        game.toSeq.flatMap(_ =>
+        game.filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
           Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
         ) ++
           Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
@@ -167,7 +167,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
               Callback.when(!p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego"))(
                 p.chutiState.onPageMenuItemsChanged
                   .fold(Callback.empty)(_(pageMenuItems(Option(game), p.chutiState.pageMenuItems)))
-              ),
+            ) ,
           callbackWhenNone = $.modState(_.copy(mode = Mode.lobby)) >> Callback.when(
             p.chutiState.pageMenuItems.exists(_._1 == "Entrar al juego")
           )(

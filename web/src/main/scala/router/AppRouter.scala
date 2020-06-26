@@ -55,9 +55,7 @@ object AppRouter extends ChutiComponent {
               attached = false,
               compact = true,
               text = true,
-              icon = labeled,
               borderless = true,
-              size = mini
             )(
               Dropdown(
                 item = true,
@@ -104,29 +102,6 @@ object AppRouter extends ChutiComponent {
         <.div(^.className := "header", renderMenu),
         resolution.render()
       )
-
-//      <.div(
-//        ^.height := 100.pct,
-//        SidebarPushable()(
-//          Sidebar(animation = push, visible = chutiState.sidebarVisible)(renderMenu),
-//          SidebarPusher()(
-//            <.div(
-//              ^.height   := 100.pct,
-//              ^.maxWidth := 1500.px,
-//              ^.padding  := 5.px,
-//              Button(compact = true, onClick = { (_, _) =>
-//                Callback {
-//                  document.location.href = "/api/auth/doLogout"
-//                }
-//              })("Cerrar sesión"),
-//              Button(compact = true, onClick = { (_, _) =>
-//                Callback.alert("en construcción") //TODO write this
-//              })("Administración de usuario"),
-//              resolution.render()
-//            )
-//          )
-//        )
-//      )
     }
   }
 

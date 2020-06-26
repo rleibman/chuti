@@ -135,7 +135,7 @@ object GameComponent {
                 }
               )
             ),
-            ModalActions()(Button(compact = true, onClick = { (_, _) =>
+            ModalActions()(Button(compact = true, basic = true, onClick = { (_, _) =>
               $.modState(_.copy(dlg = Dialog.none))
             })("Ok"))
           )
@@ -145,10 +145,10 @@ object GameComponent {
       <.div(
         renderCuentasDialog,
         Container(className = "navBar")(
-          Button(compact = true, onClick = { (_, _) =>
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             p.mode.setState(GamePage.Mode.lobby)
           })("Regresa al lobby"),
-          Button(compact = true, onClick = { (_, _) =>
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             $.modState(_.copy(dlg = Dialog.cuentas))
           })("Cuentas")
         ),
@@ -247,7 +247,7 @@ object GameComponent {
                             }
                           )(),
                           Button(
-                            compact = true,
+                            compact = true, basic = true,
                             onClick = { (_, _) =>
                               play(
                                 game.id.get,
@@ -258,7 +258,7 @@ object GameComponent {
                         )
                       case JugadorState.dando =>
                         Button(
-                          compact = true,
+                          compact = true, basic = true,
                           disabled = s.fichaSeleccionada.isEmpty,
                           onClick = { (_, _) =>
                             play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
@@ -316,7 +316,7 @@ object GameComponent {
                               }
                             )(),
                             Button(
-                              compact = true,
+                              compact = true, basic = true,
                               disabled = s.fichaSeleccionada.isEmpty ||
                                 (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
                               onClick = { (_, _) =>
@@ -331,14 +331,14 @@ object GameComponent {
                               }
                             )("Pide"),
                             if (game.jugadores.flatMap(_.filas).size < 2) {
-                              Button(compact = true, onClick = { (_, _) =>
+                              Button(compact = true, basic = true, onClick = { (_, _) =>
                                 play(game.id.get, MeRindo())
                               })("Me Rindo")
                             } else {
                               EmptyVdom
                             },
                             if (p == JugadorState.pidiendo && game.puedesCaerte(jugador)) {
-                              Button(compact = true, onClick = { (_, _) =>
+                              Button(compact = true, basic = true, onClick = { (_, _) =>
                                 play(game.id.get, Caete())
                               })("Cáete")
                             } else {
@@ -347,7 +347,7 @@ object GameComponent {
                           )
                         )
                       case JugadorState.haciendoSopa =>
-                        Button(compact = true, onClick = { (_, _) =>
+                        Button(compact = true, basic = true, onClick = { (_, _) =>
                           play(game.id.get, Sopa())
                         })("Sopa")
                       case JugadorState.esperando => EmptyVdom

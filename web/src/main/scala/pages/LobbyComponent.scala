@@ -210,11 +210,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
           )
         ),
         ModalActions()(
-          Button(compact = true, onClick = { (_, _) =>
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
           })("Cancelar"),
           Button(
-            compact = true,
+            compact = true, basic = true,
             onClick = { (_, _) =>
               Callback.log(s"Calling newGame") >>
                 calibanCallThroughJsonOpt[Mutations, Game](
@@ -269,12 +269,12 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
           )
         ),
         ModalActions()(
-          Button(compact = true, onClick = { (_, _) =>
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
           })("Cancelar"),
           p.gameInProgress.value.fold(EmptyVdom) { game =>
             Button(
-              compact = true,
+              compact = true, basic = true,
               onClick = {
                 (_, _) =>
                   Callback.log(s"Inviting user by email") >>
@@ -454,7 +454,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   ),
                                   <.td(
                                     Button(
-                                      compact = true,
+                                      compact = true, basic = true,
                                       onClick = (_, _) => {
                                         calibanCallThroughJsonOpt[Mutations, Game](
                                           Mutations.acceptGameInvitation(game.id.fold(0)(_.value)),
@@ -464,7 +464,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       }
                                     )("Aceptar"),
                                     Button(
-                                      compact = true,
+                                      compact = true, basic = true,
                                       onClick = (_, _) => {
                                         calibanCall[Mutations, Option[Boolean]](
                                           Mutations.declineGameInvitation(game.id.fold(0)(_.value)),
