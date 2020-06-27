@@ -24,8 +24,6 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom._
 import pages._
 import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.SemanticICONS
-import typings.semanticUiReact.semanticUiReactStrings.{labeled, mini}
 
 object AppRouter extends ChutiComponent {
 
@@ -39,11 +37,12 @@ object AppRouter extends ChutiComponent {
 
   case object UserSettingsAppPage extends AppPage
 
-  private def layout(chutiState: ChutiState)(
+  private def layout(
     page:       RouterCtl[AppPage],
     resolution: Resolution[AppPage]
-  ) = {
+  ): VdomElement = {
     assert(page != null)
+    ChutiState.ctx.consume { chutiState =>
       def renderMenu = {
         VdomArray(
           <.div(
@@ -54,16 +53,16 @@ object AppRouter extends ChutiComponent {
               attached = false,
               compact = true,
               text = true,
-              borderless = true,
+              borderless = true
             )(
               Dropdown(
                 item = true,
 //                simple = true,
                 compact = true,
-                text = "☰ Menu",
+                text = "☰ Menu"
               )(
                 DropdownMenu()(
-                  chutiState.pageMenuItemListeners.flatMap(_()).toVdomArray {
+                  chutiState.menuProviders.flatMap(_()).toVdomArray {
                     case (item, action) =>
                       MenuItem(onClick = { (_, _) =>
                         action
@@ -101,20 +100,25 @@ object AppRouter extends ChutiComponent {
         <.div(^.className := "header", renderMenu),
         resolution.render()
       )
+    }
   }
 
-  private def config(chutiState: ChutiState): RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
+  private def config(
+    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
+  ): RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
+
     (trimSlashes
-      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
+      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage(addMenuProvider))
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
-      .renderWith(layout(chutiState))
+      .renderWith(layout)
   }
   private val baseUrl: BaseUrl = BaseUrl.fromWindowOrigin_/
 
-  def router(chutiState: ChutiState): Router[AppPage] = Router.apply(baseUrl, config(chutiState))
+  def router(
+    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
+  ): Router[AppPage] =
+    Router.apply(baseUrl, config(addMenuProvider))
 }
-
-

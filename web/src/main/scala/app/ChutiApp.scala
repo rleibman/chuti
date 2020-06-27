@@ -17,6 +17,7 @@
 package app
 
 import chat.ChatComponent
+import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
@@ -28,8 +29,7 @@ object ChutiApp {
   @JSExport
   def main(args: Array[String]): Unit = {
 
-//    val component = Content()
-    val component = ParentComponent()
+    val component = Content()
 
     component.renderIntoDOM(dom.document.getElementById("content"))
     ()
@@ -38,12 +38,14 @@ object ChutiApp {
 }
 
 object ParentComponent {
-  case class ChildProps(addMenuProvider: (() => Seq[(String, Callback)]) => Callback)
-  case class ChildState(strings:         Seq[String] = Seq.empty)
+  val ctx: Context[ParentState] = React.createContext(ParentState())
+
+  case class ChildProps(childName: String, addMenuProvider: (() => Seq[(String, Callback)]) => Callback)
+  case class ChildState(childName: String, childString: String = "Child String", strings:         Seq[String] = Seq.empty)
 
   class ChildBackend($ : BackendScope[ChildProps, ChildState]) {
-    def childMenuProvider(): Seq[(String, Callback)] = {
-      Seq(
+    def menuProvider(s: ChildState)(): Seq[(String, Callback)] = {
+      val items = Seq(
         (
           "MenuItem1",
           Callback
@@ -58,42 +60,57 @@ object ParentComponent {
             println("Hello World2")
           )
         ),
+        (
+          s.childString,
+          Callback
+            .log("Hit childString") >> $.modState(s => s.copy(strings = s.strings :+ s.childString)) >> Callback(
+            println("childString")
+          )
+        ),
       )
+      if(s.childName == "child1") items.drop(1) else items
     }
 
-    def render(s: ChildState) = {
-      <.div(<.h1("Stuff"), s.strings.toVdomArray(str => <.div(str)))
+    def render(s: ChildState): VdomElement = {
+      ctx.consume { useThisState =>
+        <.div(<.h1("Stuff"), <.h2(useThisState.someString), s.strings.toVdomArray(str => <.div(str)))
+      }
     }
   }
 
   private val childComponent = ScalaComponent
     .builder[ChildProps]("child")
-    .initialState(ChildState())
+    .initialStateFromProps(p => ChildState(p.childName))
     .renderBackend[ChildBackend]
-    .componentDidMount($ => $.props.addMenuProvider($.backend.childMenuProvider))
+    .componentDidMount($ => $.props.addMenuProvider($.backend.menuProvider($.state)))
     .build
 
   def ChildComponent(props: ChildProps): Unmounted[ChildProps, ChildState, ChildBackend] = childComponent(props)
 
-  case class ParentState(menuProviders: Seq[() => Seq[(String, Callback)]] = Seq.empty)
+  case class ParentState(someString: String = "This is just a string", menuProviders: Seq[() => Seq[(String, Callback)]] = Seq.empty)
 
-  class ParentBackend($ : BackendScope[Unit, ParentState]) {
+  class ParentBackend($ : BackendScope[_, ParentState]) {
 
     def addMenuProvider(menuProvider: () => Seq[(String, Callback)]): Callback = {
       $.modState(s => s.copy(menuProviders = s.menuProviders :+ menuProvider))
     }
 
-    def render(state: ParentState) = {
-      <.div(
-        state.menuProviders
-          .flatMap(_()).toVdomArray(i =>
-            <.div(<.button(^.onClick ==> { a =>
-              i._2
-            }, i._1))
-          ),
-        <.br(),
-        ChildComponent(ChildProps(addMenuProvider))
-      )
+    def render(state: ParentState): VdomElement = {
+      ctx.provide(state) {
+        ctx.consume { useThisState =>
+          <.div(
+            useThisState.menuProviders
+              .flatMap(_ ()).toVdomArray(i =>
+              <.div(<.button(^.onClick ==> { a =>
+                i._2
+              }, i._1))
+            ),
+            <.br(),
+            ChildComponent(ChildProps("child1", addMenuProvider)),
+            ChildComponent(ChildProps("child2", addMenuProvider))
+          )
+        }
+      }
     }
   }
 

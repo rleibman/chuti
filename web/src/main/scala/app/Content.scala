@@ -34,36 +34,15 @@ import scala.util.{Failure, Success}
   * presenting the app menu.
   */
 object Content extends ChutiComponent {
-
   case class State(chutiState: ChutiState = ChutiState())
 
   class Backend($ : BackendScope[_, State]) {
-    def setupMenuListeners(): Callback = {
-      $.modState { s =>
-        s.copy(chutiState = s.chutiState.copy(
-          addPageMenuItemListener = { listener =>
-            $.modState { ss =>
-              if (ss.chutiState.pageMenuItemListeners.contains(listener)) {
-                ss
-              } else {
-                ss.copy(chutiState = ss.chutiState
-                  .copy(pageMenuItemListeners = ss.chutiState.pageMenuItemListeners :+ listener)
-                )
-              }
-            }
-          },
-          removePageMenuItemListener = { listener =>
-            $.modState(ss =>
-              ss.copy(chutiState = ss.chutiState
-                .copy(pageMenuItemListeners =
-                  ss.chutiState.pageMenuItemListeners.filter(_ != listener)
-                )
-              )
-            )
-          }
+    def addMenuProvider(menuProvider: () => Seq[(String, Callback)]): Callback = {
+      $.modState(s =>
+        s.copy(chutiState =
+          s.chutiState.copy(menuProviders = s.chutiState.menuProviders :+ menuProvider)
         )
-        )
-      }
+      )
     }
 
     def onUserChanged(userOpt: Option[User]): Callback =
@@ -72,8 +51,8 @@ object Content extends ChutiComponent {
           .upsert(user)
           .completeWith {
             case Success(u) =>
-              (Toast.success("User successfully saved ") >>
-                $.modState(s => s.copy(chutiState = s.chutiState.copy(user = Some(u)))))
+              Toast.success("User successfully saved ") >>
+                $.modState(s => s.copy(chutiState = s.chutiState.copy(user = Some(u))))
             case Failure(t) =>
               t.printStackTrace()
               Callback.empty //TODO do something else here
@@ -86,7 +65,7 @@ object Content extends ChutiComponent {
           ^.height := 100.pct,
           Confirm.render(),
           Toast.render(),
-          AppRouter.router(s.chutiState)()
+          AppRouter.router(addMenuProvider)()
         )
       }
 
@@ -95,13 +74,10 @@ object Content extends ChutiComponent {
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
             $.modState { s =>
-              val copy = s.copy(
-                chutiState = s.chutiState.copy(
-                  onUserChanged = Some(onUserChanged),
-                  user = user
-                )
-              )
-              copy
+              s.copy(chutiState = s.chutiState.copy(
+                onUserChanged = Some(onUserChanged),
+                user = user
+              ))
             }
           case Failure(e) =>
             e.printStackTrace()
@@ -115,7 +91,7 @@ object Content extends ChutiComponent {
     .builder[Unit]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.setupMenuListeners() >> $.backend.refresh())
+    .componentDidMount(_.backend.refresh())
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()

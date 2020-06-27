@@ -27,16 +27,6 @@ package components
 
 import java.time.LocalDate
 
-import app.ChutiState
-import japgolly.scalajs.react.React.Context
-import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{Callback, ReactMouseEventFrom}
-import org.scalajs.dom.raw.{HTMLButtonElement, HTMLElement}
-import org.scalajs.dom.window
-import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components.{FormField, FormGroup, Label, Segment}
-import typings.semanticUiReact.genericMod.{SemanticSIZES, SemanticWIDTHS}
-
 //import scala.concurrent.Future
 import scala.scalajs.js
 
@@ -45,31 +35,6 @@ import scala.scalajs.js
   * place to put in global implicits, common code that should be in all pages, etc.
   */
 trait ChutiComponent {
-  def doPrint(
-    event: ReactMouseEventFrom[HTMLButtonElement],
-    data:  ButtonProps
-  ): Callback =
-    Callback {
-      window.print()
-    }
-
-  def paragraphIt(
-    str:    String,
-    unique: String
-  ): VdomArray =
-    str
-      .split("\n")
-      .zipWithIndex
-      .toVdomArray {
-        case (s, index) =>
-          <.p(
-            ^.key                     := s"$unique$index",
-            ^.marginTop               := 8.px,
-            ^.marginBottom            := 8.px,
-            ^.dangerouslySetInnerHtml := s
-          )
-      }
-
   def formatDate(date: LocalDate): String = {
     //    def this(year: Int, month: Int, date: Int = 1, hours: Int = 0,
     //             minutes: Int = 0, seconds: Int = 0, ms: Int = 0) = this()

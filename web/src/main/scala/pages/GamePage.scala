@@ -19,7 +19,6 @@ package pages
 import java.net.URI
 import java.util.UUID
 
-import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatComponent
 import chuti._
@@ -31,7 +30,6 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
-import pages.GamePage.{Props, State}
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   private val connectionId = UUID.randomUUID().toString
@@ -55,13 +53,13 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   )
 
   class Backend($ : BackendScope[Props, State]) {
-
-    def pageMenuItemListener(): Seq[(String, Callback)] = {
-      Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
+    def menuProvider(s: State)(): Seq[(String, Callback)] = {
+      s.gameInProgress
+        .filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
+          Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
+        ) ++
+        Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
     }
-
-    def registerPageMenuItemListeners(props: Props): Callback =
-      props.chutiState.addPageMenuItemListener(pageMenuItemListener)
 
     //    private val gameDecoder = implicitly[Decoder[Game]]
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
@@ -126,23 +124,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       )
     }
 
-    def pageMenuItems(
-      game:          Option[Game],
-      pageMenuItems: Seq[(String, Callback)]
-    ): Seq[(String, Callback)] = {
-      val items =
-        game
-          .filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
-            Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
-          ) ++
-          Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
-
-      val names = items.map(_._1).toSet
-
-      items ++ pageMenuItems
-        .filter(i => !names.contains(i._1)) //Remove all of the same ones
-    }
-
     def refresh(p: Props): Callback = {
       //We may have to close an existing stream
       $.state.map { s: State =>
@@ -175,8 +156,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     }
 
     def init(p: Props): Callback = {
-      Callback.log(s"Initializing GamePage with ${p.chutiState}") >>
-        refresh(p)
+      refresh(p)
     }
 
     def onModeChanged(
@@ -200,8 +180,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       s: State
     ): VdomNode = {
       println(s"ReRendering GamePage with state $s")
-
-      ChutiState.ctx.consume { _ =>
         def renderDebugBar = s.gameInProgress.fold(EmptyVdom) { game =>
           <.div(
             ^.className := "debugBar",
@@ -229,7 +207,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
             VdomArray(
               //            renderDebugBar,
               LobbyComponent(
-                p.chutiState,
                 StateSnapshot(s.gameInProgress)(onGameInProgressChange(p)),
                 onRequestGameRefresh = refresh(p),
                 StateSnapshot(mode)(onModeChanged)
@@ -239,7 +216,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
             VdomArray(
               //            renderDebugBar,
               GameComponent(
-                p.chutiState,
                 StateSnapshot(s.gameInProgress)(onGameInProgressChange(p)),
                 onRequestGameRefresh = refresh(p),
                 StateSnapshot(mode)(onModeChanged)
@@ -248,10 +224,11 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
           case _ =>
             <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
         }
-      }
     }
   }
-  case class Props(chutiState: ChutiState)
+  case class Props(
+    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
+  )
 
   private val component = ScalaComponent
     .builder[Props]("GamePageInner")
@@ -277,22 +254,12 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     }
     .renderBackend[Backend]
     .componentDidMount($ =>
-      $.backend.registerPageMenuItemListeners($.props) >> $.backend.init($.props)
+      $.props.addMenuProvider($.backend.menuProvider($.state)) >> $.backend.init($.props)
     )
     .build
 
-  private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =
-    component(Props(chutiState))
-  private def innerComponent =
-    ScalaComponent
-      .builder[Unit]
-      .renderStatic {
-        ChutiState.ctx.consume { chutiState =>
-          inner(chutiState)
-        }
-      }
-      .build
-
-  def apply(): Unmounted[Unit, Unit, Unit] = innerComponent()
+  def apply(
+    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
+  ): Unmounted[Props, State, Backend] =
+    component(Props(addMenuProvider))
 }
-

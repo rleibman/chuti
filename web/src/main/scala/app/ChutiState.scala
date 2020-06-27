@@ -21,13 +21,9 @@ import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 
 case class ChutiState(
-  onUserChanged:              Option[Option[User] => Callback] = None,
-  user:                       Option[User] = None,
-  addPageMenuItemListener:    (() => Seq[(String, Callback)]) => Callback =  _ => Callback.empty,
-  removePageMenuItemListener: (() => Seq[(String, Callback)]) => Callback = _ => Callback.empty,
-  pageMenuItemListeners:      Seq[() => Seq[(String, Callback)]] = Seq.empty,
-//  pageMenuItems:          Seq[(String, Callback)] = Seq.empty,
-//  onPageMenuItemsChanged: Option[Seq[(String, Callback)] => Callback] = None,
+  menuProviders: Seq[() => Seq[(String, Callback)]] = Seq.empty,
+  onUserChanged: Option[Option[User] => Callback] = None,
+  user:          Option[User] = None,
   serverVersion: Option[String] = None
 ) {}
 
