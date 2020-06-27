@@ -53,6 +53,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   )
 
   class Backend($ : BackendScope[Props, State]) {
+
     def menuProvider(s: State)(): Seq[(String, Callback)] = {
       s.gameInProgress
         .filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
@@ -254,7 +255,8 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     }
     .renderBackend[Backend]
     .componentDidMount($ =>
-      $.props.addMenuProvider($.backend.menuProvider($.state)) >> $.backend.init($.props)
+      $.backend.init($.props) >>
+        $.props.addMenuProvider($.backend.menuProvider($.state))
     )
     .build
 
