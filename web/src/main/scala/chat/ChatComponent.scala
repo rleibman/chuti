@@ -22,7 +22,12 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{Mutations, Subscriptions, ChatMessage => CalibanChatMessage, User => CalibanUser}
+import chat.ChatClient.{
+  Mutations,
+  Subscriptions,
+  ChatMessage => CalibanChatMessage,
+  User => CalibanUser
+}
 import chuti.{ChannelId, ChatMessage, User}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -98,7 +103,12 @@ object ChatComponent extends ScalaJSClientAdapter {
         <.div(
           ^.className := "sendMessage",
           TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)(),
-          Button(compact = true, basic = true, disabled = s.msgInFlux.trim.isEmpty, onClick = onSend(p, s))("Send")
+          Button(
+            compact = true,
+            basic = true,
+            disabled = s.msgInFlux.trim.isEmpty,
+            onClick = onSend(p, s)
+          )("Send")
         )
       )
 

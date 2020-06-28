@@ -19,7 +19,7 @@ package pages
 import java.net.URI
 import java.util.UUID
 
-import app.ChutiState
+import app.{ChutiState, GameViewMode}
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatComponent
 import chuti._
@@ -33,33 +33,27 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
-  object Mode extends Enumeration {
-    type Mode = Value
-    val lobby, game, none = Value
-  }
-  import Mode._
+  import app.GameViewMode._
 
-  case class State(
-    mode:           Mode
-  )
+  case class State()
 
   class Backend($ : BackendScope[_, State]) {
 
-//    def menuProvider(s: State)(): Seq[(String, Callback)] = {
-//      s.gameInProgress
-//        .filter(_.gameStatus.enJuego).toSeq.flatMap(_ =>
-//          Seq(("Entrar al juego", $.modState(_.copy(mode = Mode.game))))
-//        ) ++
-//        Seq(("Lobby", $.modState(_.copy(mode = Mode.lobby))))
-//    }
-
+    def init(
+      p: Props,
+      s: State
+    ): Callback = {
+      Callback.empty
+    }
     //    private val gameDecoder = implicitly[Decoder[Game]]
 
     def onModeChanged(
-      opt:      Option[Mode],
+      p: Props
+    )(
+      opt:      Option[GameViewMode],
       callback: Callback
     ): Callback = {
-      $.modState(_.copy(mode = opt.getOrElse(Mode.none))) >> callback
+      p.chutiState.onGameViewModeChanged(opt.getOrElse(GameViewMode.none)) >> callback
     }
 
     def onGameInProgressChanged(
@@ -72,6 +66,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     }
 
     def render(
+      p: Props,
       s: State
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
@@ -80,7 +75,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
         def renderDebugBar = chutiState.gameInProgress.fold(EmptyVdom) { game =>
           <.div(
             ^.className := "debugBar",
-            ^.border := "10px solid orange",
+            ^.border    := "10px solid orange",
             <.span(s"Game Status = ${game.gameStatus}, "),
             <.span(s"Game Index = ${game.currentEventIndex}, "),
             <.span(s"Quien canta = ${game.quienCanta.map(_.user.name)}, "),
@@ -89,31 +84,32 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
           )
         }
 
-        val mode = if (chutiState.gameInProgress.isEmpty && s.mode == game) {
-          //I don't want to be in the lobby if the game is loading
-          none
-        } else {
-          if (s.mode != Mode.none) {
-            window.sessionStorage.setItem("gamePageMode", s.mode.toString)
+        val gameViewMode =
+          if (chutiState.gameInProgress.isEmpty && p.chutiState.gameViewMode == game) {
+            //I don't want to be in the lobby if the game is loading
+            none
+          } else {
+            if (p.chutiState.gameViewMode != GameViewMode.none) {
+              window.sessionStorage.setItem("gamePageMode", p.chutiState.gameViewMode.toString)
+            }
+            p.chutiState.gameViewMode
           }
-          s.mode
-        }
 
-        mode match {
-          case Mode.lobby =>
+        gameViewMode match {
+          case GameViewMode.lobby =>
             VdomArray(
               //            renderDebugBar,
               LobbyComponent(
                 StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
-                StateSnapshot(mode)(onModeChanged)
+                StateSnapshot(gameViewMode)(onModeChanged(p))
               )
             )
-          case Mode.game =>
+          case GameViewMode.game =>
             VdomArray(
               //            renderDebugBar,
               GameComponent(
                 StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
-                StateSnapshot(mode)(onModeChanged)
+                StateSnapshot(gameViewMode)(onModeChanged(p))
               )
             )
           case _ =>
@@ -122,31 +118,27 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       }
     }
   }
+  case class Props(chutiState: ChutiState)
 
   private val component = ScalaComponent
-    .builder[Unit]("GamePageInner")
-    .initialState {
-      val modeStr = window.sessionStorage.getItem("gamePageMode")
-      val mode = {
-        val ret =
-          try {
-            Mode.withName(modeStr)
-          } catch {
-            case _: Throwable =>
-              Mode.lobby
-          }
-        if (ret == none) {
-          //Should not happen, but let's be sure it doesn't happen again
-          window.sessionStorage.setItem("gamePageMode", Mode.lobby.toString)
-          Mode.lobby
-        } else {
-          ret
-        }
-      }
-      State(mode = mode)
-    }
+    .builder[Props]("GamePageInner")
+    .initialState(State())
     .renderBackend[Backend]
+    .componentDidMount($ => $.backend.init($.props, $.state))
     .build
 
-  def apply(): Unmounted[Unit, State, Backend] = component()
+  private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =
+    component(Props(chutiState))
+
+  private def innerComponent =
+    ScalaComponent
+      .builder[Unit]
+      .renderStatic {
+        ChutiState.ctx.consume { chutiState =>
+          inner(chutiState)
+        }
+      }
+      .build
+
+  def apply(): Unmounted[Unit, Unit, Unit] = innerComponent()
 }

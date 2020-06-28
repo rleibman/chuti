@@ -19,6 +19,7 @@ package app
 import java.net.URI
 import java.util.UUID
 
+import app.GameViewMode.GameViewMode
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
@@ -28,6 +29,7 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.{Callback, _}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import org.scalajs.dom.window
 import pages.GamePage.{calibanCallThroughJsonOpt, makeWebSocketClient}
 import router.AppRouter
 import service.UserRESTClient
@@ -127,19 +129,18 @@ object Content extends ChutiComponent {
         )
       }
 
+    def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
+      $.modState(_.copy(gameViewMode = gameViewMode))
+
     def onGameInProgressChanged(gameOpt: Option[Game]): Callback =
       $.modState(_.copy(gameInProgress = gameOpt))
-
-    def addMenuProvider(menuProvider: () => Seq[(String, Callback)]): Callback = {
-      $.modState(s => s.copy(menuProviders = s.menuProviders :+ menuProvider))
-    }
 
     def init(): Callback =
       $.modState(s =>
         s.copy(
-          addMenuProvider = addMenuProvider,
           onGameInProgressChanged = onGameInProgressChanged,
           onRequestGameRefresh = refresh,
+          onGameViewModeChanged = onGameViewModeChanged,
           onUserChanged = onUserChanged
         )
       )
@@ -195,7 +196,27 @@ object Content extends ChutiComponent {
 
   private val component = ScalaComponent
     .builder[Unit]("content")
-    .initialState(ChutiState())
+    .initialState {
+      val modeStr = window.sessionStorage.getItem("gamePageMode")
+      val gameViewMode = {
+        val ret =
+          try {
+            GameViewMode.withName(modeStr)
+          } catch {
+            case _: Throwable =>
+              GameViewMode.lobby
+          }
+        if (ret == GameViewMode.none) {
+          //Should not happen, but let's be sure it doesn't happen again
+          window.sessionStorage.setItem("gamePageMode", GameViewMode.lobby.toString)
+          GameViewMode.lobby
+        } else {
+          ret
+        }
+      }
+
+      ChutiState(gameViewMode = gameViewMode)
+    }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init() >> $.backend.refresh())
     .build

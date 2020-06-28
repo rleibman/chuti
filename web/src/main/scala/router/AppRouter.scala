@@ -16,7 +16,7 @@
 
 package router
 
-import app.ChutiState
+import app.{ChutiState, GameViewMode}
 import components.components.ChutiComponent
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.router._
@@ -62,12 +62,14 @@ object AppRouter extends ChutiComponent {
                 text = "☰ Menu"
               )(
                 DropdownMenu()(
-                  chutiState.menuProviders.flatMap(_()).toVdomArray {
-                    case (item, action) =>
-                      MenuItem(onClick = { (_, _) =>
-                        action
-                      })(item)
+                  chutiState.gameInProgress.filter(_.gameStatus.enJuego).toVdomArray { _ =>
+                    MenuItem(onClick = { (_, _) =>
+                      chutiState.onGameViewModeChanged(GameViewMode.game)
+                    })("Entrar al Juego")
                   },
+                  MenuItem(onClick = { (_, _) =>
+                    chutiState.onGameViewModeChanged(GameViewMode.lobby)
+                  })("Lobby"),
                   Divider()(),
                   MenuItem(onClick = { (_, _) =>
                     Callback.alert("en construcción") //TODO write this

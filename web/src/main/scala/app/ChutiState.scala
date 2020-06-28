@@ -16,15 +16,17 @@
 
 package app
 
+import app.GameViewMode.GameViewMode
+import caliban.client.scalajs.WebSocketHandler
 import chuti.{Game, GameEvent, User}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
-import caliban.client.scalajs.WebSocketHandler
-import japgolly.scalajs.react.extra.StateSnapshot.SetFn
+object GameViewMode extends Enumeration {
+  type GameViewMode = Value
+  val lobby, game, none = Value
+}
 
 case class ChutiState(
-  menuProviders: Seq[() => Seq[(String, Callback)]] = Seq.empty,
-  addMenuProvider: (() => Seq[(String, Callback)]) => Callback = _ => Callback.empty,
   onUserChanged: Option[User] => Callback = _ => Callback.empty,
   user:          Option[User] = None,
   serverVersion: Option[String] = None,
@@ -33,13 +35,14 @@ case class ChutiState(
   //TODO without receiving it, we need to ask the server for the full state of the game again
   //    gameEventQueue: SortedSet[GameEvent] =
   //      SortedSet.empty(Ordering.by[GameEvent, Option[Int]](_.index))
-  gameInProgress: Option[Game] = None,
+  gameInProgress:          Option[Game] = None,
   onGameInProgressChanged: Option[Game] => Callback = _ => Callback.empty,
-  onRequestGameRefresh : Callback = Callback.empty,
-  gameStream:     Option[WebSocketHandler] = None,
-  gameEventQueue: Seq[GameEvent] = Seq.empty
-) {
-}
+  onRequestGameRefresh:    Callback = Callback.empty,
+  gameStream:              Option[WebSocketHandler] = None,
+  gameEventQueue:          Seq[GameEvent] = Seq.empty,
+  gameViewMode:            GameViewMode = GameViewMode.lobby,
+  onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty
+) {}
 
 object ChutiState {
   val ctx: Context[ChutiState] = React.createContext(ChutiState())

@@ -16,7 +16,8 @@
 
 package pages
 
-import app.ChutiState
+import app.GameViewMode.GameViewMode
+import app.{ChutiState, GameViewMode}
 import chat._
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
@@ -30,7 +31,6 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalablytyped.runtime.StringDictionary
-import pages.GamePage.Mode.Mode
 import pages.LobbyComponent.calibanCall
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
@@ -40,8 +40,8 @@ import scala.scalajs.js.JSConverters._
 
 object GameComponent {
   case class Props(
-    gameInProgress:       StateSnapshot[Option[Game]],
-    mode:                 StateSnapshot[Mode]
+    gameInProgress: StateSnapshot[Option[Game]],
+    gameViewMode:   StateSnapshot[GameViewMode]
   )
 
   object JugadorState extends Enumeration {
@@ -144,9 +144,7 @@ object GameComponent {
         <.div(
           renderCuentasDialog,
           Container(className = "navBar")(
-            Button(compact = true, basic = true, onClick = { (_, _) =>
-              p.mode.setState(GamePage.Mode.lobby)
-            })("Regresa al lobby"),
+            //TODO mueve cuentas al menu
             Button(compact = true, basic = true, onClick = { (_, _) =>
               $.modState(_.copy(dlg = Dialog.cuentas))
             })("Cuentas")
@@ -458,8 +456,8 @@ object GameComponent {
     .build
 
   def apply(
-    gameInProgress:       StateSnapshot[Option[Game]],
-    mode:                 StateSnapshot[Mode]
+    gameInProgress: StateSnapshot[Option[Game]],
+    mode:           StateSnapshot[GameViewMode]
   ): Unmounted[Props, State, Backend] =
     component(Props(gameInProgress, mode))
 }

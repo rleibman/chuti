@@ -132,7 +132,6 @@ trait ScalaJSClientAdapter {
 
   lazy private[caliban] val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
 
-
   //TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: Decoder](
     uriOrSocket:          Either[URI, WebSocket],

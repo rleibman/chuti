@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 3,
-  "created" : "2020-06-17T13:08:13.757417",
+  "created" : "2020-06-28T08:55:38.113501",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -26,8 +26,8 @@
             
           }
         },
-        "created" : "2020-06-17T13:08:06.87555",
-        "lastUpdated" : "2020-06-17T13:08:06.875558",
+        "created" : "2020-06-28T08:55:31.262082",
+        "lastUpdated" : "2020-06-28T08:55:31.262087",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
@@ -58,8 +58,8 @@
             
           }
         },
-        "created" : "2020-06-17T13:08:06.875611",
-        "lastUpdated" : "2020-06-17T13:08:06.875612",
+        "created" : "2020-06-28T08:55:31.262098",
+        "lastUpdated" : "2020-06-28T08:55:31.262101",
         "lastLoggedIn" : null,
         "active" : false,
         "deleted" : false,
