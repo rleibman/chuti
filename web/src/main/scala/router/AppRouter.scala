@@ -16,7 +16,7 @@
 
 package router
 
-import app.ChutiState
+import app.{ChutiState, GameViewMode}
 import components.components.ChutiComponent
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.router._
@@ -24,8 +24,6 @@ import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom._
 import pages._
 import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.SemanticICONS
-import typings.semanticUiReact.semanticUiReactStrings.{labeled, mini}
 
 object AppRouter extends ChutiComponent {
 
@@ -42,7 +40,7 @@ object AppRouter extends ChutiComponent {
   private def layout(
     page:       RouterCtl[AppPage],
     resolution: Resolution[AppPage]
-  ) = {
+  ): VdomElement = {
     assert(page != null)
     ChutiState.ctx.consume { chutiState =>
       def renderMenu = {
@@ -55,23 +53,23 @@ object AppRouter extends ChutiComponent {
               attached = false,
               compact = true,
               text = true,
-              icon = labeled,
-              borderless = true,
-              size = mini
+              borderless = true
             )(
               Dropdown(
                 item = true,
 //                simple = true,
                 compact = true,
-                text = "☰ Menu",
+                text = "☰ Menu"
               )(
                 DropdownMenu()(
-                  chutiState.pageMenuItems.toVdomArray {
-                    case (item, action) =>
-                      MenuItem(onClick = { (_, _) =>
-                        action
-                      })(item)
+                  chutiState.gameInProgress.filter(_.gameStatus.enJuego).toVdomArray { _ =>
+                    MenuItem(onClick = { (_, _) =>
+                      chutiState.onGameViewModeChanged(GameViewMode.game)
+                    })("Entrar al Juego")
                   },
+                  MenuItem(onClick = { (_, _) =>
+                    chutiState.onGameViewModeChanged(GameViewMode.lobby)
+                  })("Lobby"),
                   Divider()(),
                   MenuItem(onClick = { (_, _) =>
                     Callback.alert("en construcción") //TODO write this
@@ -104,34 +102,12 @@ object AppRouter extends ChutiComponent {
         <.div(^.className := "header", renderMenu),
         resolution.render()
       )
-
-//      <.div(
-//        ^.height := 100.pct,
-//        SidebarPushable()(
-//          Sidebar(animation = push, visible = chutiState.sidebarVisible)(renderMenu),
-//          SidebarPusher()(
-//            <.div(
-//              ^.height   := 100.pct,
-//              ^.maxWidth := 1500.px,
-//              ^.padding  := 5.px,
-//              Button(compact = true, onClick = { (_, _) =>
-//                Callback {
-//                  document.location.href = "/api/auth/doLogout"
-//                }
-//              })("Cerrar sesión"),
-//              Button(compact = true, onClick = { (_, _) =>
-//                Callback.alert("en construcción") //TODO write this
-//              })("Administración de usuario"),
-//              resolution.render()
-//            )
-//          )
-//        )
-//      )
     }
   }
 
   private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
+
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())

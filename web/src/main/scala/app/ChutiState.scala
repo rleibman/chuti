@@ -16,16 +16,32 @@
 
 package app
 
-import chuti.User
+import app.GameViewMode.GameViewMode
+import caliban.client.scalajs.WebSocketHandler
+import chuti.{Game, GameEvent, User}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
+object GameViewMode extends Enumeration {
+  type GameViewMode = Value
+  val lobby, game, none = Value
+}
 
 case class ChutiState(
-  onUserChanged:          Option[Option[User] => Callback] = None,
-  user:                   Option[User] = None,
-  pageMenuItems:          Seq[(String, Callback)] = Seq.empty,
-  onPageMenuItemsChanged: Option[Seq[(String, Callback)] => Callback] = None,
-  serverVersion:          Option[String] = None
+  onUserChanged: Option[User] => Callback = _ => Callback.empty,
+  user:          Option[User] = None,
+  serverVersion: Option[String] = None,
+  //TODO events have to get applied to the local copy of the game in order, if we receive
+  //TODO an event out of order we need to wait until we have it's match, and if a timeout passes
+  //TODO without receiving it, we need to ask the server for the full state of the game again
+  //    gameEventQueue: SortedSet[GameEvent] =
+  //      SortedSet.empty(Ordering.by[GameEvent, Option[Int]](_.index))
+  gameInProgress:          Option[Game] = None,
+  onGameInProgressChanged: Option[Game] => Callback = _ => Callback.empty,
+  onRequestGameRefresh:    Callback = Callback.empty,
+  gameStream:              Option[WebSocketHandler] = None,
+  gameEventQueue:          Seq[GameEvent] = Seq.empty,
+  gameViewMode:            GameViewMode = GameViewMode.lobby,
+  onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty
 ) {}
 
 object ChutiState {

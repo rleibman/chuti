@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
-import caliban.client.scalajs.ScalaJSClientAdapter
+import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.ChatClient.{
   Mutations,
   Subscriptions,
@@ -35,8 +35,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.raw.HTMLButtonElement
 import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components.{FormGroup, _}
-import typings.semanticUiReact.genericMod.SemanticWIDTHS
+import typings.semanticUiReact.components._
 import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 
 import scala.concurrent.Future
@@ -87,31 +86,29 @@ object ChatComponent extends ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomNode =
-      Form(className = "chat")(
-        Header(className = "title")("Chuti Chat"),
-        FormGroup()(
-          FormField(width = SemanticWIDTHS.`16`)(
-            s.chatMessages.toVdomArray(msg =>
-              <.div(
-                ^.className := "receivedMessage",
-                <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
-                <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
-                <.div(^.className := "messageText", msg.msg)
-              )
+      <.div(
+        ^.className := "chat",
+        <.h1(^.className := "title", "Chuti Chat"),
+        <.div(
+          ^.className := "messages",
+          s.chatMessages.toVdomArray(msg =>
+            <.div(
+              ^.className := "receivedMessage",
+              <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
+              <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
+              <.div(^.className := "messageText", msg.msg)
             )
           )
         ),
         <.div(
           ^.className := "sendMessage",
-          FormGroup()(FormField(width = SemanticWIDTHS.`16`)(Label()("Message"))),
-          FormGroup()(
-            FormField(width = SemanticWIDTHS.`16`)(
-              TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)()
-            )
-          ),
-          FormGroup()(
-            FormField(width = SemanticWIDTHS.`16`)(Button(onClick = onSend(p, s))("Send"))
-          )
+          TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)(),
+          Button(
+            compact = true,
+            basic = true,
+            disabled = s.msgInFlux.trim.isEmpty,
+            onClick = onSend(p, s)
+          )("Send")
         )
       )
 
