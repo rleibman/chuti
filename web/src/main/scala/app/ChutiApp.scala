@@ -101,7 +101,7 @@ object ParentComponent {
           <.div(
             useThisState.menuProviders
               .flatMap(_ ()).toVdomArray(i =>
-              <.div(<.button(^.onClick ==> { a =>
+              <.div(<.button(^.onClick ==> { _ =>
                 i._2
               }, i._1))
             ),

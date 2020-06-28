@@ -34,6 +34,10 @@ import zio.duration._
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
+trait WebSocketHandler {
+  def close(): Unit
+}
+
 trait ScalaJSClientAdapter {
   import sttp.client._
   val serverUri = uri"http://localhost:8079/api/game"
@@ -128,9 +132,6 @@ trait ScalaJSClientAdapter {
 
   lazy private[caliban] val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
 
-  trait WebSocketHandler {
-    def close(): Unit
-  }
 
   //TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: Decoder](

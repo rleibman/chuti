@@ -41,7 +41,6 @@ import scala.scalajs.js.JSConverters._
 object GameComponent {
   case class Props(
     gameInProgress:       StateSnapshot[Option[Game]],
-    onRequestGameRefresh: Callback,
     mode:                 StateSnapshot[Mode]
   )
 
@@ -442,7 +441,7 @@ object GameComponent {
               onPrivateMessage = Option(msg =>
                 $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(
                   <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
-                ) >> p.onRequestGameRefresh >> refresh()
+                ) >> chutiState.onRequestGameRefresh >> refresh()
               )
             )
           )
@@ -460,8 +459,7 @@ object GameComponent {
 
   def apply(
     gameInProgress:       StateSnapshot[Option[Game]],
-    onRequestGameRefresh: Callback,
     mode:                 StateSnapshot[Mode]
   ): Unmounted[Props, State, Backend] =
-    component(Props(gameInProgress, onRequestGameRefresh, mode))
+    component(Props(gameInProgress, mode))
 }

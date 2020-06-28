@@ -103,13 +103,11 @@ object AppRouter extends ChutiComponent {
     }
   }
 
-  private def config(
-    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
-  ): RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
+  private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
     import dsl._
 
     (trimSlashes
-      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage(addMenuProvider))
+      | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
@@ -117,8 +115,5 @@ object AppRouter extends ChutiComponent {
   }
   private val baseUrl: BaseUrl = BaseUrl.fromWindowOrigin_/
 
-  def router(
-    addMenuProvider: (() => Seq[(String, Callback)]) => Callback
-  ): Router[AppPage] =
-    Router.apply(baseUrl, config(addMenuProvider))
+  val router: Router[AppPage] = Router.apply(baseUrl, config)
 }
