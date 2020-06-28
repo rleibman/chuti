@@ -16,18 +16,16 @@
 
 package router
 
-import app.{ChutiState, GameViewMode}
+import app.{ChutiState, GameViewMode, GlobalDialog}
 import components.components.ChutiComponent
-import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom._
 import pages._
 import typings.semanticUiReact.components._
 
 object AppRouter extends ChutiComponent {
-
-  case class State()
 
   sealed trait AppPage
 
@@ -36,6 +34,60 @@ object AppRouter extends ChutiComponent {
   case object RulesAppPage extends AppPage
 
   case object UserSettingsAppPage extends AppPage
+
+  object DialogRenderer {
+    class Backend($ : BackendScope[_, _]) {
+
+      def render(): VdomElement = ChutiState.ctx.consume { chutiState =>
+        def renderCuentasDialog: VdomArray = {
+          chutiState.gameInProgress.toVdomArray { game =>
+            Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
+              ModalHeader()("Cuentas"),
+              ModalContent()(
+                Table()(
+                  TableHeader()(
+                    TableRow(key = "cuentasHeader")(
+                      TableHeaderCell()("Jugador"),
+                      TableHeaderCell()("Cuentas"),
+                      TableHeaderCell()("Total"),
+                      TableHeaderCell()("Satoshi")
+                    )
+                  ),
+                  game.jugadores.zipWithIndex.toVdomArray {
+                    case (jugador, jugadorIndex) =>
+                      TableRow(key = s"cuenta$jugadorIndex")(
+                        TableCell()(jugador.user.name),
+                        TableCell()(
+                          jugador.cuenta.zipWithIndex.toVdomArray {
+                            case (cuenta, cuentaIndex) =>
+                              <.span(
+                                ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
+                                ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
+                                s"${if (cuenta.puntos > 0) "+" else ""} ${cuenta.puntos}"
+                              )
+                          }
+                        ),
+                        TableCell()(jugador.cuenta.map(_.puntos).sum),
+                        TableCell()(0)
+                      )
+                  }
+                )
+              ),
+              ModalActions()(Button(compact = true, basic = true, onClick = { (_, _) =>
+                chutiState.showDialog(GlobalDialog.none)
+              })("Ok"))
+            )
+          }
+        }
+        VdomArray(renderCuentasDialog)
+      }
+    }
+    private val component = ScalaComponent
+      .builder[Unit]("content")
+      .renderBackend[Backend]
+      .build
+    def apply() = component()
+  }
 
   private def layout(
     page:       RouterCtl[AppPage],
@@ -62,10 +114,15 @@ object AppRouter extends ChutiComponent {
                 text = "☰ Menu"
               )(
                 DropdownMenu()(
-                  chutiState.gameInProgress.filter(_.gameStatus.enJuego).toVdomArray { _ =>
-                    MenuItem(onClick = { (_, _) =>
-                      chutiState.onGameViewModeChanged(GameViewMode.game)
-                    })("Entrar al Juego")
+                  chutiState.gameInProgress.filter(_.gameStatus.enJuego).map { _ =>
+                    VdomArray(
+                      MenuItem(onClick = { (_, _) =>
+                        chutiState.onGameViewModeChanged(GameViewMode.game)
+                      })("Entrar al Juego"),
+                      MenuItem(onClick = { (_, _) =>
+                        chutiState.showDialog(GlobalDialog.cuentas)
+                      })("Cuentas")
+                    )
                   },
                   MenuItem(onClick = { (_, _) =>
                     chutiState.onGameViewModeChanged(GameViewMode.lobby)
@@ -99,7 +156,7 @@ object AppRouter extends ChutiComponent {
 
       <.div(
         ^.className := "innerContent",
-        <.div(^.className := "header", renderMenu),
+        <.div(^.className := "header", renderMenu, DialogRenderer()),
         resolution.render()
       )
     }

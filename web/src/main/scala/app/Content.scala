@@ -20,6 +20,7 @@ import java.net.URI
 import java.util.UUID
 
 import app.GameViewMode.GameViewMode
+import app.GlobalDialog.GlobalDialog
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
@@ -135,13 +136,17 @@ object Content extends ChutiComponent {
     def onGameInProgressChanged(gameOpt: Option[Game]): Callback =
       $.modState(_.copy(gameInProgress = gameOpt))
 
+    def showDialog(dlg: GlobalDialog): Callback =
+      $.modState(_.copy(currentDialog = dlg))
+
     def init(): Callback =
       $.modState(s =>
         s.copy(
           onGameInProgressChanged = onGameInProgressChanged,
           onRequestGameRefresh = refresh,
           onGameViewModeChanged = onGameViewModeChanged,
-          onUserChanged = onUserChanged
+          onUserChanged = onUserChanged,
+          showDialog = showDialog
         )
       )
 

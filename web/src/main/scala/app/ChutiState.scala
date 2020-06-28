@@ -17,6 +17,7 @@
 package app
 
 import app.GameViewMode.GameViewMode
+import app.GlobalDialog.GlobalDialog
 import caliban.client.scalajs.WebSocketHandler
 import chuti.{Game, GameEvent, User}
 import japgolly.scalajs.react.React.Context
@@ -24,6 +25,11 @@ import japgolly.scalajs.react.{Callback, React}
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value
+}
+
+object GlobalDialog extends Enumeration {
+  type GlobalDialog = Value
+  val cuentas, none = Value
 }
 
 case class ChutiState(
@@ -41,8 +47,10 @@ case class ChutiState(
   gameStream:              Option[WebSocketHandler] = None,
   gameEventQueue:          Seq[GameEvent] = Seq.empty,
   gameViewMode:            GameViewMode = GameViewMode.lobby,
-  onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty
-) {}
+  onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty,
+  showDialog:              GlobalDialog => Callback = _ => Callback.empty,
+  currentDialog:           GlobalDialog = GlobalDialog.none
+)
 
 object ChutiState {
   val ctx: Context[ChutiState] = React.createContext(ChutiState())

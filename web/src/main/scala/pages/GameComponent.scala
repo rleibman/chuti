@@ -50,20 +50,13 @@ object GameComponent {
   }
   import JugadorState._
 
-  object Dialog extends Enumeration {
-    type Dialog = Value
-    val cuentas, none = Value
-  }
-  import Dialog._
-
   case class State(
     cuantasCantas:     Option[CuantasCantas] = None,
     triunfo:           Option[Triunfo] = None,
     estrictaDerecha:   Boolean = false,
     fichaSeleccionada: Option[Ficha] = None,
-    privateMessage:    Option[ChatMessage] = None,
-    dlg:               Dialog = Dialog.none
-  ) {}
+    privateMessage:    Option[ChatMessage] = None
+  )
 
   class Backend($ : BackendScope[Props, State]) {
     def refresh(): Callback = {
@@ -99,56 +92,9 @@ object GameComponent {
       p: Props,
       s: State
     ): VdomNode = {
-      def renderCuentasDialog: VdomArray = {
-        p.gameInProgress.value.toVdomArray { game =>
-          Modal(key = "cuentasDialog", open = s.dlg == Dialog.cuentas)(
-            ModalHeader()("Cuentas"),
-            ModalContent()(
-              Table()(
-                TableHeader()(
-                  TableRow(key = "cuentasHeader")(
-                    TableHeaderCell()("Jugador"),
-                    TableHeaderCell()("Cuentas"),
-                    TableHeaderCell()("Total"),
-                    TableHeaderCell()("Satoshi")
-                  )
-                ),
-                game.jugadores.zipWithIndex.toVdomArray {
-                  case (jugador, jugadorIndex) =>
-                    TableRow(key = s"cuenta$jugadorIndex")(
-                      TableCell()(jugador.user.name),
-                      TableCell()(
-                        jugador.cuenta.zipWithIndex.toVdomArray {
-                          case (cuenta, cuentaIndex) =>
-                            <.span(
-                              ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
-                              ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                              s"${if (cuenta.puntos > 0) "+" else ""} ${cuenta.puntos}"
-                            )
-                        }
-                      ),
-                      TableCell()(jugador.cuenta.map(_.puntos).sum),
-                      TableCell()(0)
-                    )
-                }
-              )
-            ),
-            ModalActions()(Button(compact = true, basic = true, onClick = { (_, _) =>
-              $.modState(_.copy(dlg = Dialog.none))
-            })("Ok"))
-          )
-        }
-      }
 
       ChutiState.ctx.consume { chutiState =>
         <.div(
-          renderCuentasDialog,
-          Container(className = "navBar")(
-            //TODO mueve cuentas al menu
-            Button(compact = true, basic = true, onClick = { (_, _) =>
-              $.modState(_.copy(dlg = Dialog.cuentas))
-            })("Cuentas")
-          ),
           p.gameInProgress.value.fold(EmptyVdom) { game =>
             game.jugadores.zipWithIndex.toVdomArray {
               case (jugador, playerIndex) =>
