@@ -766,7 +766,7 @@ case class Da(
             })
           ),
           Option(ganador),
-          Option(s"${game.jugador(Option(ganador)).user.name} se llevo la ultima fila")
+          Option(s"${game.jugador(Option(ganador)).user.name} gano la ultima mano")
         )
       } else {
         //transfiere la ficha al centro
