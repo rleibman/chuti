@@ -252,6 +252,7 @@ h4 {
 .userStatus {
     font-style: italic;
     display: inline-block;
+    margin: 1em;
 }
 
 .statusBar1 {
@@ -277,13 +278,12 @@ h4 {
     grid-template-rows: 2em auto auto;
     grid-template-columns: 1fr 1fr 1fr 1fr;
 
-    padding: 5px;
     margin: 10px;
     border: 10px solid darkgreen;
     border-radius: 20px;
     background-color: forestgreen;
     min-width: calc(var(--domino-width) * 6);
-    min-height: calc(var(--domino-height) + 4em);
+    min-height: calc(var(--domino-height) + 10em);
 
     align-self: center;
     justify-self: center;
@@ -292,8 +292,22 @@ h4 {
 .juegoStatus {
     grid-column-end: span 4;
     color: #AFEAB0;
-    padding: 3px;
     font-style: italic;
+    display: grid;
+    grid-template-columns: 1fr 4fr;
+}
+
+.triunfan {
+    display: block;
+    padding: 3px;
+    text-align: center;
+}
+
+.juegoStatusString {
+    padding: 3px;
+    display:block;
+    justify-self: center;
+    align-self: center;
 }
 
 .fichasEnJuegoName {
@@ -341,6 +355,7 @@ h4 {
 
 .dominoJugado0Container {
     display: inline-block;
+    margin: 1px;
     height: var(--domino-jugado-height);
     width: var(--domino-jugado-width);
 }
@@ -577,6 +592,16 @@ h4 {
     padding-left: 5px;
     padding-right: 5px;
     white-space: nowrap;
+}
+
+.hoyo {
+    border-radius: 100px;
+    border: 2px solid red;
+    background: white;
+    color: black;
+    padding: 1px 5px;
+    margin: 1px;
+    display: inline-block;
 }
 
 /*html {*/

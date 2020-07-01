@@ -17,6 +17,7 @@
 package router
 
 import app.{ChutiState, GameViewMode, GlobalDialog}
+import chuti.GameStatus
 import components.components.ChutiComponent
 import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
@@ -35,14 +36,18 @@ object AppRouter extends ChutiComponent {
 
   case object UserSettingsAppPage extends AppPage
 
+  case object AboutAppPage extends AppPage
+
   object DialogRenderer {
     class Backend($ : BackendScope[_, _]) {
 
       def render(): VdomElement = ChutiState.ctx.consume { chutiState =>
         def renderCuentasDialog: VdomArray = {
           chutiState.gameInProgress.toVdomArray { game =>
+            val ganador = game.jugadores.find(_.cuenta.map(_.puntos).sum >= 21)
+
             Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
-              ModalHeader()("Cuentas"),
+              ModalHeader()(s"Cuentas (${game.satoshiPerPoint} Satoshi per punto)"),
               ModalContent()(
                 Table()(
                   TableHeader()(
@@ -53,8 +58,8 @@ object AppRouter extends ChutiComponent {
                       TableHeaderCell()("Satoshi")
                     )
                   ),
-                  game.jugadores.zipWithIndex.toVdomArray {
-                    case (jugador, jugadorIndex) =>
+                  game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                    case ((jugador, puntos, satoshi), jugadorIndex) =>
                       TableRow(key = s"cuenta$jugadorIndex")(
                         TableCell()(jugador.user.name),
                         TableCell()(
@@ -63,15 +68,27 @@ object AppRouter extends ChutiComponent {
                               <.span(
                                 ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
                                 ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                                s"${if (cuenta.puntos > 0) "+" else ""} ${cuenta.puntos}"
+                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
                               )
                           }
                         ),
-                        TableCell()(jugador.cuenta.map(_.puntos).sum),
-                        TableCell()(0)
+                        TableCell()(
+                          <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                        ),
+                        TableCell()(
+                          <.span(
+                            <.span(^.color := (if (satoshi < 0) "#CC0000" else "#000000"), satoshi)
+                              .when(game.gameStatus == GameStatus.partidoTerminado)
+                          )
+                        )
                       )
                   }
-                )
+                ),
+                if (game.gameStatus == GameStatus.partidoTerminado) {
+                  <.div(s"Partido terminado, ${ganador.fold("")(_.user.name)} gano el partido.")
+                } else {
+                  EmptyVdom
+                }
               ),
               ModalActions()(Button(compact = true, basic = true, onClick = { (_, _) =>
                 chutiState.showDialog(GlobalDialog.none)
@@ -114,33 +131,37 @@ object AppRouter extends ChutiComponent {
                 text = "☰ Menu"
               )(
                 DropdownMenu()(
-                  chutiState.gameInProgress.filter(_.gameStatus.enJuego).map { _ =>
-                    VdomArray(
-                      MenuItem(onClick = { (_, _) =>
-                        chutiState.onGameViewModeChanged(GameViewMode.game)
-                      })("Entrar al Juego"),
-                      MenuItem(onClick = { (_, _) =>
-                        chutiState.showDialog(GlobalDialog.cuentas)
-                      })("Cuentas")
-                    )
-                  },
-                  MenuItem(onClick = { (_, _) =>
-                    chutiState.onGameViewModeChanged(GameViewMode.lobby)
+                  chutiState.gameInProgress
+                    .filter(g => g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado
+                    ).map { _ =>
+                      VdomArray(
+                        MenuItem(onClick = { (e, _) =>
+                          chutiState
+                            .onGameViewModeChanged(GameViewMode.game) >> page.setEH(GameAppPage)(e)
+                        })("Entrar al Juego"),
+                        MenuItem(onClick = { (_, _) =>
+                          chutiState.showDialog(GlobalDialog.cuentas)
+                        })("Cuentas")
+                      )
+                    },
+                  MenuItem(onClick = { (e, _) =>
+                    chutiState
+                      .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
                   })("Lobby"),
                   Divider()(),
-                  MenuItem(onClick = { (_, _) =>
-                    Callback.alert("en construcción") //TODO write this
+                  MenuItem(onClick = { (e, _) =>
+                    page.setEH(RulesAppPage)(e)
                   })("Reglas de Chuti"),
                   MenuItem(onClick = { (_, _) =>
                     Callback {
                       document.location.href = "/api/auth/doLogout"
                     }
                   })("Cerrar sesión"),
-                  MenuItem(onClick = { (_, _) =>
-                    Callback.alert("en construcción") //TODO write this
+                  MenuItem(onClick = { (e, _) =>
+                    page.setEH(UserSettingsAppPage)(e)
                   })("Administración de usuario"),
-                  MenuItem(onClick = { (_, _) =>
-                    Callback.alert("en construcción") //TODO write this
+                  MenuItem(onClick = { (e, _) =>
+                    page.setEH(AboutAppPage)(e)
                   })("Acerca de Chuti")
                 )
               )

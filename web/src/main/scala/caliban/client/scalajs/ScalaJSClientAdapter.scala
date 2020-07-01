@@ -307,8 +307,9 @@ trait ScalaJSClientAdapter {
           error.printStackTrace()
       }
     }
-    socket.onerror = { (_: org.scalajs.dom.Event) =>
-      onClientError(new Exception(s"We've got a socket error, no further info"))
+    socket.onerror = { (e: org.scalajs.dom.Event) =>
+      println(s"Got error $e")
+      onClientError(new Exception(s"We've got a socket error, no further info ($e)"))
     }
     socket.onopen = { (_: org.scalajs.dom.Event) =>
 //      println(socket.protocol)

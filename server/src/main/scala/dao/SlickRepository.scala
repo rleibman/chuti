@@ -312,6 +312,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       GamePlayersQuery
         .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
         .join(GameQuery).on(_.gameId === _.id)
+        .sortBy(_._2.lastupdated.desc)
         .result
         .map(_.headOption.map(row => GameRow2Game(row._2)))
     }

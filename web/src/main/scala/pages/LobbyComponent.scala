@@ -19,7 +19,7 @@ package pages
 import java.net.URI
 import java.util.UUID
 
-import app.{ChutiState, GameViewMode}
+import app.ChutiState
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.SelectionBuilder
 import caliban.client.Value.{EnumValue, StringValue}
@@ -390,23 +390,27 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               )
                             case _ => EmptyVdom
                           },
-                          Button(
-                            basic = true,
-                            onClick = (_, _) =>
-                              Confirm.confirm(
-                                header = Option("Abandonar juego"),
-                                question =
-                                  s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
-                                onConfirm = Callback.log(s"Abandoning game") >>
-                                  calibanCall[Mutations, Option[Boolean]](
-                                    Mutations.abandonGame(game.id.get.value),
-                                    res =>
-                                      if (res.getOrElse(false)) Toast.success("Juego abandonado!")
-                                      else
-                                        Toast.error("Error abandonando juego!") //>> p.gameInProgress.setState(None)
-                                  )
-                              )
-                          )("Abandona Juego")
+                          if (game.gameStatus != GameStatus.partidoTerminado) {
+                            Button(
+                              basic = true,
+                              onClick = (_, _) =>
+                                Confirm.confirm(
+                                  header = Option("Abandonar juego"),
+                                  question =
+                                    s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
+                                  onConfirm = Callback.log(s"Abandoning game") >>
+                                    calibanCall[Mutations, Option[Boolean]](
+                                      Mutations.abandonGame(game.id.get.value),
+                                      res =>
+                                        if (res.getOrElse(false)) Toast.success("Juego abandonado!")
+                                        else
+                                          Toast.error("Error abandonando juego!") //>> p.gameInProgress.setState(None)
+                                    )
+                                )
+                            )("Abandona Juego")
+                          } else {
+                            EmptyVdom //TODO Poner un boton en el lobby: "Empezar nuevo partido con los mismos jugadores"
+                          }
                         )
                       }
                     ),

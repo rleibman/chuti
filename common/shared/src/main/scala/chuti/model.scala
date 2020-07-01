@@ -379,6 +379,29 @@ case class Game(
   val abandonedPenalty = 10 //Times the satoshiPerPoint of the game
   val numPlayers = 4
 
+  @transient
+  lazy val cuentasCalculadas: Seq[(Jugador, Int, Double)] = {
+    val conPuntos = jugadores.map { j =>
+      (j, j.cuenta.map(_.puntos).sum)
+    }
+    val ganador = conPuntos.find(_._2 >= 21).map(_._1)
+    conPuntos.map {
+      case (j, puntos) => {
+        val total =
+          (if (puntos >= 21) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
+            (if (puntos < 0) -2 else 0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+            (if (puntos >= 21) conPuntos.count(_._2 < 0) * 2 else 0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+            (if (puntos >= 21 && j.cuenta.last.puntos == 21) 3
+             else if (ganador.fold(false)(_.cuenta.last.puntos == 21)) -1
+             else 0) + //Si se va con chuty, recibe 6 o dos de cada jugador.
+            conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + //Hoyos ajenos
+            (-(j.cuenta.count(_.esHoyo) * 3)) //Hoyos propios
+
+        (j, puntos, total * satoshiPerPoint)
+      }
+    }
+  }
+
   //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
     fichas:    Seq[Ficha],
@@ -518,7 +541,7 @@ case class Game(
         )
     }
 
-  def partidoOver: Boolean = {
+  def partidoTerminado: Boolean = {
     jugadores.exists(_.cuenta.map(_.puntos).sum >= 21)
   }
 

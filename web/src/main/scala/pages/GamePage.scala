@@ -16,16 +16,10 @@
 
 package pages
 
-import java.net.URI
-import java.util.UUID
-
 import app.{ChutiState, GameViewMode}
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chat.ChatComponent
 import chuti._
-import game.GameClient.{Queries, Subscriptions}
-import io.circe.generic.auto._
-import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
@@ -70,8 +64,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       s: State
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
-        println(s"ReRendering GamePage with state $s")
-
         def renderDebugBar = chutiState.gameInProgress.fold(EmptyVdom) { game =>
           <.div(
             ^.className := "debugBar",

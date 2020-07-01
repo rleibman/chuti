@@ -199,7 +199,9 @@ case class PoisonPill(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    //TODO check that the user is god
+    if (userOpt.fold(false)(_.id != Option(UserId(-666)))) {
+      throw GameException("Only god can administer a PoisonPill")
+    }
     (
       game,
       copy(gameId = game.id, userId = userOpt.flatMap(_.id))
@@ -470,7 +472,7 @@ case class Sopa(
         gameId = game.id,
         userId = jugador.id,
         gameStatusString = Option(
-          s"${jugador.user.name} hizo la sopa${newGame.quienCanta.fold("")(j => s", ${j.user.name} canta")}"
+          s"${jugador.user.name} hizo la sopa${newGame.quienCanta.fold("")(j => s", ${j.user.name} canta.")}"
         )
       )
     )
@@ -541,7 +543,7 @@ case class Canta(
       }
     }
 
-    val salvoString = if (nuevoCantante != cantanteActual) {
+    val salvoString = if (nuevoCantante.user.id != nuevoCantante.user.id) {
       Option(
         s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
       )
@@ -756,7 +758,8 @@ case class Da(
                   totalFilas
                 )
               )
-            }
+            },
+            _.copy(mano = false)
           )
         )
         (
@@ -841,7 +844,8 @@ case class Da(
                 index = totalFilas
               )
             )
-          }
+          },
+          _.copy(mano = false)
         )
       )
       a.copy(
@@ -909,7 +913,7 @@ case class Caete(
       if (regalos.isEmpty) {
         jugadores
       } else {
-        //TODO Pregunta los regalos se dan maxByTriunfo o minByTriunfo?
+
         val regalo = conTriunfos.maxByTriunfo(regalos).get
         val fichaMerecedora =
           conTriunfos.fichaGanadora(regalo, jugadores.flatMap(_._1.fichas).toSeq)
@@ -952,8 +956,8 @@ case class Caete(
       index = Option(game.currentEventIndex),
       gameId = game.id,
       userId = jugador.id,
-      gameStatusString = Option(s"${jugador.user} acabo. ${if (regalosRegalados.nonEmpty) {
-        s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}"
+      gameStatusString = Option(s"${jugador.user.name} acabo. ${if (regalosRegalados.nonEmpty) {
+        s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}."
       } else {
         ""
       }}")
@@ -1005,21 +1009,26 @@ case class MeRindo(
     //Nada mas te puedes rendir hasta correr la primera.
     //Se apunta un hoyo, juego nuevo
     if (jugador.filas.size > 1) {
-      throw GameException("No te puedes rendir despues de la primera")
+      throw GameException("No te puedes rendir después de la primera")
     }
     (
       game.copy(
         gameStatus = GameStatus.requiereSopa,
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
-          guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
+          guey =>
+            guey.copy(cuenta = guey.cuenta :+ Cuenta(
+              -guey.cuantasCantas.fold(0)(_.score),
+              esHoyo = true
+            )
+            )
         )
       ),
       copy(
         index = Option(game.currentEventIndex),
         gameId = game.id,
         userId = jugador.id,
-        gameStatusString = Option(s"${jugador.user.name} se rindió...con su respectivo hoyo")
+        gameStatusString = Option(s"${jugador.user.name} se rindió...con su respectivo hoyo.")
       )
     )
   }
@@ -1074,14 +1083,17 @@ case class TerminaJuego(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  partidoTerminado:    Boolean = false
 ) extends PlayEvent {
+  override val reapplyMode: ReapplyMode = fullRefresh
   override def doEvent(
     jugador: Jugador,
     game:    Game
   ): (Game, GameEvent) = {
     val conCuentas = game.copy(
-      gameStatus = if (game.partidoOver) GameStatus.partidoTerminado else GameStatus.requiereSopa,
+      gameStatus =
+        if (game.partidoTerminado) GameStatus.partidoTerminado else GameStatus.requiereSopa,
       jugadores = game.modifiedJugadores(
         _.cantante, { victima =>
           if (game.quienCanta.fold(false)(_.yaSeHizo)) {
@@ -1112,24 +1124,25 @@ case class TerminaJuego(
         game.jugadores.filter(j => !j.cantante && j.filas.nonEmpty).map(_.user.name).mkString(",")
 
       if (j.yaSeHizo) {
-        s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados"
+        s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados."
         else ""}"
       } else {
-        s"Fue hoyo de ${j.cuantasCantas} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados"
+        s"Fue hoyo de ${j.cuantasCantas} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
         else ""}"
       }
     }
 
     val leTocaLaSopa = game.jugadores.find(_.turno).map(j => game.nextPlayer(j))
 
-    if (conCuentas.partidoOver) {
+    if (conCuentas.partidoTerminado) {
       (
         conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
         copy(
           index = Option(game.currentEventIndex),
           gameId = game.id,
           userId = jugador.id,
-          gameStatusString = Option(s"$statusStr Se termino el partido!")
+          gameStatusString = Option(s"$statusStr Se termino el partido!"),
+          partidoTerminado = true
         )
       )
     } else {
@@ -1140,7 +1153,7 @@ case class TerminaJuego(
           gameId = game.id,
           userId = jugador.id,
           gameStatusString = leTocaLaSopa.map(j =>
-            s"$statusStr Se termino el juego, esperando a que ${game.turno} haga la sopa"
+            s"$statusStr Se termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa"
           )
         )
       )
@@ -1150,5 +1163,5 @@ case class TerminaJuego(
   override def redoEvent(
     jugador: Jugador,
     game:    Game
-  ): Game = doEvent(jugador, game)._1
+  ): Game = processStatusMessages(doEvent(jugador, game)._1)
 }

@@ -27,9 +27,9 @@ import components.{Confirm, Toast}
 import game.GameClient.{Queries, Subscriptions}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
-import japgolly.scalajs.react.{Callback, _}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{Callback, _}
 import org.scalajs.dom.window
 import pages.GamePage.{calibanCallThroughJsonOpt, makeWebSocketClient}
 import router.AppRouter
@@ -58,7 +58,14 @@ object Content extends ChutiComponent {
           case ReapplyMode.fullRefresh => refresh()
           case ReapplyMode.reapply     => reapplyEvent(gameEvent)
         }
+      } >> {
+        gameEvent match {
+          case e: TerminaJuego if (e.partidoTerminado) =>
+            $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
+          case _ => Callback.empty
+        }
       }
+
     }
 
     private def reapplyEvent(gameEvent: GameEvent): Callback = {

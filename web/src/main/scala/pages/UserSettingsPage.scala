@@ -31,7 +31,7 @@ object UserSettingsPage extends ChutiPage {
     }
   }
 
-  val component = ScalaComponent
+  private val component = ScalaComponent
     .builder[Unit]("UserSettingsPage")
     .initialState(State())
     .renderBackend[Backend]

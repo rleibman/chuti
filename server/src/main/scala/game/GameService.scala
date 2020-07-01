@@ -640,7 +640,7 @@ object GameService {
           (b._1, Seq(a._2, b._2))
         }
 
-        playEvent match {
+        val res = playEvent match {
           case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Da if e.ficha == Game.campanita =>
@@ -674,6 +674,7 @@ object GameService {
               (a._1, helechoBorlote :+ a._2)
             }
         }
+        res._2.foldLeft((res._1, res._2))((a, b) => (b.processStatusMessages(a._1), a._2))
       }
 
       //TODO comment this out once we've tested redo.
