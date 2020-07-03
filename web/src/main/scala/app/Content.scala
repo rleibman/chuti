@@ -49,23 +49,39 @@ object Content extends ChutiComponent {
   class Backend($ : BackendScope[_, ChutiState]) {
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
-    def processGameEventQueue: Callback = Callback.empty //TODO write this
-
     def onGameEvent(gameEvent: GameEvent): Callback = {
-      Callback.log(gameEvent.toString) >> {
-        gameEvent.reapplyMode match {
-          case ReapplyMode.none        => Callback.empty
-          case ReapplyMode.fullRefresh => refresh()
-          case ReapplyMode.reapply     => reapplyEvent(gameEvent)
+      val updateGame: Callback = for {
+        currentgameOpt <- $.state.map(_.gameInProgress)
+        updated <- {
+          val doRefresh = currentgameOpt.fold(true)(game =>
+            gameEvent.index match {
+              case Some(index) if index == game.nextIndex + 1 =>
+                //If it's a future event, which means we missed an event somewhere, we'll need to call for a full refresh
+                true
+              case _ => false
+            }
+          )
+
+          if (doRefresh)
+            Callback.info(
+              "Had to force a refresh because the event index was too far into the future"
+            ) >> refresh()
+          else
+            gameEvent.reapplyMode match {
+              case ReapplyMode.none        => Callback.empty
+              case ReapplyMode.fullRefresh => refresh()
+              case ReapplyMode.reapply     => reapplyEvent(gameEvent)
+            }
         }
-      } >> {
+      } yield updated
+
+      Callback.log(gameEvent.toString) >> updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
             $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
           case _ => Callback.empty
         }
       }
-
     }
 
     private def reapplyEvent(gameEvent: GameEvent): Callback = {
@@ -97,19 +113,8 @@ object Content extends ChutiComponent {
                   )
               }
           }
-          val moddedQueue = s.gameInProgress.toSeq.flatMap { currentGame: Game =>
-            gameEvent.index match {
-              case Some(index) if index == currentGame.nextIndex + 1 =>
-                //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                //In a few seconds, just get the full game.
-                s.gameEventQueue :+ gameEvent
-              case _ => s.gameEventQueue
-            }
-          }
-
-          s.copy(gameInProgress = moddedGame, gameEventQueue = moddedQueue)
-        },
-        processGameEventQueue
+          s.copy(gameInProgress = moddedGame)
+        }
       )
     }
 

@@ -6,21 +6,21 @@
 - DONE. Database
     - DONE mysql with json column 
 - DONE. Server
-    - decide server technology.
+    DONE - decide server technology.
       - DONE Zio, akka-http, caliban, circe
     - 
 - DONE. Client
     - DONE decide client technology
         - DONE Scalajs, scalablytyped, websockets, caliban, circe
-    - code pages
-        - Set up table
-        - Game page
-        - Cuentas
+    - DONE code pages
+        - DONE Set up table
+        - DONE Game page
+        - DONE Cuentas
 - User system
     - DONE Registration
     - DONE Login
     - DONE Lost password
-    - Set up table
+    - DONE Set up table
 - DONE. Code game engine     
 - FUTURE. Chose domino back logo
 
@@ -44,11 +44,11 @@
 DONE - Create new game
 DONE - Join random game (first user)
 DONE - Join random game (second and third users)
-- Join random game (fourth user)
+DONE - Join random game (fourth user)
 DONE - Abandon unstarted game
 - Abandon a started game
 DONE - Invite one existing user to game
-- Invite non-existing user to game
+DONE - Invite non-existing user to game
 DONE - Accept game invite
 DONE - Reject game invite
 
@@ -58,8 +58,8 @@ DONE - Reject game invite
     This happens because joining is not an event, so the system doesn't know we're ready to play
 
 ### Game
-- Main screen setup
-- Decide what can be done depending on where you are (look at bot)
+DONE - Main screen setup
+DONE - Decide what can be done depending on where you are (look at bot)
 - Animations of Borlotes
     - Sopa
     - Poner ficha
@@ -114,8 +114,9 @@ Glimpse into queues
 - "Juega con quien sea" is not sending out a game event when joining 
 - Last person joining is causing huge issues.
 - onComponentUnmount... close down ws sessions 
-- Aplicando #C, ya esta listo para caerse pero el juego no lo detecta correctamente.
-- Aplicando #C, me encuentro en una posicion en la que dos personas pueden pedir... porque?
+DONE - Aplicando #C, ya esta listo para caerse pero el juego no lo detecta correctamente.
+DONE - Aplicando #C, me encuentro en una posicion en la que dos personas pueden pedir... porque?
+- Double pressing of buttons is messing things up!
 
 ## To test
 - Invite by email, unhappy paths
@@ -123,7 +124,7 @@ Glimpse into queues
 - Add unique constraint to friends
 
 ## Other
-- Remove all "Repository with DatabaseProvider", Repository should stand on it's own 
+DONE - Remove all "Repository with DatabaseProvider", Repository should stand on it's own 
 
 #Interesting games
 ##Por alguna razon se la deberia llevar test1, pero se la lleva aoeu
@@ -150,3 +151,4 @@ DONE - Quitar "Abandona juego"
 
 #Agregar al lobby 
 Cuentas personales
+

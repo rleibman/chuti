@@ -421,39 +421,44 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         <.h1("Juego en Curso"),
                         <.div(
                           <.h2("En este juego"),
-                          <.table(
-                            <.tbody(
-                              game.jugadores.toVdomArray { jugador =>
-                                <.tr(<.td(jugador.user.name), <.td())
-                              }
-                            )
-                          ),
-                          game.gameStatus match {
+                          <.div(game.gameStatus match {
+                            case GameStatus.jugando  => <.p("Estamos a medio juego")
+                            case GameStatus.cantando => <.p("Estamos a medio juego (cantando)")
+                            case GameStatus.requiereSopa =>
+                              <.p("Estamos a medio juego (esperando la sopa)")
+                            case GameStatus.abandonado => <.p("Juego abandonado")
+                            case GameStatus.comienzo   => <.p("Juego empezado")
+                            case GameStatus.partidoTerminado =>
+                              <.p("Juego terminado")
                             case GameStatus.esperandoJugadoresAzar =>
                               <.p(
                                 "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
                               )
                             case GameStatus.esperandoJugadoresInvitados =>
-                              <.div(^.key := "esperandoJugadores")(
-                                <.div(
-                                  <.p(
-                                    "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
-                                  ),
+                              VdomArray(
+                                <.p(
+                                  "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!"
+                                ),
+                                <.span(
                                   <.p(
                                     s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores"
                                   ).when(
                                     game.jugadores.size < 4 && game.jugadores.head.id == user.id
-                                  ),
-                                  <.p(s"Invitados que no han aceptado todavía: ${game.jugadores
-                                    .filter(_.invited).map(_.user.name).mkString(",")}")
-                                    .when(game.jugadores.exists(_.invited)),
-                                  <.p(s"Invitados que ya están listos: ${game.jugadores
-                                    .filter(!_.invited).map(_.user.name).mkString(",")}")
-                                    .when(game.jugadores.exists(!_.invited))
+                                  )
                                 )
                               )
                             case _ => EmptyVdom
-                          }
+                          }),
+                          <.table(
+                            <.tbody(
+                              game.jugadores.toVdomArray { jugador =>
+                                <.tr(
+                                  <.td(jugador.user.name),
+                                  <.td(game.jugadorState(jugador).description)
+                                )
+                              }
+                            )
+                          )
                         ),
                         TagMod(
                           <.div(

@@ -20,6 +20,7 @@ import app.GameViewMode.GameViewMode
 import app.{ChutiState, GameViewMode}
 import chat._
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
+import chuti.JugadorState.JugadorState
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti._
 import components.Toast
@@ -43,13 +44,6 @@ object GameComponent {
     gameInProgress: StateSnapshot[Option[Game]],
     gameViewMode:   StateSnapshot[GameViewMode]
   )
-
-  object JugadorState extends Enumeration {
-    type JugadorState = Value
-    val dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa,
-      partidoTerminado = Value
-  }
-  import JugadorState._
 
   case class State(
     cuantasCantas:     Option[CuantasCantas] = None,
@@ -101,32 +95,7 @@ object GameComponent {
             p.gameInProgress.value.fold(EmptyVdom) { game =>
               game.jugadores.zipWithIndex.toVdomArray {
                 case (jugador, playerIndex) =>
-                  val jugadorState: JugadorState = {
-                    game.gameStatus match {
-                      case GameStatus.cantando =>
-                        if (jugador.mano)
-                          JugadorState.cantando
-                        else
-                          JugadorState.esperandoCanto
-                      case GameStatus.jugando =>
-                        if (jugador.mano && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty)
-                          JugadorState.pidiendoInicial
-                        else if (jugador.mano && game.enJuego.isEmpty)
-                          JugadorState.pidiendo
-                        else if (game.enJuego.nonEmpty && !game.enJuego
-                                   .exists(_._1 == jugador.id.get)) //TODO estricta derecha
-                          JugadorState.dando
-                        else
-                          JugadorState.esperando
-                      case GameStatus.requiereSopa =>
-                        if (jugador.turno)
-                          JugadorState.haciendoSopa
-                        else
-                          JugadorState.esperando
-                      case GameStatus.partidoTerminado =>
-                        JugadorState.partidoTerminado
-                    }
-                  }
+                  val jugadorState: JugadorState = game.jugadorState(jugador)
                   val puedeRendirse = jugador.cantante &&
                     game.jugadores.flatMap(_.filas).size <= 1 &&
                     (jugadorState == JugadorState.esperando ||
@@ -152,7 +121,7 @@ object GameComponent {
                     <.div(
                       ^.className := s"statusBar$playerPosition",
                       <.div(
-                        ^.className := s"playerName ${if (jugadorState != JugadorState.esperando && jugadorState != esperandoCanto) "canPlay"
+                        ^.className := s"playerName ${if (jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto) "canPlay"
                         else ""}",
                         jugador.user.name
                       ),

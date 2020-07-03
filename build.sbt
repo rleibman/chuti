@@ -43,15 +43,15 @@ lazy val akkaVersion = "2.6.6"
 lazy val akkaHttpVersion = "10.1.12"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.8.2"
+lazy val calibanVersion = "0.8.3"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.0-RC20"
+lazy val zioVersion = "1.0.0-RC21-2"
 lazy val monocleVersion = "2.0.5"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
   version          := "0.1",
-  scalaVersion     := "2.13.2",
+  scalaVersion     := "2.13.3",
   startYear        := Some(2020),
   organizationName := "Roberto Leibman",
   headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
@@ -144,7 +144,7 @@ lazy val server: Project = project
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.3.1" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.3.2" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -155,8 +155,8 @@ lazy val server: Project = project
       //Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.1.2"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.4"   % "it, test" withSources ()
+      "org.scalatest" %% "scalatest"               % "3.2.0"    % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -296,19 +296,19 @@ lazy val commonWeb: Project => Project =
         "commons-io"                                    % "commons-io" % "2.7" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.2.0" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.2.0",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.1" withSources (),
+        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.2.1",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "1.0.0" withSources (),
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.1" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.1" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.3" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.3" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
-        "org.scalatest" %%% "scalatest"                 % "3.1.2" % "test" withSources ()
+        "org.scalatest" %%% "scalatest"                 % "3.2.0" % "test" withSources ()
       ),
       organizationName := "Roberto Leibman",
       startYear        := Some(2020),
@@ -338,7 +338,6 @@ lazy val commonWeb: Project => Project =
         "-Xlint:inaccessible", // Warn about inaccessible types in method signatures.
         "-Xlint:infer-any", // Warn when a type argument is inferred to be `Any`.
         "-Xlint:missing-interpolator", // A string literal appears to be missing an interpolator id.
-        "-Xlint:nullary-override", // Warn when non-nullary `def f()' overrides nullary `def f'.
         "-Xlint:nullary-unit", // Warn when nullary methods return Unit.
         "-Xlint:option-implicit", // Option.apply used implicit view.
         "-Xlint:package-object-classes", // Class or object defined in package object.

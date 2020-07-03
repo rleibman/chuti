@@ -193,6 +193,22 @@ case class Fila private[chuti] (
 
 import chuti.CuantasCantas._
 
+object JugadorState extends Enumeration {
+  protected case class Val(description: String) extends super.Val
+  type JugadorState = Val
+  val dando:              Val = Val("Dando ficha")
+  val cantando:           Val = Val("Cantando")
+  val esperandoCanto:     Val = Val("Esperando Canto")
+  val pidiendoInicial:    Val = Val("Pidiendo (inicial)")
+  val pidiendo:           Val = Val("Pidiendo")
+  val esperando:          Val = Val("Esperando")
+  val haciendoSopa:       Val = Val("Haciendo Sopa")
+  val partidoTerminado:   Val = Val("-")
+  val invitedNotAnswered: Val = Val("Esperando a que acepte")
+  val acceptedInvitation: Val = Val("Acepto invitacion")
+}
+import chuti.JugadorState._
+
 case class Jugador(
   user:          User,
   invited:       Boolean = false, //Should really reverse this and call it "accepted"
@@ -367,6 +383,40 @@ case class Game(
   statusString:    String = "",
   satoshiPerPoint: Double = 100.0
 ) {
+
+  def jugadorState(jugador: Jugador): JugadorState = {
+    gameStatus match {
+      case GameStatus.abandonado =>
+        throw GameException("Why are you asking player state of an abandoned game?")
+      case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
+        if (jugador.invited)
+          JugadorState.invitedNotAnswered
+        else
+          JugadorState.acceptedInvitation
+      case GameStatus.cantando =>
+        if (jugador.mano)
+          JugadorState.cantando
+        else
+          JugadorState.esperandoCanto
+      case GameStatus.jugando =>
+        if (jugador.mano && jugador.cantante && jugador.filas.isEmpty && enJuego.isEmpty)
+          JugadorState.pidiendoInicial
+        else if (jugador.mano && enJuego.isEmpty)
+          JugadorState.pidiendo
+        else if (enJuego.nonEmpty && !enJuego
+                   .exists(_._1 == jugador.id.get))
+          JugadorState.dando
+        else
+          JugadorState.esperando
+      case GameStatus.requiereSopa =>
+        if (jugador.turno)
+          JugadorState.haciendoSopa
+        else
+          JugadorState.esperando
+      case GameStatus.partidoTerminado =>
+        JugadorState.partidoTerminado
+    }
+  }
 
   @transient
   lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))

@@ -33,19 +33,13 @@ object GlobalDialog extends Enumeration {
 }
 
 case class ChutiState(
-  onUserChanged: Option[User] => Callback = _ => Callback.empty,
-  user:          Option[User] = None,
-  serverVersion: Option[String] = None,
-  //TODO events have to get applied to the local copy of the game in order, if we receive
-  //TODO an event out of order we need to wait until we have it's match, and if a timeout passes
-  //TODO without receiving it, we need to ask the server for the full state of the game again
-  //    gameEventQueue: SortedSet[GameEvent] =
-  //      SortedSet.empty(Ordering.by[GameEvent, Option[Int]](_.index))
+  onUserChanged:           Option[User] => Callback = _ => Callback.empty,
+  user:                    Option[User] = None,
+  serverVersion:           Option[String] = None,
   gameInProgress:          Option[Game] = None,
   onGameInProgressChanged: Option[Game] => Callback = _ => Callback.empty,
   onRequestGameRefresh:    Callback = Callback.empty,
   gameStream:              Option[WebSocketHandler] = None,
-  gameEventQueue:          Seq[GameEvent] = Seq.empty,
   gameViewMode:            GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty,
   showDialog:              GlobalDialog => Callback = _ => Callback.empty,
