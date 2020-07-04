@@ -86,7 +86,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
 
     override def getWallet: RepositoryIO[Option[UserWallet]] = ???
 
-    override def updateWallet(userWallet: UserWallet): RepositoryIO[Boolean] = ???
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
 
     override def upsert(e: User): RepositoryIO[User] = {
       val id = e.id.getOrElse(UserId(users.size + 1))
@@ -106,5 +106,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = ???
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = ???
+
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
   }
 }

@@ -78,7 +78,7 @@ object Content extends ChutiComponent {
       Callback.log(gameEvent.toString) >> updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
-            $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
+            refresh() >> $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
           case _ => Callback.empty
         }
       }
@@ -166,11 +166,15 @@ object Content extends ChutiComponent {
       Callback.log("Refreshing Content Component") >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
-            $.modState { s =>
-              s.copy(
-                user = user
-              )
-            }
+            $.modState(_.copy(user = user))
+          case Failure(e) =>
+            e.printStackTrace()
+            Callback.empty
+          //TODO do something more with this here
+        } >>
+        UserRESTClient.remoteSystem.wallet().completeWith {
+          case Success(wallet) =>
+            $.modState(_.copy(wallet = wallet))
           case Failure(e) =>
             e.printStackTrace()
             Callback.empty

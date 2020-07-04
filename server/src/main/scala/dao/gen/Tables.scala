@@ -407,7 +407,7 @@ trait Tables {
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
 
-    val userId: Rep[UserId] = column[UserId]("userId")
+    val userId: Rep[UserId] = column[UserId]("userId", O.PrimaryKey)
 
     val amount: Rep[BigDecimal] = column[BigDecimal]("amount")
 

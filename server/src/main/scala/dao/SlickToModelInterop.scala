@@ -83,8 +83,8 @@ trait SlickToModelInterop {
     ret
   }
 
-  def UserWalletRow2UserWallet(row:   UserWalletRow): UserWallet = UserWallet(row.user, row.amount)
+  def UserWalletRow2UserWallet(row:   UserWalletRow): UserWallet = UserWallet(userId = row.user, amount = row.amount)
   def UserWallet2UserWalletRow(value: UserWallet): UserWalletRow =
-    UserWalletRow(value.userId, value.amount)
+    UserWalletRow(user = value.userId, amount = value.amount)
 
 }

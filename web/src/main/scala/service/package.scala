@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import chuti.{PagedStringSearch, User, UserId}
+import chuti.{PagedStringSearch, User, UserId, UserWallet}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.AsyncCallback
 import util.Config
@@ -27,6 +27,8 @@ package object service extends Config {
     case object UserClientService extends LiveClientService {
       def whoami(): AsyncCallback[Option[User]] =
         RESTOperation[String, Option[User]]("get", s"$baseUrl/whoami", None)
+      def wallet(): AsyncCallback[Option[UserWallet]] =
+        RESTOperation[String, Option[UserWallet]]("get", s"$baseUrl/userWallet", None)
       def changePassword(password: String): AsyncCallback[Boolean] =
         RESTOperation[String, Boolean]("post", s"$baseUrl/changePassword", Option(password))
     }

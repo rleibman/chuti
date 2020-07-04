@@ -300,6 +300,7 @@ trait AuthRoute
       override def other: RIO[SessionProvider with Logging with OpsService, Route] =
         for {
           session <- ZIO.service[SessionProvider.Session].map(_.session)
+          runtime <- ZIO.environment[SessionProvider with Logging with OpsService]
         } yield {
           //randomTokenCsrfProtection(checkHeader) //TODO this is necessary, but it wasn't working, so we're leaving it for now.
           // This should be protected and accessible only when logged in
@@ -308,6 +309,14 @@ trait AuthRoute
               complete(Option(session.user))
             }
           } ~
+            path("userWallet") {
+              get {
+                complete((for {
+                  userOps <- ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
+                  wallet <- userOps.getWallet
+                } yield wallet).provide(runtime))
+              }
+            } ~
             path("doLogout") {
               extractLog { akkaLog =>
                 post {

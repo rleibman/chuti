@@ -219,24 +219,44 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           _.map(UserWalletRow2UserWallet)
         ).flatMap {
           case None =>
-            val newWallet = UserWalletRow(session.user.id.getOrElse(UserId(-1)), 0.0)
+            val newWallet = UserWalletRow(session.user.id.getOrElse(UserId(-1)), 10000)
             (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
           case Some(wallet) => DBIO.successful(Option(wallet))
         }
     }
 
-    override def updateWallet(userWallet: UserWallet): RepositoryIO[Boolean] = {
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = {
+      session: ChutiSession =>
+        if (session.user != GameService.god) { //Only god can get a user's wallet by user id
+          throw RepositoryException(s"${session.user} Not authorized")
+        }
+        UserWalletQuery
+          .filter(_.userId === userId)
+          .result.headOption.map(
+            _.map(UserWalletRow2UserWallet)
+          ).flatMap {
+            case None =>
+              val newWallet = UserWalletRow(userId, 10000)
+              (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+            case Some(wallet) => DBIO.successful(Option(wallet))
+          }
+    }
+
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = {
       session: ChutiSession =>
         if (session.user != GameService.god) { //Only god can update a user's wallet.
           throw RepositoryException(s"${session.user} Not authorized")
         }
 
-        UserWalletQuery
-          .filter(_.userId === userWallet.userId).insertOrUpdate(
-            UserWallet2UserWalletRow(userWallet)
-          )
+        val row = UserWallet2UserWalletRow(userWallet)
 
-    }.map(_ > 0)
+        val filtered = UserWalletQuery.filter(_.userId === userWallet.userId)
+        val dbio = for {
+          exists <- filtered.result.headOption
+          saved  <- exists.fold(UserWalletQuery.forceInsert(row))(_ => filtered.update(row))
+        } yield saved
+        dbio.map(_ => userWallet)
+    }
   }
 
   override val gameOperations: Repository.GameOperations = new GameOperations {

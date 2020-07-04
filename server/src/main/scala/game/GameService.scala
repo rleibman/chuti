@@ -724,8 +724,27 @@ object GameService {
 
             repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
           }
+          _ <- ZIO.when(played._1.gameStatus == GameStatus.partidoTerminado) {
+            updateAccounting(played._1)
+          }
           _ <- ZIO.foreach(played._2)(broadcast(gameEventQueues, _))
         } yield played._1).mapError(GameException.apply)
+      }
+
+      def updateAccounting(game: Game): ZIO[Repository with Logging, RepositoryException, List[UserWallet]] = {
+        ZIO
+          .foreach(game.cuentasCalculadas) {
+            case (jugador, _, satoshi) =>
+              for {
+                repository <- ZIO.service[Repository.Service]
+                walletOpt  <- repository.userOperations.getWallet(jugador.id.get)
+                updated <- ZIO.foreach(walletOpt)(wallet =>
+                  repository.userOperations.updateWallet(wallet.copy(amount = wallet.amount + satoshi))
+                )
+              } yield updated.toSeq
+          }.provideSomeLayer[
+            Repository with Logging
+          ](godLayer).map(_.flatten)
       }
 
       override def gameStream(

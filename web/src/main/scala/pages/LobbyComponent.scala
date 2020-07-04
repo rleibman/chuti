@@ -27,15 +27,7 @@ import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
 import chat._
 import chuti._
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType,
-  UserStatus => CalibanUserStatus
-}
+import game.GameClient.{Mutations, Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType, UserStatus => CalibanUserStatus}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
@@ -43,8 +35,9 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLInputElement
+import typings.react.reactStrings.center
 import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.{SemanticICONS, SemanticSIZES}
+import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import typings.semanticUiReact.inputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
@@ -514,6 +507,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   <.div(
                     ^.className := "lobbyCol2",
                     <.div(
+                      <.h1("Usuario"),
+                      <.p(s"Nombre = ${chutiState.user.fold("")(_.name)}"),
+                      <.p(s"En cartera = ${chutiState.wallet.fold("")(_.amount.toString())} satoshi")
+                    ),
+                    <.div(
                       ^.className := "users",
                       renderNewGameDialog,
                       renderInviteExternalDialog,
@@ -521,17 +519,24 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                       TagMod(
                         <.div(
                           ^.key := "jugadores",
-                          <.h1("Jugadores"),
+                          <.h1("Otros usuarios"),
+                          <.h2("(en linea o amigos)"),
                           <.table(
                             ^.className := "playersTable",
                             <.tbody(
                               s.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
                                 TableRow(key = player.user.id.fold("")(_.toString))(
-                                  TableCell()(
+                                  TableCell(width = SemanticWIDTHS.`1`)(
                                     if (player.isFriend)
-                                      Icon(
-                                        className = "icon",
-                                        name = SemanticICONS.`star outline`
+                                      Popup(
+                                        content = "Amigo",
+                                        trigger = Icon(
+                                          className = "icon",
+                                          name = SemanticICONS.star,
+                                          color = SemanticCOLORS.yellow,
+                                          circular = true,
+                                          fitted = true
+                                        )()
                                       )()
                                     else
                                       EmptyVdom,
@@ -540,17 +545,22 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                     else
                                       EmptyVdom,
                                     if (player.isLoggedIn)
-                                      Icon(
+                                      Popup(
+                                        content = "En linea",
+                                      trigger = Icon(
                                         className = "icon",
-                                        name = SemanticICONS.`user outline`
+                                        name = SemanticICONS.`user outline`,
+                                        circular = true,
+                                        fitted = true
+                                      )()
                                       )()
                                     else
                                       EmptyVdom
                                   ),
-                                  TableCell()(
+                                  TableCell(width = SemanticWIDTHS.`1`, align = center)(
                                     Dropdown(
                                       className = "menuBurger",
-                                      trigger = Icon(name = SemanticICONS.`ellipsis vertical`)()
+                                      trigger = Icon(name = SemanticICONS.`ellipsis vertical`, fitted = true)()
                                     )(
                                       DropdownMenu()(
                                         (for {
@@ -603,7 +613,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       )
                                     )
                                   ),
-                                  TableCell()(player.user.name)
+                                  TableCell(width = SemanticWIDTHS.`14`)(player.user.name)
                                 )
                               }
                             )

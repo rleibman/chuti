@@ -274,7 +274,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     val wallet = UserWallet(user2.id.get)
     when(userOperations.getWallet).thenReturn(ZIO.succeed(Option(wallet)))
     when(userOperations.updateWallet(UserWallet(user2.id.get, BigDecimal(-1000))))
-      .thenReturn(ZIO.succeed(true))
+      .thenReturn(ZIO.succeed(UserWallet(user2.id.get, BigDecimal(-1000))))
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
