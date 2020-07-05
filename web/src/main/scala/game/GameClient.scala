@@ -91,6 +91,7 @@ object GameClient {
       Field("lastLoggedIn", OptionOf(Scalar()))
     def active:  SelectionBuilder[User, Boolean] = Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
+    def isAdmin: SelectionBuilder[User, Boolean] = Field("isAdmin", Scalar())
   }
 
   type UserEvent
@@ -126,6 +127,8 @@ object GameClient {
         OptionOf(Scalar()),
         arguments = List(Argument("satoshiPerPoint", satoshiPerPoint))
       )
+    def newGameSameUsers(value: Int): SelectionBuilder[RootMutation, Option[Json]] =
+      Field("newGameSameUsers", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def joinRandomGame: SelectionBuilder[RootMutation, Option[Json]] =
       Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
@@ -180,18 +183,18 @@ object GameClient {
     def gameStream(
       gameId:       Int,
       connectionId: String
-    ): SelectionBuilder[RootSubscription, Json] =
+    ): SelectionBuilder[RootSubscription, Option[Json]] =
       Field(
         "gameStream",
-        Scalar(),
+        OptionOf(Scalar()),
         arguments = List(Argument("gameId", gameId), Argument("connectionId", connectionId))
       )
     def userStream[A](
       value: String
     )(
       innerSelection: SelectionBuilder[UserEvent, A]
-    ): SelectionBuilder[RootSubscription, A] =
-      Field("userStream", Obj(innerSelection), arguments = List(Argument("value", value)))
+    ): SelectionBuilder[RootSubscription, Option[A]] =
+      Field("userStream", OptionOf(Obj(innerSelection)), arguments = List(Argument("value", value)))
   }
 
 }

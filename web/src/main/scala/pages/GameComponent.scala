@@ -23,7 +23,7 @@ import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.JugadorState.JugadorState
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti._
-import components.Toast
+import components.{Confirm, Toast}
 import game.GameClient.Mutations
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -104,6 +104,7 @@ object GameComponent {
                       jugadorState == JugadorState.dando)
                   println(s"jugadorState = $jugadorState, puedeRendirse = $puedeRendirse")
                   val isSelf = chutiState.user.fold(false)(_.id == jugador.id)
+                  val canPlay = jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto
 
                   val playerPosition =
                     if (isSelf)
@@ -121,7 +122,7 @@ object GameComponent {
                     <.div(
                       ^.className := s"statusBar$playerPosition",
                       <.div(
-                        ^.className := s"playerName ${if (jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto) "canPlay"
+                        ^.className := s"playerName ${if (canPlay) "canPlay"
                         else ""}",
                         jugador.user.name
                       ),
@@ -279,9 +280,16 @@ object GameComponent {
                           case JugadorState.partidoTerminado => EmptyVdom
                         },
                         if (puedeRendirse) {
-                          Button(compact = true, basic = true, onClick = { (_, _) =>
-                            play(game.id.get, MeRindo()) //TODO confirm here
-                          })("Me Rindo")
+                          Button(
+                            compact = true,
+                            basic = true,
+                            onClick = { (_, _) =>
+                              Confirm.confirm(
+                                question = "Estas seguro que te quieres rendir?",
+                                onConfirm = play(game.id.get, MeRindo())
+                              )
+                            }
+                          )("Me Rindo")
                         } else {
                           EmptyVdom
                         }
@@ -302,16 +310,19 @@ object GameComponent {
                             )
                           )
                         case (ficha @ FichaConocida(arriba, abajo), fichaIndex) =>
-                          val selectable = true
+                          val selectable = canPlay
                           <.div(
                             ^.className := s"domino${playerPosition}Container",
                             <.img(
                               if (selectable) ^.cursor.pointer else ^.cursor.auto,
                               ^.key := s"ficha_${playerIndex}_$fichaIndex",
-//                        ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
+//                            ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
                               ^.src := s"images/${abajo}_${arriba}x150.png",
                               ^.onClick --> {
-                                $.modState(_.copy(fichaSeleccionada = Option(ficha)))
+                                if (selectable)
+                                  $.modState(_.copy(fichaSeleccionada = Option(ficha)))
+                                else
+                                  Callback.empty
                               },
                               ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
                               else ""}"
@@ -367,7 +378,7 @@ object GameComponent {
                   <.div(^.className := "fichasEnJuegoName"),
                   <.div(
                     ^.className := "dominoEnJuego",
-                    Button(onClick = { (_, _) =>
+                    Button(basic = true, onClick = { (_, _) =>
                       chutiState
                         .onGameViewModeChanged(GameViewMode.lobby)
                     })("Regresa al Lobby")

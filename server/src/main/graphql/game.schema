@@ -25,6 +25,7 @@ enum UserStatus {
 
 type Mutations {
   newGame(satoshiPerPoint: Int!): Json
+  newGameSameUsers(value: Int!): Json
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
   inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean
@@ -46,8 +47,8 @@ type Queries {
 }
 
 type Subscriptions {
-  gameStream(gameId: Int!, connectionId: String!): Json!
-  userStream(value: String!): UserEvent!
+  gameStream(gameId: Int!, connectionId: String!): Json
+  userStream(value: String!): UserEvent
 }
 
 type User {
@@ -60,6 +61,7 @@ type User {
   lastLoggedIn: Long
   active: Boolean!
   deleted: Boolean!
+  isAdmin: Boolean!
 }
 
 type UserEvent {

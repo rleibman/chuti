@@ -135,19 +135,26 @@ object AppRouter extends ChutiComponent {
                     .filter(g => g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado
                     ).map { _ =>
                       VdomArray(
-                        MenuItem(onClick = { (e, _) =>
-                          chutiState
-                            .onGameViewModeChanged(GameViewMode.game) >> page.setEH(GameAppPage)(e)
-                        })("Entrar al Juego"),
+                        MenuItem(
+                          key = "menuEntrarAlJuego",
+                          onClick = { (e, _) =>
+                            chutiState
+                              .onGameViewModeChanged(GameViewMode.game) >> page
+                              .setEH(GameAppPage)(e)
+                          }
+                        )("Entrar al Juego"),
                         MenuItem(onClick = { (_, _) =>
                           chutiState.showDialog(GlobalDialog.cuentas)
                         })("Cuentas")
                       )
                     },
-                  MenuItem(onClick = { (e, _) =>
-                    chutiState
-                      .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
-                  })("Lobby"),
+                  MenuItem(
+                    key = "menuLobby",
+                    onClick = { (e, _) =>
+                      chutiState
+                        .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
+                    }
+                  )("Lobby"),
                   Divider()(),
                   MenuItem(onClick = { (e, _) =>
                     page.setEH(RulesAppPage)(e)

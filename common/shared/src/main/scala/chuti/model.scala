@@ -196,16 +196,16 @@ import chuti.CuantasCantas._
 object JugadorState extends Enumeration {
   protected case class Val(description: String) extends super.Val
   type JugadorState = Val
-  val dando:              Val = Val("Dando ficha")
-  val cantando:           Val = Val("Cantando")
-  val esperandoCanto:     Val = Val("Esperando Canto")
-  val pidiendoInicial:    Val = Val("Pidiendo (inicial)")
-  val pidiendo:           Val = Val("Pidiendo")
-  val esperando:          Val = Val("Esperando")
-  val haciendoSopa:       Val = Val("Haciendo Sopa")
-  val partidoTerminado:   Val = Val("-")
-  val invitedNotAnswered: Val = Val("Esperando a que acepte")
-  val acceptedInvitation: Val = Val("Acepto invitacion")
+  val dando:                   Val = Val("Dando ficha")
+  val cantando:                Val = Val("Cantando")
+  val esperandoCanto:          Val = Val("Esperando Canto")
+  val pidiendoInicial:         Val = Val("Pidiendo (inicial)")
+  val pidiendo:                Val = Val("Pidiendo")
+  val esperando:               Val = Val("Esperando")
+  val haciendoSopa:            Val = Val("Haciendo Sopa")
+  val partidoTerminado:        Val = Val("-")
+  val invitedNotAnswered:      Val = Val("Esperando a que acepte")
+  val waitingOthersAcceptance: Val = Val("Esperando a que los demas acepten")
 }
 import chuti.JugadorState._
 
@@ -392,7 +392,7 @@ case class Game(
         if (jugador.invited)
           JugadorState.invitedNotAnswered
         else
-          JugadorState.acceptedInvitation
+          JugadorState.waitingOthersAcceptance
       case GameStatus.cantando =>
         if (jugador.mano)
           JugadorState.cantando

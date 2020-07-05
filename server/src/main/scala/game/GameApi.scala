@@ -71,7 +71,12 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
     getLoggedInUsers: ZIO[GameService with GameLayer, GameException, Seq[User]]
   )
   case class Mutations(
-    newGame:        NewGameArgs => ZIO[GameService with GameLayer, GameException, Json],
+    newGame: NewGameArgs => ZIO[GameService with GameLayer, GameException, Json],
+    newGameSameUsers: GameId => ZIO[
+      GameService with GameLayer with ChatService,
+      GameException,
+      Json
+    ],
     joinRandomGame: ZIO[GameService with GameLayer, GameException, Json],
     abandonGame:    GameId => ZIO[GameService with GameLayer, GameException, Boolean],
     inviteByEmail: InviteByEmailArgs => ZIO[
@@ -169,6 +174,11 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
               game     <- GameService.newGame(satoshiPerPoint = newGameArgs.satoshiPerPoint)
               filtered <- sanitizeGame(game)
             } yield filtered.asJson,
+          newGameSameUsers = gameId =>
+            for {
+              game     <- GameService.newGameSameUsers(gameId)
+              filtered <- sanitizeGame(game)
+            } yield filtered.asJson,
           joinRandomGame = for {
             game     <- GameService.joinRandomGame()
             filtered <- sanitizeGame(game)
@@ -207,7 +217,7 @@ object GameApi extends GenericSchema[GameService with GameLayer with ChatService
       printSlowQueries(3.seconds) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  Idle\n  Invited\n  Offline\n  Playing\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json!\n  userStream(value: String!): UserEvent!\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Long\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\nenum UserStatus {\n  Idle\n  Invited\n  Offline\n  Playing\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n}"
 
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala

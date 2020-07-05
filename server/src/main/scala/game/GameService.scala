@@ -77,6 +77,7 @@ object UserConnectionRepo {
 }
 
 object GameService {
+
   lazy val godLayer: ULayer[SessionProvider] = {
     SessionProvider.layer(ChutiSession(GameService.god))
   }
@@ -106,6 +107,8 @@ object GameService {
     def joinRandomGame(): ZIO[GameLayer, GameException, Game]
 
     def newGame(satoshiPerPoint: Int): ZIO[GameLayer, GameException, Game]
+
+    def newGameSameUsers(oldGameId: GameId): ZIO[GameLayer with ChatService, GameException, Game]
 
     def play(
       gameId:    GameId,
@@ -178,6 +181,11 @@ object GameService {
 
   def newGame(satoshiPerPoint: Int): ZIO[GameService with GameLayer, GameException, Game] =
     URIO.accessM(_.get.newGame(satoshiPerPoint))
+
+  def newGameSameUsers(
+    gameId: GameId
+  ): ZIO[GameService with GameLayer with ChatService, GameException, Game] =
+    URIO.accessM(_.get.newGameSameUsers(gameId))
 
   def play(
     gameId:    GameId,
@@ -367,6 +375,32 @@ object GameService {
             .gamesWaitingForPlayers().bimap(GameException.apply, _.headOption)
           joined <- joinGame(gameOpt)
         } yield joined).mapError(GameException.apply)
+
+      override def newGameSameUsers(
+        oldGameId: GameId
+      ): ZIO[GameLayer with ChatService, GameException, Game] =
+        (for {
+          user       <- ZIO.access[SessionProvider](_.get.session.user)
+          repository <- ZIO.service[Repository.Service]
+          oldGame <- repository.gameOperations
+            .get(oldGameId).map(_.getOrElse(throw GameException("Previous game did not exist")))
+          withFirstUser <- {
+            val newGame = Game(
+              id = None,
+              gameStatus = GameStatus.esperandoJugadoresInvitados,
+              satoshiPerPoint = oldGame.satoshiPerPoint
+            )
+            val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
+            repository.gameOperations.upsert(game2)
+          }
+          _ <- ZIO.foreach(oldGame.jugadores.filter(_.id != user.id).map(_.user)) { u =>
+            inviteToGame(u.id.get, withFirstUser.id.get)
+          }
+          afterInvites <- repository.gameOperations
+            .get(withFirstUser.id.get).map(
+              _.getOrElse(throw GameException("Previous game did not exist"))
+            )
+        } yield afterInvites).mapError(GameException.apply)
 
       def newGame(satoshiPerPoint: Int): ZIO[GameLayer, GameException, Game] =
         (for {
@@ -731,7 +765,9 @@ object GameService {
         } yield played._1).mapError(GameException.apply)
       }
 
-      def updateAccounting(game: Game): ZIO[Repository with Logging, RepositoryException, List[UserWallet]] = {
+      def updateAccounting(
+        game: Game
+      ): ZIO[Repository with Logging, RepositoryException, List[UserWallet]] = {
         ZIO
           .foreach(game.cuentasCalculadas) {
             case (jugador, _, satoshi) =>
@@ -739,7 +775,8 @@ object GameService {
                 repository <- ZIO.service[Repository.Service]
                 walletOpt  <- repository.userOperations.getWallet(jugador.id.get)
                 updated <- ZIO.foreach(walletOpt)(wallet =>
-                  repository.userOperations.updateWallet(wallet.copy(amount = wallet.amount + satoshi))
+                  repository.userOperations
+                    .updateWallet(wallet.copy(amount = wallet.amount + satoshi))
                 )
               } yield updated.toSeq
           }.provideSomeLayer[

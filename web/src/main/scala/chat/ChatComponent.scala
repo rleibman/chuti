@@ -87,18 +87,21 @@ object ChatComponent extends ScalaJSClientAdapter {
       s: State
     ): VdomNode =
       <.div(
+        ^.key       := "chatComponent",
         ^.className := "chat",
         <.h1(^.className := "title", "Chuti Chat"),
         <.div(
           ^.className := "messages",
-          s.chatMessages.toVdomArray(msg =>
-            <.div(
-              ^.className := "receivedMessage",
-              <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
-              <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
-              <.div(^.className := "messageText", msg.msg)
-            )
-          )
+          s.chatMessages.zipWithIndex.toVdomArray {
+            case (msg, index) =>
+              <.div(
+                ^.key       := s"msg$index",
+                ^.className := "receivedMessage",
+                <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
+                <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
+                <.div(^.className := "messageText", msg.msg)
+              )
+          }
         ),
         <.div(
           ^.className := "sendMessage",

@@ -52,11 +52,14 @@ object RegistrationPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("The password cannot be empty") else Nil) ++
-        (if (state.passwordPair._1 != state.passwordPair._2) Seq("The passwords need to match")
+        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") else Nil) ++
+        (if (state.passwordPair._1 != state.passwordPair._2)
+           Seq("Las dos contraseñas tienen que ser iguales")
          else Nil) ++
-        (if (state.user.name.trim.isEmpty) Seq("The username cannot be empty") else Nil) ++
-        (if (state.user.email.trim.isEmpty) Seq("The user's email cannot be empty") else Nil)
+        (if (state.user.name.trim.isEmpty) Seq("El nombre no puede estar vacío") else Nil) ++
+        (if (state.user.email.trim.isEmpty)
+           Seq("La dirección de correo electrónico no puede estar vacía")
+         else Nil)
 
     private def doCreate(
       state:   State,
@@ -79,13 +82,12 @@ object RegistrationPage {
                       response =>
                         response.error.fold(
                           context.onModeChanged(Mode.login, response.error) >> Toast.success(
-                            //TODO, maybe different page instead of login?
-                            "Account created successfully! Please wait for your confirmation email"
+                            "Cuenta creada con éxito! por favor espera un correo electrónico que confirme tu registro!"
                           )
                         )(errorMsg => Toast.error(errorMsg))
                     )
                 } else {
-                  Toast.error(s"Error creating account: ${xhr.statusText}")
+                  Toast.error(s"Error creando cuenta: ${xhr.statusText}")
                 }
               }
           } yield saved
@@ -102,10 +104,9 @@ object RegistrationPage {
       context: LoginControllerState
     ): VdomElement =
       <.div(
-        Header(as = "h1")("User Information"),
         FormGroup()(
           FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Name"),
+            Label()("Nombre"),
             Input(
               onChange = onUserInputChange { (user, value) =>
                 user.copy(name = value)
@@ -116,7 +117,7 @@ object RegistrationPage {
         ),
         FormGroup()(
           FormField(width = SemanticWIDTHS.`6`)(
-            Label()("Email"),
+            Label()("Correo Electrónico"),
             Input(
               `type` = "email",
               onChange = onUserInputChange { (user, value) =>
@@ -128,7 +129,7 @@ object RegistrationPage {
         ),
         FormGroup()(
           FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Password"),
+            Label()("Contraseña"),
             Input(
               required = true,
               name = "password",
@@ -144,7 +145,7 @@ object RegistrationPage {
             )()
           ),
           FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Repeat Password"),
+            Label()("Repite Contraseña"),
             Input(
               `type` = "password",
               name = "password",
@@ -160,17 +161,22 @@ object RegistrationPage {
           )
         ),
         FormGroup()(
-          Button(onClick = doCreate(state, context))("Create Account"),
-          Button(onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-            Callback(window.location.replace("/"))
-          })("Cancel")
+          Button(compact = true, basic = true, onClick = doCreate(state, context))("Crear cuenta"),
+          Button(
+            compact = true,
+            basic = true,
+            onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+              Callback(window.location.replace("/"))
+            }
+          )("Cancelar")
         )
       )
 
     def render(state: State): VdomElement = LoginControllerState.ctx.consume { context =>
       <.div(
+        <.div(<.img(^.src := "/unauth/images/logo.png")),
+        <.h1("Registro de cuenta!"),
         Form()(
-          "Text goes here", //TODO
           renderUserInfo(state, context)
         )
       )

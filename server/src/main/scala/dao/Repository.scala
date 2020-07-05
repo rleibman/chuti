@@ -37,7 +37,7 @@ object Repository {
     def friends: RepositoryIO[Seq[User]]
 
     def getWallet: RepositoryIO[Option[UserWallet]]
-    def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]]
+    def getWallet(userId:        UserId):     RepositoryIO[Option[UserWallet]]
     def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet]
   }
   trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {

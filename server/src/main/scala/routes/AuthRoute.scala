@@ -49,6 +49,7 @@ trait AuthRoute
     "/chuti-login-opt-bundle.js.map",
     "/css/app.css",
     "/images/favicon.png",
+    "/images/logo.png",
     "/favicon.ico",
     "/images/favicon.svg",
     "/webfonts/fa-solid-900.woff2",
@@ -313,7 +314,7 @@ trait AuthRoute
               get {
                 complete((for {
                   userOps <- ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
-                  wallet <- userOps.getWallet
+                  wallet  <- userOps.getWallet
                 } yield wallet).provide(runtime))
               }
             } ~

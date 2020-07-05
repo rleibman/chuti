@@ -38,10 +38,13 @@ object LoginPage {
     ): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
-          "Text goes here", //TODO
+          <.div(<.img(^.src := "/unauth/images/logo.png")),
+          <.div(
+            "Bienvenido a el juego de chuti... por favor pon tu nombre y contraseña, o registrate si todavía no lo has hecho!"
+          ),
           <.span(
             Message(color = SemanticCOLORS.red)(
-              "Bad Login! Your email or password did not match, please try again!"
+              "Contraseña errónea! Tu correo electrónico y contraseña no están en el sistema, intentalo de nuevo!"
             )
           ).when(isBad),
           P.messageForScreen.fold(EmptyVdom: VdomNode)(str => <.span(Message()(str))),
@@ -51,21 +54,21 @@ object LoginPage {
             ^.className := "ui form",
             ^.width     := 800.px,
             FormField()(
-              Label()("Email"),
+              Label()("Correo Electrónico"),
               Input(required = true, name = "email", `type` = "email")()
             ),
             FormField()(
-              Label()("Password"),
+              Label()("Contraseña"),
               Input(`type` = "password", required = true, name = "password")()
             ),
-            Button(`type` = submit)("Login")
+            Button(compact = true, basic = true, `type` = submit)("Entrar")
           ),
-          Button(onClick = { (_, _) =>
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             context.onModeChanged(Mode.registration, None)
-          })("I'm new to this, create new account"),
-          Button(onClick = { (_, _) =>
+          })("Registrarse por primera vez"),
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             context.onModeChanged(Mode.passwordRecoveryRequest, None)
-          })("I lost my password")
+          })("Perdí mi Contraseña")
         )
       }
   }

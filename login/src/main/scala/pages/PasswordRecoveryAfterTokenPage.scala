@@ -39,9 +39,9 @@ object PasswordRecoveryAfterTokenPage {
       event: ReactEventFrom[HTMLFormElement]
     ): Callback =
       if (state.password.isEmpty)
-        Callback(event.preventDefault()) >> Toast.error("The passwords cannot be empty")
+        Callback(event.preventDefault()) >> Toast.error("La contraseña no puede estar vacía")
       else if (state.password != state.passwordAgain)
-        Callback(event.preventDefault()) >> Toast.error("The passwords must match")
+        Callback(event.preventDefault()) >> Toast.error("Ambas contraseñas tienen que ser iguales")
       else
         Callback.empty
 
@@ -51,12 +51,13 @@ object PasswordRecoveryAfterTokenPage {
     ): VdomElement = LoginControllerState.ctx.consume { _ =>
       <.div(
         ^.width := 800.px,
-        "Text goes here", //TODO
+        <.div(<.img(^.src := "/unauth/images/logo.png")),
+        <.h1("Recuperar contraseña!"),
         Form(action = "passwordReset", method = "post", onSubmit = { (event, _) =>
           handleSubmit(state, event)
         })(
           FormField()(
-            Label()("Password"),
+            Label()("Contraseña"),
             Input(
               required = true,
               name = "password",
@@ -68,7 +69,7 @@ object PasswordRecoveryAfterTokenPage {
             )()
           ),
           FormField()(
-            Label()("Repeat Password"),
+            Label()("Repite contraseña"),
             Input(
               required = true,
               name = "passwordAgain",
@@ -85,8 +86,8 @@ object PasswordRecoveryAfterTokenPage {
             ^.name   := "token",
             ^.value  := props.token.getOrElse("")
           ),
-          Button(`type` = submit)("Change Password"),
-          Button(onClick = { (_, _) =>
+          Button(compact = true, basic = true, `type` = submit)("Cambia contraseña"),
+          Button(compact = true, basic = true, onClick = { (_, _) =>
             Callback(window.location.replace("/"))
           })("Cancel")
         )

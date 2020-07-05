@@ -65,11 +65,11 @@ object Content extends ChutiComponent {
           if (doRefresh)
             Callback.info(
               "Had to force a refresh because the event index was too far into the future"
-            ) >> refresh()
+            ) >> refresh
           else
             gameEvent.reapplyMode match {
               case ReapplyMode.none        => Callback.empty
-              case ReapplyMode.fullRefresh => refresh()
+              case ReapplyMode.fullRefresh => refresh
               case ReapplyMode.reapply     => reapplyEvent(gameEvent)
             }
         }
@@ -78,7 +78,7 @@ object Content extends ChutiComponent {
       Callback.log(gameEvent.toString) >> updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
-            refresh() >> $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
+            refresh >> $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
           case _ => Callback.empty
         }
       }
@@ -162,7 +162,7 @@ object Content extends ChutiComponent {
         )
       )
 
-    def refresh(): Callback =
+    def refresh: Callback =
       Callback.log("Refreshing Content Component") >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
@@ -191,11 +191,11 @@ object Content extends ChutiComponent {
               _.copy(
                 gameInProgress = Option(game),
                 gameStream = Option(
-                  makeWebSocketClient[Json](
+                  makeWebSocketClient[Option[Json]](
                     uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
                     query = Subscriptions.gameStream(game.id.get.value, connectionId),
                     onData = { (_, data) =>
-                      data.fold(Callback.empty)(json =>
+                      data.flatten.fold(Callback.empty)(json =>
                         gameEventDecoder
                           .decodeJson(json)
                           .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
@@ -239,7 +239,7 @@ object Content extends ChutiComponent {
       ChutiState(gameViewMode = gameViewMode)
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init() >> $.backend.refresh())
+    .componentDidMount($ => $.backend.init() >> $.backend.refresh)
     .build
 
   def apply(): Unmounted[Unit, ChutiState, Backend] = component()

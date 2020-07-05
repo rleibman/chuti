@@ -58,20 +58,21 @@ object PasswordRecoveryPage {
 
     def render(state: State) = LoginControllerState.ctx.consume { context =>
       <.div(
-        "Text goes here", //TODO
+        <.div(<.img(^.src := "/unauth/images/logo.png")),
+        <.h1("Recuperar contraseña!"),
         if (state.submitted)
           <.div(
-            "We have sent an email to your account with password recovery instructions, you'll have three hours to change your password before you need to try again",
-            Button(onClick = { (_, _) =>
+            "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo",
+            Button(compact = true, basic = true, onClick = { (_, _) =>
               $.modState(_.copy(submitted = false))
             })("Try again")
           )
         else {
           <.div(
-            "Please enter your email address, you will get an email with password recovery instructions",
+            "Por favor pon tu dirección de correo electrónico, te mandaremos un correo con instrucciones para recuperar tu contraseña",
             Form()(
               FormField()(
-                Label()("Email Address"),
+                Label()("Correo electrónico"),
                 Input(
                   required = true,
                   name = "email",
@@ -82,9 +83,9 @@ object PasswordRecoveryPage {
                   }
                 )()
               ),
-              Button(onClick = { (_, _) =>
+              Button(compact = true, basic = true, onClick = { (_, _) =>
                 onSubmitEmailAddress(state.email)
-              })("Submit")
+              })("Aceptar")
             )
           )
         }
