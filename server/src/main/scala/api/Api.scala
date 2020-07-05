@@ -24,6 +24,7 @@ import api.token.TokenHolder
 import chat.ChatService.ChatService
 import core.{Core, CoreActors}
 import dao.{Repository, SessionProvider}
+import game.GameService.GameService
 import game.UserConnectionRepo.UserConnectionRepo
 import mail.Postman.Postman
 import routes.{ModelRoutes, StaticHTMLRoute}
@@ -44,16 +45,16 @@ trait Api
   implicit private val _ = actorSystem.dispatcher
 
   val routes: ZIO[
-    Console with Clock with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
+    Console with Clock with GameService with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
     Throwable,
     Route
   ] = ZIO
     .environment[
-      Console with Clock with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder
+      Console with Clock with GameService with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder
     ].flatMap {
       r: Console
-        with Clock with ChatService with Logging with Config with Repository with UserConnectionRepo
-        with Postman with TokenHolder =>
+        with Clock with GameService with ChatService with Logging with Config with Repository
+        with UserConnectionRepo with Postman with TokenHolder =>
         {
           for {
             _      <- log.info("Started routes")
@@ -74,12 +75,12 @@ trait Api
                         sessionResult.toOption match {
                           case Some(session) =>
                             val me: ZIO[
-                              Console with Clock with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
+                              Console with Clock with GameService with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
                               Throwable,
                               Route
                             ] = apiRoute
                               .provideSomeLayer[
-                                Console with Clock with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder
+                                Console with Clock with GameService with ChatService with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder
                               ](SessionProvider.layer(session))
                             val meme = me.provide(r)
 

@@ -797,7 +797,7 @@ case class Da(
     val hoyoTecnico =
       if (!ficha.es(pidioNum) &&
           modifiedGame.jugador(jugador.id).fichas.exists(_.es(pidioNum))) {
-        Option(s"Pidieron $pidioNum, diste $ficha pero si tienes")
+        Option(s"Pidieron $pidioNum, diste $ficha pero si tienes $pidioNum.... que tonto!")
       } else if (!ficha.es(pidioNum) &&
                  (game.triunfo match {
                    case None => throw GameException("Should never happen!")

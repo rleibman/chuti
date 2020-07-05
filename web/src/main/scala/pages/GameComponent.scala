@@ -339,7 +339,8 @@ object GameComponent {
                             ^.className := s"filaFichas$playerPosition",
                             fila.fichas.zipWithIndex.toVdomArray {
                               case (ficha, fichaIndex) =>
-                                val abierta = fila.index <= 0
+                                val abierta = fila.index == 0 || (fila.index == (game.jugadores
+                                  .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
                                 if (abierta) {
                                   <.div(
                                     ^.className := s"dominoJugado${playerPosition}Container",
@@ -351,7 +352,7 @@ object GameComponent {
                                   )
                                 } else {
                                   <.div(
-                                    ^.className := s"dominoJugadoContainer$playerPosition",
+                                    ^.className := s"dominoJugado${playerPosition}Container",
                                     <.img(
                                       ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                       ^.src       := s"images/backx75.png",

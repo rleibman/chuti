@@ -24,8 +24,8 @@ import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
 import core.{Core, CoreActors}
-import dao.{DatabaseProvider, MySQLDatabaseProvider, Repository, SlickRepository}
-import game.UserConnectionRepo
+import dao.{MySQLDatabaseProvider, Repository, SlickRepository}
+import game.{GameService, UserConnectionRepo}
 import mail.CourierPostman
 import mail.Postman.Postman
 import zio.logging.slf4j.Slf4jLogger
@@ -76,44 +76,51 @@ trait Web {
     val repositoryLayer
       : ULayer[Repository] = (configLayer ++ loggingLayer) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live
 
-    ChatService.make().memoize.use { chatServiceLayer =>
-      val fullLayer = zio.ZEnv.live ++ (loggingLayer >>> chatServiceLayer) ++ loggingLayer ++ configLayer ++ repositoryLayer ++ ZLayer
-        .succeed(UserConnectionRepo.live) ++ (configLayer >>> postmanLayer) ++ ZLayer.succeed(
-        TokenHolder.live
-      )
-      (for {
-        _      <- log.info("Initializing Routes")
-        routes <- routes
-        _      <- log.info("Initializing Binding")
-        binding <- {
-          ZIO.fromFuture { implicit ec =>
-            serverSource
-              .to(Sink.foreach { connection => // foreach materializes the source
-                akkaLog.debug("Accepted new connection from " + connection.remoteAddress)
-                // ... and then actually handle the connection
-                try {
-                  connection.flow.joinMat(routes)(Keep.both).run()
-                  ()
-                } catch {
-                  case NonFatal(e) =>
-                    akkaLog.error(e, "Could not materialize handling flow for {}", connection)
-                    throw e
+    GameService.make().memoize.use { gameServiceLayer =>
+      ChatService.make().memoize.use { chatServiceLayer =>
+        val fullLayer = zio.ZEnv.live ++
+          (loggingLayer >>> chatServiceLayer) ++
+          gameServiceLayer ++
+          loggingLayer ++
+          configLayer ++
+          repositoryLayer ++
+          ZLayer.succeed(UserConnectionRepo.live) ++
+          (configLayer >>> postmanLayer) ++
+          ZLayer.succeed(TokenHolder.live)
+        (for {
+          _      <- log.info("Initializing Routes")
+          routes <- routes
+          _      <- log.info("Initializing Binding")
+          binding <- {
+            ZIO.fromFuture { implicit ec =>
+              serverSource
+                .to(Sink.foreach { connection => // foreach materializes the source
+                  akkaLog.debug("Accepted new connection from " + connection.remoteAddress)
+                  // ... and then actually handle the connection
+                  try {
+                    connection.flow.joinMat(routes)(Keep.both).run()
+                    ()
+                  } catch {
+                    case NonFatal(e) =>
+                      akkaLog.error(e, "Could not materialize handling flow for {}", connection)
+                      throw e
+                  }
+                }).run().map { b =>
+                  sys.addShutdownHook {
+                    b.terminate(hardDeadline = shutdownDeadline)
+                      .onComplete { _ =>
+                        actorSystem.terminate()
+                        akkaLog.info("Termination completed")
+                      }
+                    akkaLog.info("Received termination signal")
+                  }
+                  b
                 }
-              }).run().map { b =>
-                sys.addShutdownHook {
-                  b.terminate(hardDeadline = shutdownDeadline)
-                    .onComplete { _ =>
-                      actorSystem.terminate()
-                      akkaLog.info("Termination completed")
-                    }
-                  akkaLog.info("Received termination signal")
-                }
-                b
-              }
 
+            }
           }
-        }
-      } yield binding).provideLayer(fullLayer)
+        } yield binding).provideLayer(fullLayer)
+      }
     }
   }
 

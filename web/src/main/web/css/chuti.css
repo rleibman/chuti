@@ -213,7 +213,7 @@ h4 {
     grid-row-start: 3;
     grid-row-end: span 1;
     display: grid;
-    grid-template-rows: calc(1em + 30px) 2em auto;
+    grid-template-rows: calc(1em + 30px) minmax(2em, 3em) auto;
     grid-template-columns: minmax(calc(calc(var(--domino-width) + 4) * 7), 1fr) 1fr;
 }
 
@@ -268,8 +268,8 @@ h4 {
 }
 
 .jugadorActionBar {
-    height: 2em;
     grid-column-end: span 2;
+    margin: 5px;
 }
 
 .fichasEnJuego {

@@ -95,7 +95,7 @@ object GameService {
 
   type GameService = Has[GameService.Service]
 
-  private[game] type GameLayer = SessionProvider
+  type GameLayer = SessionProvider
     with Repository with UserConnectionRepo with Postman with Logging with TokenHolder
 
   trait Service {
@@ -160,18 +160,11 @@ object GameService {
     def userStream(connectionId: ConnectionId): ZStream[GameLayer, GameException, UserEvent]
   }
 
-  //TODO do with this the same thing we did with ChatService
-  lazy val interpreter
-    : GraphQLInterpreter[Console with Clock with GameLayer with ChatService, CalibanError] =
-    runtime.unsafeRun(
-      GameService
-        .make()
-        .memoize
-        .use(layer =>
-          GameApi.api.interpreter
-            .map(_.provideSomeLayer[Console with Clock with GameLayer with ChatService](layer))
-        )
-    )
+  lazy val interpreter: GraphQLInterpreter[
+    Console with Clock with GameService with GameLayer with ChatService,
+    CalibanError
+  ] =
+    runtime.unsafeRun(GameApi.api.interpreter)
 
   def joinRandomGame(): ZIO[GameService with GameLayer, GameException, Game] =
     URIO.accessM(_.get.joinRandomGame())

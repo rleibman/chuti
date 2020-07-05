@@ -17,18 +17,13 @@
 package game
 
 import akka.http.scaladsl.server.{Directives, Route}
-import api.token.TokenHolder
 import api.{HasActorSystem, config}
 import caliban.interop.circe.AkkaHttpCirceAdapter
 import chat.ChatService.ChatService
-import dao.{Repository, SessionProvider}
-import game.UserConnectionRepo.UserConnectionRepo
-import mail.Postman.Postman
 import zio._
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
-import zio.logging.Logging
 
 import scala.concurrent.ExecutionContextExecutor
 
@@ -40,20 +35,14 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
   val staticContentDir: String =
     config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
-  def route: URIO[
-    Console with Clock with SessionProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService,
-    Route
-  ] =
+  def route: URIO[Console with Clock with GameService with GameLayer with ChatService, Route] =
     for {
-      runtime <- ZIO.runtime[
-        Console with Clock with SessionProvider with Repository with UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
-      ]
+      runtime <- ZIO.runtime[Console with Clock with GameService with GameLayer with ChatService]
     } yield {
       implicit val r = runtime
 
       pathPrefix("game") {
         pathEndOrSingleSlash {
-          implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
           adapter.makeHttpService(
             interpreter
           )

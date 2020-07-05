@@ -26,6 +26,7 @@ import chat.ChatService.ChatService
 import chuti.{PagedStringSearch, User, UserId}
 import dao.{Repository, SessionProvider}
 import game.GameRoute
+import game.GameService.{GameLayer, GameService}
 import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
 import mail.Postman.Postman
@@ -77,7 +78,7 @@ trait ModelRoutes extends Directives {
   //  }
 
   def apiRoute: ZIO[
-    Console with Clock with ChatService with SessionProvider with Logging with Config with Repository with UserConnectionRepo with Postman with TokenHolder,
+    Console with Clock with ChatService with Repository with SessionProvider with Logging with Config with GameService with GameLayer,
     Throwable,
     Route
   ] = {
