@@ -23,9 +23,10 @@ import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
 import chat.ChatService.ChatService
 import chat._
+import chuti.Numero.Numero1
+import chuti.Triunfo.TriunfoNumero
 import chuti._
 import dao.{Repository, SessionProvider}
-import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
 import io.circe.syntax._
 import io.circe.{Decoder, Json}
@@ -37,44 +38,6 @@ import zio.console.Console
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
 import zioslick.RepositoryException
-
-//TODO consider getting rid of userConnectionRepo, and use the userEventQueues instead, they seem to be doing the same thing
-object UserConnectionRepo {
-  type UserConnectionRepo = Has[Service]
-
-  trait Service {
-    def addConnection(
-      connectionId: ConnectionId,
-      user:         User
-    ): UIO[Boolean]
-
-    def removeConnection(connectionId: ConnectionId): UIO[Boolean]
-
-    def connectionMap: UIO[Map[ConnectionId, User]]
-
-    def clear: UIO[Boolean]
-  }
-
-  private val connections = scala.collection.mutable.Map.empty[ConnectionId, User]
-
-  val live: Service = new Service {
-    override def addConnection(
-      connectionId: ConnectionId,
-      user:         User
-    ): UIO[Boolean] =
-      UIO.succeed(connections.put(connectionId, user).nonEmpty)
-
-    override def removeConnection(connectionId: ConnectionId): UIO[Boolean] =
-      UIO.succeed(connections.remove(connectionId).nonEmpty)
-
-    override def connectionMap: UIO[Map[ConnectionId, User]] = UIO.succeed(connections.toMap)
-
-    override def clear: UIO[Boolean] = UIO.succeed {
-      connections.clear()
-      true
-    }
-  }
-}
 
 object GameService {
 
@@ -95,8 +58,7 @@ object GameService {
 
   type GameService = Has[GameService.Service]
 
-  type GameLayer = SessionProvider
-    with Repository with UserConnectionRepo with Postman with Logging with TokenHolder
+  type GameLayer = SessionProvider with Repository with Postman with Logging with TokenHolder
 
   trait Service {
     protected val userQueue: Ref[List[EventQueue[UserEvent]]]
@@ -440,10 +402,7 @@ object GameService {
         } yield gameInvites).mapError(GameException.apply)
 
       def getLoggedInUsers: ZIO[GameLayer, GameException, Seq[User]] =
-        for {
-          userConnectionRepo <- ZIO.service[UserConnectionRepo.Service]
-          loggedInUsers      <- userConnectionRepo.connectionMap.map(_.values.take(20).toSeq)
-        } yield loggedInUsers
+        userEventQueues.get.map(_.map(_.user).distinctBy(_.id).take(20))
 
       def friend(friendId: UserId): ZIO[GameLayer with ChatService, GameException, Boolean] =
         (for {
@@ -674,7 +633,8 @@ object GameService {
         val res = playEvent match {
           case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
-          case e: Da if e.ficha == Game.campanita =>
+          case e: Da
+              if e.ficha == Game.campanita && !game.triunfo.contains(TriunfoNumero(Numero1)) =>
             val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Campanita))
             (a._1, Seq(a._2))
           case _ =>
@@ -806,10 +766,8 @@ object GameService {
       override def userStream(connectionId: ConnectionId): ZStream[GameLayer, Nothing, UserEvent] =
         ZStream.unwrap {
           for {
-            user               <- ZIO.access[SessionProvider](_.get.session.user)
-            allUserQueues      <- userEventQueues.get
-            userConnectionRepo <- ZIO.service[UserConnectionRepo.Service]
-            _                  <- userConnectionRepo.addConnection(connectionId, user)
+            user          <- ZIO.access[SessionProvider](_.get.session.user)
+            allUserQueues <- userEventQueues.get
             _ <- {
               //Only broadcast connections if the user is not yet in one of the queues, and don't send
               //the event to the same user that just logged in (no point, they know they logged in)
@@ -831,10 +789,9 @@ object GameService {
               queue.shutdown *>
                 userEventQueues.update(_.filterNot(_.connectionId == connectionId)) *>
                 log.debug(s"Shut down user queue") *>
-                userConnectionRepo.removeConnection(connectionId) *>
                 //Only broadcast disconnects if it's the last entry of the user in the queue of connections
                 broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected))
-                  .whenM(userConnectionRepo.connectionMap.map(!_.values.exists(_.id == user.id)))
+                  .whenM(userEventQueues.get.map(!_.exists(_.user.id == user.id)))
             }.catchAllCause { c =>
               c.prettyPrint
               ZStream.halt(c)

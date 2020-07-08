@@ -167,11 +167,10 @@ object ChatService {
             // Make sure the user has rights to listen in on the channel,
             // basically if the channel is lobby, or the user is in the game channel for that game
             // admins can listen in on games.
-            gameForUser <- gameOps.getGameForUser.mapError(GameException.apply)
+            userInGame <- gameOps.userInGame(GameId(channelId.value)).mapError(GameException.apply)
             _ <- if (channelId == ChannelId.directChannel) {
-              throw GameException("No te puedes subcribir a un canal directo!")
-            } else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !gameForUser
-                         .fold(false)(_.channelId.fold(false)(_ == channelId))) {
+              throw GameException("No te puedes subscribir a un canal directo!")
+            } else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame) {
               throw GameException("El usuario no esta en este canal")
             } else {
               ZIO.succeed(true)

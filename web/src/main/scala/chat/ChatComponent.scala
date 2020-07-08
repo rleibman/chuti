@@ -55,6 +55,13 @@ object ChatComponent extends ScalaJSClientAdapter {
   lazy private val chatId = UUID.randomUUID().toString
 
   class Backend($ : BackendScope[Props, State]) {
+    def close(): Callback =
+      $.state.flatMap(s =>
+        s.ws.fold(Callback.empty)(handler =>
+          Callback.log("Closing chat ws handler") >> handler.close()
+        )
+      )
+
     private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
       $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
     }
@@ -116,7 +123,7 @@ object ChatComponent extends ScalaJSClientAdapter {
         )
       )
 
-    def refresh(p: Props): Callback = {
+    def init(p: Props): Callback = {
       //TODO call getRecentMessages to prime the list
       $.modState { s =>
         s.copy(ws = Option(
@@ -166,7 +173,10 @@ object ChatComponent extends ScalaJSClientAdapter {
     .builder[Props]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh($.props))
+    .componentDidMount($ =>
+      Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
+    )
+    .componentWillUnmount($ => $.backend.close())
     .build
 
   def apply(

@@ -25,7 +25,7 @@ import api.token.TokenHolder
 import chat.ChatService
 import core.{Core, CoreActors}
 import dao.{MySQLDatabaseProvider, Repository, SlickRepository}
-import game.{GameService, UserConnectionRepo}
+import game.GameService
 import mail.CourierPostman
 import mail.Postman.Postman
 import zio.logging.slf4j.Slf4jLogger
@@ -84,7 +84,6 @@ trait Web {
           loggingLayer ++
           configLayer ++
           repositoryLayer ++
-          ZLayer.succeed(UserConnectionRepo.live) ++
           (configLayer >>> postmanLayer) ++
           ZLayer.succeed(TokenHolder.live)
         (for {

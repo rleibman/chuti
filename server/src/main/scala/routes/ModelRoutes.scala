@@ -27,7 +27,6 @@ import chuti.{PagedStringSearch, User, UserId}
 import dao.{Repository, SessionProvider}
 import game.GameRoute
 import game.GameService.{GameLayer, GameService}
-import game.UserConnectionRepo.UserConnectionRepo
 import io.circe.generic.auto._
 import mail.Postman.Postman
 import zio.clock.Clock

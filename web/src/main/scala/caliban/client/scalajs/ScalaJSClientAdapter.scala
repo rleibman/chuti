@@ -35,7 +35,7 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 trait WebSocketHandler {
-  def close(): Unit
+  def close(): Callback
 }
 
 trait ScalaJSClientAdapter {
@@ -316,7 +316,7 @@ trait ScalaJSClientAdapter {
       doConnect()
     }
 
-    override def close(): Unit = {
+    override def close(): Callback = Callback {
       println("Closing socket")
       connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
       socket.send(GQLStop().asJson.noSpaces)

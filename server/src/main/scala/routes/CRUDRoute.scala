@@ -205,30 +205,29 @@ object CRUDRoute {
               }
             } ~
             pathPrefix(pkRegex) { id =>
-              //TODO fix this
-//              childrenRoutes(
-//                decode[PK](id).toOption.get,
-//                getOperation(decode[PK](id).toOption.get).provide(runtime)
-//              )
-//                .reduceOption(_ ~ _)
-//                .getOrElse(reject) ~
-              pathEndOrSingleSlash {
-                get {
-                  complete(
-                    getOperation(decode[PK](id).toOption.get)
-                      .provide(runtime)
-                      .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
-                  )
-                } ~
-                  delete {
+              zioRoute(
+                (for {
+                  gotten <- getOperation(decode[PK](id).toOption.get)
+                  routes <- childrenRoutes(decode[PK](id).toOption.get, gotten)
+                } yield routes.reduceOption(_ ~ _).getOrElse(reject)).provide(runtime)
+              ) ~
+                pathEndOrSingleSlash {
+                  get {
                     complete(
-                      (for {
-                        getted  <- getOperation(decode[PK](id).toOption.get)
-                        deleted <- deleteOperation(getted)
-                      } yield deleted).provide(runtime)
+                      getOperation(decode[PK](id).toOption.get)
+                        .provide(runtime)
+                        .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
                     )
-                  }
-              }
+                  } ~
+                    delete {
+                      complete(
+                        (for {
+                          getted  <- getOperation(decode[PK](id).toOption.get)
+                          deleted <- deleteOperation(getted)
+                        } yield deleted).provide(runtime)
+                      )
+                    }
+                }
             }
         }
       }

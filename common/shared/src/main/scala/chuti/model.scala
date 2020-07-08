@@ -348,7 +348,7 @@ object Game {
     pidiendo: Ficha,
     triunfo:  Triunfo
   ): (UserId, Ficha) = {
-    //TODO use fichaGanadora instead
+    //could use fichaGanadora instead
     triunfo match {
       case SinTriunfos =>
         if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get

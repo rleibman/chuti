@@ -53,15 +53,6 @@ object GameComponent {
   )
 
   class Backend($ : BackendScope[Props, State]) {
-    def refresh(): Callback = {
-      Callback.empty
-    }
-
-    def init(): Callback = {
-      Callback.log(s"Initializing GameComponent") >>
-        refresh()
-    }
-
     def clearPlayState(): Callback =
       $.modState(
         _.copy(
@@ -85,7 +76,6 @@ object GameComponent {
       p: Props,
       s: State
     ): VdomNode = {
-      println(s"EstrictaDerecha = ${s.estrictaDerecha}")
       ChutiState.ctx.consume { chutiState =>
         VdomArray(
           <.div(
@@ -105,15 +95,6 @@ object GameComponent {
                     ((!game.estrictaDerecha) || jugador.fichas.size > game
                       .prevPlayer(jugador).fichas.size)
 
-                  if (isSelf) {
-                    println(
-                      s"First part = ${(jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto)}"
-                    )
-                    println(s"Second part = ${(!game.estrictaDerecha)}")
-                    println(
-                      s"Third part = ${jugador.fichas.size > game.prevPlayer(jugador).fichas.size}"
-                    )
-                  }
                   val playerPosition =
                     if (isSelf)
                       0
@@ -437,7 +418,7 @@ object GameComponent {
               onPrivateMessage = Option(msg =>
                 $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(
                   <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
-                ) >> chutiState.onRequestGameRefresh >> refresh()
+                ) >> chutiState.onRequestGameRefresh
               )
             )
           )
@@ -450,7 +431,6 @@ object GameComponent {
     .builder[Props]
     .initialStateFromProps(_ => State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init())
     .build
 
   def apply(

@@ -28,17 +28,15 @@ import game.GameClient.{Queries, Subscriptions}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, _}
 import org.scalajs.dom.window
 import pages.GamePage.{calibanCallThroughJsonOpt, makeWebSocketClient}
 import router.AppRouter
 import service.UserRESTClient
-import typings.reactSound.components.ReactSound
-import typings.reactSound.reactSoundStrings._
-import typings.semanticUiReact.components.Button
+import typings.std.global.Audio
 
-import scala.scalajs.js.|
 import scala.util.{Failure, Success}
 
 /**
@@ -50,12 +48,14 @@ import scala.util.{Failure, Success}
 object Content extends ChutiComponent {
   private val connectionId = UUID.randomUUID().toString
 
-  class Backend($ : BackendScope[_, ChutiState]) {
+  case class State(chutiState: ChutiState)
+
+  class Backend($ : BackendScope[_, State]) {
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
     def onGameEvent(gameEvent: GameEvent): Callback = {
       val updateGame: Callback = for {
-        currentgameOpt <- $.state.map(_.gameInProgress)
+        currentgameOpt <- $.state.map(_.chutiState.gameInProgress)
         updated <- {
           val doRefresh = currentgameOpt.fold(true)(game =>
             gameEvent.index match {
@@ -84,7 +84,9 @@ object Content extends ChutiComponent {
         updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
-            refresh >> $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
+            refresh >> $.modState(s =>
+              s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
+            )
           case _ => Callback.empty
         }
       }
@@ -93,7 +95,7 @@ object Content extends ChutiComponent {
     private def reapplyEvent(gameEvent: GameEvent): Callback = {
       $.modState(
         { s =>
-          val moddedGame = s.gameInProgress.flatMap {
+          val moddedGame = s.chutiState.gameInProgress.flatMap {
             currentGame: Game =>
               gameEvent.index match {
                 case None =>
@@ -119,14 +121,16 @@ object Content extends ChutiComponent {
                   )
               }
           }
-          s.copy(gameInProgress = moddedGame)
+          s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
         }
       )
     }
 
     def modGameInProgress(fn: Game => Game): Callback = {
-      $.modState(chutiState =>
-        chutiState.copy(gameInProgress = chutiState.gameInProgress.map(g => fn(g)))
+      $.modState(s =>
+        s.copy(chutiState =
+          s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
+        )
       )
     }
 
@@ -137,55 +141,54 @@ object Content extends ChutiComponent {
           .completeWith {
             case Success(u) =>
               Toast.success("User successfully saved ") >>
-                $.modState(s => s.copy(user = Some(u)))
+                $.modState(s => s.copy(chutiState = s.chutiState.copy(user = Some(u))))
             case Failure(t) =>
               t.printStackTrace()
               Toast.error("Error saving user")
           }
       }
 
-    def playSound(soundUrlOpt: Option[String]): Callback =
-      $.modState(
-        _.copy(
-          soundUrl = soundUrlOpt,
-          soundPlayStatus = soundUrlOpt.fold(STOPPED: PLAYING | STOPPED | PAUSED)(_ => PLAYING)
-        )
+    def playSound(soundUrlOpt: Option[String]): Callback = {
+      soundUrlOpt.fold(Callback.empty) { url =>
+        Callback {
+          val sound = new Audio(src = url)
+          sound.play()
+        }
+      }
+    }
+
+    def render(s: State): VdomNode =
+      VdomArray(
+        <.button(^.onClick ==> { _ =>
+          playSound(Some("/sounds/campanita.mp3"))
+        })("Sound!"),
+        ChutiState.ctx.provide(s.chutiState) {
+          <.div(
+            ^.key    := "contentDiv",
+            ^.height := 100.pct,
+            Confirm.render(),
+            Toast.render(),
+            AppRouter.router()
+          )
+        }
       )
 
-    def render(s: ChutiState): VdomElement =
-      ChutiState.ctx.provide(s) {
-        <.div(
-          ^.height := 100.pct,
-          Button(onClick = { (_, _) =>
-            playSound(Some("/sounds/campanita.mp3"))
-          })("Sound!"),
-          <.span(
-            ReactSound(
-              playStatus = s.soundPlayStatus,
-              url = s.soundUrl.getOrElse(""),
-              onFinishedPlaying = $.modState(_.copy(soundUrl = None, soundPlayStatus = STOPPED))
-            )()
-          ).when(s.soundUrl.nonEmpty && !s.soundMuted),
-          Confirm.render(),
-          Toast.render(),
-          AppRouter.router()
-        )
-      }
-
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
-      $.modState(_.copy(gameViewMode = gameViewMode))
+      $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
 
     def showDialog(dlg: GlobalDialog): Callback =
-      $.modState(_.copy(currentDialog = dlg))
+      $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
 
     def init(): Callback =
       $.modState(s =>
         s.copy(
-          modGameInProgress = modGameInProgress,
-          onRequestGameRefresh = refresh,
-          onGameViewModeChanged = onGameViewModeChanged,
-          onUserChanged = onUserChanged,
-          showDialog = showDialog
+          chutiState = s.chutiState.copy(
+            modGameInProgress = modGameInProgress,
+            onRequestGameRefresh = refresh,
+            onGameViewModeChanged = onGameViewModeChanged,
+            onUserChanged = onUserChanged,
+            showDialog = showDialog
+          )
         )
       )
 
@@ -193,28 +196,25 @@ object Content extends ChutiComponent {
       Callback.log("Refreshing Content Component") >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
-            $.modState(_.copy(user = user))
+            $.modState(s => s.copy(chutiState = s.chutiState.copy(user = user)))
           case Failure(e) =>
             e.printStackTrace()
             Toast.error("Error retrieving user")
         } >>
         UserRESTClient.remoteSystem.wallet().completeWith {
           case Success(wallet) =>
-            $.modState(_.copy(wallet = wallet))
+            $.modState(s => s.copy(chutiState = s.chutiState.copy(wallet = wallet)))
           case Failure(e) =>
             e.printStackTrace()
-            Callback.empty
             Toast.error("Error retrieving user's wallet")
         } >>
-        $.state.map { s: ChutiState =>
-          s.gameStream.foreach(_.close())
-        } >>
+        $.state.map(_.chutiState.gameStream.foreach(_.close())) >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
           callback = {
             case Some(game) =>
-              $.modState(
-                _.copy(
+              $.modState(s =>
+                s.copy(chutiState = s.chutiState.copy(
                   gameInProgress = Option(game),
                   gameStream = Option(
                     makeWebSocketClient[Option[Json]](
@@ -231,12 +231,14 @@ object Content extends ChutiComponent {
                     )
                   )
                 )
+                )
               )
             case None =>
-              $.modState(
-                _.copy(
+              $.modState(s =>
+                s.copy(chutiState = s.chutiState.copy(
                   gameInProgress = None,
                   gameStream = None
+                )
                 )
               )
           }
@@ -264,11 +266,11 @@ object Content extends ChutiComponent {
         }
       }
 
-      ChutiState(gameViewMode = gameViewMode)
+      State(chutiState = ChutiState(gameViewMode = gameViewMode))
     }
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init() >> $.backend.refresh)
     .build
 
-  def apply(): Unmounted[Unit, ChutiState, Backend] = component()
+  def apply(): Unmounted[Unit, State, Backend] = component()
 }

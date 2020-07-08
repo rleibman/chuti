@@ -25,7 +25,6 @@ import chat.ChatService.ChatService
 import courier.Envelope
 import dao.Repository.GameOperations
 import dao.{DatabaseProvider, Repository}
-import game.UserConnectionRepo
 import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -49,31 +48,12 @@ trait GameAbstractSpec extends MockitoSugar {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", userStatus = UserStatus.Idle)
 
-  val testRuntime:        zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  val databaseProvider:   DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  val userConnectionRepo: UserConnectionRepo.Service = UserConnectionRepo.live
+  val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
   def createUserOperations: Repository.UserOperations = {
     val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
     userOperations
   }
-
-//  def addConnection(
-//                     connectionId: ConnectionId,
-//                     user:         User
-//                   ): UIO[Boolean]
-//  when(userConnectionRepo.addConnection(*[ConnectionId], *[User])).thenAnswer {
-//    tuple: (ConnectionId, User) =>
-//      console
-//        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-//          zio.console.Console.live
-//        )
-//  }
-//  when(userConnectionRepo.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
-//    console
-//      .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
-//        zio.console.Console.live
-//      )
-//  }
 
   class MockPostman extends Postman.Service {
     override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] = ZIO.succeed(())
@@ -86,7 +66,7 @@ trait GameAbstractSpec extends MockitoSugar {
     userOps: Repository.UserOperations,
     postman: Postman.Service = new MockPostman
   ): ULayer[
-    Repository with UserConnectionRepo.UserConnectionRepo with Postman with Logging with TokenHolder with ChatService
+    Repository with Postman with Logging with TokenHolder with ChatService
   ] = {
     val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(databaseProvider) ++
@@ -96,7 +76,6 @@ trait GameAbstractSpec extends MockitoSugar {
       }) ++
       loggingLayer ++
       ZLayer.succeed(TokenHolder.live) ++
-      ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman) ++
       (loggingLayer >>> ChatService.make())
   }

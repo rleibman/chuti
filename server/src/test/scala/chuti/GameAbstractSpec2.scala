@@ -28,8 +28,7 @@ import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
 import game.GameService.GameService
-import game.UserConnectionRepo.UserConnectionRepo
-import game.{GameService, UserConnectionRepo}
+import game.GameService
 import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -49,22 +48,6 @@ trait GameAbstractSpec2 extends MockitoSugar {
   val connectionId:                    ConnectionId = ConnectionId(UUID.randomUUID().toString)
   lazy protected val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
   lazy protected val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
-  lazy protected val userConnectionRepo: UserConnectionRepo.Service = {
-    val value = UserConnectionRepo.live
-//    when(value.addConnection(*[ConnectionId], *[User])).thenAnswer { tuple: (ConnectionId, User) =>
-//      console
-//        .putStrLn(s"User ${tuple._2.id.get} logged in").flatMap(_ => ZIO.succeed(true)).provideLayer(
-//          zio.console.Console.live
-//        )
-//    }
-//    when(value.removeConnection(*[ConnectionId])).thenAnswer { connectionId: Int =>
-//      console
-//        .putStrLn(s"User $connectionId logged out").flatMap(_ => ZIO.succeed(true)).provideLayer(
-//          zio.console.Console.live
-//        )
-//    }
-    value
-  }
 
   def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, (Assertion, Game)] = {
     for {
@@ -144,15 +127,13 @@ trait GameAbstractSpec2 extends MockitoSugar {
   }
 
   type TestLayer = DatabaseProvider
-    with Repository with UserConnectionRepo with Postman with Logging with TokenHolder
-    with GameService with ChatService
+    with Repository with Postman with Logging with TokenHolder with GameService with ChatService
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
     val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(databaseProvider) ++
       repositoryLayer(gameFiles: _*) ++
-      ZLayer.succeed(userConnectionRepo) ++
       ZLayer.succeed(postman) ++
       loggingLayer ++
       ZLayer.succeed(TokenHolder.live) ++

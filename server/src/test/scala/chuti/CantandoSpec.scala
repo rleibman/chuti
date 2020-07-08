@@ -39,7 +39,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
   }
 
-  //TODO move up
   def assertSoloUnoCanta(game: Game): Assertion = {
     assert(game.jugadores.count(_.cantante) === 1)
     assert(game.jugadores.count(_.mano) === 1)

@@ -362,5 +362,10 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           }).map(_.sum)
       } yield game
     }
+
+    override def userInGame(id: GameId): RepositoryIO[Boolean] = { chutiSession: ChutiSession =>
+      GamePlayersQuery
+        .filter(gp => gp.gameId === id && gp.userId === chutiSession.user.id).exists.result
+    }
   }
 }

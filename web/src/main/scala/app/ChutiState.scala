@@ -22,9 +22,6 @@ import caliban.client.scalajs.WebSocketHandler
 import chuti.{Game, User, UserWallet}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
-import typings.reactSound.reactSoundStrings.{PAUSED, PLAYING, STOPPED}
-
-import scala.scalajs.js.|
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value
@@ -47,10 +44,7 @@ case class ChutiState(
   gameViewMode:          GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
   showDialog:            GlobalDialog => Callback = _ => Callback.empty,
-  currentDialog:         GlobalDialog = GlobalDialog.none,
-  soundPlayStatus:       PLAYING | STOPPED | PAUSED = STOPPED,
-  soundUrl:              Option[String] = None,
-  soundMuted:            Boolean = false
+  currentDialog:         GlobalDialog = GlobalDialog.none
 )
 
 object ChutiState {

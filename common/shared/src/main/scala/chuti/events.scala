@@ -176,6 +176,7 @@ case class BorloteEvent(
     case Borlote.Hoyo | Borlote.HoyoTecnico => Some("sounds/hoyo.mp3")
     case Borlote.ElNiñoDelCumpleaños        => Some("sounds/cumpleaños.mp3")
     case Borlote.Campanita                  => Some("sounds/campanita.mp3")
+    case Borlote.SantaClaus                 => Some("sounds/santaclaus.mp3")
     case _                                  => None
   }
 
@@ -786,7 +787,7 @@ case class Da(
       if (enJuego.size == game.numPlayers) {
         //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
         //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
-        //TODO rewrite this using game.fichaGanadora(
+        //could rewrite this using game.fichaGanadora(
         val (ganador, fichaGanadora): (UserId, Ficha) =
           Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
         val totalFilas = game.jugadores.flatMap(_.filas).size
