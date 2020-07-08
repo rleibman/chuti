@@ -111,7 +111,7 @@ case object DumbChutiBot extends ChutiBot {
     game:    Game
   ): Pide = {
     game.triunfo match {
-      case None => throw GameException("Should never happen!")
+      case None => throw GameException("Nuncamente!")
       case Some(SinTriunfos) =>
         Pide(
           jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value).get,
@@ -135,11 +135,11 @@ case object DumbChutiBot extends ChutiBot {
     game:    Game
   ): Da = {
     if (game.enJuego.isEmpty) {
-      throw GameException("Should never happen")
+      throw GameException("Nuncamente")
     }
     val pide = game.enJuego.head
     game.triunfo match {
-      case None => throw GameException("Should never happen!")
+      case None => throw GameException("Nuncamente!")
       case Some(SinTriunfos) =>
         val pideNum = pide._2.arriba
         Da(

@@ -56,7 +56,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       opt:      Option[Option[Game]],
       callback: Callback
     ): Callback = {
-      chutiState.onGameInProgressChanged(opt.flatten) >> callback
+      opt.flatten.fold(Callback.empty)(g => chutiState.modGameInProgress(_ => g))
     }
 
     def render(

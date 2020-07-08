@@ -47,7 +47,6 @@ object GameComponent {
 
   case class State(
     cuantasCantas:     Option[CuantasCantas] = None,
-    triunfo:           Option[Triunfo] = None,
     estrictaDerecha:   Boolean = false,
     fichaSeleccionada: Option[Ficha] = None,
     privateMessage:    Option[ChatMessage] = None
@@ -67,7 +66,6 @@ object GameComponent {
       $.modState(
         _.copy(
           cuantasCantas = None,
-          triunfo = None,
           estrictaDerecha = false,
           fichaSeleccionada = None
         )
@@ -87,7 +85,7 @@ object GameComponent {
       p: Props,
       s: State
     ): VdomNode = {
-
+      println(s"EstrictaDerecha = ${s.estrictaDerecha}")
       ChutiState.ctx.consume { chutiState =>
         VdomArray(
           <.div(
@@ -102,10 +100,20 @@ object GameComponent {
                       jugadorState == JugadorState.pidiendoInicial ||
                       jugadorState == JugadorState.pidiendo ||
                       jugadorState == JugadorState.dando)
-                  println(s"jugadorState = $jugadorState, puedeRendirse = $puedeRendirse")
                   val isSelf = chutiState.user.fold(false)(_.id == jugador.id)
-                  val canPlay = jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto
+                  val canPlay = (jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto) &&
+                    ((!game.estrictaDerecha) || jugador.fichas.size > game
+                      .prevPlayer(jugador).fichas.size)
 
+                  if (isSelf) {
+                    println(
+                      s"First part = ${(jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto)}"
+                    )
+                    println(s"Second part = ${(!game.estrictaDerecha)}")
+                    println(
+                      s"Third part = ${jugador.fichas.size > game.prevPlayer(jugador).fichas.size}"
+                    )
+                  }
                   val playerPosition =
                     if (isSelf)
                       0
@@ -192,12 +200,13 @@ object GameComponent {
                                 play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
                               }
                             )("Dá")
-                          case p @ (JugadorState.pidiendo | JugadorState.pidiendoInicial) =>
+                          case jugadorState @ (JugadorState.pidiendo |
+                              JugadorState.pidiendoInicial) =>
                             <.span(
-                              if (p == JugadorState.pidiendoInicial) {
+                              if (jugadorState == JugadorState.pidiendoInicial) {
                                 <.span(
                                   Label()("Triunfan"),
-                                  s.triunfo match {
+                                  game.triunfo match {
                                     case Some(TriunfoNumero(num)) =>
                                       <.img(^.src := s"images/${num.value}.svg", ^.height := 28.px)
                                     case Some(SinTriunfos) => <.span("Sin Triunfos")
@@ -206,10 +215,12 @@ object GameComponent {
                                   Dropdown(
                                     labeled = true,
                                     placeholder = "Triunfo",
-                                    value = s.triunfo.fold("")(_.toString),
+                                    value = game.triunfo.fold("")(_.toString),
                                     onChange = { (_, dropDownProps) =>
                                       val value = dropDownProps.value.asInstanceOf[String]
-                                      $.modState(_.copy(triunfo = Option(Triunfo(value))))
+                                      chutiState.modGameInProgress(
+                                        _.copy(triunfo = Option(Triunfo(value)))
+                                      )
                                     },
                                     options = Triunfo.posibilidades
                                       .map(triunfo =>
@@ -250,21 +261,21 @@ object GameComponent {
                                   compact = true,
                                   basic = true,
                                   disabled = s.fichaSeleccionada.isEmpty ||
-                                    (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
+                                    (game.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
                                   onClick = { (_, _) =>
                                     play(
                                       game.id.get,
                                       Pide(
                                         ficha = s.fichaSeleccionada.get,
-                                        triunfo = s.triunfo,
+                                        triunfo = game.triunfo,
                                         estrictaDerecha = s.estrictaDerecha
                                       )
                                     )
                                   }
                                 )("Pide"),
-                                if (p == JugadorState.pidiendo && game.puedesCaerte(jugador)) {
+                                if (game.triunfo.nonEmpty && game.puedesCaerte(jugador)) {
                                   Button(compact = true, basic = true, onClick = { (_, _) =>
-                                    play(game.id.get, Caete())
+                                    play(game.id.get, Caete(triunfo = game.triunfo))
                                   })("Cáete")
                                 } else {
                                   EmptyVdom
@@ -339,7 +350,7 @@ object GameComponent {
                             ^.className := s"filaFichas$playerPosition",
                             fila.fichas.zipWithIndex.toVdomArray {
                               case (ficha, fichaIndex) =>
-                                val abierta = fila.index == 0 || (fila.index == (game.jugadores
+                                val abierta = fila.fichas.size < 4 || fila.index == 0 || (fila.index == (game.jugadores
                                   .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
                                 if (abierta) {
                                   <.div(

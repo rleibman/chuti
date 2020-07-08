@@ -39,10 +39,11 @@ object ReapplyMode extends Enumeration {
 import chuti.ReapplyMode._
 
 sealed trait GameEvent {
-  val gameId:              Option[GameId]
-  val userId:              Option[UserId]
-  val index:               Option[Int]
-  val gameStatusString:    Option[String]
+  val gameId:           Option[GameId]
+  val userId:           Option[UserId]
+  val index:            Option[Int]
+  val gameStatusString: Option[String]
+  def soundUrl: Option[String]
   val jugadorStatusString: Seq[(UserId, String)]
   val reapplyMode: ReapplyMode = reapply
   def expectedStatus: Option[GameStatus]
@@ -78,7 +79,7 @@ sealed trait PlayEvent extends GameEvent {
     userOpt: Option[User],
     game:    Game
   ): Game = {
-    userOpt.fold(throw GameException("Play events require a user")) { user =>
+    userOpt.fold(throw GameException("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
         throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
@@ -90,7 +91,7 @@ sealed trait PlayEvent extends GameEvent {
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    userOpt.fold(throw GameException("Play events require a user")) { user =>
+    userOpt.fold(throw GameException("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
         throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
@@ -112,6 +113,7 @@ case class NoOp(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends GameEvent {
   override val reapplyMode:    ReapplyMode = none
@@ -141,6 +143,7 @@ case class NoOpPlay(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override val reapplyMode:    ReapplyMode = none
@@ -169,6 +172,13 @@ case class BorloteEvent(
   gameStatusString:    Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends GameEvent {
+  override def soundUrl: Option[String] = borlote match {
+    case Borlote.Hoyo | Borlote.HoyoTecnico => Some("sounds/hoyo.mp3")
+    case Borlote.ElNiñoDelCumpleaños        => Some("sounds/cumpleaños.mp3")
+    case Borlote.Campanita                  => Some("sounds/campanita.mp3")
+    case _                                  => None
+  }
+
   override def expectedStatus: Option[GameStatus] = None
   override def doEvent(
     userOpt: Option[User],
@@ -194,13 +204,14 @@ case class PoisonPill(
   override val gameStatusString:    Option[String] = None
   override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
   override def expectedStatus:      Option[GameStatus] = None
+  override val soundUrl:            Option[String] = None
 
   override def doEvent(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
     if (userOpt.fold(false)(_.id != Option(UserId(-666)))) {
-      throw GameException("Only god can administer a PoisonPill")
+      throw GameException("Solo dios puede administrar veneno")
     }
     (
       game,
@@ -211,7 +222,7 @@ case class PoisonPill(
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = throw GameException("You cannot replay this event")
+  ): Game = throw GameException("No puedes volver a hacer este evento")
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +232,7 @@ case class AbandonGame(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = None
@@ -228,7 +240,7 @@ case class AbandonGame(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    val user = userOpt.getOrElse(throw GameException("User required for this move"))
+    val user = userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
 
     (
       game.copy(
@@ -261,6 +273,7 @@ case class DeclineInvite(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -268,7 +281,7 @@ case class DeclineInvite(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    val user = userOpt.getOrElse(throw GameException("User required for this move"))
+    val user = userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
     (
       game.copy(jugadores = game.jugadores.filter(_.id != user.id)),
       copy(
@@ -292,6 +305,7 @@ case class InviteToGame(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -300,11 +314,11 @@ case class InviteToGame(
     game:    Game
   ): (Game, GameEvent) = {
     if (game.jugadores.exists(j => j.id == invited.id))
-      throw GameException("A player can't join a game twice")
+      throw GameException("Un jugador no puede estar dos veces en el mismo juego")
     if (game.jugadores.exists(_.id == invited.id))
-      throw GameException(s"User ${invited.id} is already in game")
+      throw GameException(s"Usuario ${invited.id} ya esta en el juego")
     if (game.jugadores.length == game.numPlayers)
-      throw GameException("The game is already full")
+      throw GameException("El juego ya esta completo")
     (
       game.copy(jugadores = game.jugadores :+ Jugador(invited, invited = true)),
       copy(
@@ -327,6 +341,7 @@ case class JoinGame(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -335,9 +350,11 @@ case class JoinGame(
     game:    Game
   ): (Game, GameEvent) = {
     val user =
-      joinedUser.getOrElse(userOpt.getOrElse(throw GameException("User required for this move")))
+      joinedUser.getOrElse(
+        userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
+      )
     if (game.jugadores.exists(j => j.id == user.id && !j.invited)) {
-      throw GameException("A player can't join a game twice")
+      throw GameException("Un jugador no puede estar dos veces en el mismo juego")
     }
 
     val newPlayer = game.jugadores
@@ -378,6 +395,7 @@ case class NuevoPartido(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.comienzo)
@@ -419,6 +437,7 @@ case class Sopa(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/sopa.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
   firstSopa:           Boolean = false
 ) extends PlayEvent {
@@ -483,7 +502,7 @@ case class Sopa(
     game:    Game
   ): Game = {
     // necesitas básicamente el juego completo, sopa should call for a reload of the game
-    throw GameException("You can't redo sopa... you need to get the game from scratch")
+    throw GameException("No puedes hacer la sopa, tienes que empezar el juego desde el principio")
   }
 }
 
@@ -498,6 +517,7 @@ case class Canta(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.cantando)
@@ -595,6 +615,7 @@ case class Pide(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
 
@@ -605,7 +626,7 @@ case class Pide(
     jugador:         Jugador,
     game:            Game
   ): (Game, Pide) = {
-    if (game.triunfo.nonEmpty) {
+    if (game.triunfo.fold(false)(_ != triunfo)) {
       throw GameException("No puedes cambiar triunfos cuando se te antoje.")
     }
     val modified = game
@@ -613,9 +634,15 @@ case class Pide(
         triunfo = Option(triunfo),
         enJuego = List((jugador.id.get, ficha)),
         estrictaDerecha = estrictaDerecha,
-        jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
-          j.copy(fichas = j.dropFicha(ficha))
-        }, j => j.copy(cuantasCantas = None)) //Ya no importa quien canto que
+        jugadores = game.modifiedJugadores(
+          _.id == jugador.id, { j =>
+            j.copy(
+              fichas = j.dropFicha(ficha),
+              cuantasCantas = if (j.cantante) j.cuantasCantas else None
+            )
+          },
+          j => j.copy(cuantasCantas = if (j.cantante) j.cuantasCantas else None)
+        ) //Ya no importa quien canto que
       )
     (
       //transfiere la ficha al centro
@@ -627,7 +654,11 @@ case class Pide(
         //En este caso, el hoyo tecnico se calcula despues de haber declarado triunfo
         hoyoTecnico =
           if (modified.puedesCaerte(jugador)) Option("Podias haberte caido, no lo hiciste")
-          else None
+          else None,
+        gameStatusString = Option(
+          s"${jugador.user.name} salio con $ficha ${if (estrictaDerecha) ". Estricta derecha!"
+          else ""}"
+        )
       )
     )
 
@@ -638,16 +669,17 @@ case class Pide(
     jugador:         Jugador,
     game:            Game
   ): (Game, Pide) = {
+    val modified = game
+      .copy(
+        enJuego = List((jugador.id.get, ficha)),
+        estrictaDerecha = estrictaDerecha,
+        jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
+          j.copy(fichas = j.dropFicha(ficha))
+        })
+      )
     (
       //transfiere la ficha al centro
-      game
-        .copy(
-          enJuego = List((jugador.id.get, ficha)),
-          estrictaDerecha = estrictaDerecha,
-          jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
-            j.copy(fichas = j.dropFicha(ficha))
-          })
-        ),
+      modified,
       copy(
         index = Option(game.currentEventIndex),
         gameId = game.id,
@@ -681,14 +713,16 @@ case class Pide(
     jugador:         Jugador,
     game:            Game
   ): Game =
-    game
-      .copy(
-        enJuego = List((jugador.id.get, ficha)),
-        estrictaDerecha = estrictaDerecha,
-        jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
-          j.copy(fichas = j.dropFicha(ficha))
-        })
-      )
+    processStatusMessages(
+      game
+        .copy(
+          enJuego = List((jugador.id.get, ficha)),
+          estrictaDerecha = estrictaDerecha,
+          jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
+            j.copy(fichas = j.dropFicha(ficha))
+          })
+        )
+    )
 
   def redoPideInicial(
     ficha:           Ficha,
@@ -696,14 +730,23 @@ case class Pide(
     estrictaDerecha: Boolean,
     jugador:         Jugador,
     game:            Game
-  ): Game = game.copy(
-    triunfo = Option(triunfo),
-    enJuego = List((jugador.id.get, ficha)),
-    estrictaDerecha = estrictaDerecha,
-    jugadores = game.modifiedJugadores(_.id == jugador.id, { j =>
-      j.copy(fichas = j.dropFicha(ficha))
-    }, j => j.copy(cuantasCantas = None)) //Ya no importa quien canto que
-  )
+  ): Game =
+    processStatusMessages(
+      game.copy(
+        triunfo = Option(triunfo),
+        enJuego = List((jugador.id.get, ficha)),
+        estrictaDerecha = estrictaDerecha,
+        jugadores = game.modifiedJugadores(
+          _.id == jugador.id, { j =>
+            j.copy(
+              fichas = j.dropFicha(ficha),
+              cuantasCantas = if (j.cantante) j.cuantasCantas else None
+            )
+          },
+          j => j.copy(cuantasCantas = if (j.cantante) j.cuantasCantas else None)
+        ) //Ya no importa quien canto que
+      )
+    )
 
   override def redoEvent(
     jugador: Jugador,
@@ -723,6 +766,7 @@ case class Da(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def doEvent(
@@ -749,6 +793,7 @@ case class Da(
         //I'm not sure who has it, but the code b
         val a = game.copy(
           enJuego = List.empty,
+          estrictaDerecha = false,
           jugadores = game.modifiedJugadores(
             _.id == Option(ganador), { j =>
               j.copy(
@@ -789,7 +834,7 @@ case class Da(
     //Checar hoyo tecnico (el jugador dio una ficha que no fue pedida, o teniendo triunfo no lo solto)
     val pidióFicha = enJuego.head._2
     val pidioNum = game.triunfo match {
-      case None                     => throw GameException("Should never happen!")
+      case None                     => throw GameException("Nuncamente!")
       case Some(TriunfoNumero(num)) => if (pidióFicha.es(num)) num else pidióFicha.arriba
       case Some(SinTriunfos)        => pidióFicha.arriba
     }
@@ -800,7 +845,7 @@ case class Da(
         Option(s"Pidieron $pidioNum, diste $ficha pero si tienes $pidioNum.... que tonto!")
       } else if (!ficha.es(pidioNum) &&
                  (game.triunfo match {
-                   case None => throw GameException("Should never happen!")
+                   case None => throw GameException("Nuncamente!")
                    case Some(TriunfoNumero(num)) =>
                      !ficha.es(num) &&
                        modifiedGame.jugador(jugador.id).fichas.exists(_.es(num))
@@ -835,6 +880,7 @@ case class Da(
       val totalFilas = game.jugadores.flatMap(_.filas).size
       val a = game.copy(
         enJuego = List.empty,
+        estrictaDerecha = false,
         jugadores = game.modifiedJugadores(
           _.id == ganador, { j =>
             j.copy(
@@ -875,6 +921,7 @@ case class Caete(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def doEvent(
@@ -994,12 +1041,12 @@ case class Caete(
 
 }
 
-//TODO test
 case class MeRindo(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/merindo.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def doEvent(
@@ -1045,6 +1092,7 @@ case class HoyoTecnico(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
 
@@ -1083,6 +1131,7 @@ case class TerminaJuego(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
   partidoTerminado:    Boolean = false
 ) extends PlayEvent {
@@ -1127,7 +1176,7 @@ case class TerminaJuego(
         s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados."
         else ""}"
       } else {
-        s"Fue hoyo de ${j.cuantasCantas} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
+        s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
         else ""}"
       }
     }

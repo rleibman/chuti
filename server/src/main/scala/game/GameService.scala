@@ -376,7 +376,7 @@ object GameService {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
           oldGame <- repository.gameOperations
-            .get(oldGameId).map(_.getOrElse(throw GameException("Previous game did not exist")))
+            .get(oldGameId).map(_.getOrElse(throw GameException("No existe juego previo")))
           withFirstUser <- {
             val newGame = Game(
               id = None,
@@ -391,7 +391,7 @@ object GameService {
           }
           afterInvites <- repository.gameOperations
             .get(withFirstUser.id.get).map(
-              _.getOrElse(throw GameException("Previous game did not exist"))
+              _.getOrElse(throw GameException("No existe juego previo"))
             )
         } yield afterInvites).mapError(GameException.apply)
 
@@ -490,7 +490,9 @@ object GameService {
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.user.id == user.id))
-              throw GameException(s"User ${user.id} is not in this game, he can't invite anyone")
+              throw GameException(
+                s"El usuario ${user.id} no esta en este juego, por lo cual no puede invitar a nadie"
+              )
             val (withInvite, invitation) =
               game.applyEvent(Option(user), InviteToGame(invited = invited))
             repository.gameOperations.upsert(withInvite).map((_, invitation))
@@ -526,9 +528,11 @@ object GameService {
           invitedOpt <- repository.userOperations.get(userId)
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (invitedOpt.isEmpty)
-              throw GameException(s"User $userId does not exist")
+              throw GameException(s"El usuario $userId no existe")
             if (!game.jugadores.exists(_.user.id == user.id))
-              throw GameException(s"User ${user.id} is not in this game, he can't invite anyone")
+              throw GameException(
+                s"El usuario ${user.id} no esta en este juego, por lo que no puede invitar a nadie"
+              )
             val (withInvite, invitation) =
               game.applyEvent(Option(user), InviteToGame(invited = invitedOpt.get))
             repository.gameOperations.upsert(withInvite).map((_, invitation))
@@ -601,10 +605,10 @@ object GameService {
           afterEvent <- ZIO.foreach(gameOpt) { game =>
             if (game.gameStatus.enJuego)
               throw GameException(
-                s"User $user tried to decline an invitation for a game that had already started"
+                s"El usuario $user trato de declinar una invitacion a un juego que ya habia empezado"
               )
             if (!game.jugadores.exists(_.user.id == user.id))
-              throw GameException(s"User ${user.id} is not even in this game")
+              throw GameException(s"El usuario ${user.id} ni siquera esta en este juego")
             val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
             repository.gameOperations
               .upsert(afterEvent).map((_, declinedEvent))
@@ -671,7 +675,7 @@ object GameService {
           case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Da if e.ficha == Game.campanita =>
-            val a = game.applyEvent(Option(user), BorloteEvent(Borlote.CampanitaSeJuega))
+            val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Campanita))
             (a._1, Seq(a._2))
           case _ =>
             val (regalosGame, regalosBorlote) =
@@ -736,9 +740,9 @@ object GameService {
           repository <- ZIO.service[Repository.Service]
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           gameOpt    <- repository.gameOperations.get(gameId)
-          played <- gameOpt.fold(throw GameException("Game not found")) { game =>
+          played <- gameOpt.fold(throw GameException("No encontre ese juego")) { game =>
             if (!game.jugadores.exists(_.user.id == user.id)) {
-              throw GameException("This user isn't playing in this game!!")
+              throw GameException("El usuario no esta jugando en este juego!!")
             }
             val (played, event) = game.applyEvent(Option(user), playEvent)
 

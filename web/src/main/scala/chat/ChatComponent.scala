@@ -29,6 +29,7 @@ import chat.ChatClient.{
   User => CalibanUser
 }
 import chuti.{ChannelId, ChatMessage, User}
+import components.Toast
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
@@ -76,9 +77,9 @@ object ChatComponent extends ScalaJSClientAdapter {
           case Success(response) if response.code.isSuccess || response.code.isInformational =>
             Callback.log("Message sent")
           case Failure(exception) =>
-            Callback.throwException(exception) //TODO handle error responses better
+            Toast.error("Error sending message") >> Callback.throwException(exception)
           case Success(response) =>
-            Callback.log(s"Error: ${response.statusText}") //TODO handle error responses better
+            Toast.error("Error sending message") >> Callback.log(s"Error: ${response.statusText}")
         }
     }
 

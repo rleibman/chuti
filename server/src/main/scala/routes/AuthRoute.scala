@@ -48,10 +48,9 @@ trait AuthRoute
     "/chuti-login-opt-bundle.js",
     "/chuti-login-opt-bundle.js.map",
     "/css/app.css",
-    "/images/favicon.png",
+    "/images/favicon.ico",
     "/images/logo.png",
     "/favicon.ico",
-    "/images/favicon.svg",
     "/webfonts/fa-solid-900.woff2",
     "/webfonts/fa-solid-900.woff",
     "/webfonts/fa-solid-900.ttf"

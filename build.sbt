@@ -390,12 +390,15 @@ lazy val bundlerSettings: Project => Project =
         ((moduleName in fullOptJS).value + "-opt.js")),
       webpackEmitSourceMaps := true,
       Compile / npmDependencies ++= Seq(
-        "react-dom"         -> "16.13.1",
-        "@types/react-dom"  -> "16.9.6",
-        "react"             -> "16.13.1",
-        "@types/react"      -> "16.9.32",
-        "semantic-ui-react" -> "0.88.2",
-        "use-sound"         -> "1.0.2",
+        "react-dom"              -> "16.13.1",
+        "@types/react-dom"       -> "16.9.6",
+        "react"                  -> "16.13.1",
+        "@types/react"           -> "16.9.32",
+        "semantic-ui-react"      -> "0.88.2",
+        "@types/react-sound"     -> "1.2.2",
+        "@studysync/react-sound" -> "1.2.2",
+        "react-sound"            -> "1.2.0",
+        "use-sound"              -> "1.0.2"
       ),
       npmDevDependencies.in(Compile) := Seq(
         "style-loader"               -> "0.23.1",

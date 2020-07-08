@@ -34,7 +34,11 @@ import org.scalajs.dom.window
 import pages.GamePage.{calibanCallThroughJsonOpt, makeWebSocketClient}
 import router.AppRouter
 import service.UserRESTClient
+import typings.reactSound.components.ReactSound
+import typings.reactSound.reactSoundStrings._
+import typings.semanticUiReact.components.Button
 
+import scala.scalajs.js.|
 import scala.util.{Failure, Success}
 
 /**
@@ -75,7 +79,9 @@ object Content extends ChutiComponent {
         }
       } yield updated
 
-      Callback.log(gameEvent.toString) >> updateGame >> {
+      Callback.log(gameEvent.toString) >>
+        playSound(gameEvent.soundUrl) >>
+        updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
             refresh >> $.modState(_.copy(currentDialog = GlobalDialog.cuentas))
@@ -92,7 +98,7 @@ object Content extends ChutiComponent {
               gameEvent.index match {
                 case None =>
                   throw GameException(
-                    "This clearly could not be happening (event has no index)"
+                    "Esto es imposible (el evento no tiene indice)"
                   )
                 case Some(index) if index == currentGame.currentEventIndex =>
                   //If the game event is the next one to be applied, apply it to the game
@@ -109,12 +115,18 @@ object Content extends ChutiComponent {
                 case Some(index) =>
                   //If it's past, mark an error, how could we have a past event???
                   throw GameException(
-                    s"This clearly could not be happening eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+                    s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
                   )
               }
           }
           s.copy(gameInProgress = moddedGame)
         }
+      )
+    }
+
+    def modGameInProgress(fn: Game => Game): Callback = {
+      $.modState(chutiState =>
+        chutiState.copy(gameInProgress = chutiState.gameInProgress.map(g => fn(g)))
       )
     }
 
@@ -128,14 +140,32 @@ object Content extends ChutiComponent {
                 $.modState(s => s.copy(user = Some(u)))
             case Failure(t) =>
               t.printStackTrace()
-              Callback.empty //TODO do something else here
+              Toast.error("Error saving user")
           }
       }
+
+    def playSound(soundUrlOpt: Option[String]): Callback =
+      $.modState(
+        _.copy(
+          soundUrl = soundUrlOpt,
+          soundPlayStatus = soundUrlOpt.fold(STOPPED: PLAYING | STOPPED | PAUSED)(_ => PLAYING)
+        )
+      )
 
     def render(s: ChutiState): VdomElement =
       ChutiState.ctx.provide(s) {
         <.div(
           ^.height := 100.pct,
+          Button(onClick = { (_, _) =>
+            playSound(Some("/sounds/campanita.mp3"))
+          })("Sound!"),
+          <.span(
+            ReactSound(
+              playStatus = s.soundPlayStatus,
+              url = s.soundUrl.getOrElse(""),
+              onFinishedPlaying = $.modState(_.copy(soundUrl = None, soundPlayStatus = STOPPED))
+            )()
+          ).when(s.soundUrl.nonEmpty && !s.soundMuted),
           Confirm.render(),
           Toast.render(),
           AppRouter.router()
@@ -145,16 +175,13 @@ object Content extends ChutiComponent {
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
       $.modState(_.copy(gameViewMode = gameViewMode))
 
-    def onGameInProgressChanged(gameOpt: Option[Game]): Callback =
-      $.modState(_.copy(gameInProgress = gameOpt))
-
     def showDialog(dlg: GlobalDialog): Callback =
       $.modState(_.copy(currentDialog = dlg))
 
     def init(): Callback =
       $.modState(s =>
         s.copy(
-          onGameInProgressChanged = onGameInProgressChanged,
+          modGameInProgress = modGameInProgress,
           onRequestGameRefresh = refresh,
           onGameViewModeChanged = onGameViewModeChanged,
           onUserChanged = onUserChanged,
@@ -169,8 +196,7 @@ object Content extends ChutiComponent {
             $.modState(_.copy(user = user))
           case Failure(e) =>
             e.printStackTrace()
-            Callback.empty
-          //TODO do something more with this here
+            Toast.error("Error retrieving user")
         } >>
         UserRESTClient.remoteSystem.wallet().completeWith {
           case Success(wallet) =>
@@ -178,40 +204,42 @@ object Content extends ChutiComponent {
           case Failure(e) =>
             e.printStackTrace()
             Callback.empty
-          //TODO do something more with this here
+            Toast.error("Error retrieving user's wallet")
         } >>
         $.state.map { s: ChutiState =>
           s.gameStream.foreach(_.close())
         } >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,
-          //TODO now that I think of it, this is stupid, there should be a single callback that will get Option[Game]
-          callbackWhenSome = game =>
-            $.modState(
-              _.copy(
-                gameInProgress = Option(game),
-                gameStream = Option(
-                  makeWebSocketClient[Option[Json]](
-                    uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                    query = Subscriptions.gameStream(game.id.get.value, connectionId),
-                    onData = { (_, data) =>
-                      data.flatten.fold(Callback.empty)(json =>
-                        gameEventDecoder
-                          .decodeJson(json)
-                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
-                      )
-                    },
-                    operationId = "-"
+          callback = {
+            case Some(game) =>
+              $.modState(
+                _.copy(
+                  gameInProgress = Option(game),
+                  gameStream = Option(
+                    makeWebSocketClient[Option[Json]](
+                      uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                      query = Subscriptions.gameStream(game.id.get.value, connectionId),
+                      onData = { (_, data) =>
+                        data.flatten.fold(Callback.empty)(json =>
+                          gameEventDecoder
+                            .decodeJson(json)
+                            .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                        )
+                      },
+                      operationId = "-"
+                    )
                   )
                 )
               )
-            ),
-          callbackWhenNone = $.modState(
-            _.copy(
-              gameInProgress = None,
-              gameStream = None
-            )
-          )
+            case None =>
+              $.modState(
+                _.copy(
+                  gameInProgress = None,
+                  gameStream = None
+                )
+              )
+          }
         )
   }
 

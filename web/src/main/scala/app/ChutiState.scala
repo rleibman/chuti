@@ -22,6 +22,9 @@ import caliban.client.scalajs.WebSocketHandler
 import chuti.{Game, User, UserWallet}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
+import typings.reactSound.reactSoundStrings.{PAUSED, PLAYING, STOPPED}
+
+import scala.scalajs.js.|
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value
@@ -33,18 +36,21 @@ object GlobalDialog extends Enumeration {
 }
 
 case class ChutiState(
-  onUserChanged:           Option[User] => Callback = _ => Callback.empty,
-  user:                    Option[User] = None,
-  wallet:                  Option[UserWallet] = None,
-  serverVersion:           Option[String] = None,
-  gameInProgress:          Option[Game] = None,
-  onGameInProgressChanged: Option[Game] => Callback = _ => Callback.empty,
-  onRequestGameRefresh:    Callback = Callback.empty,
-  gameStream:              Option[WebSocketHandler] = None,
-  gameViewMode:            GameViewMode = GameViewMode.lobby,
-  onGameViewModeChanged:   GameViewMode => Callback = _ => Callback.empty,
-  showDialog:              GlobalDialog => Callback = _ => Callback.empty,
-  currentDialog:           GlobalDialog = GlobalDialog.none
+  onUserChanged:         Option[User] => Callback = _ => Callback.empty,
+  user:                  Option[User] = None,
+  wallet:                Option[UserWallet] = None,
+  serverVersion:         Option[String] = None,
+  gameInProgress:        Option[Game] = None,
+  modGameInProgress:     (Game => Game) => Callback = _ => Callback.empty,
+  onRequestGameRefresh:  Callback = Callback.empty,
+  gameStream:            Option[WebSocketHandler] = None,
+  gameViewMode:          GameViewMode = GameViewMode.lobby,
+  onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
+  showDialog:            GlobalDialog => Callback = _ => Callback.empty,
+  currentDialog:         GlobalDialog = GlobalDialog.none,
+  soundPlayStatus:       PLAYING | STOPPED | PAUSED = STOPPED,
+  soundUrl:              Option[String] = None,
+  soundMuted:            Boolean = false
 )
 
 object ChutiState {

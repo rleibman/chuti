@@ -229,14 +229,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             onClick = { (_, _) =>
               calibanCallThroughJsonOpt[Mutations, Game](
                 Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
-                game =>
+                callback = { gameOpt =>
                   Toast.success("Juego empezado!") >> p.gameInProgress
-                    .setState(Option(game)) >> $.modState(
+                    .setState(gameOpt) >> $.modState(
                     _.copy(
                       dlg = Dialog.none,
                       newGameDialogState = None
                     )
                   )
+                }
               )
             }
           )("Crear")
@@ -343,9 +344,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           Callback.log(s"Calling joinRandomGame") >>
                             calibanCallThroughJsonOpt[Mutations, Game](
                               Mutations.joinRandomGame,
-                              game =>
+                              callback = gameOpt =>
                                 Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState(
-                                  Option(game)
+                                  gameOpt
                                 )
                             )
                       )("Juega Con Quien sea"),
@@ -437,9 +438,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             onClick = (_, _) =>
                               calibanCallThroughJsonOpt[Mutations, Game](
                                 Mutations.newGameSameUsers(game.id.get.value),
-                                game =>
+                                gameOpt =>
                                   Toast.success("Juego empezado!") >> p.gameInProgress
-                                    .setState(Option(game)) >> $.modState(
+                                    .setState(gameOpt) >> $.modState(
                                     _.copy(
                                       dlg = Dialog.none,
                                       newGameDialogState = None
@@ -519,8 +520,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                             Mutations.acceptGameInvitation(
                                               game.id.fold(0)(_.value)
                                             ),
-                                            game =>
-                                              p.gameInProgress.setState(Option(game)) >> refresh()
+                                            gameOpt =>
+                                              p.gameInProgress.setState(gameOpt) >> refresh()
                                           )
                                         }
                                       )("Aceptar"),

@@ -72,9 +72,7 @@ trait ScalaJSClientAdapter {
 
   def calibanCallThroughJsonOpt[Origin, A: Decoder](
     selectionBuilder: SelectionBuilder[Origin, Option[Json]],
-    callbackWhenSome: A => Callback,
-    callbackWhenNone: Callback = Callback
-      .log(s"The result was empty")
+    callback:         Option[A] => Callback
   )(
     implicit ev: IsOperation[Origin]
   ): Callback = calibanCall[Origin, Option[Json]](
@@ -82,11 +80,11 @@ trait ScalaJSClientAdapter {
       case Some(json) =>
         val decoder = implicitly[Decoder[A]]
         decoder.decodeJson(json) match {
-          case Right(obj) => callbackWhenSome(obj)
+          case Right(obj) => callback(Option(obj))
           case Left(error) =>
             Callback.log(s"3 Error: $error") //TODO handle error responses better
         }
-      case None => callbackWhenNone
+      case None => callback(None)
     }
   )
 
