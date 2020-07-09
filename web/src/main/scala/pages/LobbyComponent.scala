@@ -45,7 +45,6 @@ import typings.semanticUiReact.inputInputMod.InputOnChangeData
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   import app.GameViewMode._
 
-
   case class ExtUser(
     user:       User,
     isFriend:   Boolean,

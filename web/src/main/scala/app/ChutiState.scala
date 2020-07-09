@@ -45,17 +45,17 @@ case class ChutiState(
   gameViewMode:          GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
   showDialog:            GlobalDialog => Callback = _ => Callback.empty,
-  friends:                   Seq[User] = Seq.empty,
+  friends:               Seq[User] = Seq.empty,
   userStream:            Option[WebSocketHandler] = None,
-  loggedInUsers:             Seq[User] = Seq.empty,
+  loggedInUsers:         Seq[User] = Seq.empty,
   currentDialog:         GlobalDialog = GlobalDialog.none
 ) {
   lazy val usersAndFriends: Seq[ExtUser] =
     loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
       friends
         .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
-        ExtUser(_, isFriend = true, isLoggedIn = false)
-      ).sortBy(_.user.name)
+          ExtUser(_, isFriend = true, isLoggedIn = false)
+        ).sortBy(_.user.name)
 
 }
 
