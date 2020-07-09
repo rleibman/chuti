@@ -318,10 +318,17 @@ trait ScalaJSClientAdapter {
 
     override def close(): Callback = Callback {
       println("Closing socket")
-      connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
-      socket.send(GQLStop().asJson.noSpaces)
-      socket.send(GQLConnectionTerminate().asJson.noSpaces)
-      socket.close()
+      if (socket.readyState == WebSocket.CONNECTING) {
+        //Wait a second for it to finish connecting and try again
+        scala.scalajs.js.timers.setTimeout(1000)(close().runNow())
+      } else if (socket.readyState == WebSocket.OPEN) {
+        connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
+        socket.send(GQLStop().asJson.noSpaces)
+        socket.send(GQLConnectionTerminate().asJson.noSpaces)
+        socket.close()
+      } else {
+        //It's already closed
+      }
     }
   }
 

@@ -22,6 +22,7 @@ import caliban.client.scalajs.WebSocketHandler
 import chuti.{Game, User, UserWallet}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
+import pages.LobbyComponent.ExtUser
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value
@@ -44,8 +45,19 @@ case class ChutiState(
   gameViewMode:          GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
   showDialog:            GlobalDialog => Callback = _ => Callback.empty,
+  friends:                   Seq[User] = Seq.empty,
+  userStream:            Option[WebSocketHandler] = None,
+  loggedInUsers:             Seq[User] = Seq.empty,
   currentDialog:         GlobalDialog = GlobalDialog.none
-)
+) {
+  lazy val usersAndFriends: Seq[ExtUser] =
+    loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
+      friends
+        .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
+        ExtUser(_, isFriend = true, isLoggedIn = false)
+      ).sortBy(_.user.name)
+
+}
 
 object ChutiState {
   val ctx: Context[ChutiState] = React.createContext(ChutiState())

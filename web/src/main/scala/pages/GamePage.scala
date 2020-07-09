@@ -18,7 +18,6 @@ package pages
 
 import app.{ChutiState, GameViewMode}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat.ChatComponent
 import chuti._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted

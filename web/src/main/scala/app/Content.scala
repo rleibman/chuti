@@ -21,10 +21,21 @@ import java.util.UUID
 
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
+import caliban.client.CalibanClientError.DecodingError
+import caliban.client.SelectionBuilder
+import caliban.client.Value.{EnumValue, StringValue}
+import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{Queries, Subscriptions}
+import game.GameClient.{
+  Queries,
+  Subscriptions,
+  User => CalibanUser,
+  UserEvent => CalibanUserEvent,
+  UserEventType => CalibanUserEventType,
+  UserStatus => CalibanUserStatus
+}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -32,7 +43,6 @@ import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, _}
 import org.scalajs.dom.window
-import pages.GamePage.{calibanCallThroughJsonOpt, makeWebSocketClient}
 import router.AppRouter
 import service.UserRESTClient
 import typings.std.global.Audio
@@ -45,7 +55,7 @@ import scala.util.{Failure, Success}
   * but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and
   * presenting the app menu.
   */
-object Content extends ChutiComponent {
+object Content extends ChutiComponent with ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
 
   case class State(chutiState: ChutiState)
@@ -179,6 +189,27 @@ object Content extends ChutiComponent {
     def showDialog(dlg: GlobalDialog): Callback =
       $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
 
+    def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
+      import CalibanUserEventType._
+      Callback.log(data.toString) >> {
+        data match {
+          case None => Callback.empty
+          case Some((user, Disconnected)) =>
+            $.modState(s =>
+              s.copy(chutiState = s.chutiState
+                .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
+              )
+            )
+          case Some((user, AbandonedGame | Connected | JoinedGame | Modified)) =>
+            $.modState(s =>
+              s.copy(chutiState = s.chutiState
+                .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
+              )
+            )
+        }
+      }
+    }
+
     def init(): Callback =
       $.modState(s =>
         s.copy(
@@ -190,10 +221,7 @@ object Content extends ChutiComponent {
             showDialog = showDialog
           )
         )
-      )
-
-    def refresh: Callback =
-      Callback.log("Refreshing Content Component") >>
+      ) >>
         UserRESTClient.remoteSystem.whoami().completeWith {
           case Success(user) =>
             $.modState(s => s.copy(chutiState = s.chutiState.copy(user = user)))
@@ -201,6 +229,55 @@ object Content extends ChutiComponent {
             e.printStackTrace()
             Toast.error("Error retrieving user")
         } >>
+        $.modState(s =>
+          s.copy(chutiState = s.chutiState.copy(userStream = Option(
+            makeWebSocketClient[Option[(User, CalibanUserEventType)]](
+              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+              query = Subscriptions
+                .userStream(connectionId)(
+                  (CalibanUserEvent.user(CalibanUser.id) ~
+                    CalibanUserEvent.user(CalibanUser.name) ~
+                    CalibanUserEvent.user(CalibanUser.email) ~
+                    CalibanUserEvent.userEventType).map {
+                    case (((idOpt, name), email), eventType) =>
+                      (
+                        User(id = idOpt.map(UserId), name = name, email = email),
+                        eventType
+                      )
+                  }
+                ),
+              onData = { (_, data) =>
+                onUserStreamData(data.flatten)
+              },
+              operationId = "-"
+            )
+          )
+          )
+          )
+        )
+
+    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
+      (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
+        (
+          id:     Option[Int],
+          name:   String,
+          status: CalibanUserStatus
+        ) => {
+          val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
+            case StringValue(str) => UserStatus.fromString(str)
+            case EnumValue(str)   => UserStatus.fromString(str)
+            case other            => throw DecodingError(s"Can't build UserStatus from input $other")
+          }
+          User(
+            id = id.map(UserId.apply),
+            email = "",
+            name = name,
+            userStatus = userStatus
+          )
+        })
+
+    def refresh: Callback =
+      Callback.log("Refreshing Content Component") >>
         UserRESTClient.remoteSystem.wallet().completeWith {
           case Success(wallet) =>
             $.modState(s => s.copy(chutiState = s.chutiState.copy(wallet = wallet)))
@@ -208,6 +285,22 @@ object Content extends ChutiComponent {
             e.printStackTrace()
             Toast.error("Error retrieving user's wallet")
         } >>
+        calibanCall[Queries, Option[List[User]]](
+          Queries.getFriends(userSelectionBuilder),
+          loggedInUsersOpt =>
+            $.modState(s =>
+              s.copy(chutiState = s.chutiState.copy(friends = loggedInUsersOpt.toSeq.flatten))
+            )
+        ) >>
+        calibanCall[Queries, Option[List[User]]](
+          Queries.getLoggedInUsers(userSelectionBuilder),
+          loggedInUsersOpt =>
+            $.modState(s =>
+              s.copy(chutiState =
+                s.chutiState.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id))
+              )
+            )
+        ) >>
         $.state.map(_.chutiState.gameStream.foreach(_.close())) >>
         calibanCallThroughJsonOpt[Queries, Game](
           Queries.getGameForUser,

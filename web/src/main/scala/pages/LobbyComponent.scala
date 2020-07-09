@@ -16,26 +16,14 @@
 
 package pages
 
-import java.net.URI
 import java.util.UUID
 
 import app.ChutiState
-import caliban.client.CalibanClientError.DecodingError
-import caliban.client.SelectionBuilder
-import caliban.client.Value.{EnumValue, StringValue}
-import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
+import caliban.client.scalajs.ScalaJSClientAdapter
 import chat._
 import chuti._
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType,
-  UserStatus => CalibanUserStatus
-}
+import game.GameClient.{Mutations, Queries}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
@@ -57,7 +45,6 @@ import typings.semanticUiReact.inputInputMod.InputOnChangeData
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   import app.GameViewMode._
 
-  private val connectionId = UUID.randomUUID().toString
 
   case class ExtUser(
     user:       User,
@@ -79,113 +66,36 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   )
 
   case class State(
-    friends:                   Seq[User] = Seq.empty,
-    loggedInUsers:             Seq[User] = Seq.empty,
     privateMessage:            Option[ChatMessage] = None,
     invites:                   Seq[Game] = Seq.empty,
-    userStream:                Option[WebSocketHandler] = None,
     dlg:                       Dialog = Dialog.none,
     newGameDialogState:        Option[NewGameDialogState] = None,
     inviteExternalDialogState: Option[InviteExternalDialogState] = None
-  ) {
-    lazy val usersAndFriends: Seq[ExtUser] =
-      loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
-        friends
-          .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
-            ExtUser(_, isFriend = true, isLoggedIn = false)
-          ).sortBy(_.user.name)
-  }
+  ) {}
 
   class Backend($ : BackendScope[Props, State]) {
     private val gameDecoder = implicitly[Decoder[Game]]
 
-    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
-      (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
-        (
-          id:     Option[Int],
-          name:   String,
-          status: CalibanUserStatus
-        ) => {
-          val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
-            case StringValue(str) => UserStatus.fromString(str)
-            case EnumValue(str)   => UserStatus.fromString(str)
-            case other            => throw DecodingError(s"Can't build UserStatus from input $other")
-          }
-          User(
-            id = id.map(UserId.apply),
-            email = "",
-            name = name,
-            userStatus = userStatus
-          )
-        })
-
     def refresh(): Callback = {
-      calibanCall[Queries, Option[List[User]]](
-        Queries.getFriends(userSelectionBuilder),
-        loggedInUsersOpt => $.modState(_.copy(friends = loggedInUsersOpt.toSeq.flatten))
-      ) >>
-        calibanCall[Queries, Option[List[Json]]](
-          Queries.getGameInvites,
-          jsonInvites => {
-            $.modState(
-              _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
-                gameDecoder.decodeJson(json) match {
-                  case Right(game) => game
-                  case Left(error) => throw error
-                }
-              )
-              )
+      calibanCall[Queries, Option[List[Json]]](
+        Queries.getGameInvites,
+        jsonInvites => {
+          $.modState(
+            _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
+              gameDecoder.decodeJson(json) match {
+                case Right(game) => game
+                case Left(error) => throw error
+              }
             )
-          }
-        ) >>
-        calibanCall[Queries, Option[List[User]]](
-          Queries.getLoggedInUsers(userSelectionBuilder),
-          loggedInUsersOpt =>
-            $.modState(_.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id)))
-        )
+            )
+          )
+        }
+      )
     }
 
     def init(): Callback = {
       Callback.log(s"Initializing LobbyComponent") >>
-        refresh() >>
-        $.modState(
-          _.copy(userStream = Option(
-            makeWebSocketClient[Option[(User, CalibanUserEventType)]](
-              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-              query = Subscriptions
-                .userStream(connectionId)(
-                  (CalibanUserEvent.user(CalibanUser.id) ~
-                    CalibanUserEvent.user(CalibanUser.name) ~
-                    CalibanUserEvent.user(CalibanUser.email) ~
-                    CalibanUserEvent.userEventType).map {
-                    case (((idOpt, name), email), eventType) =>
-                      (
-                        User(id = idOpt.map(UserId), name = name, email = email),
-                        eventType
-                      )
-                  }
-                ),
-              onData = { (_, data) =>
-                onUserStreamData(data.flatten)
-              },
-              operationId = "-"
-            )
-          )
-          )
-        )
-    }
-
-    def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
-      import CalibanUserEventType._
-      Callback.log(data.toString) >> {
-        data match {
-          case None => Callback.empty
-          case Some((user, Disconnected)) =>
-            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id)))
-          case Some((user, AbandonedGame | Connected | JoinedGame | Modified)) =>
-            $.modState(s => s.copy(loggedInUsers = s.loggedInUsers.filter(_.id != user.id) :+ user))
-        }
-      }
+        refresh()
     }
 
     def render(
@@ -570,105 +480,106 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         <.table(
                           ^.className := "playersTable",
                           <.tbody(
-                            s.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
-                              TableRow(key = player.user.id.fold("")(_.toString))(
-                                TableCell(width = SemanticWIDTHS.`1`)(
-                                  if (player.isFriend)
-                                    Popup(
-                                      content = "Amigo",
+                            chutiState.usersAndFriends.filter(_.user.id != user.id).toVdomArray {
+                              player =>
+                                TableRow(key = player.user.id.fold("")(_.toString))(
+                                  TableCell(width = SemanticWIDTHS.`1`)(
+                                    if (player.isFriend)
+                                      Popup(
+                                        content = "Amigo",
+                                        trigger = Icon(
+                                          className = "icon",
+                                          name = SemanticICONS.star,
+                                          color = SemanticCOLORS.yellow,
+                                          circular = true,
+                                          fitted = true
+                                        )()
+                                      )()
+                                    else
+                                      EmptyVdom,
+                                    if (player.user.userStatus == UserStatus.Playing)
+                                      <.img(^.src := "images/6_6.svg", ^.height := 16.px)
+                                    else
+                                      EmptyVdom,
+                                    if (player.isLoggedIn)
+                                      Popup(
+                                        content = "En linea",
+                                        trigger = Icon(
+                                          className = "icon",
+                                          name = SemanticICONS.`user outline`,
+                                          circular = true,
+                                          fitted = true
+                                        )()
+                                      )()
+                                    else
+                                      EmptyVdom
+                                  ),
+                                  TableCell(width = SemanticWIDTHS.`1`, align = center)(
+                                    Dropdown(
+                                      className = "menuBurger",
                                       trigger = Icon(
-                                        className = "icon",
-                                        name = SemanticICONS.star,
-                                        color = SemanticCOLORS.yellow,
-                                        circular = true,
+                                        name = SemanticICONS.`ellipsis vertical`,
                                         fitted = true
                                       )()
-                                    )()
-                                  else
-                                    EmptyVdom,
-                                  if (player.user.userStatus == UserStatus.Playing)
-                                    <.img(^.src := "images/6_6.svg", ^.height := 16.px)
-                                  else
-                                    EmptyVdom,
-                                  if (player.isLoggedIn)
-                                    Popup(
-                                      content = "En linea",
-                                      trigger = Icon(
-                                        className = "icon",
-                                        name = SemanticICONS.`user outline`,
-                                        circular = true,
-                                        fitted = true
-                                      )()
-                                    )()
-                                  else
-                                    EmptyVdom
-                                ),
-                                TableCell(width = SemanticWIDTHS.`1`, align = center)(
-                                  Dropdown(
-                                    className = "menuBurger",
-                                    trigger = Icon(
-                                      name = SemanticICONS.`ellipsis vertical`,
-                                      fitted = true
-                                    )()
-                                  )(
-                                    DropdownMenu()(
-                                      (for {
-                                        game     <- p.gameInProgress.value
-                                        userId   <- user.id
-                                        playerId <- player.user.id
-                                        gameId   <- game.id
-                                      } yield
-                                        if (player.user.userStatus != UserStatus.Playing &&
-                                            game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
-                                            game.jugadores.head.id == user.id &&
-                                            !game.jugadores.exists(_.id == player.user.id))
+                                    )(
+                                      DropdownMenu()(
+                                        (for {
+                                          game     <- p.gameInProgress.value
+                                          userId   <- user.id
+                                          playerId <- player.user.id
+                                          gameId   <- game.id
+                                        } yield
+                                          if (player.user.userStatus != UserStatus.Playing &&
+                                              game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                              game.jugadores.head.id == user.id &&
+                                              !game.jugadores.exists(_.id == player.user.id))
+                                            DropdownItem(onClick = { (_, _) =>
+                                              calibanCall[Mutations, Option[Boolean]](
+                                                Mutations
+                                                  .inviteToGame(playerId.value, gameId.value),
+                                                res =>
+                                                  if (res.getOrElse(false))
+                                                    Toast.success("Jugador Invitado!")
+                                                  else Toast.error("Error invitando jugador!")
+                                              )
+                                            })("Invitar a jugar"): VdomNode
+                                          else
+                                            EmptyVdom).getOrElse(EmptyVdom),
+                                        if (player.isFriend)
                                           DropdownItem(onClick = { (_, _) =>
                                             calibanCall[Mutations, Option[Boolean]](
-                                              Mutations
-                                                .inviteToGame(playerId.value, gameId.value),
+                                              Mutations.unfriend(player.user.id.get.value),
                                               res =>
                                                 if (res.getOrElse(false))
-                                                  Toast.success("Jugador Invitado!")
-                                                else Toast.error("Error invitando jugador!")
+                                                  refresh() >> Toast.success(
+                                                    s"Cortalas, ${player.user.name} ya no es tu amigo!"
+                                                  )
+                                                else
+                                                  Toast.error("Error haciendo amigos!")
                                             )
-                                          })("Invitar a jugar"): VdomNode
+                                          })("Ya no quiero ser tu amigo")
                                         else
-                                          EmptyVdom).getOrElse(EmptyVdom),
-                                      if (player.isFriend)
-                                        DropdownItem(onClick = { (_, _) =>
-                                          calibanCall[Mutations, Option[Boolean]](
-                                            Mutations.unfriend(player.user.id.get.value),
-                                            res =>
-                                              if (res.getOrElse(false))
-                                                refresh() >> Toast.success(
-                                                  s"Cortalas, ${player.user.name} ya no es tu amigo!"
-                                                )
-                                              else
-                                                Toast.error("Error haciendo amigos!")
-                                          )
-                                        })("Ya no quiero ser tu amigo")
-                                      else
-                                        DropdownItem(onClick = { (_, _) =>
-                                          calibanCall[Mutations, Option[Boolean]](
-                                            Mutations.friend(player.user.id.get.value),
-                                            res =>
-                                              if (res.getOrElse(false))
-                                                chutiState.onRequestGameRefresh >> refresh() >> Toast
-                                                  .success("Un nuevo amiguito!")
-                                              else
-                                                Toast.error("Error haciendo amigos!")
-                                          )
-                                        })("Agregar como amigo")
+                                          DropdownItem(onClick = { (_, _) =>
+                                            calibanCall[Mutations, Option[Boolean]](
+                                              Mutations.friend(player.user.id.get.value),
+                                              res =>
+                                                if (res.getOrElse(false))
+                                                  chutiState.onRequestGameRefresh >> refresh() >> Toast
+                                                    .success("Un nuevo amiguito!")
+                                                else
+                                                  Toast.error("Error haciendo amigos!")
+                                            )
+                                          })("Agregar como amigo")
+                                      )
                                     )
-                                  )
-                                ),
-                                TableCell(width = SemanticWIDTHS.`14`)(player.user.name)
-                              )
+                                  ),
+                                  TableCell(width = SemanticWIDTHS.`14`)(player.user.name)
+                                )
                             }
                           )
                         )
                       )
-                    ).when(s.loggedInUsers.nonEmpty), {
+                    ).when(chutiState.loggedInUsers.nonEmpty), {
                       ""
                     }
                   )
