@@ -45,9 +45,9 @@ case class ChutiState(
   gameViewMode:          GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
   showDialog:            GlobalDialog => Callback = _ => Callback.empty,
-  friends:               Seq[User] = Seq.empty,
+  friends:               List[User] = List.empty,
   userStream:            Option[WebSocketHandler] = None,
-  loggedInUsers:         Seq[User] = Seq.empty,
+  loggedInUsers:         List[User] = List.empty,
   currentDialog:         GlobalDialog = GlobalDialog.none
 ) {
   lazy val usersAndFriends: Seq[ExtUser] =

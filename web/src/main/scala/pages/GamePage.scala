@@ -16,12 +16,14 @@
 
 package pages
 
+import java.time.ZoneOffset
+
 import app.{ChutiState, GameViewMode}
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
+import japgolly.scalajs.react.extra.{ReusabilityOverlay, StateSnapshot, TimerSupport}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
 
@@ -31,14 +33,6 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   case class State()
 
   class Backend($ : BackendScope[_, State]) {
-
-    def init(
-      p: Props,
-      s: State
-    ): Callback = {
-      Callback.empty
-    }
-    //    private val gameDecoder = implicitly[Decoder[Game]]
 
     def onModeChanged(
       p: Props
@@ -88,21 +82,15 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
         gameViewMode match {
           case GameViewMode.lobby =>
-            VdomArray(
-              //            renderDebugBar,
               LobbyComponent(
                 StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
                 StateSnapshot(gameViewMode)(onModeChanged(p))
               )
-            )
           case GameViewMode.game =>
-            VdomArray(
-              //            renderDebugBar,
               GameComponent(
-                StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
+                chutiState.gameInProgress,
                 StateSnapshot(gameViewMode)(onModeChanged(p))
               )
-            )
           case _ =>
             <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
         }
@@ -111,11 +99,35 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   }
   case class Props(chutiState: ChutiState)
 
+  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
+    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
+  )
+  implicit val gameReuse: Reusability[Game] =
+    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
+  implicit val userIdReuse:     Reusability[UserId] = Reusability.by(_.value)
+  implicit val userReuse:       Reusability[User] = Reusability.by(_.id)
+  implicit val bigDecimalReuse: Reusability[BigDecimal] = Reusability.by(_.toLong)
+  implicit val walletReuse:     Reusability[UserWallet] = Reusability.derive[UserWallet]
+  implicit val gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)
+  implicit private val chutiStateReuse: Reusability[ChutiState] = Reusability.caseClassExcept(
+    "onUserChanged",
+    "modGameInProgress",
+    "onRequestGameRefresh",
+    "gameStream",
+    "onGameViewModeChanged",
+    "showDialog",
+    "currentDialog",
+    "userStream"
+  )
+  implicit private val propsReuse: Reusability[Props] = Reusability.by(_.chutiState.gameViewMode.toString)
+  implicit private val stateReuse: Reusability[State] = Reusability.derive[State]
+
   private val component = ScalaComponent
     .builder[Props]("GamePageInner")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init($.props, $.state))
+    .configure(Reusability.shouldComponentUpdateAndLog("GamePage"))
+    .configure(ReusabilityOverlay.install)
     .build
 
   private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =

@@ -79,11 +79,11 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           if (doRefresh)
             Callback.info(
               "Had to force a refresh because the event index was too far into the future"
-            ) >> refresh
+            ) >> refresh()
           else
             gameEvent.reapplyMode match {
               case ReapplyMode.none        => Callback.empty
-              case ReapplyMode.fullRefresh => refresh
+              case ReapplyMode.fullRefresh => refresh()
               case ReapplyMode.reapply     => reapplyEvent(gameEvent)
             }
         }
@@ -94,7 +94,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         updateGame >> {
         gameEvent match {
           case e: TerminaJuego if (e.partidoTerminado) =>
-            refresh >> $.modState(s =>
+            refresh() >> $.modState(s =>
               s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
             )
           case _ => Callback.empty
@@ -103,7 +103,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     }
 
     private def reapplyEvent(gameEvent: GameEvent): Callback = {
-      $.modState(
+      Callback.log("============== reapply event") >> $.modState(
         { s =>
           val moddedGame = s.chutiState.gameInProgress.flatMap {
             currentGame: Game =>
@@ -137,7 +137,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     }
 
     def modGameInProgress(fn: Game => Game): Callback = {
-      $.modState(s =>
+      Callback.log("============== modgameInProgress") >> $.modState(s =>
         s.copy(chutiState =
           s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
         )
@@ -168,23 +168,20 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     }
 
     def render(s: State): VdomNode =
-      VdomArray(
-        <.button(^.onClick ==> { _ =>
-          playSound(Some("/sounds/campanita.mp3"))
-        })("Sound!"),
-        ChutiState.ctx.provide(s.chutiState) {
-          <.div(
-            ^.key    := "contentDiv",
-            ^.height := 100.pct,
-            Confirm.render(),
-            Toast.render(),
-            AppRouter.router()
-          )
-        }
-      )
+      ChutiState.ctx.provide(s.chutiState) {
+        <.div(
+          ^.key    := "contentDiv",
+          ^.height := 100.pct,
+          Confirm.render(),
+          Toast.render(),
+          AppRouter.router()
+        )
+      }
 
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
-      $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
+      Callback.log("============== onGameViewModeChanged") >> $.modState(s =>
+        s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode))
+      )
 
     def showDialog(dlg: GlobalDialog): Callback =
       $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
@@ -210,52 +207,6 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       }
     }
 
-    def init(): Callback =
-      $.modState(s =>
-        s.copy(
-          chutiState = s.chutiState.copy(
-            modGameInProgress = modGameInProgress,
-            onRequestGameRefresh = refresh,
-            onGameViewModeChanged = onGameViewModeChanged,
-            onUserChanged = onUserChanged,
-            showDialog = showDialog
-          )
-        )
-      ) >>
-        UserRESTClient.remoteSystem.whoami().completeWith {
-          case Success(user) =>
-            $.modState(s => s.copy(chutiState = s.chutiState.copy(user = user)))
-          case Failure(e) =>
-            e.printStackTrace()
-            Toast.error("Error retrieving user")
-        } >>
-        $.modState(s =>
-          s.copy(chutiState = s.chutiState.copy(userStream = Option(
-            makeWebSocketClient[Option[(User, CalibanUserEventType)]](
-              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-              query = Subscriptions
-                .userStream(connectionId)(
-                  (CalibanUserEvent.user(CalibanUser.id) ~
-                    CalibanUserEvent.user(CalibanUser.name) ~
-                    CalibanUserEvent.user(CalibanUser.email) ~
-                    CalibanUserEvent.userEventType).map {
-                    case (((idOpt, name), email), eventType) =>
-                      (
-                        User(id = idOpt.map(UserId), name = name, email = email),
-                        eventType
-                      )
-                  }
-                ),
-              onData = { (_, data) =>
-                onUserStreamData(data.flatten)
-              },
-              operationId = "-"
-            )
-          )
-          )
-          )
-        )
-
     lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
       (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
         (
@@ -276,66 +227,88 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           )
         })
 
-    def refresh: Callback =
-      Callback.log("Refreshing Content Component") >>
-        UserRESTClient.remoteSystem.wallet().completeWith {
-          case Success(wallet) =>
-            $.modState(s => s.copy(chutiState = s.chutiState.copy(wallet = wallet)))
-          case Failure(e) =>
-            e.printStackTrace()
-            Toast.error("Error retrieving user's wallet")
-        } >>
-        calibanCall[Queries, Option[List[User]]](
-          Queries.getFriends(userSelectionBuilder),
-          loggedInUsersOpt =>
-            $.modState(s =>
-              s.copy(chutiState = s.chutiState.copy(friends = loggedInUsersOpt.toSeq.flatten))
+    lazy private val userEventSelectionBuilder
+      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType)] =
+      (CalibanUserEvent.user(CalibanUser.id) ~
+        CalibanUserEvent.user(CalibanUser.name) ~
+        CalibanUserEvent.user(CalibanUser.email) ~
+        CalibanUserEvent.userEventType).map {
+        case (((idOpt, name), email), eventType) =>
+          (
+            User(id = idOpt.map(UserId), name = name, email = email),
+            eventType
+          )
+      }
+
+    def refresh(initial: Boolean = false): Callback = {
+      val ajax = for {
+        whoami <- if (initial) UserRESTClient.remoteSystem.whoami()
+        else $.state.map(_.chutiState.user).asAsyncCallback
+        wallet            <- UserRESTClient.remoteSystem.wallet()
+        friends           <- asyncCalibanCall(Queries.getFriends(userSelectionBuilder))
+        loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
+        gameInProgressOpt <- asyncCalibanCallThroughJsonOpt[Queries, Game](Queries.getGameForUser)
+      } yield $.modState { s =>
+        val copy = if (initial) {
+          s.copy(
+            chutiState = s.chutiState.copy(
+              modGameInProgress = modGameInProgress,
+              onRequestGameRefresh = refresh(),
+              onGameViewModeChanged = onGameViewModeChanged,
+              onUserChanged = onUserChanged,
+              showDialog = showDialog,
+              user = whoami,
+              userStream = Option(
+                makeWebSocketClient[Option[(User, CalibanUserEventType)]](
+                  uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                  query = Subscriptions
+                    .userStream(connectionId)(
+                      userEventSelectionBuilder
+                    ),
+                  onData = { (_, data) =>
+                    onUserStreamData(data.flatten)
+                  },
+                  operationId = "-"
+                )
+              )
             )
-        ) >>
-        calibanCall[Queries, Option[List[User]]](
-          Queries.getLoggedInUsers(userSelectionBuilder),
-          loggedInUsersOpt =>
-            $.modState(s =>
-              s.copy(chutiState =
-                s.chutiState.copy(loggedInUsers = loggedInUsersOpt.toSeq.flatten.distinctBy(_.id))
-              )
+          )
+        } else {
+          s
+        }
+
+        copy.copy(chutiState = copy.chutiState.copy(
+          wallet = wallet,
+          friends = friends.toList.flatten,
+          loggedInUsers = loggedInUsersOpt.toList.flatten.distinctBy(_.id),
+          gameInProgress = gameInProgressOpt,
+          gameStream = gameInProgressOpt.map(game =>
+            makeWebSocketClient[Option[Json]](
+              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+              query = Subscriptions.gameStream(game.id.get.value, connectionId),
+              onData = { (_, data) =>
+                data.flatten.fold(Callback.empty)(json =>
+                  gameEventDecoder
+                    .decodeJson(json)
+                    .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                )
+              },
+              operationId = "-"
             )
-        ) >>
-        $.state.map(_.chutiState.gameStream.foreach(_.close())) >>
-        calibanCallThroughJsonOpt[Queries, Game](
-          Queries.getGameForUser,
-          callback = {
-            case Some(game) =>
-              $.modState(s =>
-                s.copy(chutiState = s.chutiState.copy(
-                  gameInProgress = Option(game),
-                  gameStream = Option(
-                    makeWebSocketClient[Option[Json]](
-                      uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                      query = Subscriptions.gameStream(game.id.get.value, connectionId),
-                      onData = { (_, data) =>
-                        data.flatten.fold(Callback.empty)(json =>
-                          gameEventDecoder
-                            .decodeJson(json)
-                            .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
-                        )
-                      },
-                      operationId = "-"
-                    )
-                  )
-                )
-                )
-              )
-            case None =>
-              $.modState(s =>
-                s.copy(chutiState = s.chutiState.copy(
-                  gameInProgress = None,
-                  gameStream = None
-                )
-                )
-              )
-          }
+          )
         )
+        )
+      }
+
+      for {
+        _ <- Callback.log(
+          if (initial) "Initializing Content Component" else "Refreshing Content Component"
+        )
+        _          <- $.state.map(_.chutiState.gameStream.foreach(_.close()))
+        modedState <- ajax.completeWith(_.get)
+      } yield modedState
+    }
+
   }
 
   private val component = ScalaComponent
@@ -362,7 +335,11 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       State(chutiState = ChutiState(gameViewMode = gameViewMode))
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init() >> $.backend.refresh)
+    .componentDidMount($ => $.backend.refresh(initial = true))
+    .componentWillUnmount($ =>
+      $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>
+        $.state.chutiState.userStream.fold(Callback.empty)(_.close())
+    )
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()

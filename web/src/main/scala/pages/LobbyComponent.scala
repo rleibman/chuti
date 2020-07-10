@@ -16,7 +16,7 @@
 
 package pages
 
-import java.util.UUID
+import java.time.ZoneOffset
 
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
@@ -28,17 +28,12 @@ import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.StateSnapshot
+import japgolly.scalajs.react.extra.{ReusabilityOverlay, StateSnapshot}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLInputElement
 import typings.react.reactStrings.center
 import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.{
-  SemanticCOLORS,
-  SemanticICONS,
-  SemanticSIZES,
-  SemanticWIDTHS
-}
+import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import typings.semanticUiReact.inputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
@@ -66,7 +61,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
 
   case class State(
     privateMessage:            Option[ChatMessage] = None,
-    invites:                   Seq[Game] = Seq.empty,
+    invites:                   List[Game] = Nil,
     dlg:                       Dialog = Dialog.none,
     newGameDialogState:        Option[NewGameDialogState] = None,
     inviteExternalDialogState: Option[InviteExternalDialogState] = None
@@ -80,7 +75,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         Queries.getGameInvites,
         jsonInvites => {
           $.modState(
-            _.copy(invites = jsonInvites.toSeq.flatten.map(json =>
+            _.copy(invites = jsonInvites.toList.flatten.map(json =>
               gameDecoder.decodeJson(json) match {
                 case Right(game) => game
                 case Left(error) => throw error
@@ -292,7 +287,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   onClick = { (_, _) =>
                                     calibanCall[Mutations, Option[Boolean]](
                                       Mutations.cancelUnacceptedInvitations(game.id.get.value),
-                                      _ => Toast.success("Jugadores cancelados") >> refresh() >> chutiState.onRequestGameRefresh
+                                      _ => chutiState.onRequestGameRefresh >> refresh()
                                     )
                                   }
                                 )("Cancelar invitaciones a aquellos que todavía no aceptan")
@@ -595,11 +590,21 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     gameViewMode:   StateSnapshot[GameViewMode]
   )
 
+  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
+    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
+  )
+  implicit val triunfoReuse: Reusability[Triunfo] = Reusability.by(_.toString)
+  implicit val gameReuse: Reusability[Game] = Reusability.by(game => (game.id.map(_.value), game.currentEventIndex, game.triunfo))
+  implicit private val propsReuse: Reusability[Props] = Reusability.derive[Props]
+  implicit private val stateReuse: Reusability[State] = Reusability.caseClassExcept("dlg", "newGameDialogState", "inviteExternalDialogState")
+
   private val component = ScalaComponent
     .builder[Props]
     .initialState(State())
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())
+    .configure(Reusability.shouldComponentUpdateAndLog("Lobby"))
+    .configure(ReusabilityOverlay.install)
     .build
 
   def apply(

@@ -17,10 +17,6 @@
 package app
 
 import chat.ChatComponent
-import japgolly.scalajs.react.React.Context
-import japgolly.scalajs.react._
-import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExport

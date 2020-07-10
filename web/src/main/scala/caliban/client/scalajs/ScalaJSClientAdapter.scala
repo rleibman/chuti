@@ -43,6 +43,38 @@ trait ScalaJSClientAdapter {
   val serverUri = uri"http://localhost:8079/api/game"
   implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
 
+  def asyncCalibanCall[Origin, A](
+    selectionBuilder: SelectionBuilder[Origin, A]
+  )(
+    implicit ev: IsOperation[Origin]
+  ): AsyncCallback[A] = {
+    val request = selectionBuilder.toRequest(serverUri)
+    //TODO add headers as necessary
+    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+    AsyncCallback
+      .fromFuture(request.send())
+      .map(_.body match {
+        case Left(exception) => throw exception
+        case Right(value)    => value
+      })
+  }
+
+  def asyncCalibanCallThroughJsonOpt[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Option[Json]]
+  )(
+    implicit ev: IsOperation[Origin]
+  ): AsyncCallback[Option[A]] =
+    asyncCalibanCall[Origin, Option[Json]](selectionBuilder).map { jsonOpt =>
+      val decoder = implicitly[Decoder[A]]
+      jsonOpt.map(decoder.decodeJson) match {
+        case Some(Right(value)) => Some(value)
+        case Some(Left(error)) =>
+          Callback.throwException(error).runNow()
+          None
+        case None =>None
+      }
+    }
+
   def calibanCall[Origin, A](
     selectionBuilder: SelectionBuilder[Origin, A],
     callback:         A => Callback
@@ -162,8 +194,6 @@ trait ScalaJSClientAdapter {
     onClientError: Throwable => Callback = { _ =>
       Callback.empty
     }
-  )(
-    implicit decoder: Decoder[A]
   ): WebSocketHandler = new WebSocketHandler {
 
     def GQLConnectionInit(): GQLOperationMessage =

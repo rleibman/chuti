@@ -29,7 +29,7 @@ import io.circe.generic.auto._
 import io.circe.syntax._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.StateSnapshot
+import japgolly.scalajs.react.extra.{ReusabilityOverlay, StateSnapshot}
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalablytyped.runtime.StringDictionary
 import pages.LobbyComponent.calibanCall
@@ -41,7 +41,7 @@ import scala.scalajs.js.JSConverters._
 
 object GameComponent {
   case class Props(
-    gameInProgress: StateSnapshot[Option[Game]],
+    gameInProgress: Option[Game],
     gameViewMode:   StateSnapshot[GameViewMode]
   )
 
@@ -79,8 +79,9 @@ object GameComponent {
       ChutiState.ctx.consume { chutiState =>
         VdomArray(
           <.div(
+            ^.key       := "gameTable",
             ^.className := "gameTable",
-            p.gameInProgress.value.fold(EmptyVdom) { game =>
+            p.gameInProgress.fold(EmptyVdom) { game =>
               game.jugadores.zipWithIndex.toVdomArray {
                 case (jugador, playerIndex) =>
                   val jugadorState: JugadorState = game.jugadorState(jugador)
@@ -294,9 +295,9 @@ object GameComponent {
                       jugador.fichas.zipWithIndex.toVdomArray {
                         case (FichaTapada, fichaIndex) =>
                           <.div(
+                            ^.key       := s"ficha_${playerIndex}_$fichaIndex",
                             ^.className := s"domino${playerPosition}Container",
                             <.img(
-                              ^.key       := s"ficha_${playerIndex}_$fichaIndex",
                               ^.src       := s"images/backx150.png",
                               ^.className := s"domino$playerPosition"
                             )
@@ -304,10 +305,10 @@ object GameComponent {
                         case (ficha @ FichaConocida(arriba, abajo), fichaIndex) =>
                           val selectable = canPlay
                           <.div(
+                            ^.key       := s"ficha_${playerIndex}_$fichaIndex",
                             ^.className := s"domino${playerPosition}Container",
                             <.img(
                               if (selectable) ^.cursor.pointer else ^.cursor.auto,
-                              ^.key := s"ficha_${playerIndex}_$fichaIndex",
 //                            ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
                               ^.src := s"images/${abajo}_${arriba}x150.png",
                               ^.onClick --> {
@@ -335,18 +336,18 @@ object GameComponent {
                                   .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
                                 if (abierta) {
                                   <.div(
+                                    ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                     ^.className := s"dominoJugado${playerPosition}Container",
                                     <.img(
-                                      ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                       ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
                                       ^.className := s"dominoJugado$playerPosition"
                                     )
                                   )
                                 } else {
                                   <.div(
+                                    ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                     ^.className := s"dominoJugado${playerPosition}Container",
                                     <.img(
-                                      ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                       ^.src       := s"images/backx75.png",
                                       ^.className := s"dominoJugado$playerPosition"
                                     )
@@ -359,9 +360,10 @@ object GameComponent {
                   )
               }
             },
-            p.gameInProgress.value.toVdomArray(game =>
+            p.gameInProgress.toVdomArray(game =>
               if (game.gameStatus == GameStatus.partidoTerminado) {
                 <.div(
+                  ^.key       := "fichasEnJuego",
                   ^.className := "fichasEnJuego",
                   <.div(
                     ^.className := "juegoStatus",
@@ -398,10 +400,12 @@ object GameComponent {
                     case (user, ficha) =>
                       VdomArray(
                         <.div(
+                          ^.key       := "fichasEnJuegoName",
                           ^.className := "fichasEnJuegoName",
                           game.jugador(Option(user)).user.name
                         ),
                         <.img(
+                          ^.key       := "dominoEnJuego",
                           ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
                           ^.className := "dominoEnJuego"
                         )
@@ -414,7 +418,7 @@ object GameComponent {
           chutiState.user.fold(EmptyVdom)(user =>
             ChatComponent(
               user,
-              ChannelId(p.gameInProgress.value.flatMap(_.id).fold(0)(_.value)),
+              ChannelId(p.gameInProgress.flatMap(_.id).fold(0)(_.value)),
               onPrivateMessage = Option(msg =>
                 $.modState(_.copy(privateMessage = Option(msg))) >> Toast.info(
                   <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
@@ -427,14 +431,21 @@ object GameComponent {
     }
   }
 
+  implicit val triunfoReuse: Reusability[Triunfo] = Reusability.by(_.toString)
+  implicit val gameReuse: Reusability[Game] = Reusability.by(game => (game.id.map(_.value), game.currentEventIndex, game.triunfo))
+  implicit private val stateReuse: Reusability[State] = Reusability.always
+  implicit private val propsReuse: Reusability[Props] = Reusability.derive[Props]
+
   private val component = ScalaComponent
     .builder[Props]
     .initialStateFromProps(_ => State())
     .renderBackend[Backend]
+    .configure(Reusability.shouldComponentUpdateAndLog("GameComponent"))
+    .configure(ReusabilityOverlay.install)
     .build
 
   def apply(
-    gameInProgress: StateSnapshot[Option[Game]],
+    gameInProgress: Option[Game],
     mode:           StateSnapshot[GameViewMode]
   ): Unmounted[Props, State, Backend] =
     component(Props(gameInProgress, mode))

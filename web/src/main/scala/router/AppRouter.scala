@@ -143,7 +143,9 @@ object AppRouter extends ChutiComponent {
                               .setEH(GameAppPage)(e)
                           }
                         )("Entrar al Juego"),
-                        MenuItem(onClick = { (_, _) =>
+                        MenuItem(
+                          key = "menuCuentas",
+                          onClick = { (_, _) =>
                           chutiState.showDialog(GlobalDialog.cuentas)
                         })("Cuentas")
                       )

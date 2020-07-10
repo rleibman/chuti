@@ -74,6 +74,7 @@ object ChatClient {
       Field("lastLoggedIn", OptionOf(Scalar()))
     def active:  SelectionBuilder[User, Boolean] = Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
+    def isAdmin: SelectionBuilder[User, Boolean] = Field("isAdmin", Scalar())
   }
 
   case class UserInput(
@@ -85,7 +86,8 @@ object ChatClient {
     lastUpdated:  Long,
     lastLoggedIn: Option[Long] = None,
     active:       Boolean,
-    deleted:      Boolean
+    deleted:      Boolean,
+    isAdmin:      Boolean
   )
   object UserInput {
     implicit val encoder: ArgEncoder[UserInput] = new ArgEncoder[UserInput] {
@@ -104,7 +106,8 @@ object ChatClient {
               implicitly[ArgEncoder[Long]].encode(value)
             ),
             "active"  -> implicitly[ArgEncoder[Boolean]].encode(value.active),
-            "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted)
+            "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted),
+            "isAdmin" -> implicitly[ArgEncoder[Boolean]].encode(value.isAdmin)
           )
         )
       override def typeName: String = "UserInput"
@@ -146,12 +149,13 @@ object ChatClient {
       connectionId: String
     )(
       innerSelection: SelectionBuilder[ChatMessage, A]
-    ): SelectionBuilder[RootSubscription, A] =
+    ): SelectionBuilder[RootSubscription, Option[A]] =
       Field(
         "chatStream",
-        Obj(innerSelection),
+        OptionOf(Obj(innerSelection)),
         arguments = List(Argument("channelId", channelId), Argument("connectionId", connectionId))
       )
   }
 
 }
+

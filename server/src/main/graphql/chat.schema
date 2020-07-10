@@ -23,6 +23,7 @@ input UserInput {
   lastLoggedIn: Long
   active: Boolean!
   deleted: Boolean!
+  isAdmin: Boolean!
 }
 
 type ChatMessage {
@@ -42,7 +43,7 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream(channelId: Int!, connectionId: String!): ChatMessage!
+  chatStream(channelId: Int!, connectionId: String!): ChatMessage
 }
 
 type User {
@@ -55,4 +56,5 @@ type User {
   lastLoggedIn: Long
   active: Boolean!
   deleted: Boolean!
+  isAdmin: Boolean!
 }

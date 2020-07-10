@@ -21,9 +21,11 @@ import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.util.UUID
 
+import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.ChatClient.{
   Mutations,
+  Queries,
   Subscriptions,
   ChatMessage => CalibanChatMessage,
   User => CalibanUser
@@ -32,6 +34,7 @@ import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.extra.ReusabilityOverlay
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.raw.HTMLButtonElement
@@ -47,7 +50,7 @@ object ChatComponent extends ScalaJSClientAdapter {
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(
-    chatMessages: Seq[ChatMessage] = Seq.empty,
+    chatMessages: List[ChatMessage] = Nil,
     msgInFlux:    String = "",
     ws:           Option[WebSocketHandler] = None
   )
@@ -124,42 +127,58 @@ object ChatComponent extends ScalaJSClientAdapter {
       )
 
     def init(p: Props): Callback = {
-      //TODO call getRecentMessages to prime the list
-      $.modState { s =>
-        s.copy(ws = Option(
-          makeWebSocketClient[ChatMessage](
-            uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
-            query = Subscriptions
-              .chatStream(p.channel.value, connectionId)(
-                (CalibanChatMessage
-                  .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
-                  CalibanUser.name
-                ) ~ CalibanChatMessage.msg)
-                  .mapN(
-                    (fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
-                      ChatMessage(
-                        fromUser = User(None, "", fromUsername),
-                        msg = msg,
-                        channelId = p.channel,
-                        date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
-                        toUser = toUsername.map(name => User(None, "", name))
-                      )
-                  )
-              ),
-            onData = { (_, data) =>
-              Callback.log(s"got data! $data")
-              data
-                .fold(Callback.empty) { msg =>
-                  msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
-                    $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
-                  }
-                }
-            },
-            operationId = s"chat$chatId"
+      val chatSelectionBuilder: SelectionBuilder[CalibanChatMessage, ChatMessage] =
+        (CalibanChatMessage
+          .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
+          CalibanUser.name
+        ) ~ CalibanChatMessage.msg)
+          .mapN((fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
+            ChatMessage(
+              fromUser = User(None, "", fromUsername),
+              msg = msg,
+              channelId = p.channel,
+              date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
+              toUser = toUsername.map(name => User(None, "", name))
+            )
           )
-        )
-        )
-      }
+      (for {
+        recentMessages <- asyncCalibanCall(
+          Queries.getRecentMessages(p.channel.value)(chatSelectionBuilder)
+        ).handleError { error =>
+          error.printStackTrace()
+          AsyncCallback.pure(None)
+        }
+      } yield {
+        calibanCall[Queries, Option[Seq[Int]]](
+          Queries.getRecentMessages(p.channel.value)(CalibanChatMessage.channelId),
+          response => Callback.log(s"Got messages $response")
+        ) >>
+          $.modState { s =>
+            s.copy(
+              chatMessages = recentMessages.toList.flatten,
+              ws = Option(
+                makeWebSocketClient[Option[ChatMessage]](
+                  uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
+                  query = Subscriptions
+                    .chatStream(p.channel.value, connectionId)(
+                      chatSelectionBuilder
+                    ),
+                  onData = { (_, data) =>
+                    val flatted = data.flatten
+                    Callback.log(s"got data! $flatted")
+                    flatted
+                      .fold(Callback.empty) { msg =>
+                        msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
+                          $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
+                        }
+                      }
+                  },
+                  operationId = s"chat$chatId"
+                )
+              )
+            )
+          }
+      }).completeWith(_.get)
     }
   }
 
@@ -169,6 +188,12 @@ object ChatComponent extends ScalaJSClientAdapter {
     onPrivateMessage: Option[ChatMessage => Callback] = None
   )
 
+  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
+    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
+  )
+  implicit val propsReuse: Reusability[Props] = Reusability.by(_.channel.value)
+  implicit val stateReuse: Reusability[State] = Reusability.caseClassExcept("ws")
+
   private val component = ScalaComponent
     .builder[Props]("content")
     .initialState(State())
@@ -177,6 +202,9 @@ object ChatComponent extends ScalaJSClientAdapter {
       Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
     )
     .componentWillUnmount($ => $.backend.close())
+
+    .configure(Reusability.shouldComponentUpdateAndLog("Chat"))
+    .configure(ReusabilityOverlay.install)
     .build
 
   def apply(
