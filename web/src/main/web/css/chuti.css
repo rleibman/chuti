@@ -3,6 +3,34 @@
     --domino-width: 60px;
     --domino-jugado-height: 60px;
     --domino-jugado-width: 30px;
+
+    --player-name-color: #59228C;
+    --header-color: #59228C;
+    --player-name-border: #59228C;
+    --player-name-canPlay-background: #59228C;
+
+    --header-background: #CDAFEA;
+    --player-name-background: #CDAFEA;
+    --player-name-canPlay-color: #CDAFEA;
+    --player-name-canPlay-border: #CDAFEA;
+
+    --chat-background: #EAAFCB;
+    --lobby-border: #EAAFCB;
+
+    --chat-color: #666666;
+    --chat-h1-color: #8C2255;
+    --chat-border: #BB5C8A;
+    --chat-message-border: #BB5C8A;
+
+    --juegoStatus-color: #AFEAB0;
+    --fichasEnJuegoName-color: #AFEAB0;
+
+    --fichasEnJuego-color: #228B22;
+    --fichasEnJuego-border: #006400;
+
+    --users-table-border: #CCCCCC;
+
+    ----domino-selected-border: #FFA500;
 }
 
 html {
@@ -57,8 +85,8 @@ h4 {
     grid-column-end: span 2;
     grid-row-start: 1;
     grid-row-end: span 1;
-    color: #59228C;
-    background-color: #CDAFEA;
+    color: var(--header-color);
+    background-color: var(--header-background);
     margin: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -76,8 +104,8 @@ h4 {
     margin-right: 30px;
 }
 
-.ui.menu .ui.dropdown .menu>.item {
-    background-color: #CDAFEA
+.ui.menu .ui.dropdown .menu > .item {
+    background-color: var(--header-background);
 }
 
 .menuBurger i.dropdown.icon {
@@ -85,17 +113,21 @@ h4 {
 }
 
 .ui.menu .item {
-    background-color: #CDAFEA
+    background-color: var(--header-background);
 }
 
 .ui.menu {
-    background-color: #CDAFEA
+    background-color: var(--header-background);
+}
+
+.chat h1 {
+    color: var(--chat-h1-color);
 }
 
 .chat {
-    color: #8C2255;
-    background-color: #EAAFCB;
-    border: 5px solid #BB5C8A;
+    color: var(--chat-color);
+    background-color: var(--chat-background);
+    border: 5px solid var(--chat-border);
     border-radius: 20px;
     grid-column-start: 2;
     grid-column-end: span 1;
@@ -116,7 +148,7 @@ h4 {
 }
 
 .chat .messages {
-    border: 1px solid #BB5C8A;
+    border: 1px solid var(--chat-message-border);
     grid-row-start: 2;
     grid-row-end: span 1;
     padding: 0;
@@ -173,7 +205,7 @@ h4 {
 }
 
 .lobbyCol1 {
-    border-right-color: #EAAFCB;
+    border-right-color: var(--lobby-border);
     border-right-width: 2px;
     border-right-style: solid;
     grid-column-start: 1;
@@ -189,15 +221,16 @@ h4 {
     padding-left: 10px;
 }
 
-.users table {
-    border: 1px solid black;
+.playersTable table {
+    border: 1px solid var(--users-table-border);
 }
 
-.users td {
+.playersTable td {
     padding: 4px;
+    border: 1px solid var(--users-table-border);
 }
 
-.ui.menu .item>i.icon {
+.ui.menu .item > i.icon {
     display: none;
 }
 
@@ -236,19 +269,20 @@ h4 {
     width: 100%;
 }
 
+
 .playerName {
-    color: #59228C;
-    background-color: #CDAFEA;
-    border: 3px solid #59228C;
+    color: var(--player-name-color);
+    background-color: var(--player-name-background);
+    border: 3px solid var(--player-name-border);
     border-radius: 10px;
     padding: 10px;
     display: inline-block;
 }
 
 .playerName.canPlay {
-    color: #CDAFEA;
-    background-color: #59228C;
-    border: 3px solid #CDAFEA;
+    color: var(--player-name-canPlay-color);
+    background-color: var(--player-name-canPlay-background);
+    border: 3px solid var(--player-name-canPlay-border);
     border-radius: 10px;
     padding: 10px;
 }
@@ -283,9 +317,9 @@ h4 {
     grid-template-columns: 1fr 1fr 1fr 1fr;
 
     margin: 10px;
-    border: 10px solid darkgreen;
+    border: 10px solid var(--fichasEnJuego-border);
     border-radius: 20px;
-    background-color: forestgreen;
+    background-color: var(--fichasEnJuego-color);
     min-width: calc(var(--domino-width) * 6);
     min-height: calc(var(--domino-height) + 10em);
 
@@ -295,7 +329,7 @@ h4 {
 
 .juegoStatus {
     grid-column-end: span 4;
-    color: #AFEAB0;
+    color: var(--juegoStatus-color);
     font-style: italic;
     display: grid;
     grid-template-columns: 1fr 4fr;
@@ -309,7 +343,7 @@ h4 {
 
 .juegoStatusString {
     padding: 3px;
-    display:block;
+    display: block;
     justify-self: center;
     align-self: center;
 }
@@ -317,7 +351,7 @@ h4 {
 .fichasEnJuegoName {
     align-self: end;
     text-align: center;
-    color: #AFEAB0;
+    color: var(--fichasEnJuegoName-color);
     padding: 2px;
     grid-row-start: 2;
 }
@@ -343,12 +377,12 @@ h4 {
     height: var(--domino-height);
     width: var(--domino-width);
     padding: 3px;
-    margin: 0px;
+    margin: 0;
 }
 
 .domino0.selected {
-    border: 3px solid orange;
-    padding: 0px;
+    border: 3px solid var(--domino-selected-border);
+    padding: 0;
     border-radius: 10px;
 }
 
@@ -404,7 +438,7 @@ h4 {
     height: var(--domino-height);
     width: var(--domino-width);
     padding: 3px;
-    margin: 0px;
+    margin: 0;
 }
 
 .dominoJugado1Container {
@@ -452,7 +486,7 @@ h4 {
     height: var(--domino-height);
     width: var(--domino-width);
     padding: 3px;
-    margin: 0px;
+    margin: 0;
 }
 
 .domino2 img {
@@ -555,7 +589,7 @@ h4 {
     height: var(--domino-height);
     width: var(--domino-width);
     padding: 3px;
-    margin: 0px;
+    margin: 0;
 }
 
 .dominoJugado3Container {
@@ -607,241 +641,3 @@ h4 {
     margin: 1px;
     display: inline-block;
 }
-
-/*html {*/
-/*    height: 100%;*/
-/*}*/
-
-/*body {*/
-/*    min-height: 100%;*/
-/*    font-family: 'Jura', sans-serif;*/
-/*}*/
-
-/*.gameTable {*/
-/*    position: absolute;*/
-/*    height: 100%;*/
-/*    width: 100%;*/
-/*    display: grid;*/
-/*    grid-template-columns: 8fr 410px 8fr 250px;*/
-/*    grid-template-rows: 2em 10fr 410px 10fr 1em;*/
-/*}*/
-
-/*.chat {*/
-/*    color: #8C2255;*/
-/*    background-color: #EAAFCB;*/
-/*    border: 5px solid #BB5C8A;*/
-/*    border-radius: 20px;*/
-/*    grid-column-start: 4;*/
-/*    grid-column-end: span 1;*/
-/*    grid-row-start: 2;*/
-/*    grid-row-end: span 3;*/
-/*    padding: 5px;*/
-/*    text-align: center;*/
-/*}*/
-
-/*.jugador0 {*/
-/*    padding: 5px;*/
-/*    min-height: 200px;*/
-/*    max-width: 550px;*/
-/*}*/
-
-/*.jugador0Inner {*/
-
-/*}*/
-
-/*.jugador1 {*/
-/*    padding: 5px;*/
-/*    min-height: 200px;*/
-/*    max-width: 550px;*/
-/*}*/
-
-/*.jugador1Inner {*/
-
-/*}*/
-
-/*.jugador2 {*/
-/*    padding: 5px;*/
-/*    min-height: 200px;*/
-/*    max-width: 550px;*/
-/*}*/
-
-/*.jugador2Inner {*/
-/*}*/
-
-/*.jugador3 {*/
-/*    padding: 5px;*/
-/*    min-height: 200px;*/
-/*    max-width: 550px;*/
-/*}*/
-
-/*.jugador3Inner {*/
-
-/*}*/
-
-/*.self {*/
-/*    border: 1px solid #186992;*/
-/*    border-radius: 20px;*/
-/*}*/
-
-/*.fichas {*/
-/*    white-space: nowrap;*/
-/*    display: flex;*/
-/*    flex-wrap: nowrap;*/
-/*    align-items: center;*/
-/*    justify-content: left;*/
-/*    !*display: none;*!*/
-/*}*/
-
-/*.filasEven {*/
-/*    display: flex;*/
-/*    flex-wrap: wrap;*/
-/*    align-items: center;*/
-/*    justify-content: center;*/
-/*    grid-column-start: 2;*/
-/*    grid-column-end: span 1;*/
-/*    !*display: none;*!*/
-/*}*/
-
-/*.filasOdd {*/
-/*    display: flex;*/
-/*    flex-wrap: wrap;*/
-/*    align-items: center;*/
-/*    justify-content: center;*/
-/*    !*display: none;*!*/
-/*}*/
-
-/*.header {*/
-/*    grid-area: header;*/
-/*    !*background-color: cyan;*!*/
-/*    grid-column-start: 1;*/
-/*    grid-column-end: span 4;*/
-/*    grid-row-start: 1;*/
-/*    grid-row-end: span 1;*/
-/*    padding: 5px;*/
-/*    color: #8C2255;*/
-/*}*/
-
-/*.footer {*/
-/*    grid-area: footer;*/
-/*    !*background-color: hotpink;*!*/
-/*    grid-column-start: 1;*/
-/*    grid-column-end: span 4;*/
-/*    grid-row-start: 5;*/
-/*    grid-row-end: 5;*/
-/*}*/
-
-/*.mano {*/
-/*    border: 10px solid #186992;*/
-/*    border-radius: 20px;*/
-/*}*/
-
-/*.playerName {*/
-/*    color: #59228C;*/
-/*    background-color: #CDAFEA;*/
-/*    border: 3px solid #59228C;*/
-/*    border-radius: 10px;*/
-/*    padding: 10px;*/
-/*}*/
-
-/*.playerName.canPlay {*/
-/*    color: #CDAFEA;*/
-/*    background-color: #59228C;*/
-/*    border: 3px solid #CDAFEA;*/
-/*    border-radius: 10px;*/
-/*    padding: 10px;*/
-/*}*/
-
-/*.fichasEnJuego {*/
-/*    padding: 5px;*/
-/*    min-height: 200px;*/
-/*    max-width: 550px;*/
-/*    border: 10px solid;*/
-/*    border-color: darkgreen;*/
-/*    border-radius: 20px;*/
-/*    background-color: forestgreen;*/
-/*}*/
-
-/*.fichasEnJuegoName {*/
-/*    align-self: end;*/
-/*    text-align: center;*/
-/*    color: #AFEAB0;*/
-/*    padding: 2px*/
-/*}*/
-
-/*.jugadorActionBar {*/
-/*        !*background-color: lightcoral;*!*/
-/*        grid-column-end: span 2;*/
-/*        grid-column-start: 1;*/
-/*        align-self: center;*/
-/*}*/
-
-/*.statusBarEven {*/
-/*    display: flex;*/
-/*    grid-column-start: 1;*/
-/*    grid-column-end: span 2;*/
-/*    align-items: center;*/
-/*}*/
-
-/*.statusBarOdd {*/
-/*    display: flex;*/
-/*    grid-column-start: 1;*/
-/*    grid-column-end: span 1;*/
-/*    align-items: center;*/
-/*}*/
-
-/*.userStatus {*/
-/*    margin-left: 2em;*/
-/*    font-style: italic;*/
-/*}*/
-
-/*.domino {*/
-/*    height: 120px;*/
-/*    padding: 5px;*/
-/*    margin: 0px;*/
-/*}*/
-
-/*.domino.selected {*/
-/*    border: 5px solid orange;*/
-/*    padding: 0px;*/
-/*    border-radius: 10px;*/
-/*}*/
-
-/*.filas {*/
-
-/*}*/
-
-/*.fila {*/
-
-/*}*/
-
-/*.domino_jugado {*/
-/*    height: 80px*/
-/*}*/
-
-/*.dominoEnJuego {*/
-/*    height: 150px*/
-/*}*/
-
-/*.menuBurger i.dropdown.icon {*/
-/*    display: none;*/
-/*}*/
-
-/*.hoyo {*/
-/*    border-radius: 100px;*/
-/*    border: 3px solid red;*/
-/*    background: white;*/
-/*    color: black;*/
-/*    padding: 10px 15px;*/
-/*}*/
-
-/*.chuti {*/
-/*    border-radius: 100px;*/
-/*    border: 3px solid green;*/
-/*    background: white;*/
-/*    color: black;*/
-/*    padding: 10px 15px;*/
-/*}*/
-
-/*.ui.selection.dropdown.cantaDropdown {*/
-/*    min-width: 18em;*/
-/*}*/

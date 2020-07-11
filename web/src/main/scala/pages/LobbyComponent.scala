@@ -387,9 +387,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         case _ => EmptyVdom
                       }),
                       <.table(
+                        ^.className := "playersTable",
                         <.tbody(
                           game.jugadores.toVdomArray { jugador =>
                             <.tr(
+                              ^.key := s"jugador${jugador.id}",
                               <.td(jugador.user.name),
                               <.td(game.jugadorState(jugador).description)
                             )
@@ -402,6 +404,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         ^.key := "invitaciones",
                         <.h1("Invitaciones"),
                         <.table(
+                          ^.className := "playersTable",
                           <.tbody(
                             s.invites.toVdomArray {
                               game =>
