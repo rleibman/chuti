@@ -71,7 +71,7 @@ trait ScalaJSClientAdapter {
         case Some(Left(error)) =>
           Callback.throwException(error).runNow()
           None
-        case None =>None
+        case None => None
       }
     }
 

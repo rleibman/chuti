@@ -17,7 +17,9 @@
 package router
 
 import app.{ChutiState, GameViewMode, GlobalDialog}
-import chuti.GameStatus
+import chat.ChatComponent
+import chuti.{ChannelId, GameStatus}
+import components.Toast
 import components.components.ChutiComponent
 import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
@@ -143,9 +145,7 @@ object AppRouter extends ChutiComponent {
                               .setEH(GameAppPage)(e)
                           }
                         )("Entrar al Juego"),
-                        MenuItem(
-                          key = "menuCuentas",
-                          onClick = { (_, _) =>
+                        MenuItem(key = "menuCuentas", onClick = { (_, _) =>
                           chutiState.showDialog(GlobalDialog.cuentas)
                         })("Cuentas")
                       )
@@ -187,7 +187,23 @@ object AppRouter extends ChutiComponent {
       <.div(
         ^.className := "innerContent",
         <.div(^.className := "header", renderMenu, DialogRenderer()),
-        resolution.render()
+        resolution.render(),
+        chutiState.user.fold(EmptyVdom) { user =>
+          val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
+            chutiState.gameViewMode match {
+              case app.GameViewMode.lobby => ChannelId.lobbyChannel
+              case GameViewMode.game      => game.channelId.getOrElse(ChannelId.lobbyChannel)
+              case app.GameViewMode.none  => ChannelId.lobbyChannel
+            }
+          )
+          ChatComponent(
+            user,
+            channelId,
+            onPrivateMessage = { msg =>
+              Toast.info(<.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)) >> chutiState.onRequestGameRefresh
+            }
+          )
+        }
       )
     }
   }

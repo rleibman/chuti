@@ -82,15 +82,15 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
         gameViewMode match {
           case GameViewMode.lobby =>
-              LobbyComponent(
-                StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
-                StateSnapshot(gameViewMode)(onModeChanged(p))
-              )
+            LobbyComponent(
+              StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
+              StateSnapshot(gameViewMode)(onModeChanged(p))
+            )
           case GameViewMode.game =>
-              GameComponent(
-                chutiState.gameInProgress,
-                StateSnapshot(gameViewMode)(onModeChanged(p))
-              )
+            GameComponent(
+              chutiState.gameInProgress,
+              StateSnapshot(gameViewMode)(onModeChanged(p))
+            )
           case _ =>
             <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")
         }
@@ -104,10 +104,10 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   )
   implicit val gameReuse: Reusability[Game] =
     Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
-  implicit val userIdReuse:     Reusability[UserId] = Reusability.by(_.value)
-  implicit val userReuse:       Reusability[User] = Reusability.by(_.id)
-  implicit val bigDecimalReuse: Reusability[BigDecimal] = Reusability.by(_.toLong)
-  implicit val walletReuse:     Reusability[UserWallet] = Reusability.derive[UserWallet]
+  implicit val userIdReuse:       Reusability[UserId] = Reusability.by(_.value)
+  implicit val userReuse:         Reusability[User] = Reusability.by(_.id)
+  implicit val bigDecimalReuse:   Reusability[BigDecimal] = Reusability.by(_.toLong)
+  implicit val walletReuse:       Reusability[UserWallet] = Reusability.derive[UserWallet]
   implicit val gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)
   implicit private val chutiStateReuse: Reusability[ChutiState] = Reusability.caseClassExcept(
     "onUserChanged",
@@ -119,7 +119,8 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     "currentDialog",
     "userStream"
   )
-  implicit private val propsReuse: Reusability[Props] = Reusability.by(_.chutiState.gameViewMode.toString)
+  implicit private val propsReuse: Reusability[Props] =
+    Reusability.by(_.chutiState.gameViewMode.toString)
   implicit private val stateReuse: Reusability[State] = Reusability.derive[State]
 
   private val component = ScalaComponent

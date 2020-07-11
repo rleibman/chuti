@@ -158,4 +158,3 @@ object ChatClient {
   }
 
 }
-

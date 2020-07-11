@@ -34,7 +34,6 @@ import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.ReusabilityOverlay
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.raw.HTMLButtonElement
@@ -47,6 +46,8 @@ import scala.util.{Failure, Success}
 
 object ChatComponent extends ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
+  import sttp.client._
+  override val serverUri = uri"http://localhost:8079/api/chat"
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(
@@ -149,35 +150,31 @@ object ChatComponent extends ScalaJSClientAdapter {
           AsyncCallback.pure(None)
         }
       } yield {
-        calibanCall[Queries, Option[Seq[Int]]](
-          Queries.getRecentMessages(p.channel.value)(CalibanChatMessage.channelId),
-          response => Callback.log(s"Got messages $response")
-        ) >>
-          $.modState { s =>
-            s.copy(
-              chatMessages = recentMessages.toList.flatten,
-              ws = Option(
-                makeWebSocketClient[Option[ChatMessage]](
-                  uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
-                  query = Subscriptions
-                    .chatStream(p.channel.value, connectionId)(
-                      chatSelectionBuilder
-                    ),
-                  onData = { (_, data) =>
-                    val flatted = data.flatten
-                    Callback.log(s"got data! $flatted")
-                    flatted
-                      .fold(Callback.empty) { msg =>
-                        msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
-                          $.props.flatMap(_.onPrivateMessage.fold(Callback.empty)(_(msg)))
-                        }
+        $.modState { s =>
+          s.copy(
+            chatMessages = recentMessages.toList.flatten,
+            ws = Option(
+              makeWebSocketClient[Option[ChatMessage]](
+                uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
+                query = Subscriptions
+                  .chatStream(p.channel.value, connectionId)(
+                    chatSelectionBuilder
+                  ),
+                onData = { (_, data) =>
+                  val flatted = data.flatten
+                  Callback.log(s"got data! $flatted")
+                  flatted
+                    .fold(Callback.empty) { msg =>
+                      msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
+                        $.props.flatMap(_.onPrivateMessage(msg))
                       }
-                  },
-                  operationId = s"chat$chatId"
-                )
+                    }
+                },
+                operationId = s"chat$chatId"
               )
             )
-          }
+          )
+        }
       }).completeWith(_.get)
     }
   }
@@ -185,7 +182,7 @@ object ChatComponent extends ScalaJSClientAdapter {
   case class Props(
     user:             User,
     channel:          ChannelId,
-    onPrivateMessage: Option[ChatMessage => Callback] = None
+    onPrivateMessage: ChatMessage => Callback
   )
 
   implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
@@ -196,20 +193,19 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   private val component = ScalaComponent
     .builder[Props]("content")
-    .initialState(State())
+    .initialStateFromProps(p => State())
     .renderBackend[Backend]
     .componentDidMount($ =>
       Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
     )
     .componentWillUnmount($ => $.backend.close())
-
-    .configure(Reusability.shouldComponentUpdateAndLog("Chat"))
-    .configure(ReusabilityOverlay.install)
+    .configure(Reusability.shouldComponentUpdate)
     .build
 
   def apply(
     user:             User,
     channel:          ChannelId,
-    onPrivateMessage: Option[ChatMessage => Callback] = None
-  ): Unmounted[Props, State, Backend] = component(Props(user, channel, onPrivateMessage))
+    onPrivateMessage: ChatMessage => Callback = _ => Callback.empty
+  ): Unmounted[Props, State, Backend] =
+    component.withKey(s"chatChannel${channel.value}")(Props(user, channel, onPrivateMessage))
 }
