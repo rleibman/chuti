@@ -27,6 +27,7 @@ import io.circe.generic.auto._
 import io.circe.parser._
 import io.circe.syntax._
 import io.circe.{Decoder, Error, Json}
+import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
 import zio.duration._
@@ -35,10 +36,11 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 trait WebSocketHandler {
+  def id:      String
   def close(): Callback
 }
 
-trait ScalaJSClientAdapter {
+trait ScalaJSClientAdapter extends TimerSupport {
   import sttp.client._
   val serverUri = uri"http://localhost:8079/api/game"
   implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
@@ -167,6 +169,7 @@ trait ScalaJSClientAdapter {
     uriOrSocket:          Either[URI, WebSocket],
     query:                SelectionBuilder[RootSubscription, A],
     operationId:          String,
+    connectionId:         String,
     onData:               (String, Option[A]) => Callback,
     connectionParams:     Option[Json] = None,
     timeout:              Duration = 8.minutes, //how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
@@ -195,6 +198,7 @@ trait ScalaJSClientAdapter {
       Callback.empty
     }
   ): WebSocketHandler = new WebSocketHandler {
+    override val id: String = connectionId
 
     def GQLConnectionInit(): GQLOperationMessage =
       GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
@@ -346,18 +350,21 @@ trait ScalaJSClientAdapter {
       doConnect()
     }
 
-    override def close(): Callback = Callback {
-      println("Closing socket")
+    override def close(): Callback = {
       if (socket.readyState == WebSocket.CONNECTING) {
-        //Wait a second for it to finish connecting and try again
-        scala.scalajs.js.timers.setTimeout(1000)(close().runNow())
+        Callback.log(
+          "Socket is currently connecting, waiting a second for it to finish and then we'r trying again"
+        ) >>
+          setTimeoutMs(close(), 1000)
       } else if (socket.readyState == WebSocket.OPEN) {
-        connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
-        socket.send(GQLStop().asJson.noSpaces)
-        socket.send(GQLConnectionTerminate().asJson.noSpaces)
-        socket.close()
+        Callback.log("Closing socket") >> Callback {
+          connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
+          socket.send(GQLStop().asJson.noSpaces)
+          socket.send(GQLConnectionTerminate().asJson.noSpaces)
+          socket.close()
+        }
       } else {
-        //It's already closed
+        Callback.log("Socket is already closed")
       }
     }
   }

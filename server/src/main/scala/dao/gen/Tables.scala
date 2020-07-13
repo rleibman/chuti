@@ -282,15 +282,13 @@ trait Tables {
   lazy val GamePlayersQuery = new TableQuery(tag => new GamePlayers(tag))
 
   case class UserRow(
-    id:           UserId,
-    name:         String,
-    email:        String,
-    created:      Timestamp,
-    lastupdated:  Timestamp,
-    lastloggedin: Option[Timestamp] = None,
-    active:       Boolean = false,
-    deleted:      Boolean = false,
-    deleteddate:  Option[Timestamp] = None
+    id:          UserId,
+    name:        String,
+    email:       String,
+    created:     Timestamp,
+    active:      Boolean = false,
+    deleted:     Boolean = false,
+    deleteddate: Option[Timestamp] = None
   )
 
   implicit def GetResultUserRow(
@@ -307,8 +305,6 @@ trait Tables {
         <<[String],
         <<[String],
         <<[Timestamp],
-        <<[Timestamp],
-        <<?[Timestamp],
         <<[Boolean],
         <<[Boolean],
         <<?[Timestamp]
@@ -324,22 +320,18 @@ trait Tables {
         name,
         email,
         created,
-        lastupdated,
-        lastloggedin,
         active,
         deleted,
         deleteddate
       ) <> (UserRow.tupled, UserRow.unapply)
 
     def ?
-      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
+      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
         Rep.Some(name),
         Rep.Some(email),
         Rep.Some(created),
-        Rep.Some(lastupdated),
-        lastloggedin,
         Rep.Some(active),
         Rep.Some(deleted),
         deleteddate
@@ -348,7 +340,7 @@ trait Tables {
           import r._
           _1.map(_ =>
             UserRow.tupled(
-              (_1.get, _2.get, _3.get, _4.get, _5.get, _6, _7.get, _8.get, _9)
+              (_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7)
             )
           )
         },
@@ -363,11 +355,6 @@ trait Tables {
       column[String]("email", O.Length(255, varying = true))
 
     val created: Rep[Timestamp] = column[Timestamp]("created")
-
-    val lastupdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
-
-    val lastloggedin: Rep[Option[Timestamp]] =
-      column[Option[Timestamp]]("lastLoggedIn", O.Default(None))
 
     val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
 

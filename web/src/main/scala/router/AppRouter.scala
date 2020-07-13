@@ -60,7 +60,7 @@ object AppRouter extends ChutiComponent {
                       TableHeaderCell()("Satoshi")
                     )
                   ),
-                  game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                     case ((jugador, puntos, satoshi), jugadorIndex) =>
                       TableRow(key = s"cuenta$jugadorIndex")(
                         TableCell()(jugador.user.name),
@@ -84,7 +84,7 @@ object AppRouter extends ChutiComponent {
                           )
                         )
                       )
-                  }
+                  })
                 ),
                 if (game.gameStatus == GameStatus.partidoTerminado) {
                   <.div(s"Partido terminado, ${ganador.fold("")(_.user.name)} gano el partido.")

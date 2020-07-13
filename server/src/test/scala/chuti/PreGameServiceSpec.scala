@@ -59,7 +59,6 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 1)
     assert(game.jugadores.head.user.id === user1.id)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
     verify(gameOperations).upsert(*[Game])
     verify(userOperations, times(1)).upsert(*[User])
   }
@@ -114,7 +113,6 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.jugadores.drop(1).head.user.id === user2.id)
     assert(gameEvents.size === 2)
     assert(userEvents.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
 
     verify(userOperations, times(1)).upsert(*[User])
   }
@@ -186,7 +184,6 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.jugadores.drop(3).head.user.id === user4.id)
     assert(gameEvents.size === 6)
     assert(userEvents.size === 3) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
 
     verify(userOperations, times(3)).upsert(*[User])
   }
@@ -256,9 +253,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.jugadores.head.user.id === user1.id)
     assert(gameEvents.size === 1)
     assert(userEvents.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
     verify(userOperations, times(0)).updateWallet(any[UserWallet])
-    assert(updatedUser2.userStatus === UserStatus.Idle)
   }
 
   "Abandoning a started game" should "result in a penalty, and close the game" in {
@@ -328,9 +323,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.jugadores.drop(2).head.user.id === user4.id)
     assert(gameEvents.size === 1)
     assert(userEvents.size === 1) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
     verify(userOperations, times(1)).updateWallet(any[UserWallet])
-    assert(updatedUser2.userStatus === UserStatus.Idle)
   }
 
   "Invite to game 1 person" should "add to the game" in {
@@ -385,9 +378,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 2)
     assert(game.jugadores.head.user.id === user1.id)
-    assert(game.jugadores.head.user.userStatus == UserStatus.Playing)
     assert(game.jugadores.drop(1).head.user.id === user2.id)
-    assert(game.jugadores.drop(1).head.user.userStatus === UserStatus.Idle)
     assert(game.jugadores.drop(1).head.invited)
     assert(gameEvents.size === 1)
     assert(userEvents.size === 0)
@@ -495,7 +486,6 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 4)
     assert(game.jugadores.forall(!_.invited))
-    assert(game.jugadores.forall(_.user.userStatus === UserStatus.Playing))
     assert(gameEvents.size === 9)
     assert(userEvents.size === 3)
   }
@@ -605,7 +595,6 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 3)
     assert(game.jugadores.forall(!_.invited))
-    assert(game.jugadores.forall(_.user.userStatus === UserStatus.Playing))
     assert(gameEvents.size === 8)
     assert(userEvents.size === 2)
   }

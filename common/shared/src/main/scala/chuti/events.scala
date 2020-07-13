@@ -359,8 +359,8 @@ case class JoinGame(
     }
 
     val newPlayer = game.jugadores
-      .find(_.id == user.id).fold(Jugador(user.copy(userStatus = UserStatus.Playing))) { j =>
-        j.copy(invited = false, user = j.user.copy(userStatus = UserStatus.Playing))
+      .find(_.id == user.id).fold(Jugador(user)) { j =>
+        j.copy(invited = false)
       }
 
     (
@@ -382,12 +382,14 @@ case class JoinGame(
     game:    Game
   ): Game = processStatusMessages {
     val done = doEvent(userOpt, game)._1
-    done.copy(
-      jugadores = done.jugadores.map(_.copy(invited = false)),
-      gameStatus =
-        if (done.canTransitionTo(GameStatus.requiereSopa)) GameStatus.requiereSopa
-        else done.gameStatus
-    )
+    if (done.canTransitionTo(GameStatus.requiereSopa)) {
+      done.copy(
+        jugadores = done.jugadores.map(_.copy(invited = false)),
+        gameStatus = GameStatus.requiereSopa
+      )
+    } else {
+      done
+    }
   }
 }
 
@@ -433,6 +435,7 @@ case class NuevoPartido(
   ): Game = processStatusMessages(doEvent(userOpt, game)._1)
 }
 
+//If you want to be able to store and replay events, Sopa needs to carry the whole new game after it's done.
 case class Sopa(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -518,7 +521,7 @@ case class Canta(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/canta.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.cantando)
@@ -616,7 +619,7 @@ case class Pide(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
 
@@ -922,7 +925,7 @@ case class Caete(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
+  soundUrl:            Option[String] = Option("sounds/caete.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
   override def doEvent(
@@ -1169,16 +1172,22 @@ case class TerminaJuego(
       )
     )
 
-    val statusStr = game.quienCanta.fold("") { j =>
+    val (fueHoyo, statusStr) = game.quienCanta.fold((false, "")) { j =>
       val regalados =
         game.jugadores.filter(j => !j.cantante && j.filas.nonEmpty).map(_.user.name).mkString(",")
 
       if (j.yaSeHizo) {
-        s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados."
-        else ""}"
+        (
+          false,
+          s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados."
+          else ""}"
+        )
       } else {
-        s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
-        else ""}"
+        (
+          true,
+          s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
+          else ""}"
+        )
       }
     }
 
@@ -1189,6 +1198,7 @@ case class TerminaJuego(
         conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
         copy(
           index = Option(game.currentEventIndex),
+          soundUrl = Option("sounds/partidoTerminado.mp3"),
           gameId = game.id,
           userId = jugador.id,
           gameStatusString = Option(s"$statusStr Se termino el partido!"),
@@ -1200,6 +1210,7 @@ case class TerminaJuego(
         conCuentas,
         copy(
           index = Option(game.currentEventIndex),
+          soundUrl = if (fueHoyo) Option("sounds/hoyo.mp3") else Option("sounds/gano.mp3"),
           gameId = game.id,
           userId = jugador.id,
           gameStatusString = leTocaLaSopa.map(j =>

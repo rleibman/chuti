@@ -18,7 +18,6 @@ package pages
 
 import app.GameViewMode.GameViewMode
 import app.{ChutiState, GameViewMode}
-import chat._
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.JugadorState.JugadorState
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
@@ -29,7 +28,7 @@ import io.circe.generic.auto._
 import io.circe.syntax._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.{ReusabilityOverlay, StateSnapshot}
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalablytyped.runtime.StringDictionary
 import pages.LobbyComponent.calibanCall
@@ -49,7 +48,7 @@ object GameComponent {
     cuantasCantas:     Option[CuantasCantas] = None,
     estrictaDerecha:   Boolean = false,
     fichaSeleccionada: Option[Ficha] = None,
-    privateMessage:    Option[ChatMessage] = None
+    triunfo:           Option[Triunfo] = None
   )
 
   class Backend($ : BackendScope[Props, State]) {
@@ -119,7 +118,7 @@ object GameComponent {
                       ^.className := "userStatus",
                       if (jugador.turno) "Le toco cantar. " else "",
                       jugador.cuantasCantas
-                        .fold("")(c => s"Canto $c"),
+                        .fold("")(c => s"Canto ${if(jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa else c}"),
                       jugador.statusString
                     )
                   ),
@@ -187,21 +186,28 @@ object GameComponent {
                             if (jugadorState == JugadorState.pidiendoInicial) {
                               <.span(
                                 Label()("Triunfan"),
-                                game.triunfo match {
-                                  case Some(TriunfoNumero(num)) =>
-                                    <.img(^.src := s"images/${num.value}.svg", ^.height := 28.px)
-                                  case Some(SinTriunfos) => <.span("Sin Triunfos")
-                                  case _                 => EmptyVdom
-                                },
+                                <.div(
+                                  ^.className := "triunfoNum",
+                                  s.triunfo match {
+                                    case Some(TriunfoNumero(num)) =>
+                                      <.img(
+                                        ^.verticalAlign := "middle",
+                                        ^.src           := s"images/${num.value}.svg",
+                                        ^.height        := 28.px
+                                      )
+                                    case Some(SinTriunfos) => <.span("Sin Triunfos")
+                                    case _                 => EmptyVdom
+                                  }
+                                ),
                                 Dropdown(
+                                  className = "triunfoDropdown",
+                                  text = "",
                                   labeled = true,
                                   placeholder = "Triunfo",
-                                  value = game.triunfo.fold("")(_.toString),
+                                  value = s.triunfo.fold("")(_.toString),
                                   onChange = { (_, dropDownProps) =>
                                     val value = dropDownProps.value.asInstanceOf[String]
-                                    chutiState.modGameInProgress(
-                                      _.copy(triunfo = Option(Triunfo(value)))
-                                    )
+                                    $.modState(_.copy(triunfo = Option(Triunfo(value))))
                                   },
                                   options = Triunfo.posibilidades
                                     .map(triunfo =>
@@ -240,21 +246,23 @@ object GameComponent {
                                 compact = true,
                                 basic = true,
                                 disabled = s.fichaSeleccionada.isEmpty ||
-                                  (game.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
+                                  (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
                                 onClick = { (_, _) =>
                                   play(
                                     game.id.get,
                                     Pide(
                                       ficha = s.fichaSeleccionada.get,
-                                      triunfo = game.triunfo,
+                                      triunfo = s.triunfo,
                                       estrictaDerecha = s.estrictaDerecha
                                     )
                                   )
                                 }
                               )("Pide"),
-                              if (game.triunfo.nonEmpty && game.puedesCaerte(jugador)) {
-                                Button(compact = true, basic = true, onClick = { (_, _) =>
-                                  play(game.id.get, Caete(triunfo = game.triunfo))
+                              if (s.triunfo.nonEmpty && game
+                                    .copy(triunfo = s.triunfo).puedesCaerte(jugador)) {
+                                Button(compact = true, basic = true, primary = true, onClick = {
+                                  (_, _) =>
+                                    play(game.id.get, Caete(triunfo = s.triunfo))
                                 })("Cáete")
                               } else {
                                 EmptyVdom
@@ -268,6 +276,7 @@ object GameComponent {
                         case JugadorState.esperandoCanto   => EmptyVdom
                         case JugadorState.esperando        => EmptyVdom
                         case JugadorState.partidoTerminado => EmptyVdom
+                        case _                             => throw new RuntimeException("Should never, ever get here")
                       },
                       if (puedeRendirse) {
                         Button(
@@ -418,16 +427,22 @@ object GameComponent {
 
   implicit val triunfoReuse: Reusability[Triunfo] = Reusability.by(_.toString)
   implicit val gameReuse: Reusability[Game] =
-    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex, game.triunfo))
-  implicit private val stateReuse: Reusability[State] = Reusability.always
+    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
+  implicit val cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)
+  implicit val fichasReuse:        Reusability[Ficha] = Reusability.by(_.toString)
+  implicit private val stateReuse: Reusability[State] = Reusability.derive[State]
   implicit private val propsReuse: Reusability[Props] = Reusability.derive[Props]
 
   private val component = ScalaComponent
     .builder[Props]
-    .initialStateFromProps(_ => State())
+    .initialStateFromProps(p =>
+      State(
+        triunfo = p.gameInProgress.flatMap(_.triunfo),
+        estrictaDerecha = p.gameInProgress.fold(false)(_.estrictaDerecha)
+      )
+    )
     .renderBackend[Backend]
-    .configure(Reusability.shouldComponentUpdateAndLog("GameComponent"))
-    .configure(ReusabilityOverlay.install)
+    .configure(Reusability.shouldComponentUpdate)
     .build
 
   def apply(

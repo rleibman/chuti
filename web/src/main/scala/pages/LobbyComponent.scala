@@ -16,11 +16,8 @@
 
 package pages
 
-import java.time.ZoneOffset
-
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chat._
 import chuti._
 import components.{Confirm, Toast}
 import game.GameClient.{Mutations, Queries}
@@ -28,7 +25,7 @@ import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.extra.{ReusabilityOverlay, StateSnapshot}
+import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLInputElement
 import typings.react.reactStrings.center
@@ -65,7 +62,6 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   )
 
   case class State(
-    privateMessage:            Option[ChatMessage] = None,
     invites:                   List[Game] = Nil,
     dlg:                       Dialog = Dialog.none,
     newGameDialogState:        Option[NewGameDialogState] = None,
@@ -153,7 +149,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         )
       )
 
-      def renderInviteExternalDialog = Modal(open = s.dlg == Dialog.inviteExternal)(
+      def renderInviteExternalDialog: VdomElement = Modal(open = s.dlg == Dialog.inviteExternal)(
         ModalHeader()("Invitar amigo externo"),
         ModalContent()(
           FormField()(
@@ -462,7 +458,6 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   ^.className := "users",
                   renderNewGameDialog,
                   renderInviteExternalDialog,
-                  <.div(^.key := "privateMessage", s.privateMessage.fold("")(_.msg)),
                   TagMod(
                     <.div(
                       ^.key := "jugadores",
@@ -485,10 +480,6 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       fitted = true
                                     )()
                                   )()
-                                else
-                                  EmptyVdom,
-                                if (player.user.userStatus == UserStatus.Playing)
-                                  <.img(^.src := "images/6_6.svg", ^.height := 16.px)
                                 else
                                   EmptyVdom,
                                 if (player.isLoggedIn)
@@ -515,12 +506,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   DropdownMenu()(
                                     (for {
                                       game     <- p.gameInProgress.value
-                                      userId   <- user.id
+                                      _        <- user.id
                                       playerId <- player.user.id
                                       gameId   <- game.id
                                     } yield
-                                      if (player.user.userStatus != UserStatus.Playing &&
-                                          game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                      if (game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
                                           game.jugadores.head.id == user.id &&
                                           !game.jugadores.exists(_.id == player.user.id))
                                         DropdownItem(onClick = { (_, _) =>
@@ -585,23 +575,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     gameViewMode:   StateSnapshot[GameViewMode]
   )
 
-  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
-    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
-  )
-  implicit val triunfoReuse: Reusability[Triunfo] = Reusability.by(_.toString)
-  implicit val gameReuse: Reusability[Game] =
-    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex, game.triunfo))
-  implicit private val propsReuse: Reusability[Props] = Reusability.derive[Props]
-  implicit private val stateReuse: Reusability[State] =
-    Reusability.caseClassExcept("dlg", "newGameDialogState", "inviteExternalDialogState")
-
   private val component = ScalaComponent
     .builder[Props]
     .initialState(State())
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.init())
-    .configure(Reusability.shouldComponentUpdateAndLog("Lobby"))
-    .configure(ReusabilityOverlay.install)
     .build
 
   def apply(

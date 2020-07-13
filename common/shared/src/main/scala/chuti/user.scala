@@ -20,34 +20,14 @@ import java.time.LocalDateTime
 
 case class UserId(value: Int) extends AnyVal
 
-sealed trait UserStatus
-
-object UserStatus {
-  def fromString(str: String): UserStatus = str match {
-    case "Playing" => Playing
-    case "Offline" => Offline
-    case "Idle"    => Idle
-    case "Invited" => Invited
-    case _         => throw new Exception(s"Can't build UserStatus out of $str")
-  }
-
-  case object Playing extends UserStatus
-  case object Offline extends UserStatus
-  case object Idle extends UserStatus
-  case object Invited extends UserStatus
-}
-
 case class User(
-  id:           Option[UserId],
-  email:        String,
-  name:         String,
-  userStatus:   UserStatus = UserStatus.Offline,
-  created:      LocalDateTime = LocalDateTime.now,
-  lastUpdated:  LocalDateTime = LocalDateTime.now,
-  lastLoggedIn: Option[LocalDateTime] = None,
-  active:       Boolean = false,
-  deleted:      Boolean = false,
-  isAdmin:      Boolean = false
+  id:      Option[UserId],
+  email:   String,
+  name:    String,
+  created: LocalDateTime = LocalDateTime.now,
+  active:  Boolean = false,
+  deleted: Boolean = false,
+  isAdmin: Boolean = false
 ) {}
 
 case class UserWallet(

@@ -21,13 +21,13 @@ import zio.Task
 
 object InMemoryRepository {
   val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", userStatus = UserStatus.Idle)
+    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
   val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", userStatus = UserStatus.Idle)
+    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2")
   val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", userStatus = UserStatus.Idle)
+    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3")
   val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", userStatus = UserStatus.Idle)
+    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
 
 }
 

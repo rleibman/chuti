@@ -79,7 +79,7 @@ object ChatComponent extends ScalaJSClientAdapter {
       val mutation = Mutations.say(s.msgInFlux, p.channel.value)
       val serverUri = uri"http://localhost:8079/api/chat"
       val request = mutation.toRequest(serverUri)
-      //TODO add headers as necessary
+
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
       Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(_.copy(msgInFlux = "")) >> AsyncCallback
@@ -170,7 +170,8 @@ object ChatComponent extends ScalaJSClientAdapter {
                       }
                     }
                 },
-                operationId = s"chat$chatId"
+                operationId = s"chat$chatId",
+                connectionId = s"$chatId-${p.channel.value}"
               )
             )
           )
@@ -193,7 +194,7 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   private val component = ScalaComponent
     .builder[Props]("content")
-    .initialStateFromProps(p => State())
+    .initialState(State())
     .renderBackend[Backend]
     .componentDidMount($ =>
       Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)

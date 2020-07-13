@@ -106,10 +106,10 @@ object CuantasCantas {
     override def toString: String = "Seis"
   }
   case object Canto7 extends CuantasCantas(7, 7, 7) {
-    override def toString: String = "Siete (porque le voy al America)"
+    override def toString: String = "Siete (?!?)"
   }
   case object CantoTodas extends CuantasCantas(7, 21, 8) {
-    override def toString: String = "Todas!"
+    override def toString: String = "Chuti!"
   }
   case object Buenas extends CuantasCantas(-1, 0, -1) {
     override def toString: String = "Buenas"
@@ -330,6 +330,7 @@ object Borlote {
   case object SantaClaus extends Borlote
   case object Campanita extends Borlote
   case object Helecho extends Borlote
+  case object TodoConDos extends Borlote
 }
 
 case class GameId(value: Int) extends AnyVal
@@ -557,9 +558,6 @@ case class Game(
         jugador.fichas ++ jugadores.flatMap(_.filas.flatMap(_.fichas))
       )
       val cuantas = cuantasDeCaida(jugador.fichas, resto)
-      println(jugador.fichas)
-      println(resto)
-      println(s"cuantas = $cuantas")
 
       quienCanta.fold(false) { cantante =>
         if (jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
@@ -692,7 +690,7 @@ case class Game(
   def nextIndex: Int = currentEventIndex + 1
 
   def canTransitionTo(transitionState: GameStatus): Boolean = {
-    //TODO fill this up and follow every place state changes
+    //NOTE fill this up and follow every place state changes
     transitionState match {
       case GameStatus.requiereSopa =>
         jugadores.length == numPlayers &&

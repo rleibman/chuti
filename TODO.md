@@ -8,7 +8,6 @@
 - DONE. Server
     DONE - decide server technology.
       - DONE Zio, akka-http, caliban, circe
-    - 
 - DONE. Client
     - DONE decide client technology
         - DONE Scalajs, scalablytyped, websockets, caliban, circe
@@ -22,23 +21,9 @@
     - DONE Lost password
     - DONE Set up table
 - DONE. Code game engine     
-- FUTURE. Chose domino back logo
 
 ##Random
 DONE - Consistent language
-- Translate to English
-- Versioning and upgrade in Game object
-
-##Server
-- Rehydrate the system after restart
-    - Tokens
-    - Games
-    - Logged in User repo
-    - (in client) load last 10 minutes of messages
-
-## Web client
-- Clean up GameException errors
-- Clean up presentation of really bad errors
 
 ### Pregame
 DONE - Create new game
@@ -54,71 +39,23 @@ DONE - Reject game invite
 
 ### Lobby
 DONE - Mark users who are invited or playing in our game already
-- On last accept the screen ends up in "No es el momento de esperandoJugadoresInvitados", como parte e RedoEvent.
+DONE - On last accept the screen ends up in "No es el momento de esperandoJugadoresInvitados", como parte e RedoEvent.
     This happens because joining is not an event, so the system doesn't know we're ready to play
 DONE - Cuentas personales
 
 ### Game
 DONE - Main screen setup
 DONE - Decide what can be done depending on where you are (look at bot)
-- Animations of Borlotes
-    - Sopa
-    - Poner ficha
-    - Hoyo
-    - Chuti
-    - El hoyo que camina
-    - Tecnico
-
-### All these graphql calls should be exercised
-
-```def broadcastGameEvent(gameEvent: GameEvent): ZIO[GameLayer, GameException, GameEvent]```
-
-```def joinRandomGame(): ZIO[GameLayer, GameException, Game]```
-
-```def newGame():        ZIO[GameLayer, GameException, Game]```
-
-```def play(gameId:    GameId,playEvent: PlayEvent):                  ZIO[GameLayer, GameException, Game]```
-
-```def getGameForUser: ZIO[GameLayer, GameException, Option[Game]]```
-
-```def getGame(gameId:     GameId): ZIO[GameLayer, GameException, Option[Game]]```
-
-```def abandonGame(gameId: GameId): ZIO[GameLayer, GameException, Boolean]```
-
-```def getFriends:       ZIO[GameLayer, GameException, Seq[UserId]]```
-
-```def getGameInvites:   ZIO[GameLayer, GameException, Seq[Game]]```
-
-```def getLoggedInUsers: ZIO[GameLayer, GameException, Seq[User]]```
-
-```def inviteToGame(userId: UserId,gameId: GameId): ZIO[GameLayer, GameException, Boolean]```
-
-```def inviteFriend(friend:          User):   ZIO[GameLayer, GameException, Boolean]```
-
-```def acceptGameInvitation(gameId:  GameId): ZIO[GameLayer, GameException, Game]```
-
-```def declineGameInvitation(gameId: GameId): ZIO[GameLayer, GameException, Boolean]```
-
-```def acceptFriendship(friend:      User):   ZIO[GameLayer, GameException, Boolean]```
-
-```def unfriend(enemy:               User):   ZIO[GameLayer, GameException, Boolean]```
-
-```def gameStream(gameId: GameId): ZStream[GameLayer, GameException, GameEvent]```
-
-```def userStream: ZStream[GameLayer, GameException, UserEvent]```
-
-## Admin screen
-Games playing, game index, event list
-Glimpse into queues
 
 ## Bugs
 - "Juega con quien sea" is not sending out a game event when joining 
-- Last person joining is causing huge issues.
-- onComponentUnmount... close down ws sessions 
+DONE - Last person joining is causing huge issues.
+DONE - onComponentUnmount... close down ws sessions 
 DONE - Aplicando #C, ya esta listo para caerse pero el juego no lo detecta correctamente.
 DONE - Aplicando #C, me encuentro en una posicion en la que dos personas pueden pedir... porque?
-- Double pressing of buttons is messing things up!
 DONE - 2 filas a la derecha o izquierda look weird.
+- Double pressing of buttons is messing things up!
+- Si haces hoyo técnico y cantaste se te cuentan todos tus puntos negativos 
 
 ## To test
 - Invite by email, unhappy paths
@@ -132,6 +69,50 @@ DONE - Remove all "Repository with DatabaseProvider", Repository should stand on
 DONE - Poner un boton en el centro: "Regresar al Lobby"
 DONE - Quitar "Abandona juego"
 DONE - Poner un boton en el lobby: "Empezar nuevo partido con los mismos jugadores"
+
+# Post Release (v 2.0?)
+##Random
+DONE - Consistent language
+- Translate to English
+- Versioning and upgrade in Game object
+- FUTURE. Chose domino back logo
+
+##Server
+- Rehydrate the system after restart
+    - Tokens
+    - Games
+    - Logged in User repo
+    - (in client) load last 10 minutes of messages
+- Don't send email invitations? if the user is online and in lobby?    
+
+## Web client
+- Add WebRTC video 
+- Clean up GameException errors
+- Clean up presentation of really bad errors
+- Animations of Borlotes
+    - Sopa
+    - Poner ficha
+    - Hoyo
+    - Chuti
+    - El hoyo que camina
+    - Tecnico
+- Cuando seleccionas una ficha, automaticamente selecciona triunfo?  
+- Allow user to rearrange the dominos (or do it automatically?)
+- Show triunfos flipped on top
+  
+### Chat en juego
+Mensajes predispuestos
+- Con tu hoyo me voy
+- Con mi casa me voy
+- Mandar todos los borlotes por chat.
+    
+### Admin screen
+Games playing, game index, event list
+Glimpse into queues
+### User management screen
+Accounts, add money, request money transfer
+### About screen
+
 
 ------------------------------------------------------
 
@@ -159,7 +140,7 @@ update game set current_index = 144, status='jugando', lastSnapshot = '{"id": {"
 update game set current_index = 144, status='jugando', lastSnapshot = '{"id": {"value": 78}, "created": "2020-07-04T14:10:00.207509", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 3}}}, "jugadores": [{"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 6}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -4}], "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": true, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}]}], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Casa": {}}}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 5}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"jugando": {}}, "statusString": "Roberto gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 148}' where id = 78;
 
 #A punto de ganar
-{"id": {"value": 78}, "created": "2020-07-04T14:10:00.207509", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 0}}}, "jugadores": [{"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 6}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": true, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}]}], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}], "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Casa": {}}}], "gameStatus": {"jugando": {}}, "statusString": "aoeuaoeu gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 195}
+update game set current_index = 144, status='jugando', lastSnapshot = '{"id": {"value": 78}, "created": "2020-07-04T14:10:00.207509", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 0}}}, "jugadores": [{"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 6}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": true, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}]}], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}], "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Casa": {}}}], "gameStatus": {"jugando": {}}, "statusString": "aoeuaoeu gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 195}' where id = 78;
 
 #A punto de perder
 {"id": {"value": 78}, "created": "2020-07-04T14:10:00.207509", "enJuego": [[{"value": 46}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}], [{"value": 1}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}], [{"value": 47}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}]], "triunfo": {"TriunfoNumero": {"num": {"value": 3}}}, "jugadores": [{"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [{"index": 1, "fichas": [{"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}]}, {"index": 2, "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}]}], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 6}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -4}], "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}]}, {"index": 3, "fichas": [{"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}]}, {"index": 4, "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}]}], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Casa": {}}}, {"mano": true, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [{"index": 5, "fichas": [{"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}]}], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}], "fichas": [], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 5}], "fichas": [], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"jugando": {}}, "statusString": "aoeu salio con 6:2 ", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 172}
@@ -167,8 +148,24 @@ update game set current_index = 144, status='jugando', lastSnapshot = '{"id": {"
 #A punto de caerte
 {"id": {"value": 78}, "created": "2020-07-04T14:10:00.207509", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 3}}}, "jugadores": [{"mano": true, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}]}], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 6}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -4}, {"esHoyo": false, "puntos": 2}], "fichas": [{"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Canto5": {}}}, {"mano": false, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": -4}], "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"jugando": {}}, "statusString": "test1 gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 183}
 
+#A punto de ganar con chuti
+{"id": {"value": 84}, "created": "2020-07-11T15:03:11.09618", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 1}}}, "jugadores": [{"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:15:58", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 4}], "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": true, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-04-09T00:28:28", "lastLoggedIn": "2020-05-22T15:36:12"}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}]}, {"index": 1, "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}]}], "turno": true, "cuenta": [{"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"CantoTodas": {}}}, {"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-05-25T11:01:29", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": 0}, {"esHoyo": true, "puntos": -5}, {"esHoyo": false, "puntos": 2}], "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false, "userStatus": {"Playing": {}}, "lastUpdated": "2020-06-04T09:12:10", "lastLoggedIn": null}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"jugando": {}}, "statusString": "Roberto gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 119}
 
-s"Chat.shouldComponentUpdate = true
-  Props: false. [Props(User(Some(UserId(1)),roberto@leibman.net,Roberto,Offline,2020-04-09T00:28:28,2020-04-09T00:28:28,Some(2020-05-22T15:36:12),true,false,false),ChannelId(78),Some(<function1>))] ⇒ 
-                [Props(User(Some(UserId(1)),roberto@leibman.net,Roberto,Offline,2020-04-09T00:28:28,2020-04-09T00:28:28,Some(2020-05-22T15:36:12),true,false,false),ChannelId(78),Some(<function1>))]
-  State: true. [State(List(),,None)] ⇒ [State(List(),,Some(caliban.client.scalajs.ScalaJSClientAdapter$$anon$1@37))]
+#Bugs
+- Double pressing of buttons is messing things up!
+- Si haces hoyo técnico y cantaste se te cuentan todos tus puntos negativos
+- Si haces hoyo tecnico,  
+- Hoyo tecnico cuando: el cantador no tiene la mano, tiene nada mas una ficha y esta a punto de perder. No hay boton de caete.
+
+#Still pending v1
+- Abandon a started game
+
+## To test
+- Invite by email, unhappy paths
+- Transfer of ownership when original user abandons game
+- Add unique constraint to friends
+
+#Este deberia de ser de caida y no lo es
+update game set current_index = 93, status='jugando', lastSnapshot = '{"id": {"value": 88}, "created": "2020-07-13T10:05:53.599215", "enJuego": [], "triunfo": {"TriunfoNumero": {"num": {"value": 6}}}, "jugadores": [{"mano": true, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false}, "filas": [{"index": 0, "fichas": [{"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 4}}]}, {"index": 2, "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 5}}]}], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 1}, {"esHoyo": false, "puntos": 5}], "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 6}}], "invited": false, "cantante": true, "statusString": "", "cuantasCantas": {"Canto5": {}}}, {"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false}, "filas": [{"index": 1, "fichas": [{"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 4}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 4}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 6}, "arriba": {"value": 6}}]}], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 1}, {"esHoyo": true, "puntos": 0}, {"esHoyo": false, "puntos": 4}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 0}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 1}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 3}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false}, "filas": [], "turno": false, "cuenta": [{"esHoyo": false, "puntos": 5}, {"esHoyo": false, "puntos": 2}, {"esHoyo": false, "puntos": 1}], "fichas": [{"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 2}}, {"type": "conocida", "abajo": {"value": 5}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 6}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 5}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false}, "filas": [], "turno": true, "cuenta": [], "fichas": [{"type": "conocida", "abajo": {"value": 2}, "arriba": {"value": 3}}, {"type": "conocida", "abajo": {"value": 0}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 1}, "arriba": {"value": 5}}, {"type": "conocida", "abajo": {"value": 3}, "arriba": {"value": 3}}], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"jugando": {}}, "statusString": "Roberto gano la ultima mano", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 93}' where id = 88;
+
+Odd winning: 3:2, 3:3, 1:1, 3:4 triunfan 0, gano 3:2?

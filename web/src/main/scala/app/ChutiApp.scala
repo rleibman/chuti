@@ -16,7 +16,6 @@
 
 package app
 
-import chat.ChatComponent
 import org.scalajs.dom
 
 import scala.scalajs.js.annotation.JSExport

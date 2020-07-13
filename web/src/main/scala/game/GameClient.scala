@@ -54,37 +54,11 @@ object GameClient {
     }
   }
 
-  sealed trait UserStatus extends scala.Product with scala.Serializable
-  object UserStatus {
-    case object Idle extends UserStatus
-    case object Invited extends UserStatus
-    case object Offline extends UserStatus
-    case object Playing extends UserStatus
-
-    implicit val decoder: ScalarDecoder[UserStatus] = {
-      case StringValue("Idle")    => Right(UserStatus.Idle)
-      case StringValue("Invited") => Right(UserStatus.Invited)
-      case StringValue("Offline") => Right(UserStatus.Offline)
-      case StringValue("Playing") => Right(UserStatus.Playing)
-      case other                  => Left(DecodingError(s"Can't build UserStatus from input $other"))
-    }
-    implicit val encoder: ArgEncoder[UserStatus] = new ArgEncoder[UserStatus] {
-      override def encode(value: UserStatus): Value = value match {
-        case UserStatus.Idle    => EnumValue("Idle")
-        case UserStatus.Invited => EnumValue("Invited")
-        case UserStatus.Offline => EnumValue("Offline")
-        case UserStatus.Playing => EnumValue("Playing")
-      }
-      override def typeName: String = "UserStatus"
-    }
-  }
-
   type User
   object User {
     def id:          SelectionBuilder[User, Option[Int]] = Field("id", OptionOf(Scalar()))
     def email:       SelectionBuilder[User, String] = Field("email", Scalar())
     def name:        SelectionBuilder[User, String] = Field("name", Scalar())
-    def userStatus:  SelectionBuilder[User, UserStatus] = Field("userStatus", Scalar())
     def created:     SelectionBuilder[User, Long] = Field("created", Scalar())
     def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
     def lastLoggedIn: SelectionBuilder[User, Option[Long]] =

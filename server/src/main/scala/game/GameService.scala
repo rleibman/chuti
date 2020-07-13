@@ -23,7 +23,7 @@ import api.token.TokenHolder
 import caliban.{CalibanError, GraphQLInterpreter}
 import chat.ChatService.ChatService
 import chat._
-import chuti.Numero.Numero1
+import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import chuti._
 import dao.{Repository, SessionProvider}
@@ -50,7 +50,6 @@ object GameService {
     email = "god@chuti.fun",
     name = "Un-namable",
     created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
-    lastUpdated = LocalDateTime.now(),
     isAdmin = true
   )
 
@@ -280,7 +279,7 @@ object GameService {
                   (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
-                .delete(game.id.get, softDelete = false).provideSomeLayer[
+                .delete(game.id.get).provideSomeLayer[
                   Logging
                 ](
                   godLayer
@@ -292,17 +291,17 @@ object GameService {
                 ](godLayer)
             case (game, event) => ZIO.succeed(game)
           }
-          _ <- ZIO.foreachPar(players) { game =>
+//          _ <- ZIO.foreachPar(players) { game =>
             //TODO make sure that current losses in this game are also assigned to the user
             //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
-            repository.userOperations
-              .upsert(
-                user
-                  .copy(
-                    userStatus = UserStatus.Idle
-                  )
-              )
-          }
+//            repository.userOperations
+//              .upsert(
+//                user
+//                  .copy(
+//                    userStatus = UserStatus.Idle
+//                  )
+//              )
+//          }
           walletOpt <- repository.userOperations.getWallet
           _ <- ZIO.foreach(gameOpt.flatMap(g => walletOpt.map(w => (g, w)))) {
             case (game, wallet)
@@ -444,7 +443,7 @@ object GameService {
           invitedOpt <- repository.userOperations.userByEmail(email)
           invited <- invitedOpt.fold(
             repository.userOperations
-              .upsert(User(None, email, name, userStatus = UserStatus.Invited))
+              .upsert(User(None, email, name))
               .provideSomeLayer[Logging](godLayer)
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
@@ -634,7 +633,9 @@ object GameService {
           case e: Da if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Pide if e.hoyoTecnico.isDefined => applyHoyoTecnico(game, e.hoyoTecnico.get)
           case e: Da
-              if e.ficha == Game.campanita && !game.triunfo.contains(TriunfoNumero(Numero1)) =>
+              if e.ficha == Game.campanita && !game.triunfo
+                .contains(TriunfoNumero(Numero1)) && !game.triunfo
+                .contains(TriunfoNumero(Numero0)) =>
             val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Campanita))
             (a._1, Seq(a._2))
           case _ =>
@@ -708,8 +709,8 @@ object GameService {
 
             val withStatus = event.processStatusMessages(played)
 
-            //TODO comment this out, or move it somewhere, or something.
-            testRedoEvent(game, withStatus, event, user)
+            // comment this out, or move it somewhere, or something.
+//            testRedoEvent(game, withStatus, event, user)
 
             val (transitioned, transitionEvents) = checkPlayTransition(user, withStatus, event)
 

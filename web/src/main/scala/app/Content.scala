@@ -21,21 +21,12 @@ import java.util.UUID
 
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
-import caliban.client.CalibanClientError.DecodingError
 import caliban.client.SelectionBuilder
-import caliban.client.Value.{EnumValue, StringValue}
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType,
-  UserStatus => CalibanUserStatus
-}
+import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -102,45 +93,43 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       }
     }
 
-    private def reapplyEvent(gameEvent: GameEvent): Callback = {
-      Callback.log("============== reapply event") >> $.modState(
-        { s =>
-          val moddedGame = s.chutiState.gameInProgress.flatMap {
-            currentGame: Game =>
-              gameEvent.index match {
-                case None =>
-                  throw GameException(
-                    "Esto es imposible (el evento no tiene indice)"
-                  )
-                case Some(index) if index == currentGame.currentEventIndex =>
-                  //If the game event is the next one to be applied, apply it to the game
-                  val reapplied = currentGame.reapplyEvent(gameEvent)
-                  if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
-                    None
-                  } else {
-                    Option(reapplied)
-                  }
-                case Some(index) if index > currentGame.currentEventIndex =>
-                  //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                  //In a few seconds, just get the full game.
-                  Option(currentGame)
-                case Some(index) =>
-                  //If it's past, mark an error, how could we have a past event???
-                  throw GameException(
-                    s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-                  )
-              }
-          }
-          s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
+    private def reapplyEvent(gameEvent: GameEvent): Callback =
+      $.modState(s => {
+        val moddedGame = s.chutiState.gameInProgress.flatMap {
+          currentGame: Game =>
+            gameEvent.index match {
+              case None =>
+                throw GameException(
+                  "Esto es imposible (el evento no tiene indice)"
+                )
+              case Some(index) if index == currentGame.currentEventIndex =>
+                //If the game event is the next one to be applied, apply it to the game
+                val reapplied = currentGame.reapplyEvent(gameEvent)
+                if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
+                  None
+                } else {
+                  Option(reapplied)
+                }
+              case Some(index) if index > currentGame.currentEventIndex =>
+                //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+                //In a few seconds, just get the full game.
+                Option(currentGame)
+              case Some(index) =>
+                //If it's past, mark an error, how could we have a past event???
+                throw GameException(
+                  s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+                )
+            }
         }
-      )
-    }
+        s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
+      })
 
-    def modGameInProgress(fn: Game => Game): Callback = {
+    def modGameInProgress(fn: Game => Game, callback: Callback): Callback = {
       Callback.log("============== modgameInProgress") >> $.modState(s =>
         s.copy(chutiState =
           s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
-        )
+        ),
+        callback
       )
     }
 
@@ -208,22 +197,15 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     }
 
     lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
-      (CalibanUser.id ~ CalibanUser.name ~ CalibanUser.userStatus).mapN(
+      (CalibanUser.id ~ CalibanUser.name).mapN(
         (
           id:     Option[Int],
-          name:   String,
-          status: CalibanUserStatus
+          name:   String
         ) => {
-          val userStatus: UserStatus = CalibanUserStatus.encoder.encode(status) match {
-            case StringValue(str) => UserStatus.fromString(str)
-            case EnumValue(str)   => UserStatus.fromString(str)
-            case other            => throw DecodingError(s"Can't build UserStatus from input $other")
-          }
           User(
             id = id.map(UserId.apply),
             email = "",
-            name = name,
-            userStatus = userStatus
+            name = name
           )
         })
 
@@ -242,12 +224,23 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
 
     def refresh(initial: Boolean = false): Callback = {
       val ajax = for {
+        oldState <- ($.state).asAsyncCallback
         whoami <- if (initial) UserRESTClient.remoteSystem.whoami()
-        else $.state.map(_.chutiState.user).asAsyncCallback
+        else AsyncCallback.pure(oldState.chutiState.user)
         wallet            <- UserRESTClient.remoteSystem.wallet()
         friends           <- asyncCalibanCall(Queries.getFriends(userSelectionBuilder))
         loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
         gameInProgressOpt <- asyncCalibanCallThroughJsonOpt[Queries, Game](Queries.getGameForUser)
+        needNewGameStream = (for {
+          oldGame <- oldState.chutiState.gameInProgress
+          newGame <- gameInProgressOpt
+          _       <- oldState.chutiState.gameStream
+        } yield oldGame.id != newGame.id).getOrElse(true)
+        _ <- (if (needNewGameStream)
+                oldState.chutiState.gameStream.fold(
+                  Callback.log("Don't need to close stream, it hasn't been opened yet")
+                )(_.close())
+              else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
       } yield $.modState { s =>
         val copy = if (initial) {
           s.copy(
@@ -268,7 +261,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
                   onData = { (_, data) =>
                     onUserStreamData(data.flatten)
                   },
-                  operationId = "-"
+                  operationId = "-",
+                  connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.value)}"
                 )
               )
             )
@@ -282,20 +276,25 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           friends = friends.toList.flatten,
           loggedInUsers = loggedInUsersOpt.toList.flatten.distinctBy(_.id),
           gameInProgress = gameInProgressOpt,
-          gameStream = gameInProgressOpt.map(game =>
-            makeWebSocketClient[Option[Json]](
-              uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-              query = Subscriptions.gameStream(game.id.get.value, connectionId),
-              onData = { (_, data) =>
-                data.flatten.fold(Callback.empty)(json =>
-                  gameEventDecoder
-                    .decodeJson(json)
-                    .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+          gameStream =
+            if (!needNewGameStream) copy.chutiState.gameStream
+            else
+              gameInProgressOpt.map(game =>
+                makeWebSocketClient[Option[Json]](
+                  uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                  query = Subscriptions.gameStream(game.id.get.value, connectionId),
+                  onData = { (_, data) =>
+                    data.flatten.fold(Callback.empty)(json =>
+                      gameEventDecoder
+                        .decodeJson(json)
+                        .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                    )
+                  },
+                  operationId = "-",
+                  connectionId =
+                    s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
                 )
-              },
-              operationId = "-"
-            )
-          )
+              )
         )
         )
       }
@@ -304,7 +303,6 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         _ <- Callback.log(
           if (initial) "Initializing Content Component" else "Refreshing Content Component"
         )
-        _          <- $.state.map(_.chutiState.gameStream.foreach(_.close()))
         modedState <- ajax.completeWith(_.get)
       } yield modedState
     }
@@ -337,7 +335,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     .renderBackend[Backend]
     .componentDidMount($ => $.backend.refresh(initial = true))
     .componentWillUnmount($ =>
-      $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>
+      Callback.log("Closing down gameStream and userStream") >>
+        $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>
         $.state.chutiState.userStream.fold(Callback.empty)(_.close())
     )
     .build

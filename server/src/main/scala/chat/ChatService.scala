@@ -114,7 +114,7 @@ object ChatService {
       ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
         recentMessages.get.map { seq =>
           val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
-          seq.filter(dateFilter(timeAgo, _))
+          seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
         }
       }
 

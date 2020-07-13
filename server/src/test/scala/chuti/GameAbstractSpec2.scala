@@ -82,7 +82,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
           assert(
             looped.gameStatus === GameStatus.requiereSopa || looped.gameStatus === GameStatus.partidoTerminado
           )
-        //TODO Assert Que las cuentas quedaron claras
+        //May want to assert Que las cuentas quedaron claras
         }
       }
     } yield (asserted, looped)
@@ -273,7 +273,6 @@ trait GameAbstractSpec2 extends MockitoSugar {
           assert(start.id.nonEmpty)
           assert(start.jugadores.length == 1)
           assert(start.jugadores.head.user.id === user1.id)
-          assert(start.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
         }
       }
       gameStream = gameService
@@ -291,7 +290,6 @@ trait GameAbstractSpec2 extends MockitoSugar {
         assert(readyToPlay.currentEventIndex === 10)
         assert(readyToPlay.jugadores.length == 4)
         assert(readyToPlay.jugadores.forall(!_.invited))
-        assert(readyToPlay.jugadores.forall(_.user.userStatus === UserStatus.Playing))
       }
       played <- ZIO.iterate((Succeeded: Assertion, start))(
         _._2.gameStatus != GameStatus.partidoTerminado
@@ -310,7 +308,6 @@ trait GameAbstractSpec2 extends MockitoSugar {
         )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {
-        //TODO assert final del partido
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
         assert(gameEvents.nonEmpty)
       }

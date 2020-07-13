@@ -43,8 +43,6 @@ trait SlickToModelInterop {
     email = row.email,
     name = row.name,
     created = row.created.toLocalDateTime,
-    lastUpdated = row.created.toLocalDateTime,
-    lastLoggedIn = row.lastloggedin.map(_.toLocalDateTime),
     active = row.active,
     deleted = row.deleted
   )
@@ -53,9 +51,7 @@ trait SlickToModelInterop {
     name = value.name,
     email = value.email,
     created = Timestamp.valueOf(value.created),
-    active = value.active,
-    lastupdated = new Timestamp(System.currentTimeMillis()),
-    lastloggedin = value.lastLoggedIn.map(Timestamp.valueOf)
+    active = value.active
   )
   def GameRow2Game(row: GameRow): Game = {
     val decoder = implicitly(Decoder[Game])

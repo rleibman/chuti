@@ -128,7 +128,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando cinco sin salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -205,7 +204,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando todas" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -259,7 +257,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 1)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -340,7 +337,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve de chuti" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -405,7 +401,6 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 2)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
   "Cantando casa con salve de 5,6,7" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -486,6 +481,5 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
     assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
-    assert(game.jugadores.forall(j => j.user.userStatus == UserStatus.Playing))
   }
 }

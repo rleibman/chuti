@@ -39,7 +39,7 @@ case class ChutiState(
   wallet:                Option[UserWallet] = None,
   serverVersion:         Option[String] = None,
   gameInProgress:        Option[Game] = None,
-  modGameInProgress:     (Game => Game) => Callback = _ => Callback.empty,
+  modGameInProgress:     (Game => Game, Callback) => Callback = (_, c) => c,
   onRequestGameRefresh:  Callback = Callback.empty,
   gameStream:            Option[WebSocketHandler] = None,
   gameViewMode:          GameViewMode = GameViewMode.lobby,

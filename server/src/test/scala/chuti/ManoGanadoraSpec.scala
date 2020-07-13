@@ -16,6 +16,7 @@
 
 package chuti
 
+import chuti.Numero.Numero0
 import chuti.Triunfo._
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
@@ -23,6 +24,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 class ManoGanadoraSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   val manosTests = Seq(
     //(fichas, pidiendo, triunfo) debe ganar (x)
+    ("3:2,3:3,1:1,3:4","3:2", TriunfoNumero(Numero0))    -> "3:4",
     ("6:6,5:5,4:4,3:3", "6:6", SinTriunfos)              -> "6:6",
     ("6:6,5:5,4:4,1:0", "1:0", SinTriunfos)              -> "1:0",
     ("5:5,2:2,4:4,1:0", "2:2", SinTriunfos)              -> "2:2",
