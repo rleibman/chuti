@@ -292,8 +292,8 @@ object GameService {
             case (game, event) => ZIO.succeed(game)
           }
 //          _ <- ZIO.foreachPar(players) { game =>
-            //TODO make sure that current losses in this game are also assigned to the user
-            //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
+          //TODO make sure that current losses in this game are also assigned to the user
+          //TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
 //            repository.userOperations
 //              .upsert(
 //                user

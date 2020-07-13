@@ -118,7 +118,10 @@ object GameComponent {
                       ^.className := "userStatus",
                       if (jugador.turno) "Le toco cantar. " else "",
                       jugador.cuantasCantas
-                        .fold("")(c => s"Canto ${if(jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa else c}"),
+                        .fold("")(c =>
+                          s"Canto ${if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa
+                          else c}"
+                        ),
                       jugador.statusString
                     )
                   ),

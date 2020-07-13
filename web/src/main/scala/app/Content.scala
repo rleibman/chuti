@@ -26,7 +26,13 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
+import game.GameClient.{
+  Queries,
+  Subscriptions,
+  User => CalibanUser,
+  UserEvent => CalibanUserEvent,
+  UserEventType => CalibanUserEventType
+}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -124,11 +130,15 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
       })
 
-    def modGameInProgress(fn: Game => Game, callback: Callback): Callback = {
-      Callback.log("============== modgameInProgress") >> $.modState(s =>
-        s.copy(chutiState =
-          s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
-        ),
+    def modGameInProgress(
+      fn:       Game => Game,
+      callback: Callback
+    ): Callback = {
+      Callback.log("============== modgameInProgress") >> $.modState(
+        s =>
+          s.copy(chutiState =
+            s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
+          ),
         callback
       )
     }
@@ -199,8 +209,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
       (CalibanUser.id ~ CalibanUser.name).mapN(
         (
-          id:     Option[Int],
-          name:   String
+          id:   Option[Int],
+          name: String
         ) => {
           User(
             id = id.map(UserId.apply),
