@@ -34,8 +34,6 @@ trait RESTOperations {
         fn(xhr) match {
           case Right(a) => a
           case Left(e) =>
-            println(xhr.responseText)
-            e.printStackTrace()
             throw e
         }
       }

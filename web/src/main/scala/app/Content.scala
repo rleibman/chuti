@@ -90,7 +90,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         playSound(gameEvent.soundUrl) >>
         updateGame >> {
         gameEvent match {
-          case e: TerminaJuego if (e.partidoTerminado) =>
+          case e: TerminaJuego if e.partidoTerminado =>
             refresh() >> $.modState(s =>
               s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
             )
@@ -130,18 +130,31 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
       })
 
+    def toggleSound =
+      $.modState(s => s.copy(chutiState = s.chutiState.copy(muted = !s.chutiState.muted)))
+
     def modGameInProgress(
       fn:       Game => Game,
       callback: Callback
-    ): Callback = {
-      Callback.log("============== modgameInProgress") >> $.modState(
-        s =>
-          s.copy(chutiState =
-            s.chutiState.copy(gameInProgress = s.chutiState.gameInProgress.map(g => fn(g)))
-          ),
-        callback
-      )
-    }
+    ): Callback =
+      Callback.log("modGameInProgress") >> (for {
+        chutiState <- $.state.map(_.chutiState)
+        _ <- {
+          val newGameOpt = chutiState.gameInProgress.map(fn)
+          val doRefresh = (for {
+            newGame <- newGameOpt
+            oldGame <- chutiState.gameInProgress
+          } yield newGame.id != oldGame.id).getOrElse(true)
+          if (doRefresh) {
+            Callback.log("Full refresh needed") >> refresh() >> callback
+          } else {
+            $.modState(
+              s => s.copy(chutiState = s.chutiState.copy(gameInProgress = newGameOpt)),
+              callback
+            )
+          }
+        }
+      } yield ())
 
     def onUserChanged(userOpt: Option[User]): Callback =
       userOpt.fold(Callback.empty) { user =>
@@ -158,10 +171,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       }
 
     def playSound(soundUrlOpt: Option[String]): Callback = {
-      soundUrlOpt.fold(Callback.empty) { url =>
-        Callback {
-          val sound = new Audio(src = url)
-          sound.play()
+      $.state.flatMap { s =>
+        if (s.chutiState.muted) {
+          Callback.empty
+        } else {
+          soundUrlOpt.fold(Callback.empty) { url =>
+            Callback {
+              val sound = new Audio(src = url)
+              sound.play()
+            }
+          }
         }
       }
     }
@@ -196,12 +215,15 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
                 .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
               )
             )
-          case Some((user, AbandonedGame | Connected | JoinedGame | Modified)) =>
+          case Some((user, Connected | Modified)) =>
             $.modState(s =>
               s.copy(chutiState = s.chutiState
                 .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
               )
             )
+          case Some((_, AbandonedGame | JoinedGame)) =>
+            //TODO for performance, we want to add gameid to the user event, only refresh when user id
+            refresh()
         }
       }
     }
@@ -259,6 +281,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
               onRequestGameRefresh = refresh(),
               onGameViewModeChanged = onGameViewModeChanged,
               onUserChanged = onUserChanged,
+              toggleSound = toggleSound,
               showDialog = showDialog,
               user = whoami,
               userStream = Option(

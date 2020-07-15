@@ -321,10 +321,17 @@ object GameComponent {
 //                            ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
                             ^.src := s"images/${abajo}_${arriba}x150.png",
                             ^.onClick --> {
-                              if (selectable)
-                                $.modState(_.copy(fichaSeleccionada = Option(ficha)))
-                              else
+                              if (selectable) {
+                                $.modState(copyMe => {
+                                  val triunfo =
+                                    if (ficha.esMula && copyMe.triunfo.isEmpty)
+                                      Option(TriunfoNumero(ficha.arriba))
+                                    else copyMe.triunfo
+                                  copyMe.copy(fichaSeleccionada = Option(ficha), triunfo = triunfo)
+                                })
+                              } else {
                                 Callback.empty
+                              }
                             },
                             ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
                             else ""}"

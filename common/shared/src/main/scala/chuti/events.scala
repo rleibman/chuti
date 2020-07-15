@@ -657,7 +657,7 @@ case class Pide(
         userId = jugador.id,
         //En este caso, el hoyo tecnico se calcula despues de haber declarado triunfo
         hoyoTecnico =
-          if (modified.puedesCaerte(jugador)) Option("Podias haberte caido, no lo hiciste")
+          if (modified.puedesCaerte(jugador)) Option("Podías haberte caído, no lo hiciste")
           else None,
         gameStatusString = Option(
           s"${jugador.user.name} salio con $ficha ${if (estrictaDerecha) ". Estricta derecha!"
@@ -689,7 +689,7 @@ case class Pide(
         gameId = game.id,
         userId = jugador.id,
         hoyoTecnico =
-          if (game.puedesCaerte(jugador)) Option("Podias haberte caido, no lo hiciste")
+          if (game.puedesCaerte(jugador)) Option("Podías haberte caído, no lo hiciste")
           else None
       )
     )
@@ -773,6 +773,7 @@ case class Da(
   soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
+
   override def doEvent(
     jugador: Jugador,
     game:    Game
@@ -926,7 +927,8 @@ case class Caete(
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
   soundUrl:            Option[String] = Option("sounds/caete.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  ganadorDePartido:    Option[UserId] = None
 ) extends PlayEvent {
   override def doEvent(
     jugador: Jugador,
@@ -944,7 +946,10 @@ case class Caete(
         jugador.fichas,
         conTriunfos.jugadores.filter(_.id != jugador.id).flatMap(_.fichas)
       )
-    val losRegalos: Seq[Ficha] = jugador.fichas.diff(deCaída.map(_.fichas.head))
+
+    //Regalos, en orden de mayor a menor.
+    val losRegalos: Seq[Ficha] =
+      jugador.fichas.diff(deCaída.map(_.fichas.head)).sortBy(-_.arriba.value)
 
     val jugadores =
       conTriunfos.modifiedJugadores(
@@ -952,11 +957,14 @@ case class Caete(
         j =>
           j.copy(
             filas = j.filas ++ deCaída,
-            fichas = List.empty
+            fichas = List.empty,
+            ganadorDePartido = (j.cuenta.map(_.puntos).sum + j.filas.size + deCaída.size) >= 21
           ),
         j => j.copy(fichas = j.fichas.diff(deCaída.flatMap(_.fichas)))
       )
 
+    //Nota que los regalos pueden ocasionar que alguien gane el partido.
+    //Los regalos están en orden de tamaño, por lo que el primero que llege a 21 es el ganador.
     @tailrec def regaloLoop(
       regalos:   Seq[Ficha],
       jugadores: Map[Jugador, Seq[Fila]]
@@ -965,18 +973,21 @@ case class Caete(
         jugadores
       } else {
 
-        val regalo = conTriunfos.maxByTriunfo(regalos).get
+        val yaHayGanador = jugadores.exists(_._1.ganadorDePartido)
+        val regalo = regalos.head
         val fichaMerecedora =
           conTriunfos.fichaGanadora(regalo, jugadores.flatMap(_._1.fichas).toSeq)
 
         regaloLoop(
-          regalos.filter(_ != regalo),
+          regalos.tail,
           jugadores = jugadores.map(j =>
             if (j._1.fichas.contains(fichaMerecedora)) {
               (
                 j._1.copy(
                   filas = j._1.filas :+ Fila(-1, fichaMerecedora, regalo),
-                  fichas = j._1.fichas.filter(_ != fichaMerecedora)
+                  fichas = j._1.fichas.filter(_ != fichaMerecedora),
+                  ganadorDePartido = !yaHayGanador && ((j._1.cuenta
+                    .map(_.puntos).sum + j._1.filas.size + 1) >= 21)
                 ),
                 j._2 :+ Fila(-1, fichaMerecedora, regalo)
               )
@@ -985,7 +996,9 @@ case class Caete(
               (
                 j._1.copy(
                   filas = j._1.filas :+ Fila(-1, fichaMerecedora),
-                  fichas = j._1.fichas.filter(_ != fichaMerecedora)
+                  fichas = j._1.fichas.filter(_ != fichaMerecedora),
+                  ganadorDePartido = !yaHayGanador && ((j._1.cuenta
+                    .map(_.puntos).sum + j._1.filas.size + 1) >= 21)
                 ),
                 j._2 :+ Fila(-1, fichaMerecedora)
               )
@@ -1011,7 +1024,8 @@ case class Caete(
         s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}."
       } else {
         ""
-      }}")
+      }}"),
+      ganadorDePartido = regalosRegalados.find(_._1.ganadorDePartido).flatMap(_._1.id)
     )
 
     (
@@ -1032,12 +1046,14 @@ case class Caete(
         j =>
           j.copy(
             filas = j.filas ++ deCaida ++ regalosMap.getOrElse(j.id.get, Seq.empty),
-            fichas = List.empty
+            fichas = List.empty,
+            ganadorDePartido = ganadorDePartido == j.id
           ),
         j =>
           j.copy(
             filas = j.filas ++ regalosMap.getOrElse(j.id.get, Seq.empty),
-            fichas = List.empty
+            fichas = List.empty,
+            ganadorDePartido = ganadorDePartido == j.id
           )
       )
     )
@@ -1110,7 +1126,13 @@ case class HoyoTecnico(
         gameStatus = GameStatus.requiereSopa,
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
-          guey => guey.copy(cuenta = guey.cuenta :+ Cuenta(0, esHoyo = true))
+          //El hoyo tecnico no cuenta puntos negativos a menos que seas el que canta, porque hacerte un hoyo tecnico no te debe absolver de los numeros negativos
+          guey =>
+            guey.copy(cuenta = guey.cuenta :+ Cuenta(
+              if (guey.cantante) guey.cuantasCantas.fold(0)(-_.numFilas) else 0,
+              esHoyo = true
+            )
+            )
         )
       ),
       copy(
@@ -1151,10 +1173,7 @@ case class TerminaJuego(
         _.cantante, { victima =>
           if (game.quienCanta.fold(false)(_.yaSeHizo)) {
             victima.copy(cuenta = victima.cuenta ++ victima.filas.headOption.map(_ =>
-              Cuenta(
-                Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)),
-                esHoyo = false
-              )
+              Cuenta(Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)))
             )
             )
           } else {
@@ -1195,6 +1214,9 @@ case class TerminaJuego(
 
     if (conCuentas.partidoTerminado) {
       (
+        //el ganador de el partido no es necesariamente el que haya llegado a 21 (si hay mas que uno), sino
+        //a) el que se fue
+        //b) el que obtuvo el primer regalo que hizo que se fuera.
         conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
         copy(
           index = Option(game.currentEventIndex),

@@ -48,7 +48,9 @@ case class ChutiState(
   friends:               List[User] = List.empty,
   userStream:            Option[WebSocketHandler] = None,
   loggedInUsers:         List[User] = List.empty,
-  currentDialog:         GlobalDialog = GlobalDialog.none
+  currentDialog:         GlobalDialog = GlobalDialog.none,
+  muted:                 Boolean = false,
+  toggleSound:           Callback = Callback.empty
 ) {
   lazy val usersAndFriends: Seq[ExtUser] =
     loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++

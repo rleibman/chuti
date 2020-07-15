@@ -105,7 +105,7 @@ object Toast {
                       ^.className := "iconRegion",
                       <.div(^.className := "countdown", ^.opacity := "0"),
                       <.div(
-                        Icon( //as = Any.fromString("div"),
+                        Icon(
                           className = "icon",
                           name = toast.icon.getOrElse(null)
                         )()

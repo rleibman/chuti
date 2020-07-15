@@ -210,16 +210,17 @@ object JugadorState extends Enumeration {
 import chuti.JugadorState._
 
 case class Jugador(
-  user:          User,
-  invited:       Boolean = false, //Should really reverse this and call it "accepted"
-  fichas:        List[Ficha] = List.empty,
-  filas:         List[Fila] = List.empty,
-  turno:         Boolean = false, //A quien le tocaba cantar este juego
-  cantante:      Boolean = false, //Quien esta cantando este juego
-  mano:          Boolean = false, //Quien tiene la mano en este momento
-  cuantasCantas: Option[CuantasCantas] = None,
-  statusString:  String = "",
-  cuenta:        Seq[Cuenta] = Seq.empty
+  user:             User,
+  invited:          Boolean = false, //Should really reverse this and call it "accepted"
+  fichas:           List[Ficha] = List.empty,
+  filas:            List[Fila] = List.empty,
+  turno:            Boolean = false, //A quien le tocaba cantar este juego
+  cantante:         Boolean = false, //Quien esta cantando este juego
+  mano:             Boolean = false, //Quien tiene la mano en este momento
+  cuantasCantas:    Option[CuantasCantas] = None,
+  statusString:     String = "",
+  ganadorDePartido: Boolean = false,
+  cuenta:           Seq[Cuenta] = Seq.empty
 ) {
   lazy val yaSeHizo: Boolean = {
     if (!cantante) {
@@ -423,6 +424,8 @@ case class Game(
   }
 
   @transient
+  lazy val ganadorDePartido: Option[Jugador] = jugadores.find(_.ganadorDePartido)
+  @transient
   lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
   @transient
   lazy val mano: Option[Jugador] = jugadores.find(_.mano)
@@ -438,15 +441,14 @@ case class Game(
     val conPuntos = jugadores.map { j =>
       (j, j.cuenta.map(_.puntos).sum)
     }
-    val ganador = conPuntos.find(_._2 >= 21).map(_._1)
     conPuntos.map {
       case (j, puntos) => {
         val total =
-          (if (puntos >= 21) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
+          (if (j.ganadorDePartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
             (if (puntos < 0) -2 else 0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
-            (if (puntos >= 21) conPuntos.count(_._2 < 0) * 2 else 0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
-            (if (puntos >= 21 && j.cuenta.last.puntos == 21) 3
-             else if (ganador.fold(false)(_.cuenta.last.puntos == 21)) -1
+            (if (j.ganadorDePartido) conPuntos.count(_._2 < 0) * 2 else 0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+            (if (j.ganadorDePartido && j.cuenta.last.puntos == 21) 3
+             else if (ganadorDePartido.fold(false)(_.cuenta.last.puntos == 21)) -1
              else 0) + //Si se va con chuty, recibe 6 o dos de cada jugador.
             conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + //Hoyos ajenos
             (-(j.cuenta.count(_.esHoyo) * 3)) //Hoyos propios
@@ -593,7 +595,7 @@ case class Game(
     }
 
   def partidoTerminado: Boolean = {
-    jugadores.exists(_.cuenta.map(_.puntos).sum >= 21)
+    jugadores.exists(_.ganadorDePartido)
   }
 
 //  import monocle.Optional

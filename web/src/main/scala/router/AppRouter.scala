@@ -27,6 +27,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom._
 import pages._
 import typings.semanticUiReact.components._
+import typings.semanticUiReact.genericMod.SemanticICONS
 
 object AppRouter extends ChutiComponent {
 
@@ -46,8 +47,6 @@ object AppRouter extends ChutiComponent {
       def render(): VdomElement = ChutiState.ctx.consume { chutiState =>
         def renderCuentasDialog: VdomArray = {
           chutiState.gameInProgress.toVdomArray { game =>
-            val ganador = game.jugadores.find(_.cuenta.map(_.puntos).sum >= 21)
-
             Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
               ModalHeader()(s"Cuentas (${game.satoshiPerPoint} Satoshi per punto)"),
               ModalContent()(
@@ -87,7 +86,9 @@ object AppRouter extends ChutiComponent {
                   })
                 ),
                 if (game.gameStatus == GameStatus.partidoTerminado) {
-                  <.div(s"Partido terminado, ${ganador.fold("")(_.user.name)} gano el partido.")
+                  <.div(
+                    s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido."
+                  )
                 } else {
                   EmptyVdom
                 }
@@ -169,6 +170,17 @@ object AppRouter extends ChutiComponent {
                   MenuItem(onClick = { (e, _) =>
                     page.setEH(UserSettingsAppPage)(e)
                   })("Administración de usuario"),
+                  Divider()(),
+                  MenuItem(onClick = { (_, _) =>
+                    chutiState.toggleSound
+                  })(
+                    Icon(name =
+                      if (chutiState.muted) SemanticICONS.`volume up`
+                      else SemanticICONS.`volume off`
+                    )(),
+                    if (chutiState.muted) "Con Sonido" else "Sin Sonido"
+                  ),
+                  Divider()(),
                   MenuItem(onClick = { (e, _) =>
                     page.setEH(AboutAppPage)(e)
                   })("Acerca de Chuti")

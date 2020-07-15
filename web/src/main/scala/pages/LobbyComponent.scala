@@ -335,12 +335,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               Mutations.newGameSameUsers(game.id.get.value),
                               gameOpt =>
                                 Toast.success("Juego empezado!") >> p.gameInProgress
-                                  .setState(gameOpt) >> $.modState(
-                                  _.copy(
-                                    dlg = Dialog.none,
-                                    newGameDialogState = None
-                                  )
-                                )
+                                  .setState(gameOpt) >> $.modState(_.copy(dlg = Dialog.none)) >> refresh()
                             )
                         )("Nuevo partido con los mismos jugadores")
                       } else {
@@ -394,57 +389,56 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           }
                         )
                       )
-                    ),
-                    TagMod(
-                      <.div(
-                        ^.key := "invitaciones",
-                        <.h1("Invitaciones"),
-                        <.table(
-                          ^.className := "playersTable",
-                          <.tbody(
-                            s.invites.toVdomArray {
-                              game =>
-                                <.tr(
-                                  ^.key := game.id.fold("")(_.toString),
-                                  <.td(
-                                    s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}"
-                                  ),
-                                  <.td(
-                                    Button(
-                                      compact = true,
-                                      basic = true,
-                                      onClick = (_, _) => {
-                                        calibanCallThroughJsonOpt[Mutations, Game](
-                                          Mutations.acceptGameInvitation(
-                                            game.id.fold(0)(_.value)
-                                          ),
-                                          gameOpt => p.gameInProgress.setState(gameOpt) >> refresh()
-                                        )
-                                      }
-                                    )("Aceptar"),
-                                    Button(
-                                      compact = true,
-                                      basic = true,
-                                      onClick = (_, _) => {
-                                        calibanCall[Mutations, Option[Boolean]](
-                                          Mutations.declineGameInvitation(
-                                            game.id.fold(0)(_.value)
-                                          ),
-                                          _ =>
-                                            Toast.success("Invitación rechazada") >>
-                                              p.gameInProgress.setState(None) >> refresh()
-                                        )
-                                      }
-                                    )("Rechazar")
-                                  )
-                                )
-                            }
-                          )
-                        )
-                      )
-                    ).when(s.invites.nonEmpty)
+                    )
                   )
-                }
+                },
+                TagMod(
+                  <.div(
+                    ^.key := "invitaciones",
+                    <.h1("Invitaciones"),
+                    <.table(
+                      ^.className := "playersTable",
+                      <.tbody(
+                        s.invites.toVdomArray { game =>
+                          <.tr(
+                            ^.key := game.id.fold("")(_.toString),
+                            <.td(
+                              s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}"
+                            ),
+                            <.td(
+                              Button(
+                                compact = true,
+                                basic = true,
+                                onClick = (_, _) => {
+                                  calibanCallThroughJsonOpt[Mutations, Game](
+                                    Mutations.acceptGameInvitation(
+                                      game.id.fold(0)(_.value)
+                                    ),
+                                    gameOpt => p.gameInProgress.setState(gameOpt)
+                                  )
+                                }
+                              )("Aceptar"),
+                              Button(
+                                compact = true,
+                                basic = true,
+                                onClick = (_, _) => {
+                                  calibanCall[Mutations, Option[Boolean]](
+                                    Mutations.declineGameInvitation(
+                                      game.id.fold(0)(_.value)
+                                    ),
+                                    _ =>
+                                      Toast.success("Invitación rechazada") >>
+                                        p.gameInProgress.setState(None) >> refresh()
+                                  )
+                                }
+                              )("Rechazar")
+                            )
+                          )
+                        }
+                      )
+                    )
+                  )
+                ).when(s.invites.nonEmpty)
               ),
               <.div(
                 ^.className := "lobbyCol2",
