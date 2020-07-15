@@ -16,12 +16,8 @@
 
 package chat
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
-
-import caliban.CalibanError.ExecutionError
 import caliban.GraphQL.graphQL
-import caliban.Value.IntValue
-import caliban.schema.{ArgBuilder, GenericSchema, Schema}
+import caliban.schema.GenericSchema
 import caliban.wrappers.ApolloTracing.apolloTracing
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
@@ -64,13 +60,6 @@ object ChatApi
     ]
   )
 
-  implicit val localDateTimeSchema: Typeclass[LocalDateTime] =
-    Schema.longSchema.contramap(_.toInstant(ZoneOffset.UTC).toEpochMilli)
-  implicit val localDateTimeArgBuilder: ArgBuilder[LocalDateTime] = {
-    case value: IntValue =>
-      Right(LocalDateTime.ofInstant(Instant.ofEpochMilli(value.toLong), ZoneOffset.UTC))
-    case other => Left(ExecutionError(s"Can't build a LocalDateTime from input $other"))
-  }
   implicit val userSchema:        Typeclass[User] = gen[User]
   implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
 
@@ -95,8 +84,7 @@ object ChatApi
       printSlowQueries(500.millis) @@ // wrapper that logs slow queries
       apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Long\n\nenum UserStatus {\n  Idle\n  Invited\n  Offline\n  Playing\n}\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: Long!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  userStatus: UserStatus!\n  created: Long!\n  lastUpdated: Long!\n  lastLoggedIn: Long\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"
-
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar LocalDateTime\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  created: LocalDateTime!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: LocalDateTime!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: LocalDateTime!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"
   //Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/chat.schema /Volumes/Personal/projects/chuti/web/src/main/scala/chat/ChatClient.scala
 }

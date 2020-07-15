@@ -4,23 +4,13 @@ schema {
   subscription: Subscriptions
 }
 
-scalar Long
-
-enum UserStatus {
-  Idle
-  Invited
-  Offline
-  Playing
-}
+scalar LocalDateTime
 
 input UserInput {
   id: Int
   email: String!
   name: String!
-  userStatus: UserStatus!
-  created: Long!
-  lastUpdated: Long!
-  lastLoggedIn: Long
+  created: LocalDateTime!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
@@ -31,7 +21,7 @@ type ChatMessage {
   msg: String!
   channelId: Int!
   toUser: User
-  date: Long!
+  date: LocalDateTime!
 }
 
 type Mutations {
@@ -50,10 +40,7 @@ type User {
   id: Int
   email: String!
   name: String!
-  userStatus: UserStatus!
-  created: Long!
-  lastUpdated: Long!
-  lastLoggedIn: Long
+  created: LocalDateTime!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

@@ -39,11 +39,11 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.6"
+lazy val akkaVersion = "2.6.7"
 lazy val akkaHttpVersion = "10.1.12"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.8.3"
+lazy val calibanVersion = "0.9.0"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.0-RC21-2"
 lazy val monocleVersion = "2.0.5"
@@ -137,7 +137,7 @@ lazy val server: Project = project
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
-      "mysql"                     % "mysql-connector-java"    % "8.0.20" withSources (),
+      "mysql"                     % "mysql-connector-java"    % "8.0.21" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),

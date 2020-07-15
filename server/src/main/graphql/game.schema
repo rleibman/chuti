@@ -6,7 +6,7 @@ schema {
 
 scalar Json
 
-scalar Long
+scalar LocalDateTime
 
 enum UserEventType {
   AbandonedGame
@@ -14,13 +14,6 @@ enum UserEventType {
   Disconnected
   JoinedGame
   Modified
-}
-
-enum UserStatus {
-  Idle
-  Invited
-  Offline
-  Playing
 }
 
 type Mutations {
@@ -55,10 +48,7 @@ type User {
   id: Int
   email: String!
   name: String!
-  userStatus: UserStatus!
-  created: Long!
-  lastUpdated: Long!
-  lastLoggedIn: Long
+  created: LocalDateTime!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

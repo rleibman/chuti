@@ -18,7 +18,7 @@ package chat
 
 import java.net.URI
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneOffset}
+import java.time.{LocalDateTime, ZoneOffset}
 import java.util.UUID
 
 import caliban.client.SelectionBuilder
@@ -28,6 +28,7 @@ import chat.ChatClient.{
   Queries,
   Subscriptions,
   ChatMessage => CalibanChatMessage,
+  LocalDateTime => CalibanLocalDateTime,
   User => CalibanUser
 }
 import chuti.{ChannelId, ChatMessage, User}
@@ -133,14 +134,20 @@ object ChatComponent extends ScalaJSClientAdapter {
           .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
           CalibanUser.name
         ) ~ CalibanChatMessage.msg)
-          .mapN((fromUsername: String, date: Long, toUsername: Option[String], msg: String) =>
-            ChatMessage(
-              fromUser = User(None, "", fromUsername),
-              msg = msg,
-              channelId = p.channel,
-              date = LocalDateTime.ofInstant(Instant.ofEpochMilli(date), ZoneOffset.UTC),
-              toUser = toUsername.map(name => User(None, "", name))
-            )
+          .mapN(
+            (
+              fromUsername: String,
+              date:         CalibanLocalDateTime,
+              toUsername:   Option[String],
+              msg:          String
+            ) =>
+              ChatMessage(
+                fromUser = User(None, "", fromUsername),
+                msg = msg,
+                channelId = p.channel,
+                date = LocalDateTime.parse(date),
+                toUser = toUsername.map(name => User(None, "", name))
+              )
           )
       (for {
         recentMessages <- asyncCalibanCall(

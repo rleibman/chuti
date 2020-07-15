@@ -26,6 +26,8 @@ import caliban.client.Value._
 object GameClient {
 
   type Json = io.circe.Json
+  type LocalDateTime = String
+
   sealed trait UserEventType extends scala.Product with scala.Serializable
   object UserEventType {
     case object AbandonedGame extends UserEventType
@@ -56,13 +58,10 @@ object GameClient {
 
   type User
   object User {
-    def id:          SelectionBuilder[User, Option[Int]] = Field("id", OptionOf(Scalar()))
-    def email:       SelectionBuilder[User, String] = Field("email", Scalar())
-    def name:        SelectionBuilder[User, String] = Field("name", Scalar())
-    def created:     SelectionBuilder[User, Long] = Field("created", Scalar())
-    def lastUpdated: SelectionBuilder[User, Long] = Field("lastUpdated", Scalar())
-    def lastLoggedIn: SelectionBuilder[User, Option[Long]] =
-      Field("lastLoggedIn", OptionOf(Scalar()))
+    def id:      SelectionBuilder[User, Option[Int]] = Field("id", OptionOf(Scalar()))
+    def email:   SelectionBuilder[User, String] = Field("email", Scalar())
+    def name:    SelectionBuilder[User, String] = Field("name", Scalar())
+    def created: SelectionBuilder[User, LocalDateTime] = Field("created", Scalar())
     def active:  SelectionBuilder[User, Boolean] = Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = Field("deleted", Scalar())
     def isAdmin: SelectionBuilder[User, Boolean] = Field("isAdmin", Scalar())
