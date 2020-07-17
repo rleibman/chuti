@@ -134,14 +134,12 @@ trait AuthRoute
                           (for {
                             postman <- ZIO.access[Postman](_.get)
                             userOpt <- userOps.userByEmail(email)
-                            envelopeOpt <- ZIO.foreach(userOpt) { user =>
-                              postman.lostPasswordEmail(user)
-                            }
-                            emailed <- ZIO.foreach(envelopeOpt) { envelope =>
-                              postman.deliver(envelope)
-                            }
-
-                          } yield emailed.nonEmpty)
+                            emailed <-
+                              ZIO
+                                .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope =>
+                                  ZIO.foreach(envelope)(postman.deliver)
+                                ).fork
+                          } yield ())
                             .tapError(e =>
                               log.error("In Password Recover Request", Fail(e))
                             ).provideSomeLayer[
@@ -225,9 +223,12 @@ trait AuthRoute
                           saved <-
                             if (validate.nonEmpty || exists) ZIO.none
                             else userOps.upsert(request.user.copy(active = false)).map(Option(_))
-                          _        <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
-                          envelope <- ZIO.foreach(saved)(postman.registrationEmail)
-                          _        <- ZIO.foreach(envelope)(postman.deliver).fork
+                          _ <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
+                          _ <-
+                            ZIO
+                              .foreach(saved)(postman.registrationEmail).flatMap(envelope =>
+                                ZIO.foreach(envelope)(postman.deliver)
+                              ).fork
                         } yield {
                           if (exists)
                             complete(

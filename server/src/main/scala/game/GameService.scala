@@ -471,15 +471,18 @@ object GameService {
               ChatService
                 .sendMessage(s"${user.name} te invitó a jugar", ChannelId.directChannel, invitedOpt)
             _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
-            envelopeOpt <- invitedOpt.fold(
-              postman.inviteToPlayByEmail(user, invited).map(Option(_))
-            )(_ =>
-              ZIO.foreach(afterInvitation) {
-                case (game, _) =>
-                  postman.inviteToGameEmail(user, invited, game)
-              }
-            )
-            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope).fork)
+            _ <-
+              invitedOpt
+                .fold(
+                  postman.inviteToPlayByEmail(user, invited).map(Option(_))
+                )(_ =>
+                  ZIO.foreach(afterInvitation) {
+                    case (game, _) =>
+                      postman.inviteToGameEmail(user, invited, game)
+                  }
+                ).flatMap(envelopeOpt =>
+                  ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope))
+                ).fork
             _ <- ZIO.foreach(afterInvitation) {
               case (_, event) =>
                 broadcast(gameEventQueues, event)
@@ -512,12 +515,14 @@ object GameService {
               ChatService
                 .sendMessage(s"${user.name} te invitó a jugar", ChannelId.directChannel, invitedOpt)
             _ <- ZIO.foreach(afterInvitation)(g => repository.gameOperations.updatePlayers(g._1))
-            envelopeOpt <-
-              ZIO.foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
-                case (invited, game) =>
-                  postman.inviteToGameEmail(user, invited, game)
-              }
-            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope).fork)
+            _ <-
+              ZIO
+                .foreach(invitedOpt.flatMap(u => afterInvitation.map(g => (u, g._1)))) {
+                  case (invited, game) =>
+                    postman.inviteToGameEmail(user, invited, game)
+                }.flatMap(envelopeOpt =>
+                  ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope))
+                ).fork
             _ <- ZIO.foreach(afterInvitation) {
               case (_, event) =>
                 broadcast(gameEventQueues, event)
