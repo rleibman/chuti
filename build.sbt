@@ -19,13 +19,6 @@ lazy val debugDist = TaskKey[File]("debugDist")
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 enablePlugins(
-  LinuxPlugin,
-  JDebPackaging,
-  DebianPlugin,
-  DebianDeployPlugin,
-  JavaServerAppPackaging,
-  SystemloaderPlugin,
-  SystemdPlugin,
   CodegenPlugin
 )
 
@@ -124,7 +117,14 @@ lazy val server: Project = project
   .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
-    GitVersioning
+    GitVersioning,
+    LinuxPlugin,
+    JDebPackaging,
+    DebianPlugin,
+    DebianDeployPlugin,
+    JavaServerAppPackaging,
+    SystemloaderPlugin,
+    SystemdPlugin
   )
   .settings(
     name := "chuti-server",
