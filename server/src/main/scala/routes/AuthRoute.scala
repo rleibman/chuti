@@ -132,13 +132,13 @@ trait AuthRoute
                       entity(as[String]) { email =>
                         complete {
                           (for {
-                            postman <- ZIO.access[Postman](_.get)
+                            postman <- ZIO.service[Postman.Service]
                             userOpt <- userOps.userByEmail(email)
-                            emailed <-
+                            _ <-
                               ZIO
                                 .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope =>
                                   ZIO.foreach(envelope)(postman.deliver)
-                                ).fork
+                                ).forkDaemon
                           } yield ())
                             .tapError(e =>
                               log.error("In Password Recover Request", Fail(e))
@@ -224,11 +224,10 @@ trait AuthRoute
                             if (validate.nonEmpty || exists) ZIO.none
                             else userOps.upsert(request.user.copy(active = false)).map(Option(_))
                           _ <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
-                          _ <-
-                            ZIO
+                          _ <- (log.info("About to send") *> ZIO
                               .foreach(saved)(postman.registrationEmail).flatMap(envelope =>
                                 ZIO.foreach(envelope)(postman.deliver)
-                              ).fork
+                              ) *> log.info("Maybe sent")).forkDaemon
                         } yield {
                           if (exists)
                             complete(
