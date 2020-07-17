@@ -41,8 +41,10 @@ object Confirm {
           cancelButton = state.cancelText,
           confirmButton = state.confirmText,
           header = state.header.getOrElse("").toString,
-          onConfirm = {(_, _) => $.modState(s => s.copy(open = false), state.onConfirm)},
-          onCancel = { (_, _) => $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))}
+          onConfirm = { (_, _) => $.modState(s => s.copy(open = false), state.onConfirm) },
+          onCancel = { (_, _) =>
+            $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
+          }
         )()
       )
 

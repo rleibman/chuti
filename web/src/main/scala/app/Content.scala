@@ -26,7 +26,13 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
+import game.GameClient.{
+  Queries,
+  Subscriptions,
+  User => CalibanUser,
+  UserEvent => CalibanUserEvent,
+  UserEventType => CalibanUserEventType
+}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted

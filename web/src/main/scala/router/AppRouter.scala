@@ -41,6 +41,8 @@ object AppRouter extends ChutiComponent {
 
   case object AboutAppPage extends AppPage
 
+  case object ChangeLogAppPage extends AppPage
+
   object DialogRenderer {
     class Backend($ : BackendScope[_, _]) {
 
@@ -190,7 +192,10 @@ object AppRouter extends ChutiComponent {
                     if (chutiState.muted) "Con Sonido" else "Sin Sonido"
                   ),
                   Divider()(),
-                  MenuItem(onClick = { (e, _) => page.setEH(AboutAppPage)(e) })("Acerca de Chuti")
+                  MenuItem(onClick = { (e, _) => page.setEH(ChangeLogAppPage)(e) })("ChangeLog"),
+                  MenuItem(onClick = { (e, _) => page.setEH(AboutAppPage)(e) })(
+                    "Acerca de chuti.fun"
+                  )
                 )
               )
             )
@@ -235,7 +240,9 @@ object AppRouter extends ChutiComponent {
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
-      | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage()))
+      | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage())
+      | staticRoute("#about", AboutAppPage) ~> renderR(_ => AboutPage())
+      | staticRoute("#changeLog", ChangeLogAppPage) ~> renderR(_ => ChangeLogPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
       .renderWith(layout)
   }

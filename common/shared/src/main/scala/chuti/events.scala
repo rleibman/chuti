@@ -938,7 +938,12 @@ case class Caete(
         conTriunfos.jugadores.filter(_.id != jugador.id).flatMap(_.fichas)
       )
 
-    val puntosNuevos = jugador.cuantasCantas.fold(deCaída.size)(c => if(jugador.cantante && c == CuantasCantas.CantoTodas && (jugador.filas.size + deCaída.size) == 7) 21 else deCaída.size)
+    val puntosNuevos = jugador.cuantasCantas.fold(deCaída.size)(c =>
+      if (
+        jugador.cantante && c == CuantasCantas.CantoTodas && (jugador.filas.size + deCaída.size) == 7
+      ) 21
+      else deCaída.size
+    )
 
     //Regalos, en orden de mayor a menor.
     val losRegalos: Seq[Ficha] =

@@ -23,7 +23,14 @@ import java.util.UUID
 
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage => CalibanChatMessage, LocalDateTime => CalibanLocalDateTime, User => CalibanUser}
+import chat.ChatClient.{
+  Mutations,
+  Queries,
+  Subscriptions,
+  ChatMessage => CalibanChatMessage,
+  LocalDateTime => CalibanLocalDateTime,
+  User => CalibanUser
+}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._

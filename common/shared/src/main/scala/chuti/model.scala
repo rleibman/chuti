@@ -452,7 +452,8 @@ case class Game(
              else
                0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
             (if (j.ganadorDePartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
-             else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21))) -1
+             else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21)))
+               -1
              else 0) + //Si se va con chuty, recibe 6 o dos de cada jugador.
             conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + //Hoyos ajenos
             (-(j.cuenta.count(_.esHoyo) * 3)) //Hoyos propios

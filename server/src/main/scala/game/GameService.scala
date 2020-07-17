@@ -479,7 +479,7 @@ object GameService {
                   postman.inviteToGameEmail(user, invited, game)
               }
             )
-            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope))
+            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope).fork)
             _ <- ZIO.foreach(afterInvitation) {
               case (_, event) =>
                 broadcast(gameEventQueues, event)
@@ -517,7 +517,7 @@ object GameService {
                 case (invited, game) =>
                   postman.inviteToGameEmail(user, invited, game)
               }
-            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope))
+            _ <- ZIO.foreach(envelopeOpt)(envelope => postman.deliver(envelope).fork)
             _ <- ZIO.foreach(afterInvitation) {
               case (_, event) =>
                 broadcast(gameEventQueues, event)

@@ -227,7 +227,7 @@ trait AuthRoute
                             else userOps.upsert(request.user.copy(active = false)).map(Option(_))
                           _        <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
                           envelope <- ZIO.foreach(saved)(postman.registrationEmail)
-                          _        <- ZIO.foreach(envelope)(postman.deliver)
+                          _        <- ZIO.foreach(envelope)(postman.deliver).fork
                         } yield {
                           if (exists)
                             complete(

@@ -25,7 +25,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
               .to(new InternetAddress("roberto@leibman.net"))
               .subject("hello")
               .content(Text("body of hello"))
-          )
+          ).fork
         } yield delivered
 
         zio.map(test => assert(true)(equalTo(true)))
@@ -36,7 +36,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
         val zio = for {
           postman <- ZIO.service[Postman.Service]
           envelope <- postman.registrationEmail(User(id = None, email = "roberto@leibman.net", name = "Roberto"))
-          delivered <- postman.deliver(envelope)
+          delivered <- postman.deliver(envelope).fork
         } yield delivered
 
         zio.map(test => assert(true)(equalTo(true)))

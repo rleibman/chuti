@@ -16,7 +16,6 @@
 
 package pages
 
-import chat.ChatComponent
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
@@ -24,7 +23,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 object RulesPage extends ChutiPage {
   case class State()
 
-  val rules =
+  val rules: String =
     s"""
    |    <h1>Reglas (Por <a
    |            href="http://solucionesytrucosuniversales.blogspot.com/2013/08/chuti-mul-reglas-de-juego-y-estrategias.html"
