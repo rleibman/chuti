@@ -10,8 +10,6 @@ resolvers += Resolver.mavenLocal
 resolvers += Resolver.sonatypeRepo("snapshots")
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 
-enablePlugins(GitVersioning)
-
 lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
@@ -19,6 +17,7 @@ lazy val debugDist = TaskKey[File]("debugDist")
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 enablePlugins(
+  GitVersioning,
   CodegenPlugin
 )
 
@@ -45,7 +44,6 @@ lazy val monocleVersion = "2.0.5"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
-  version          := "0.1",
   scalaVersion     := "2.13.3",
   startYear        := Some(2020),
   organizationName := "Roberto Leibman",
