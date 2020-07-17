@@ -120,7 +120,7 @@ lazy val server: Project = project
   .in(file("server"))
   .configs(IntegrationTest)
   .dependsOn(commonJVM)
-  .settings(Defaults.itSettings)
+  .settings(Defaults.itSettings, debianSettings)
   .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
@@ -221,6 +221,23 @@ lazy val login: Project = project
       }
 
       distFolder
+    }
+  )
+
+lazy val debianSettings =
+  Seq(
+    name in Debian := "chuti",
+    normalizedName in Debian := "chuti",
+    packageDescription in Debian := "The game of chuti",
+    packageSummary in Debian := "The game of chuti",
+    maintainer in Linux := "Roberto Leibman <roberto@leibman.net>",
+    daemonUser in Linux := "chuti",
+    daemonGroup in Linux := "chuti",
+    serverLoading in Debian := Some(ServerLoader.Systemd),
+    mappings in Universal += {
+      val src = sourceDirectory.value
+      val conf = src / "templates" / "application.conf"
+      conf -> "conf/application.conf"
     }
   )
 
