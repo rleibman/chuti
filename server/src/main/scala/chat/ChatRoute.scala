@@ -39,10 +39,11 @@ trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
   ] = {
     for {
       config <- ZIO.service[Config.Service]
-      runtime <- ZIO
-        .runtime[
-          Console with Clock with ChatService with Repository with SessionProvider with Logging with Config
-        ]
+      runtime <-
+        ZIO
+          .runtime[
+            Console with Clock with ChatService with Repository with SessionProvider with Logging with Config
+          ]
     } yield {
       val staticContentDir =
         config.config.getString(s"${config.configKey}.staticContentDir")

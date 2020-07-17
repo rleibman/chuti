@@ -174,18 +174,17 @@ object CRUDRoute {
     ] =
       for {
         other <- other
-        runtime <- ZIO
-          .environment[
-            Repository with SessionProvider with Logging with OpsService
-          ]
+        runtime <-
+          ZIO
+            .environment[
+              Repository with SessionProvider with Logging with OpsService
+            ]
       } yield {
         pathPrefix(url) {
           other ~
             pathEndOrSingleSlash {
               (post | put) {
-                entity(as[E]) { obj =>
-                  complete(upsertOperation(obj).provide(runtime))
-                }
+                entity(as[E])(obj => complete(upsertOperation(obj).provide(runtime)))
               }
             } ~
             path("search") {

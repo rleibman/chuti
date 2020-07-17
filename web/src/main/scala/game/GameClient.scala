@@ -45,13 +45,14 @@ object GameClient {
       case other                        => Left(DecodingError(s"Can't build UserEventType from input $other"))
     }
     implicit val encoder: ArgEncoder[UserEventType] = new ArgEncoder[UserEventType] {
-      override def encode(value: UserEventType): Value = value match {
-        case UserEventType.AbandonedGame => EnumValue("AbandonedGame")
-        case UserEventType.Connected     => EnumValue("Connected")
-        case UserEventType.Disconnected  => EnumValue("Disconnected")
-        case UserEventType.JoinedGame    => EnumValue("JoinedGame")
-        case UserEventType.Modified      => EnumValue("Modified")
-      }
+      override def encode(value: UserEventType): Value =
+        value match {
+          case UserEventType.AbandonedGame => EnumValue("AbandonedGame")
+          case UserEventType.Connected     => EnumValue("Connected")
+          case UserEventType.Disconnected  => EnumValue("Disconnected")
+          case UserEventType.JoinedGame    => EnumValue("JoinedGame")
+          case UserEventType.Modified      => EnumValue("Modified")
+        }
       override def typeName: String = "UserEventType"
     }
   }

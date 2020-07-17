@@ -45,9 +45,7 @@ object Toast {
     className: String = "toast",
     message:   VdomNode = "",
     position:  (VerticalPosition, HorizontalPosition) = (top, right),
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:   () => Callback = { () => Callback.empty }
   )
 
   private case class ToastState(toasts: Seq[Toast] = Seq.empty)
@@ -60,9 +58,7 @@ object Toast {
       duration:  Duration = 6 seconds,
       position:  (VerticalPosition, HorizontalPosition) = (top, right),
       autoHide:  Boolean = true,
-      onClose: () => Callback = { () =>
-        Callback.empty
-      }
+      onClose:   () => Callback = { () => Callback.empty }
     ): Callback = {
       val newToast = Toast(icon, className, message, position, onClose)
       val ret = $.modState(s => s.copy(toasts = s.toasts :+ newToast))
@@ -78,7 +74,7 @@ object Toast {
 
     def render(state: ToastState): VdomNode =
       state.toasts.groupBy(_.position).toVdomArray {
-        case ((pos, toasts)) =>
+        case (pos, toasts) =>
           <.div(
             ^.key           := s"toastRegion_${pos._1.toString}${pos._2.toString}",
             ^.className     := "toast",
@@ -88,14 +84,14 @@ object Toast {
             ^.overflowY     := "auto",
             ^.pointerEvents := "auto",
             ^.position      := "fixed",
-            (^.top    := 0.px).when(pos._1 == VerticalPosition.top),
-            (^.bottom := 0.px).when(pos._1 == VerticalPosition.bottom),
-            (^.right  := 0.px).when(pos._2 == HorizontalPosition.right),
-            (^.left   := 0.px).when(pos._2 == HorizontalPosition.left),
-            ^.padding := 8.px,
-            if (toasts.isEmpty) {
+            (^.top          := 0.px).when(pos._1 == VerticalPosition.top),
+            (^.bottom       := 0.px).when(pos._1 == VerticalPosition.bottom),
+            (^.right        := 0.px).when(pos._2 == HorizontalPosition.right),
+            (^.left         := 0.px).when(pos._2 == HorizontalPosition.left),
+            ^.padding       := 8.px,
+            if (toasts.isEmpty)
               EmptyVdom
-            } else {
+            else {
               toasts.zipWithIndex.toVdomArray {
                 case (toast, index) =>
                   <.div(
@@ -147,9 +143,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:  () => Callback = { () => Callback.empty }
   ): Callback =
     toast(message, SemanticICONS.`warning sign`, "warning", duration, position, autoHide, onClose)
 
@@ -158,9 +152,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:  () => Callback = { () => Callback.empty }
   ): Callback =
     toast(message, SemanticICONS.`info circle`, "info", duration, position, autoHide, onClose)
 
@@ -169,9 +161,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:  () => Callback = { () => Callback.empty }
   ): Callback =
     toast(message, SemanticICONS.check, "success", duration, position, autoHide, onClose)
 
@@ -180,9 +170,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:  () => Callback = { () => Callback.empty }
   ): Callback =
     toast(message, SemanticICONS.fire, "error", duration, position, autoHide, onClose)
 
@@ -193,9 +181,7 @@ object Toast {
     duration:  Duration = 6 seconds,
     position:  (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide:  Boolean = true,
-    onClose: () => Callback = { () =>
-      Callback.empty
-    }
+    onClose:   () => Callback = { () => Callback.empty }
   ): Callback =
     toastRef.get
       .map(

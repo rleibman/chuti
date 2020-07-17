@@ -83,10 +83,11 @@ trait GameAbstractSpec extends MockitoSugar {
   def writeGame(
     game:     Game,
     filename: String
-  ): Task[Unit] = ZIO.effect {
-    val file = File(filename)
-    file.write(game.asJson.printWith(Printer.spaces2))
-  }
+  ): Task[Unit] =
+    ZIO.effect {
+      val file = File(filename)
+      file.write(game.asJson.printWith(Printer.spaces2))
+    }
 
   def readGame(filename: String): Task[Game] =
     ZIO.effect {

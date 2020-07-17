@@ -53,44 +53,53 @@ object PasswordRecoveryPage {
               s"There was an error submitting the email: ${e.getLocalizedMessage}, please try again."
             )
             e.printStackTrace()
-            Callback { e.printStackTrace() }
+            Callback(e.printStackTrace())
         }
 
-    def render(state: State) = LoginControllerState.ctx.consume { context =>
-      <.div(
-        <.div(<.img(^.src := "/unauth/images/logo.png")),
-        <.h1("Recuperar contraseña!"),
-        if (state.submitted)
-          <.div(
-            "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo",
-            Button(compact = true, basic = true, onClick = { (_, _) =>
-              $.modState(_.copy(submitted = false))
-            })("Try again")
-          )
-        else {
-          <.div(
-            "Por favor pon tu dirección de correo electrónico, te mandaremos un correo con instrucciones para recuperar tu contraseña",
-            Form()(
-              FormField()(
-                Label()("Correo electrónico"),
-                Input(
-                  required = true,
-                  name = "email",
-                  `type` = "email",
-                  value = state.email,
-                  onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                    $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
-                  }
-                )()
-              ),
-              Button(compact = true, basic = true, onClick = { (_, _) =>
-                onSubmitEmailAddress(state.email)
-              })("Aceptar")
+    def render(state: State) =
+      LoginControllerState.ctx.consume { context =>
+        <.div(
+          <.div(<.img(^.src := "/unauth/images/logo.png")),
+          <.h1("Recuperar contraseña!"),
+          if (state.submitted)
+            <.div(
+              "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo",
+              Button(
+                compact = true,
+                basic = true,
+                onClick = { (_, _) =>
+                  $.modState(_.copy(submitted = false))
+                }
+              )("Try again")
             )
-          )
-        }
-      )
-    }
+          else {
+            <.div(
+              "Por favor pon tu dirección de correo electrónico, te mandaremos un correo con instrucciones para recuperar tu contraseña",
+              Form()(
+                FormField()(
+                  Label()("Correo electrónico"),
+                  Input(
+                    required = true,
+                    name = "email",
+                    `type` = "email",
+                    value = state.email,
+                    onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                      $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
+                    }
+                  )()
+                ),
+                Button(
+                  compact = true,
+                  basic = true,
+                  onClick = { (_, _) =>
+                    onSubmitEmailAddress(state.email)
+                  }
+                )("Aceptar")
+              )
+            )
+          }
+        )
+      }
   }
 
   val component = ScalaComponent

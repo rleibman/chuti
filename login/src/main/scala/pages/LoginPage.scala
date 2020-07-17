@@ -63,12 +63,20 @@ object LoginPage {
             ),
             Button(compact = true, basic = true, `type` = submit)("Entrar")
           ),
-          Button(compact = true, basic = true, onClick = { (_, _) =>
-            context.onModeChanged(Mode.registration, None)
-          })("Registrarse por primera vez"),
-          Button(compact = true, basic = true, onClick = { (_, _) =>
-            context.onModeChanged(Mode.passwordRecoveryRequest, None)
-          })("Perdí mi Contraseña")
+          Button(
+            compact = true,
+            basic = true,
+            onClick = { (_, _) =>
+              context.onModeChanged(Mode.registration, None)
+            }
+          )("Registrarse por primera vez"),
+          Button(
+            compact = true,
+            basic = true,
+            onClick = { (_, _) =>
+              context.onModeChanged(Mode.passwordRecoveryRequest, None)
+            }
+          )("Perdí mi Contraseña")
         )
       }
   }

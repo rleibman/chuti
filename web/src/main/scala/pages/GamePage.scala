@@ -58,13 +58,12 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
         val gameViewMode =
-          if (chutiState.gameInProgress.isEmpty && p.chutiState.gameViewMode == game) {
+          if (chutiState.gameInProgress.isEmpty && p.chutiState.gameViewMode == game)
             //I don't want to be in the lobby if the game is loading
             none
-          } else {
-            if (p.chutiState.gameViewMode != GameViewMode.none) {
+          else {
+            if (p.chutiState.gameViewMode != GameViewMode.none)
               window.sessionStorage.setItem("gamePageMode", p.chutiState.gameViewMode.toString)
-            }
             p.chutiState.gameViewMode
           }
 
@@ -115,9 +114,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     ScalaComponent
       .builder[Unit]
       .renderStatic {
-        ChutiState.ctx.consume { chutiState =>
-          inner(chutiState)
-        }
+        ChutiState.ctx.consume(chutiState => inner(chutiState))
       }
       .build
 

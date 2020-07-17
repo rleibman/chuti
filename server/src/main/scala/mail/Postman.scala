@@ -59,21 +59,22 @@ object Postman {
       user:    User,
       invited: User,
       game:    Game
-    ): RIO[TokenHolder, Envelope] = ZIO.succeed {
-      val linkUrl =
-        s"http://$webHostName/#lobby"
-      Envelope
-        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-        .replyTo(new InternetAddress(user.email, user.name))
-        .to(new InternetAddress(invited.email, invited.name))
-        .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
-        .content(Multipart().html(s"""<html><body>
+    ): RIO[TokenHolder, Envelope] =
+      ZIO.succeed {
+        val linkUrl =
+          s"http://$webHostName/#lobby"
+        Envelope
+          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+          .replyTo(new InternetAddress(user.email, user.name))
+          .to(new InternetAddress(invited.email, invited.name))
+          .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
+          .content(Multipart().html(s"""<html><body>
                                      |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
                                      |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
                                      |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
                                      |<p>Te esperamos pronto! </p>
                                      |</body></html>""".stripMargin))
-    }
+      }
 
     def lostPasswordEmail(user: User): RIO[TokenHolder, Envelope] =
       for {
@@ -118,33 +119,34 @@ object Postman {
   * An instatiation of the Postman that user the courier mailer
   */
 object CourierPostman {
-  def live(config: Config.Service): Postman.Service = new Postman.Service {
-    lazy val mailer: Mailer = {
-      val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
-      System.setProperty("mail.smtp.localhost", localhost)
-      System.setProperty("mail.smtp.localaddress", localhost)
-      val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth")
-      if (auth)
-        Mailer(
-          config.config.getString(s"${config.configKey}.smtp.host"),
-          config.config.getInt(s"${config.configKey}.smtp.port")
-        ).auth(auth)
-          .as(
-            config.config.getString(s"${config.configKey}.smtp.user"),
-            config.config.getString(s"${config.configKey}.smtp.password")
-          )
-          .startTls(config.config.getBoolean(s"${config.configKey}.smtp.startTTLS"))()
-      else
-        Mailer(
-          config.config.getString(s"${config.configKey}.smtp.host"),
-          config.config.getInt(s"${config.configKey}.smtp.port")
-        ).auth(auth)()
+  def live(config: Config.Service): Postman.Service =
+    new Postman.Service {
+      lazy val mailer: Mailer = {
+        val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
+        System.setProperty("mail.smtp.localhost", localhost)
+        System.setProperty("mail.smtp.localaddress", localhost)
+        val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth")
+        if (auth)
+          Mailer(
+            config.config.getString(s"${config.configKey}.smtp.host"),
+            config.config.getInt(s"${config.configKey}.smtp.port")
+          ).auth(auth)
+            .as(
+              config.config.getString(s"${config.configKey}.smtp.user"),
+              config.config.getString(s"${config.configKey}.smtp.password")
+            )
+            .startTls(config.config.getBoolean(s"${config.configKey}.smtp.startTTLS"))()
+        else
+          Mailer(
+            config.config.getString(s"${config.configKey}.smtp.host"),
+            config.config.getInt(s"${config.configKey}.smtp.port")
+          ).auth(auth)()
+      }
+
+      override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] =
+        ZIO.fromFuture(implicit ec => mailer(email))
+
+      override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
+
     }
-
-    override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] =
-      ZIO.fromFuture(implicit ec => mailer(email))
-
-    override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
-
-  }
 }

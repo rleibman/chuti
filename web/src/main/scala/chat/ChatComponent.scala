@@ -83,7 +83,9 @@ object ChatComponent extends ScalaJSClientAdapter {
 
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-      Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(_.copy(msgInFlux = "")) >> AsyncCallback
+      Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(
+        _.copy(msgInFlux = "")
+      ) >> AsyncCallback
         .fromFuture(request.send())
         .completeWith {
           case Success(response) if response.code.isSuccess || response.code.isInformational =>

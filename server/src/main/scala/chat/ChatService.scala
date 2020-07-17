@@ -102,101 +102,103 @@ object ChatService {
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
-  def make(): ZLayer[Logging, Nothing, ChatService] = ZLayer.fromEffect {
-    for {
-      chatMessageQueue <- Ref.make(List.empty[MessageQueue])
-      recentMessages   <- Ref.make(List.empty[ChatMessage])
-      _                <- log.info("========================== This should only ever be seen once.")
-    } yield new Service {
+  def make(): ZLayer[Logging, Nothing, ChatService] =
+    ZLayer.fromEffect {
+      for {
+        chatMessageQueue <- Ref.make(List.empty[MessageQueue])
+        recentMessages   <- Ref.make(List.empty[ChatMessage])
+        _                <- log.info("========================== This should only ever be seen once.")
+      } yield new Service {
 
-      def getRecentMessages(
-        channelId: ChannelId
-      ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
-        recentMessages.get.map { seq =>
-          val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
-          seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
-        }
-      }
-
-      override def say(request: SayRequest): ZIO[
-        Repository with SessionProvider with Logging,
-        Nothing,
-        ChatMessage
-      ] =
-        for {
-          allSubscriptions <- chatMessageQueue.get
-          user             <- ZIO.access[SessionProvider](_.get.session.user)
-          _                <- log.info(s"Sending ${request.msg}")
-          sent <- {
-            //TODO make sure the user has rights to send messages on the channel,
-            // basically if the channel is lobby, or the user is the game channel for that game,
-            // or it's a direct message.
-            //TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
-            val sendMe =
-              ChatMessage(
-                fromUser = user,
-                msg = request.msg,
-                channelId = request.channelId,
-                toUser = request.toUser
-              )
-
-            UIO
-              .foreach(
-                allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id))
-              )(_.queue.offer(sendMe))
-              .as(sendMe)
-          }
-          _ <- {
+        def getRecentMessages(
+          channelId: ChannelId
+        ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
+          recentMessages.get.map { seq =>
             val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
-            recentMessages.update(old => old.filter(dateFilter(timeAgo, _)) :+ sent)
+            seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
           }
-        } yield sent
-
-      override def chatStream(
-        channelId:    ChannelId,
-        connectionId: ConnectionId
-      ): ZStream[
-        Repository with SessionProvider with Logging,
-        GameException,
-        ChatMessage
-      ] =
-        ZStream.unwrap {
-          for {
-            user    <- ZIO.access[SessionProvider with Logging](_.get.session.user)
-            gameOps <- ZIO.access[Repository](_.get.gameOperations)
-            // Make sure the user has rights to listen in on the channel,
-            // basically if the channel is lobby, or the user is in the game channel for that game
-            // admins can listen in on games.
-            userInGame <- gameOps.userInGame(GameId(channelId.value)).mapError(GameException.apply)
-            _ <- if (channelId == ChannelId.directChannel) {
-              throw GameException("No te puedes subscribir a un canal directo!")
-            } else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame) {
-              throw GameException("El usuario no esta en este canal")
-            } else {
-              ZIO.succeed(true)
-            }
-            queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
-            _     <- chatMessageQueue.update(MessageQueue(user, connectionId, queue) :: _)
-            after <- chatMessageQueue.get
-            _     <- log.info(s"Chat stream started, queues have ${after.length} entries")
-          } yield ZStream
-            .fromQueue(queue)
-            .ensuring(
-              log.info(s"Chat queue for user ${user.id} shut down") *>
-                queue.shutdown *> chatMessageQueue.update(
-                _.filterNot(_.connectionId == connectionId)
-              )
-            )
-            .filter(m =>
-              m.channelId == channelId ||
-                (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty)
-            ).catchAllCause { c =>
-              c.prettyPrint
-              ZStream.halt(c)
-            }
-
         }
+
+        override def say(request: SayRequest): ZIO[
+          Repository with SessionProvider with Logging,
+          Nothing,
+          ChatMessage
+        ] =
+          for {
+            allSubscriptions <- chatMessageQueue.get
+            user             <- ZIO.access[SessionProvider](_.get.session.user)
+            _                <- log.info(s"Sending ${request.msg}")
+            sent <- {
+              //TODO make sure the user has rights to send messages on the channel,
+              // basically if the channel is lobby, or the user is the game channel for that game,
+              // or it's a direct message.
+              //TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
+              val sendMe =
+                ChatMessage(
+                  fromUser = user,
+                  msg = request.msg,
+                  channelId = request.channelId,
+                  toUser = request.toUser
+                )
+
+              UIO
+                .foreach(
+                  allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id))
+                )(_.queue.offer(sendMe))
+                .as(sendMe)
+            }
+            _ <- {
+              val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
+              recentMessages.update(old => old.filter(dateFilter(timeAgo, _)) :+ sent)
+            }
+          } yield sent
+
+        override def chatStream(
+          channelId:    ChannelId,
+          connectionId: ConnectionId
+        ): ZStream[
+          Repository with SessionProvider with Logging,
+          GameException,
+          ChatMessage
+        ] =
+          ZStream.unwrap {
+            for {
+              user    <- ZIO.access[SessionProvider with Logging](_.get.session.user)
+              gameOps <- ZIO.access[Repository](_.get.gameOperations)
+              // Make sure the user has rights to listen in on the channel,
+              // basically if the channel is lobby, or the user is in the game channel for that game
+              // admins can listen in on games.
+              userInGame <-
+                gameOps.userInGame(GameId(channelId.value)).mapError(GameException.apply)
+              _ <-
+                if (channelId == ChannelId.directChannel)
+                  throw GameException("No te puedes subscribir a un canal directo!")
+                else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame)
+                  throw GameException("El usuario no esta en este canal")
+                else
+                  ZIO.succeed(true)
+              queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
+              _     <- chatMessageQueue.update(MessageQueue(user, connectionId, queue) :: _)
+              after <- chatMessageQueue.get
+              _     <- log.info(s"Chat stream started, queues have ${after.length} entries")
+            } yield ZStream
+              .fromQueue(queue)
+              .ensuring(
+                log.info(s"Chat queue for user ${user.id} shut down") *>
+                  queue.shutdown *> chatMessageQueue.update(
+                  _.filterNot(_.connectionId == connectionId)
+                )
+              )
+              .filter(m =>
+                m.channelId == channelId ||
+                  (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty)
+              ).catchAllCause { c =>
+                c.prettyPrint
+                ZStream.halt(c)
+              }
+
+          }
+      }
     }
-  }
 
 }

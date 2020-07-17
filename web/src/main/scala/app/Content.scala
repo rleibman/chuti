@@ -111,11 +111,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
               case Some(index) if index == currentGame.currentEventIndex =>
                 //If the game event is the next one to be applied, apply it to the game
                 val reapplied = currentGame.reapplyEvent(gameEvent)
-                if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty) {
+                if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty)
                   None
-                } else {
+                else
                   Option(reapplied)
-                }
               case Some(index) if index > currentGame.currentEventIndex =>
                 //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
                 //In a few seconds, just get the full game.
@@ -145,9 +144,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
             newGame <- newGameOpt
             oldGame <- chutiState.gameInProgress
           } yield newGame.id != oldGame.id).getOrElse(true)
-          if (doRefresh) {
+          if (doRefresh)
             Callback.log("Full refresh needed") >> refresh() >> callback
-          } else {
+          else {
             $.modState(
               s => s.copy(chutiState = s.chutiState.copy(gameInProgress = newGameOpt)),
               callback
@@ -172,9 +171,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
 
     def playSound(soundUrlOpt: Option[String]): Callback = {
       $.state.flatMap { s =>
-        if (s.chutiState.muted) {
+        if (s.chutiState.muted)
           Callback.empty
-        } else {
+        else {
           soundUrlOpt.fold(Callback.empty) { url =>
             Callback {
               val sound = new Audio(src = url)
@@ -211,14 +210,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           case None => Callback.empty
           case Some((user, Disconnected)) =>
             $.modState(s =>
-              s.copy(chutiState = s.chutiState
-                .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
+              s.copy(chutiState =
+                s.chutiState
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
               )
             )
           case Some((user, Connected | Modified)) =>
             $.modState(s =>
-              s.copy(chutiState = s.chutiState
-                .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
+              s.copy(chutiState =
+                s.chutiState
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
               )
             )
           case Some((_, AbandonedGame | JoinedGame)) =>
@@ -239,7 +240,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
             email = "",
             name = name
           )
-        })
+        }
+      )
 
     lazy private val userEventSelectionBuilder
       : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType)] =
@@ -257,22 +259,24 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     def refresh(initial: Boolean = false): Callback = {
       val ajax = for {
         oldState <- ($.state).asAsyncCallback
-        whoami <- if (initial) UserRESTClient.remoteSystem.whoami()
-        else AsyncCallback.pure(oldState.chutiState.user)
+        whoami <-
+          if (initial) UserRESTClient.remoteSystem.whoami()
+          else AsyncCallback.pure(oldState.chutiState.user)
         wallet            <- UserRESTClient.remoteSystem.wallet()
         friends           <- asyncCalibanCall(Queries.getFriends(userSelectionBuilder))
         loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
         gameInProgressOpt <- asyncCalibanCallThroughJsonOpt[Queries, Game](Queries.getGameForUser)
         needNewGameStream = (for {
-          oldGame <- oldState.chutiState.gameInProgress
-          newGame <- gameInProgressOpt
-          _       <- oldState.chutiState.gameStream
-        } yield oldGame.id != newGame.id).getOrElse(true)
-        _ <- (if (needNewGameStream)
-                oldState.chutiState.gameStream.fold(
-                  Callback.log("Don't need to close stream, it hasn't been opened yet")
-                )(_.close())
-              else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
+            oldGame <- oldState.chutiState.gameInProgress
+            newGame <- gameInProgressOpt
+            _       <- oldState.chutiState.gameStream
+          } yield oldGame.id != newGame.id).getOrElse(true)
+        _ <-
+          (if (needNewGameStream)
+             oldState.chutiState.gameStream.fold(
+               Callback.log("Don't need to close stream, it hasn't been opened yet")
+             )(_.close())
+           else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
       } yield $.modState { s =>
         val copy = if (initial) {
           s.copy(
@@ -291,44 +295,42 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
                     .userStream(connectionId)(
                       userEventSelectionBuilder
                     ),
-                  onData = { (_, data) =>
-                    onUserStreamData(data.flatten)
-                  },
+                  onData = { (_, data) => onUserStreamData(data.flatten) },
                   operationId = "-",
                   connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.value)}"
                 )
               )
             )
           )
-        } else {
+        } else
           s
-        }
 
-        copy.copy(chutiState = copy.chutiState.copy(
-          wallet = wallet,
-          friends = friends.toList.flatten,
-          loggedInUsers = loggedInUsersOpt.toList.flatten.distinctBy(_.id),
-          gameInProgress = gameInProgressOpt,
-          gameStream =
-            if (!needNewGameStream) copy.chutiState.gameStream
-            else
-              gameInProgressOpt.map(game =>
-                makeWebSocketClient[Option[Json]](
-                  uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
-                  query = Subscriptions.gameStream(game.id.get.value, connectionId),
-                  onData = { (_, data) =>
-                    data.flatten.fold(Callback.empty)(json =>
-                      gameEventDecoder
-                        .decodeJson(json)
-                        .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
-                    )
-                  },
-                  operationId = "-",
-                  connectionId =
-                    s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
+        copy.copy(chutiState =
+          copy.chutiState.copy(
+            wallet = wallet,
+            friends = friends.toList.flatten,
+            loggedInUsers = loggedInUsersOpt.toList.flatten.distinctBy(_.id),
+            gameInProgress = gameInProgressOpt,
+            gameStream =
+              if (!needNewGameStream) copy.chutiState.gameStream
+              else
+                gameInProgressOpt.map(game =>
+                  makeWebSocketClient[Option[Json]](
+                    uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                    query = Subscriptions.gameStream(game.id.get.value, connectionId),
+                    onData = { (_, data) =>
+                      data.flatten.fold(Callback.empty)(json =>
+                        gameEventDecoder
+                          .decodeJson(json)
+                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                      )
+                    },
+                    operationId = "-",
+                    connectionId =
+                      s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
+                  )
                 )
-              )
-        )
+          )
         )
       }
 
@@ -348,9 +350,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       val modeStr = window.sessionStorage.getItem("gamePageMode")
       val gameViewMode = {
         val ret =
-          try {
-            GameViewMode.withName(modeStr)
-          } catch {
+          try GameViewMode.withName(modeStr)
+          catch {
             case _: Throwable =>
               GameViewMode.lobby
           }
@@ -358,9 +359,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           //Should not happen, but let's be sure it doesn't happen again
           window.sessionStorage.setItem("gamePageMode", GameViewMode.lobby.toString)
           GameViewMode.lobby
-        } else {
+        } else
           ret
-        }
       }
 
       State(chutiState = ChutiState(gameViewMode = gameViewMode))

@@ -94,17 +94,18 @@ trait AuthRoute
                     post {
                       formFields(Symbol("token").as[String].?, Symbol("password").as[String].?) {
                         (token, password) =>
-                          if (token.isEmpty || password.isEmpty) {
+                          if (token.isEmpty || password.isEmpty)
                             reject(ValidationRejection("You need to pass a token and password"))
-                          } else {
+                          else {
                             val z: ZIO[
                               SessionProvider with Logging with TokenHolder,
                               Throwable,
                               StandardRoute
                             ] = for {
                               tokenHolder <- ZIO.access[TokenHolder](_.get)
-                              userOpt <- tokenHolder
-                                .validateToken(Token(token.get), TokenPurpose.LostPassword)
+                              userOpt <-
+                                tokenHolder
+                                  .validateToken(Token(token.get), TokenPurpose.LostPassword)
                               passwordChanged <- ZIO.foreach(userOpt)(user =>
                                 userOps.changePassword(user, password.get)
                               )
@@ -117,7 +118,9 @@ trait AuthRoute
                                 redirect("/loginForm?passwordChangeFailed", StatusCodes.SeeOther)
                             )
 
-                            z.tapError(e => log.error("Resetting Password", Fail(e))).provideSomeLayer[
+                            z.tapError(e =>
+                              log.error("Resetting Password", Fail(e))
+                            ).provideSomeLayer[
                                 Logging with TokenHolder
                               ](SessionProvider.layer(adminSession)).provide(r)
                           }
@@ -139,7 +142,9 @@ trait AuthRoute
                             }
 
                           } yield emailed.nonEmpty)
-                            .tapError(e => log.error("In Password Recover Request", Fail(e))).provideSomeLayer[
+                            .tapError(e =>
+                              log.error("In Password Recover Request", Fail(e))
+                            ).provideSomeLayer[
                               Logging with TokenHolder with Postman
                             ](SessionProvider.layer(adminSession)).provide(r)
                         }
@@ -155,7 +160,9 @@ trait AuthRoute
                               Option("User Email cannot be empty")
                             else if (request.user.name.trim.isEmpty)
                               Option("User Name cannot be empty")
-                            else if (request.password.trim.isEmpty || request.password.trim.length < 3)
+                            else if (
+                              request.password.trim.isEmpty || request.password.trim.length < 3
+                            )
                               Option("Password is invalid")
                             else
                               None
@@ -179,7 +186,9 @@ trait AuthRoute
                             )
                           )
                         )(error => complete(UpdateInvitedUserResponse(Option(error)))))
-                          .tapError(e => log.error("Updating invited user", Fail(e))).provideSomeLayer[
+                          .tapError(e =>
+                            log.error("Updating invited user", Fail(e))
+                          ).provideSomeLayer[
                             Logging with TokenHolder with Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
@@ -203,7 +212,9 @@ trait AuthRoute
                               Option("User Email cannot be empty")
                             else if (request.user.name.trim.isEmpty)
                               Option("User Name cannot be empty")
-                            else if (request.password.trim.isEmpty || request.password.trim.length < 3)
+                            else if (
+                              request.password.trim.isEmpty || request.password.trim.length < 3
+                            )
                               Option("Password is invalid")
                             else if (request.user.id.nonEmpty)
                               Option("You can't register an existing user")
@@ -211,8 +222,9 @@ trait AuthRoute
                               None
                           )
                           exists <- userOps.userByEmail(request.user.email).map(_.nonEmpty)
-                          saved <- if (validate.nonEmpty || exists) ZIO.none
-                          else userOps.upsert(request.user.copy(active = false)).map(Option(_))
+                          saved <-
+                            if (validate.nonEmpty || exists) ZIO.none
+                            else userOps.upsert(request.user.copy(active = false)).map(Option(_))
                           _        <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
                           envelope <- ZIO.foreach(saved)(postman.registrationEmail)
                           _        <- ZIO.foreach(envelope)(postman.deliver)
@@ -235,13 +247,14 @@ trait AuthRoute
                         (for {
                           tokenHolder <- ZIO.access[TokenHolder](_.get)
                           user        <- tokenHolder.validateToken(Token(token), TokenPurpose.NewUser)
-                          activate <- ZIO.foreach(user)(user =>
-                            userOps.upsert(user.copy(active = true))
-                          )
+                          activate <-
+                            ZIO.foreach(user)(user => userOps.upsert(user.copy(active = true)))
                         } yield activate.fold(
                           redirect("/loginForm?registrationFailed", StatusCodes.SeeOther)
                         )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
-                          .tapError(e => log.error("Confirming registration", Fail(e))).provideSomeLayer[
+                          .tapError(e =>
+                            log.error("Confirming registration", Fail(e))
+                          ).provideSomeLayer[
                             Logging with TokenHolder with Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
@@ -302,7 +315,6 @@ trait AuthRoute
           session <- ZIO.service[SessionProvider.Session].map(_.session)
           runtime <- ZIO.environment[SessionProvider with Logging with OpsService]
         } yield {
-          //randomTokenCsrfProtection(checkHeader) //TODO this is necessary, but it wasn't working, so we're leaving it for now.
           // This should be protected and accessible only when logged in
           path("whoami") {
             get {

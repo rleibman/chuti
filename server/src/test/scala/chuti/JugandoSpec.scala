@@ -37,20 +37,23 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.service[GameService.Service]
-          gameStream = gameService
-            .gameStream(gameId, connectionId)
-            .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
-          gameEventsFiber <- gameStream
-            .takeUntil {
-              case PoisonPill(Some(id), _) if id == gameId => true
-              case _                                       => false
-            }.runCollect.fork
+          gameStream =
+            gameService
+              .gameStream(gameId, connectionId)
+              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <-
+            gameStream
+              .takeUntil {
+                case PoisonPill(Some(id), _) if id == gameId => true
+                case _                                       => false
+              }.runCollect.fork
           _     <- clock.sleep(1.second)
           mano1 <- juegaMano(gameId)
-          _ <- gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(GameService.god))
-            )
+          _ <-
+            gameService
+              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
+                SessionProvider.layer(ChutiSession(GameService.god))
+              )
           gameEvents <- gameEventsFiber.join
         } yield (mano1, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
@@ -59,7 +62,9 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     assert(game.jugadores.count(_.fichas.size == 6) === 4) //Todos dieron una ficha.
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
-    assert(gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size === 5) //Including the poison pill
+    assert(
+      gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size === 5
+    ) //Including the poison pill
   }
   "jugando 4 manos" should "work" in {
     val gameId = GameId(1)
@@ -71,23 +76,26 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.service[GameService.Service]
-          gameStream = gameService
-            .gameStream(gameId, connectionId)
-            .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
-          gameEventsFiber <- gameStream
-            .takeUntil {
-              case PoisonPill(Some(id), _) if id == gameId => true
-              case _                                       => false
-            }.runCollect.fork
+          gameStream =
+            gameService
+              .gameStream(gameId, connectionId)
+              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <-
+            gameStream
+              .takeUntil {
+                case PoisonPill(Some(id), _) if id == gameId => true
+                case _                                       => false
+              }.runCollect.fork
           _     <- clock.sleep(1.second)
           _     <- juegaMano(gameId)
           _     <- juegaMano(gameId)
           _     <- juegaMano(gameId)
           mano4 <- juegaMano(gameId)
-          _ <- gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(GameService.god))
-            )
+          _ <-
+            gameService
+              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
+                SessionProvider.layer(ChutiSession(GameService.god))
+              )
           gameEvents <- gameEventsFiber.join
         } yield (mano4, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
@@ -95,11 +103,10 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     assert(game.id === Option(gameId))
     val numFilas = game.jugadores.map(_.filas.size).sum
     assert(game.quienCanta.get.fichas.size + numFilas === 7)
-    if (game.quienCanta.get.yaSeHizo) {
+    if (game.quienCanta.get.yaSeHizo)
       println(s"${game.quienCanta.get.user.name} se hizo con ${game.quienCanta.get.filas.size}!")
-    } else {
+    else
       println(s"Fue hoyo para ${game.quienCanta.get.user.name}!")
-    }
     assert(gameEvents.nonEmpty)
   }
   "jugando hasta que se haga o sea hoyo" should "work" in {
@@ -111,20 +118,23 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
       testRuntime.unsafeRun {
         (for {
           gameService <- ZIO.service[GameService.Service]
-          gameStream = gameService
-            .gameStream(gameId, connectionId)
-            .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
-          gameEventsFiber <- gameStream
-            .takeWhile {
-              case PoisonPill(Some(id), _) if id == gameId => false
-              case _                                       => true
-            }.runCollect.fork
+          gameStream =
+            gameService
+              .gameStream(gameId, connectionId)
+              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+          gameEventsFiber <-
+            gameStream
+              .takeWhile {
+                case PoisonPill(Some(id), _) if id == gameId => false
+                case _                                       => true
+              }.runCollect.fork
           _   <- clock.sleep(1.second)
           end <- juegaHastaElFinal(gameId)
-          _ <- gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(GameService.god))
-            )
+          _ <-
+            gameService
+              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
+                SessionProvider.layer(ChutiSession(GameService.god))
+              )
           gameEvents <- gameEventsFiber.join
         } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }

@@ -152,6 +152,7 @@ lazy val server: Project = project
       "com.github.daddykotex" %% "courier"        % "2.0.0" withSources (),
       "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
       "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources (),
+      "commons-codec"         % "commons-codec"   % "1.14",
       //Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
@@ -390,11 +391,11 @@ lazy val bundlerSettings: Project => Project =
         ((moduleName in fullOptJS).value + "-opt.js")),
       webpackEmitSourceMaps := true,
       Compile / npmDependencies ++= Seq(
-        "react-dom"              -> "16.13.1",
-        "@types/react-dom"       -> "16.9.6",
-        "react"                  -> "16.13.1",
-        "@types/react"           -> "16.9.32",
-        "semantic-ui-react"      -> "0.88.2"
+        "react-dom"         -> "16.13.1",
+        "@types/react-dom"  -> "16.9.6",
+        "react"             -> "16.13.1",
+        "@types/react"      -> "16.9.32",
+        "semantic-ui-react" -> "0.88.2"
       ),
       npmDevDependencies.in(Compile) := Seq(
         "style-loader"               -> "0.23.1",

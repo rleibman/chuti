@@ -45,32 +45,34 @@ trait SessionUtils extends Directives {
   import scalacache.memoization._
 
   lazy private val godLayer =
-    ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(config.live)) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
+    ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(
+      config.live
+    )) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
       SessionProvider.layer(ChutiSession(GameService.god)) ++
       Slf4jLogger.make((_, str) => str)
 
-  def getUser(id: Int): Task[Option[User]] = memoizeF(Option(1.hour)) {
-    val me: Task[Option[User]] = (for {
-      repository <- ZIO.service[Repository.Service]
-      user <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
-        case e: RepositoryException =>
-          ZIO.succeed {
-            e.printStackTrace()
-            None
-          }
-      }
-    } yield user).provideLayer(godLayer)
-    me
-  }
+  def getUser(id: Int): Task[Option[User]] =
+    memoizeF(Option(1.hour)) {
+      val me: Task[Option[User]] = (for {
+        repository <- ZIO.service[Repository.Service]
+        user <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
+          case e: RepositoryException =>
+            ZIO.succeed {
+              e.printStackTrace()
+              None
+            }
+        }
+      } yield user).provideLayer(godLayer)
+      me
+    }
 
   implicit def sessionSerializer: SessionSerializer[ChutiSession, String] =
     new SingleValueSessionSerializer[ChutiSession, String](
       _.user.id.fold("-1")(_.value.toString),
       (id: String) =>
         Try {
-          val user = {
+          val user =
             zio.Runtime.default.unsafeRun(getUser(id.toInt))
-          }
           if (user.isEmpty)
             throw new Exception("The user was not found!")
           ChutiSession(user.get)

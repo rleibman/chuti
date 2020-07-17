@@ -35,9 +35,7 @@ trait ZIODirectives {
   private def toFuture[T](t: Task[T]): Future[T] = {
     val p = Promise[T]()
 
-    runtime.unsafeRunAsync(t) { exit =>
-      exit.fold(e => p.failure(e.squash), s => p.success(s))
-    }
+    runtime.unsafeRunAsync(t)(exit => exit.fold(e => p.failure(e.squash), s => p.success(s)))
 
     p.future
   }
@@ -60,9 +58,10 @@ trait ZIODirectives {
       b <- ZIO.fromFuture(_ => a)
     } yield b
 
-  implicit def zioRoute(z: ZIO[Any, Throwable, Route]): Route = ctx => {
-    toFuture(z.flatMap(r => fromFunction(r)).provide(ctx))
-  }
+  implicit def zioRoute(z: ZIO[Any, Throwable, Route]): Route =
+    ctx => {
+      toFuture(z.flatMap(r => fromFunction(r)).provide(ctx))
+    }
 
   /**
     * "Unwraps" a `Task[T]` and runs the inner route when the task has failed

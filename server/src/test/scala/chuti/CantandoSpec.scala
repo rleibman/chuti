@@ -68,14 +68,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -84,34 +86,38 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
-          game3 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2))
-            )
+          game3 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador2))
+              )
           jugador3 = game3.nextPlayer(jugador2).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
           )
-          game4 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador3))
-            )
+          game4 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador3))
+              )
           jugador4 = game4.nextPlayer(jugador3).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
           )
-          game5 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador4))
-            )
+          game5 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador4))
+              )
           _          <- writeGame(game5, GAME_CANTO4)
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
@@ -127,7 +133,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando cinco sin salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -145,14 +153,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -161,34 +171,38 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
-          game3 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2))
-            )
+          game3 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador2))
+              )
           jugador3 = game3.nextPlayer(jugador2).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
           )
-          game4 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador3))
-            )
+          game4 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador3))
+              )
           jugador4 = game4.nextPlayer(jugador3).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
           )
-          game5 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador4))
-            )
+          game5 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador4))
+              )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game5, gameEvents, userEvents)
@@ -203,7 +217,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando todas" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -221,14 +237,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -237,10 +255,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           //Hay que pararle aqui, ya canto todas.
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
@@ -256,7 +275,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 1)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -274,14 +295,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -290,34 +313,38 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
-          game3 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2))
-            )
+          game3 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador2))
+              )
           jugador3 = game3.nextPlayer(jugador2).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
           )
-          game4 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador3))
-            )
+          game4 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador3))
+              )
           jugador4 = game4.nextPlayer(jugador3).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
           )
-          game5 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador4))
-            )
+          game5 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador4))
+              )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game5, gameEvents, userEvents)
@@ -336,7 +363,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(salvador.cuantasCantas === Option(CuantasCantas.Canto5))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de chuti" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -354,14 +383,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -370,18 +401,20 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
-          game3 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2))
-            )
+          game3 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador2))
+              )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game3, gameEvents, userEvents)
@@ -400,7 +433,9 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(salvador.cuantasCantas === Option(CuantasCantas.CantoTodas))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 2)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de 5,6,7" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -418,14 +453,16 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
       testRuntime.unsafeRun {
         for {
           gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
-          gameStream = gameService
-            .gameStream(GameId(1), connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
-          userStream = gameService
-            .userStream(connectionId).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(user1))
-            )
+          gameStream =
+            gameService
+              .gameStream(GameId(1), connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
+          userStream =
+            gameService
+              .userStream(connectionId).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(user1))
+              )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
@@ -434,34 +471,38 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
           )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(quienCanta))
-            )
+          game2 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(quienCanta))
+              )
           jugador2 = game2.nextPlayer(quienCanta).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
           )
-          game3 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador2))
-            )
+          game3 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador2))
+              )
           jugador3 = game3.nextPlayer(jugador2).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
           )
-          game4 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.Canto6)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador3))
-            )
+          game4 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.Canto6)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador3))
+              )
           jugador4 = game4.nextPlayer(jugador3).user
           _ <- ZIO.succeed(
             when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
           )
-          game5 <- gameService
-            .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-              layer ++ SessionProvider.layer(ChutiSession(jugador4))
-            )
+          game5 <-
+            gameService
+              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
+                layer ++ SessionProvider.layer(ChutiSession(jugador4))
+              )
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game5, gameEvents, userEvents)
@@ -480,6 +521,8 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(salvador.cuantasCantas === Option(CuantasCantas.CantoTodas))
     assertSoloUnoCanta(game)
     assert(gameEvents.size === 4)
-    assert(userEvents.size === 0) //Though 2 happen (log in and log out, only log in should be registering)
+    assert(
+      userEvents.size === 0
+    ) //Though 2 happen (log in and log out, only log in should be registering)
   }
 }

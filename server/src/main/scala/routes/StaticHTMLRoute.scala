@@ -33,27 +33,26 @@ trait StaticHTMLRoute extends Directives {
   )(
     implicit resolver: ContentTypeResolver
   ): Route =
-    extractUnmatchedPath { unmatchedPath =>
-      getFromFile(s"$staticContentDir/$unmatchedPath")
-    }
+    extractUnmatchedPath(unmatchedPath => getFromFile(s"$staticContentDir/$unmatchedPath"))
 
-  def htmlRoute: UIO[Route] = ZIO.succeed {
-    extractLog { log =>
-      pathEndOrSingleSlash {
-        get {
-          log.info("GET /")
-          log.debug(s"GET $staticContentDir/index.html")
-          getFromFile(s"$staticContentDir/index.html")
-        }
-      } ~
-        get {
-          extractUnmatchedPath { path =>
-            log.debug(s"GET $path")
-            encodeResponse {
-              getFromDirectory(staticContentDir)
+  def htmlRoute: UIO[Route] =
+    ZIO.succeed {
+      extractLog { log =>
+        pathEndOrSingleSlash {
+          get {
+            log.info("GET /")
+            log.debug(s"GET $staticContentDir/index.html")
+            getFromFile(s"$staticContentDir/index.html")
+          }
+        } ~
+          get {
+            extractUnmatchedPath { path =>
+              log.debug(s"GET $path")
+              encodeResponse {
+                getFromDirectory(staticContentDir)
+              }
             }
           }
-        }
+      }
     }
-  }
 }

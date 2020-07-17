@@ -41,10 +41,10 @@ trait BootedCore extends Core {
   /**
     * Ensure that the constructed ActorSystem is shut down when the JVM shuts down
     */
-  sys.addShutdownHook({
+  sys.addShutdownHook {
     actorSystem.terminate()
     ()
-  })
+  }
 
 }
 // $COVERAGE-ON$
@@ -53,5 +53,4 @@ trait BootedCore extends Core {
   * This trait contains the actors that make up our application; it can be mixed in with
   * ``BootedCore`` for running code or ``TestKit`` for unit and integration tests.
   */
-trait CoreActors { this: Core =>
-}
+trait CoreActors { this: Core => }

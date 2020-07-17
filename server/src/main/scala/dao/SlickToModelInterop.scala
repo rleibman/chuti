@@ -38,21 +38,23 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 
 trait SlickToModelInterop {
-  def UserRow2User(row: UserRow): User = User(
-    id = Some(row.id),
-    email = row.email,
-    name = row.name,
-    created = row.created.toLocalDateTime,
-    active = row.active,
-    deleted = row.deleted
-  )
-  def User2UserRow(value: User): UserRow = UserRow(
-    id = value.id.getOrElse(UserId(0)),
-    name = value.name,
-    email = value.email,
-    created = Timestamp.valueOf(value.created),
-    active = value.active
-  )
+  def UserRow2User(row: UserRow): User =
+    User(
+      id = Some(row.id),
+      email = row.email,
+      name = row.name,
+      created = row.created.toLocalDateTime,
+      active = row.active,
+      deleted = row.deleted
+    )
+  def User2UserRow(value: User): UserRow =
+    UserRow(
+      id = value.id.getOrElse(UserId(0)),
+      name = value.name,
+      email = value.email,
+      created = Timestamp.valueOf(value.created),
+      active = value.active
+    )
   def GameRow2Game(row: GameRow): Game = {
     val decoder = implicitly(Decoder[Game])
     decoder.decodeJson(row.lastSnapshot).map {

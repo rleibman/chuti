@@ -53,7 +53,8 @@ object NewUserAcceptFriendPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") else Nil) ++
+        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía")
+         else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
            Seq("Las dos contraseñas tienen que ser iguales")
          else Nil) ++
@@ -72,9 +73,8 @@ object NewUserAcceptFriendPage {
                 e => Toast.error(e.getLocalizedMessage),
                 response => $.modState(_.copy(user = response))
               )
-          } else {
+          } else
             Toast.error(s"Error creando la cuenta: ${xhr.statusText}")
-          }
         }
         .completeWith(_.get)
 
@@ -89,31 +89,31 @@ object NewUserAcceptFriendPage {
       ) =>
         {
           val async: AsyncCallback[Callback] = for {
-            saved <- Ajax("POST", "/updateInvitedUser").setRequestContentTypeJson
-              .send(
-                UpdateInvitedUserRequest(
-                  state.user.get,
-                  state.passwordPair._1,
-                  token = props.token.get
-                ).asJson.noSpaces
-              )
-              .asAsyncCallback
-              .map { xhr =>
-                if (xhr.status < 300) {
-                  decode[UpdateInvitedUserResponse](xhr.responseText)
-                    .fold(
-                      e => Toast.error(e.getLocalizedMessage),
-                      response =>
-                        response.error.fold(
-                          context.onModeChanged(Mode.login, response.error) >> Toast.success(
-                            "Cuenta creada con éxito! accede ahora!"
-                          )
-                        )(errorMsg => Toast.error(errorMsg))
-                    )
-                } else {
-                  Toast.error(s"Error creando cuenta: ${xhr.statusText}")
+            saved <-
+              Ajax("POST", "/updateInvitedUser").setRequestContentTypeJson
+                .send(
+                  UpdateInvitedUserRequest(
+                    state.user.get,
+                    state.passwordPair._1,
+                    token = props.token.get
+                  ).asJson.noSpaces
+                )
+                .asAsyncCallback
+                .map { xhr =>
+                  if (xhr.status < 300) {
+                    decode[UpdateInvitedUserResponse](xhr.responseText)
+                      .fold(
+                        e => Toast.error(e.getLocalizedMessage),
+                        response =>
+                          response.error.fold(
+                            context.onModeChanged(Mode.login, response.error) >> Toast.success(
+                              "Cuenta creada con éxito! accede ahora!"
+                            )
+                          )(errorMsg => Toast.error(errorMsg))
+                      )
+                  } else
+                    Toast.error(s"Error creando cuenta: ${xhr.statusText}")
                 }
-              }
           } yield saved
           val valid: Seq[String] = validate(state)
           if (valid.nonEmpty)
@@ -139,9 +139,7 @@ object NewUserAcceptFriendPage {
             FormField(width = SemanticWIDTHS.`3`)(
               Label()("Nombre"),
               Input(
-                onChange = onUserInputChange { (user, value) =>
-                  user.copy(name = value)
-                },
+                onChange = onUserInputChange((user, value) => user.copy(name = value)),
                 value = u.name
               )()
             )
@@ -207,15 +205,16 @@ object NewUserAcceptFriendPage {
     def render(
       props: Props,
       state: State
-    ): VdomElement = LoginControllerState.ctx.consume { context =>
-      <.div(
-        <.div(<.img(^.src := "/unauth/images/logo.png")),
-        <.h1("Registro de cuenta!"),
-        Form()(
-          renderUserInfo(state, props, context)
+    ): VdomElement =
+      LoginControllerState.ctx.consume { context =>
+        <.div(
+          <.div(<.img(^.src := "/unauth/images/logo.png")),
+          <.h1("Registro de cuenta!"),
+          Form()(
+            renderUserInfo(state, props, context)
+          )
         )
-      )
-    }
+      }
   }
 
   case class Props(token: Option[String])

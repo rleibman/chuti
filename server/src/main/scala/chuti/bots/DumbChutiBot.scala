@@ -37,12 +37,11 @@ case object DumbChutiBot extends ChutiBot {
         }
         .maxBy(_._2)
 
-    if (numTriunfos._2 > deCaidaCount) {
+    if (numTriunfos._2 > deCaidaCount)
       //Tenemos algunos triunfos, pero no suficientes para ser de caida, asi es que cantamos uno menos de lo que tenemos
       (numTriunfos._2 - 1, TriunfoNumero(numTriunfos._1))
-    } else {
+    else
       (deCaidaCount, deCaidaTriunfo)
-    }
   }
 
   private def calculaDeCaida(
@@ -74,11 +73,10 @@ case object DumbChutiBot extends ChutiBot {
     val sinTriunfosCount =
       game.copy(triunfo = Option(SinTriunfos)).cuantasDeCaida(jugador.fichas, fichasDeOtros).size
 
-    if (conTriunfosCount._2 > sinTriunfosCount) {
+    if (conTriunfosCount._2 > sinTriunfosCount)
       (conTriunfosCount._2, TriunfoNumero(conTriunfosCount._1))
-    } else {
+    else
       (sinTriunfosCount, SinTriunfos)
-    }
   }
 
   private def calculaCanto(
@@ -95,9 +93,9 @@ case object DumbChutiBot extends ChutiBot {
   ): PlayEvent = {
     val (_, triunfo) = calculaCanto(jugador, game)
     val hypotheticalGame = game.copy(triunfo = Option(triunfo))
-    if (hypotheticalGame.puedesCaerte(jugador)) {
+    if (hypotheticalGame.puedesCaerte(jugador))
       Caete(triunfo = Option(triunfo))
-    } else {
+    else {
       Pide(
         ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
         triunfo = Option(triunfo),
@@ -134,9 +132,8 @@ case object DumbChutiBot extends ChutiBot {
     jugador: Jugador,
     game:    Game
   ): Da = {
-    if (game.enJuego.isEmpty) {
+    if (game.enJuego.isEmpty)
       throw GameException("Nuncamente")
-    }
     val pide = game.enJuego.head
     game.triunfo match {
       case None => throw GameException("Nuncamente!")
@@ -150,11 +147,11 @@ case object DumbChutiBot extends ChutiBot {
             .getOrElse(jugador.fichas.minBy(f => if (f.esMula) 100 else f.value))
         )
       case Some(TriunfoNumero(triunfo)) =>
-        val pideNum = if (pide._2.es(triunfo)) {
-          triunfo
-        } else {
-          pide._2.arriba
-        }
+        val pideNum =
+          if (pide._2.es(triunfo))
+            triunfo
+          else
+            pide._2.arriba
         Da(
           jugador.fichas
             .filter(_.es(pideNum))
@@ -162,11 +159,10 @@ case object DumbChutiBot extends ChutiBot {
             .headOption
             .getOrElse(
               jugador.fichas.minBy(f =>
-                if (f.es(triunfo)) {
+                if (f.es(triunfo))
                   triunfo.value - 100 - f.other(triunfo).value
-                } else {
-                  if (f.esMula) 100 else f.value
-                }
+                else if (f.esMula) 100
+                else f.value
               )
             )
         )
@@ -189,15 +185,14 @@ case object DumbChutiBot extends ChutiBot {
         Buenas
       else CuantasCantas.byNum(cuantas)
 
-    if (jugador.turno) {
+    if (jugador.turno)
       Canta(cuantasCantas)
-    } else {
+    else {
       val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
-      if (cuantasCantas.prioridad > prev.prioridad) {
+      if (cuantasCantas.prioridad > prev.prioridad)
         Canta(cuantasCantas)
-      } else {
+      else
         Canta(Buenas)
-      }
     }
   }
 
@@ -208,19 +203,22 @@ case object DumbChutiBot extends ChutiBot {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
       case GameStatus.jugando =>
-        if (game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty) {
+        if (
+          game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty
+        )
           Option(pideInicial(jugador, game))
-        } else if (jugador.mano && game.puedesCaerte(jugador)) {
+        else if (jugador.mano && game.puedesCaerte(jugador))
           Option(caite())
-        } else if (jugador.mano && game.enJuego.isEmpty) {
+        else if (jugador.mano && game.enJuego.isEmpty)
           Option(pide(jugador, game))
-        } else if (game.enJuego.isEmpty && game.jugadores.exists(
-                     _.cuantasCantas == Option(CuantasCantas.CantoTodas)
-                   )) {
+        else if (
+          game.enJuego.isEmpty && game.jugadores.exists(
+            _.cuantasCantas == Option(CuantasCantas.CantoTodas)
+          )
+        )
           None //Skipping this,
-        } else {
+        else
           Option(da(jugador, game))
-        }
       case GameStatus.cantando =>
         Option(canta(jugador, game))
       case GameStatus.partidoTerminado | GameStatus.`requiereSopa` =>

@@ -46,3 +46,4 @@ urlImport.csv
 dist
 debugDist
 dist
+/.env

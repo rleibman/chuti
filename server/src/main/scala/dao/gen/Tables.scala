@@ -44,11 +44,8 @@ trait Tables {
 
   implicit val estadoType: JdbcType[GameStatus] with BaseTypedType[GameStatus] =
     profile.MappedColumnType.base[GameStatus, String](
-      { estado =>
-        if (estado == null) null else estado.value
-      }, { str =>
-        if (str == null) null else GameStatus.withName(str)
-      }
+      estado => if (estado == null) null else estado.value,
+      str => if (str == null) null else GameStatus.withName(str)
     )
 
   implicit lazy val userIdColumnType: JdbcType[UserId] with BaseTypedType[UserId] =
@@ -60,8 +57,8 @@ trait Tables {
     SimpleFunction.binary[String, Int, String]("SHA2")
 
   /** DDL for all tables. Call .create to execute. */
-  lazy val schema
-    : profile.SchemaDescription = FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema ++ UserWalletQuery.schema
+  lazy val schema: profile.SchemaDescription =
+    FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema ++ UserWalletQuery.schema
 
   case class FriendsRow(
     one: UserId,
@@ -71,10 +68,11 @@ trait Tables {
   implicit def GetResultFriendsRow(
     implicit e0: GR[UserId],
     e1:          GR[Boolean]
-  ): GR[FriendsRow] = GR { prs =>
-    import prs._
-    FriendsRow.tupled((<<[UserId], <<[UserId]))
-  }
+  ): GR[FriendsRow] =
+    GR { prs =>
+      import prs._
+      FriendsRow.tupled((<<[UserId], <<[UserId]))
+    }
 
   class Friends(_tableTag: Tag)
       extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
@@ -84,7 +82,8 @@ trait Tables {
     def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
       (Rep.Some(one), Rep.Some(two)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
+          import r._
+          _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -123,27 +122,36 @@ trait Tables {
     e1:          GR[Json],
     e6:          GR[GameStatus],
     e2:          GR[Timestamp]
-  ): GR[GameRow] = GR { prs =>
-    import prs._
-    GameRow.tupled(
-      (
-        <<[GameId],
-        <<[Json],
-        <<[GameStatus],
-        <<[Timestamp],
-        <<[Timestamp],
-        <<[Int]
+  ): GR[GameRow] =
+    GR { prs =>
+      import prs._
+      GameRow.tupled(
+        (
+          <<[GameId],
+          <<[Json],
+          <<[GameStatus],
+          <<[Timestamp],
+          <<[Timestamp],
+          <<[Int]
+        )
       )
-    )
-  }
+    }
 
   class GameTable(_tableTag: Tag)
       extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
     def * : ProvenShape[GameRow] =
-      (id, lastSnapshot, gameStatus, created, lastupdated, currentIndex) <> (GameRow.tupled, GameRow.unapply)
+      (
+        id,
+        lastSnapshot,
+        gameStatus,
+        created,
+        lastupdated,
+        currentIndex
+      ) <> (GameRow.tupled, GameRow.unapply)
 
-    def ?
-      : MappedProjection[Option[GameRow], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int])] =
+    def ? : MappedProjection[Option[
+      GameRow
+    ], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int])] =
       (
         Rep.Some(id),
         Rep.Some(lastSnapshot),
@@ -190,10 +198,11 @@ trait Tables {
     implicit e0: GR[GameId],
     e3:          GR[Int],
     e1:          GR[String]
-  ): GR[GameEventRow] = GR { prs =>
-    import prs._
-    GameEventRow.tupled((<<[GameId], <<[Int], <<[String]))
-  }
+  ): GR[GameEventRow] =
+    GR { prs =>
+      import prs._
+      GameEventRow.tupled((<<[GameId], <<[Int], <<[String]))
+    }
 
   class GameEvent(_tableTag: Tag)
       extends profile.api.Table[GameEventRow](_tableTag, Some("chuti"), "game_event") {
@@ -203,7 +212,8 @@ trait Tables {
     def ? : MappedProjection[Option[GameEventRow], (Option[GameId], Option[Int], Option[String])] =
       (Rep.Some(gameId), Rep.Some(currentIndex), Rep.Some(eventData)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => GameEventRow.tupled((_1.get, _2.get, _3.get)))
+          import r._
+          _1.map(_ => GameEventRow.tupled((_1.get, _2.get, _3.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -237,21 +247,24 @@ trait Tables {
     e1:          GR[UserId],
     e2:          GR[Int],
     e3:          GR[Boolean]
-  ): GR[GamePlayersRow] = GR { prs =>
-    import prs._
-    GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int], <<[Boolean]))
-  }
+  ): GR[GamePlayersRow] =
+    GR { prs =>
+      import prs._
+      GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int], <<[Boolean]))
+    }
 
   class GamePlayers(_tableTag: Tag)
       extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
     def * : ProvenShape[GamePlayersRow] =
       (userId, gameId, order, invited) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
 
-    def ?
-      : MappedProjection[Option[GamePlayersRow], (Option[UserId], Option[GameId], Option[Int], Option[Boolean])] =
+    def ? : MappedProjection[Option[
+      GamePlayersRow
+    ], (Option[UserId], Option[GameId], Option[Int], Option[Boolean])] =
       (Rep.Some(userId), Rep.Some(gameId), Rep.Some(order), Rep.Some(invited)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+          import r._
+          _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get, _4.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -297,20 +310,21 @@ trait Tables {
     e2:          GR[Timestamp],
     e3:          GR[Option[Timestamp]],
     e4:          GR[Boolean]
-  ): GR[UserRow] = GR { prs =>
-    import prs._
-    UserRow.tupled(
-      (
-        <<[UserId],
-        <<[String],
-        <<[String],
-        <<[Timestamp],
-        <<[Boolean],
-        <<[Boolean],
-        <<?[Timestamp]
+  ): GR[UserRow] =
+    GR { prs =>
+      import prs._
+      UserRow.tupled(
+        (
+          <<[UserId],
+          <<[String],
+          <<[String],
+          <<[Timestamp],
+          <<[Boolean],
+          <<[Boolean],
+          <<?[Timestamp]
+        )
       )
-    )
-  }
+    }
 
   class UserTable(_tableTag: Tag)
       extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
@@ -325,8 +339,9 @@ trait Tables {
         deleteddate
       ) <> (UserRow.tupled, UserRow.unapply)
 
-    def ?
-      : MappedProjection[Option[UserRow], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
+    def ? : MappedProjection[Option[
+      UserRow
+    ], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
         Rep.Some(name),
@@ -376,10 +391,11 @@ trait Tables {
   implicit def GetResultUserWalletRow(
     implicit e0: GR[UserId],
     e1:          GR[BigDecimal]
-  ): GR[UserWalletRow] = GR { prs =>
-    import prs._
-    UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
-  }
+  ): GR[UserWalletRow] =
+    GR { prs =>
+      import prs._
+      UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
+    }
 
   class UserWalletTable(_tableTag: Tag)
       extends profile.api.Table[UserWalletRow](_tableTag, Some("chuti"), "userWallet") {
@@ -389,7 +405,8 @@ trait Tables {
     def ? : MappedProjection[Option[UserWalletRow], (Option[UserId], Option[BigDecimal])] =
       (Rep.Some(userId), Rep.Some(amount)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => UserWalletRow.tupled((_1.get, _2.get)))
+          import r._
+          _1.map(_ => UserWalletRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -416,10 +433,11 @@ trait Tables {
   implicit def GetResultUserLogRow(
     implicit e0: GR[UserId],
     e1:          GR[Timestamp]
-  ): GR[UserLogRow] = GR { prs =>
-    import prs._
-    UserLogRow.tupled((<<[UserId], <<[Timestamp]))
-  }
+  ): GR[UserLogRow] =
+    GR { prs =>
+      import prs._
+      UserLogRow.tupled((<<[UserId], <<[Timestamp]))
+    }
 
   class UserLogTable(_tableTag: Tag)
       extends profile.api.Table[UserLogRow](_tableTag, Some("chuti"), "userLog") {
@@ -429,7 +447,8 @@ trait Tables {
     def ? : MappedProjection[Option[UserLogRow], (Option[UserId], Option[Timestamp])] =
       (Rep.Some(userId), Rep.Some(time)).shaped.<>(
         { r =>
-          import r._; _1.map(_ => UserLogRow.tupled((_1.get, _2.get)))
+          import r._
+          _1.map(_ => UserLogRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )

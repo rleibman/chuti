@@ -43,9 +43,10 @@ object ZioEffect {
 
     def raiseError[A](t: Throwable): Task[A] = Task.fail(t)
 
-    def handleNonFatal[A](fa: => Task[A])(f: Throwable => A): Task[A] = fa.catchSome {
-      case NonFatal(e) => Task.succeed(f(e))
-    }
+    def handleNonFatal[A](fa: => Task[A])(f: Throwable => A): Task[A] =
+      fa.catchSome {
+        case NonFatal(e) => Task.succeed(f(e))
+      }
 
     def delay[A](thunk: => A): Task[A] = Task.effect(thunk)
 
@@ -54,12 +55,10 @@ object ZioEffect {
     def async[A](register: (Either[Throwable, A] => Unit) => Unit): Task[A] =
       Task.effectAsync { (kk: Task[A] => Unit) =>
         register { e =>
-          kk {
-            e match {
-              case Left(t)  => Task.fail(t)
-              case Right(r) => Task.succeed(r)
-            }
-          }
+          kk(e match {
+            case Left(t)  => Task.fail(t)
+            case Right(r) => Task.succeed(r)
+          })
         }
       }
 

@@ -28,9 +28,9 @@ import org.scalajs.dom.ext.AjaxException
 trait RESTOperations {
   def processErrors[A](fn: XMLHttpRequest => Either[Error, A])(xhr: XMLHttpRequest): A =
     try {
-      if (xhr.status >= 400) {
+      if (xhr.status >= 400)
         throw AjaxException(xhr)
-      } else {
+      else {
         fn(xhr) match {
           case Right(a) => a
           case Left(e) =>

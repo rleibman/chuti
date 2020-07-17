@@ -52,7 +52,8 @@ object RegistrationPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") else Nil) ++
+        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía")
+         else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
            Seq("Las dos contraseñas tienen que ser iguales")
          else Nil) ++
@@ -71,25 +72,25 @@ object RegistrationPage {
       ) =>
         {
           val async: AsyncCallback[Callback] = for {
-            saved <- Ajax("PUT", "/userCreation").setRequestContentTypeJson
-              .send(UserCreationRequest(state.user, state.passwordPair._1).asJson.noSpaces)
-              .asAsyncCallback
-              .map { xhr =>
-                if (xhr.status < 300) {
-                  decode[UserCreationResponse](xhr.responseText)
-                    .fold(
-                      e => Toast.error(e.getLocalizedMessage),
-                      response =>
-                        response.error.fold(
-                          context.onModeChanged(Mode.login, response.error) >> Toast.success(
-                            "Cuenta creada con éxito! por favor espera un correo electrónico que confirme tu registro!"
-                          )
-                        )(errorMsg => Toast.error(errorMsg))
-                    )
-                } else {
-                  Toast.error(s"Error creando cuenta: ${xhr.statusText}")
+            saved <-
+              Ajax("PUT", "/userCreation").setRequestContentTypeJson
+                .send(UserCreationRequest(state.user, state.passwordPair._1).asJson.noSpaces)
+                .asAsyncCallback
+                .map { xhr =>
+                  if (xhr.status < 300) {
+                    decode[UserCreationResponse](xhr.responseText)
+                      .fold(
+                        e => Toast.error(e.getLocalizedMessage),
+                        response =>
+                          response.error.fold(
+                            context.onModeChanged(Mode.login, response.error) >> Toast.success(
+                              "Cuenta creada con éxito! por favor espera un correo electrónico que confirme tu registro!"
+                            )
+                          )(errorMsg => Toast.error(errorMsg))
+                      )
+                  } else
+                    Toast.error(s"Error creando cuenta: ${xhr.statusText}")
                 }
-              }
           } yield saved
           val valid: Seq[String] = validate(state)
           if (valid.nonEmpty)
@@ -108,9 +109,7 @@ object RegistrationPage {
           FormField(width = SemanticWIDTHS.`3`)(
             Label()("Nombre"),
             Input(
-              onChange = onUserInputChange { (user, value) =>
-                user.copy(name = value)
-              },
+              onChange = onUserInputChange((user, value) => user.copy(name = value)),
               value = state.user.name
             )()
           )
@@ -120,9 +119,7 @@ object RegistrationPage {
             Label()("Correo Electrónico"),
             Input(
               `type` = "email",
-              onChange = onUserInputChange { (user, value) =>
-                user.copy(email = value)
-              },
+              onChange = onUserInputChange((user, value) => user.copy(email = value)),
               value = state.user.email
             )()
           )
@@ -172,15 +169,16 @@ object RegistrationPage {
         )
       )
 
-    def render(state: State): VdomElement = LoginControllerState.ctx.consume { context =>
-      <.div(
-        <.div(<.img(^.src := "/unauth/images/logo.png")),
-        <.h1("Registro de cuenta!"),
-        Form()(
-          renderUserInfo(state, context)
+    def render(state: State): VdomElement =
+      LoginControllerState.ctx.consume { context =>
+        <.div(
+          <.div(<.img(^.src := "/unauth/images/logo.png")),
+          <.h1("Registro de cuenta!"),
+          Form()(
+            renderUserInfo(state, context)
+          )
         )
-      )
-    }
+      }
   }
 
   private val component = ScalaComponent

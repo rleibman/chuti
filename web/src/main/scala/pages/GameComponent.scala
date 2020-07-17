@@ -90,9 +90,10 @@ object GameComponent {
                     jugadorState == JugadorState.pidiendo ||
                     jugadorState == JugadorState.dando)
                 val isSelf = chutiState.user.fold(false)(_.id == jugador.id)
-                val canPlay = (jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto) &&
-                  ((!game.estrictaDerecha) || jugador.fichas.size > game
-                    .prevPlayer(jugador).fichas.size)
+                val canPlay =
+                  (jugadorState != JugadorState.esperando && jugadorState != JugadorState.esperandoCanto) &&
+                    ((!game.estrictaDerecha) || jugador.fichas.size > game
+                      .prevPlayer(jugador).fichas.size)
 
                 val playerPosition =
                   if (isSelf)
@@ -220,9 +221,10 @@ object GameComponent {
                                         image = triunfo match {
                                           case SinTriunfos => null
                                           case TriunfoNumero(num) =>
-                                            ImageProps(StringDictionary = StringDictionary(
-                                              "src" -> s"images/${num.value}.svg"
-                                            )
+                                            ImageProps(StringDictionary =
+                                              StringDictionary(
+                                                "src" -> s"images/${num.value}.svg"
+                                              )
                                             )
                                         },
                                         value = triunfo.toString,
@@ -231,9 +233,8 @@ object GameComponent {
                                     ).toJSArray
                                 )()
                               )
-                            } else {
-                              EmptyVdom
-                            },
+                            } else
+                              EmptyVdom,
                             <.span(
                               Checkbox(
                                 toggle = true,
@@ -261,21 +262,30 @@ object GameComponent {
                                   )
                                 }
                               )("Pide"),
-                              if (s.triunfo.nonEmpty && game
-                                    .copy(triunfo = s.triunfo).puedesCaerte(jugador)) {
-                                Button(compact = true, basic = true, primary = true, onClick = {
-                                  (_, _) =>
+                              if (
+                                s.triunfo.nonEmpty && game
+                                  .copy(triunfo = s.triunfo).puedesCaerte(jugador)
+                              ) {
+                                Button(
+                                  compact = true,
+                                  basic = true,
+                                  primary = true,
+                                  onClick = { (_, _) =>
                                     play(game.id.get, Caete(triunfo = s.triunfo))
-                                })("Cáete")
-                              } else {
+                                  }
+                                )("Cáete")
+                              } else
                                 EmptyVdom
-                              }
                             )
                           )
                         case JugadorState.haciendoSopa =>
-                          Button(compact = true, basic = true, onClick = { (_, _) =>
-                            play(game.id.get, Sopa())
-                          })("Sopa")
+                          Button(
+                            compact = true,
+                            basic = true,
+                            onClick = { (_, _) =>
+                              play(game.id.get, Sopa())
+                            }
+                          )("Sopa")
                         case JugadorState.esperandoCanto   => EmptyVdom
                         case JugadorState.esperando        => EmptyVdom
                         case JugadorState.partidoTerminado => EmptyVdom
@@ -292,13 +302,11 @@ object GameComponent {
                             )
                           }
                         )("Me Rindo")
-                      } else {
+                      } else
                         EmptyVdom
-                      }
                     )
-                  } else {
-                    EmptyVdom
-                  },
+                  } else
+                    EmptyVdom,
                   <.div(
                     ^.className := s"fichas$playerPosition",
                     jugador.fichas.zipWithIndex.toVdomArray {
@@ -329,9 +337,8 @@ object GameComponent {
                                     else copyMe.triunfo
                                   copyMe.copy(fichaSeleccionada = Option(ficha), triunfo = triunfo)
                                 })
-                              } else {
+                              } else
                                 Callback.empty
-                              }
                             },
                             ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
                             else ""}"
@@ -348,8 +355,9 @@ object GameComponent {
                           ^.className := s"filaFichas$playerPosition",
                           fila.fichas.zipWithIndex.toVdomArray {
                             case (ficha, fichaIndex) =>
-                              val abierta = fila.fichas.size < 4 || fila.index == 0 || (fila.index == (game.jugadores
-                                .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
+                              val abierta =
+                                fila.fichas.size < 4 || fila.index == 0 || (fila.index == (game.jugadores
+                                  .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
                               if (abierta) {
                                 <.div(
                                   ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
@@ -377,7 +385,9 @@ object GameComponent {
             }
           },
           p.gameInProgress.toVdomArray(game =>
-            if (game.gameStatus == GameStatus.partidoTerminado) {
+            if (
+              game.gameStatus == GameStatus.partidoTerminado || game.gameStatus == GameStatus.abandonado
+            ) {
               <.div(
                 ^.key       := "fichasEnJuego",
                 ^.className := "fichasEnJuego",
@@ -389,10 +399,13 @@ object GameComponent {
                 <.div(^.className := "fichasEnJuegoName"),
                 <.div(
                   ^.className := "dominoEnJuego",
-                  Button(basic = true, onClick = { (_, _) =>
-                    chutiState
-                      .onGameViewModeChanged(GameViewMode.lobby)
-                  })("Regresa al Lobby")
+                  Button(
+                    basic = true,
+                    onClick = { (_, _) =>
+                      chutiState
+                        .onGameViewModeChanged(GameViewMode.lobby)
+                    }
+                  )("Regresa al Lobby")
                 )
               )
             } else {

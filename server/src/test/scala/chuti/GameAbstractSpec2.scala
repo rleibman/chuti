@@ -52,13 +52,13 @@ trait GameAbstractSpec2 extends MockitoSugar {
   def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, (Assertion, Game)] = {
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
-      start <- gameOperations
-        .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(GameService.god))
-        )
-      looped <- ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ =>
-        juegaMano(gameId)
-      )
+      start <-
+        gameOperations
+          .get(gameId).map(_.get).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(GameService.god))
+          )
+      looped <-
+        ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
       asserted <- ZIO.succeed {
         val numFilas = looped.jugadores.map(_.filas.size).sum
         looped.quienCanta.fold(fail()) { cantante =>
@@ -76,9 +76,8 @@ trait GameAbstractSpec2 extends MockitoSugar {
               s"Fue hoyo de ${cantante.cuantasCantas.get} para ${cantante.user.name}!"
             )
           }
-          if (looped.gameStatus === GameStatus.partidoTerminado) {
+          if (looped.gameStatus === GameStatus.partidoTerminado)
             println("Partido terminado!")
-          }
           assert(
             looped.gameStatus === GameStatus.requiereSopa || looped.gameStatus === GameStatus.partidoTerminado
           )
@@ -92,39 +91,45 @@ trait GameAbstractSpec2 extends MockitoSugar {
     val bot = DumbChutiBot
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
-      game <- gameOperations
-        .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(GameService.god))
-        )
+      game <-
+        gameOperations
+          .get(gameId).map(_.get).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(GameService.god))
+          )
       mano = game.mano.get
       sigiuente1 = game.nextPlayer(mano)
       sigiuente2 = game.nextPlayer(sigiuente1)
       sigiuente3 = game.nextPlayer(sigiuente2)
-      _ <- bot
-        .takeTurn(gameId).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(mano.user))
-        )
-      _ <- bot
-        .takeTurn(gameId).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(sigiuente1.user))
-        )
-      _ <- bot
-        .takeTurn(gameId).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(sigiuente2.user))
-        )
-      afterPlayer4 <- bot
-        .takeTurn(gameId).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(sigiuente3.user))
-        )
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(mano.user))
+          )
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(sigiuente1.user))
+          )
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(sigiuente2.user))
+          )
+      afterPlayer4 <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[TestLayer](
+            SessionProvider.layer(ChutiSession(sigiuente3.user))
+          )
     } yield afterPlayer4
   }
 
-  def repositoryLayer(gameFiles: String*): ULayer[Repository] = ZLayer.fromEffect {
-    val z: ZIO[Any, Throwable, List[Game]] =
-      ZIO.foreachPar(gameFiles)(filename => readGame(filename))
-    val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
-    zz
-  }
+  def repositoryLayer(gameFiles: String*): ULayer[Repository] =
+    ZLayer.fromEffect {
+      val z: ZIO[Any, Throwable, List[Game]] =
+        ZIO.foreachPar(gameFiles)(filename => readGame(filename))
+      val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
+      zz
+    }
 
   type TestLayer = DatabaseProvider
     with Repository with Postman with Logging with TokenHolder with GameService with ChatService
@@ -144,10 +149,11 @@ trait GameAbstractSpec2 extends MockitoSugar {
   def writeGame(
     game:     Game,
     filename: String
-  ): Task[Unit] = ZIO.effect {
-    val file = File(filename)
-    file.write(game.asJson.printWith(Printer.spaces2))
-  }
+  ): Task[Unit] =
+    ZIO.effect {
+      val file = File(filename)
+      file.write(game.asJson.printWith(Printer.spaces2))
+    }
 
   def readGame(filename: String): Task[Game] =
     ZIO.effect {
@@ -197,25 +203,31 @@ trait GameAbstractSpec2 extends MockitoSugar {
       gameService    <- ZIO.service[GameService.Service]
       game           <- gameOperations.get(gameId).map(_.get).provideSomeLayer[TestLayer](godLayer)
       //Invite people
-      _ <- gameService
-        .inviteToGame(user2.id.get, game.id.get).provideSomeLayer[TestLayer](
-          userLayer(user1)
-        )
-      _ <- gameService
-        .inviteToGame(user3.id.get, game.id.get).provideSomeLayer[TestLayer](
-          userLayer(user1)
-        )
-      _ <- gameService
-        .inviteToGame(user4.id.get, game.id.get).provideSomeLayer[TestLayer](
-          userLayer(user1)
-        )
+      _ <-
+        gameService
+          .inviteToGame(user2.id.get, game.id.get).provideSomeLayer[TestLayer](
+            userLayer(user1)
+          )
+      _ <-
+        gameService
+          .inviteToGame(user3.id.get, game.id.get).provideSomeLayer[TestLayer](
+            userLayer(user1)
+          )
+      _ <-
+        gameService
+          .inviteToGame(user4.id.get, game.id.get).provideSomeLayer[TestLayer](
+            userLayer(user1)
+          )
       //they accept
-      _ <- gameService
-        .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user2))
-      _ <- gameService
-        .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user3))
-      _ <- gameService
-        .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user4))
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user2))
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user3))
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[TestLayer](userLayer(user4))
       result <- gameOperations.get(game.id.get).provideSomeLayer[TestLayer](godLayer)
     } yield result.get
   }
@@ -230,34 +242,38 @@ trait GameAbstractSpec2 extends MockitoSugar {
       sigiuente2 = game.nextPlayer(sigiuente1).user
       sigiuente3 = game.nextPlayer(sigiuente2).user
       //Una vez que alguien ya canto chuti, pasa a los demas.
-      g1 <- bot
-        .takeTurn(gameId).provideSomeLayer[TestLayer](
-          SessionProvider.layer(ChutiSession(quienCanta))
-        )
-      g2 <- if (g1.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas))) {
-        ZIO.succeed(g1)
-      } else {
+      g1 <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente1))
+            SessionProvider.layer(ChutiSession(quienCanta))
           )
-      }
-      g3 <- if (g2.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas))) {
-        ZIO.succeed(g2)
-      } else {
-        bot
-          .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente2))
-          )
-      }
-      g4 <- if (g3.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas))) {
-        ZIO.succeed(g3)
-      } else {
-        bot
-          .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente3))
-          )
-      }
+      g2 <-
+        if (g1.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g1)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[TestLayer](
+              SessionProvider.layer(ChutiSession(sigiuente1))
+            )
+        }
+      g3 <-
+        if (g2.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g2)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[TestLayer](
+              SessionProvider.layer(ChutiSession(sigiuente2))
+            )
+        }
+      g4 <-
+        if (g3.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g3)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[TestLayer](
+              SessionProvider.layer(ChutiSession(sigiuente3))
+            )
+        }
     } yield g4
   }
 
@@ -275,14 +291,16 @@ trait GameAbstractSpec2 extends MockitoSugar {
           assert(start.jugadores.head.user.id === user1.id)
         }
       }
-      gameStream = gameService
-        .gameStream(start.id.get, connectionId)
-        .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
-      gameEventsFiber <- gameStream
-        .takeUntil {
-          case PoisonPill(Some(id), _) if id == start.id.get => true
-          case _                                             => false
-        }.runCollect.fork
+      gameStream =
+        gameService
+          .gameStream(start.id.get, connectionId)
+          .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+      gameEventsFiber <-
+        gameStream
+          .takeUntil {
+            case PoisonPill(Some(id), _) if id == start.id.get => true
+            case _                                             => false
+          }.runCollect.fork
       _           <- clock.sleep(1.second)
       readyToPlay <- getReadyToPlay(start.id.get)
       assert2 <- ZIO.succeed {
@@ -300,12 +318,13 @@ trait GameAbstractSpec2 extends MockitoSugar {
               (assert(previousAssert == Succeeded && newAssert == Succeeded), played)
           }
       }
-      _ <- gameService
-        .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
-          TestLayer
-        ](
-          SessionProvider.layer(ChutiSession(GameService.god))
-        )
+      _ <-
+        gameService
+          .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
+            TestLayer
+          ](
+            SessionProvider.layer(ChutiSession(GameService.god))
+          )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
@@ -324,14 +343,14 @@ trait GameAbstractSpec2 extends MockitoSugar {
   private def playRound(game: Game): ZIO[TestLayer, Throwable, (Assertion, Game)] = {
     for {
       gameService <- ZIO.service[GameService.Service]
-      start <- if (game.gameStatus == GameStatus.requiereSopa) {
-        gameService
-          .play(game.id.get, Sopa()).provideSomeLayer[TestLayer](
-            userLayer(game.jugadores.find(_.turno).get.user)
-          )
-      } else {
-        ZIO.succeed(game)
-      }
+      start <-
+        if (game.gameStatus == GameStatus.requiereSopa) {
+          gameService
+            .play(game.id.get, Sopa()).provideSomeLayer[TestLayer](
+              userLayer(game.jugadores.find(_.turno).get.user)
+            )
+        } else
+          ZIO.succeed(game)
       afterCanto <- canto(start.id.get)
       assert1 <- ZIO.succeed {
         assert(afterCanto.gameStatus === GameStatus.jugando)
@@ -347,29 +366,36 @@ trait GameAbstractSpec2 extends MockitoSugar {
     for {
       gameService    <- ZIO.access[GameService](_.get)
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
-      getGame <- ZIO
-        .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[TestLayer](godLayer)
-      game <- getGame.flatten
-        .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[TestLayer](
-          godLayer
-        )
+      getGame <-
+        ZIO
+          .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[TestLayer](
+            godLayer
+          )
+      game <-
+        getGame.flatten
+          .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[TestLayer](
+            godLayer
+          )
       _ <- zio.console.putStrLn(s"Game ${game.id.get} loaded")
-      gameStream = gameService
-        .gameStream(game.id.get, connectionId)
-        .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
-      gameEventsFiber <- gameStream
-        .takeUntil {
-          case PoisonPill(Some(id), _) if id == game.id.get => true
-          case _                                            => false
-        }.runCollect.fork
+      gameStream =
+        gameService
+          .gameStream(game.id.get, connectionId)
+          .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+      gameEventsFiber <-
+        gameStream
+          .takeUntil {
+            case PoisonPill(Some(id), _) if id == game.id.get => true
+            case _                                            => false
+          }.runCollect.fork
       _                 <- clock.sleep(1.second)
       (assert4, played) <- juegaHastaElFinal(game.id.get)
-      _ <- gameService
-        .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
-          TestLayer
-        ](
-          SessionProvider.layer(ChutiSession(GameService.god))
-        )
+      _ <-
+        gameService
+          .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
+            TestLayer
+          ](
+            SessionProvider.layer(ChutiSession(GameService.god))
+          )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))

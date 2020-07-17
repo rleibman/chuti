@@ -50,7 +50,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
-    (for {
+    for {
       db <- databaseProvider.get.db
       ret <- ZIO.fromFuture(implicit ec => db.run(dbio)).mapError {
         case e: SlickException =>
@@ -60,10 +60,10 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           e.printStackTrace()
           RepositoryException("SQL Repository Error", Some(e))
       }
-    } yield ret)
+    } yield ret
 
   implicit def fromDBIO[A](fn: ChutiSession => DBIO[A]): RepositoryIO[A] =
-    (for {
+    for {
       session <- ZIO.access[SessionProvider](_.get.session)
       db      <- databaseProvider.get.db
       ret <- ZIO.fromFuture(implicit ec => db.run(fn(session))).mapError {
@@ -74,14 +74,14 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           e.printStackTrace()
           RepositoryException("SQL Repository Error", Some(e))
       }
-    } yield ret)
+    } yield ret
 
   override val userOperations: Repository.UserOperations = new UserOperations {
     override def unfriend(enemy: User): RepositoryIO[Boolean] = { session: ChutiSession =>
       val rowOpt = for {
         one <- session.user.id
         two <- enemy.id
-      } yield { FriendsRow(one, two) }
+      } yield FriendsRow(one, two)
       DBIO
         .sequence(
           rowOpt.toSeq
@@ -98,7 +98,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       val rowOpt = for {
         one <- session.user.id
         two <- friend.id
-      } yield { FriendsRow(one, two) }
+      } yield FriendsRow(one, two)
       DBIO
         .sequence(rowOpt.toSeq.map(row => FriendsQuery += row).map(_.map(_ > 0))).map(
           _.headOption.getOrElse(false)
@@ -119,9 +119,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     }
 
     override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id != user.id) {
+      if (session.user != GameService.god && session.user.id != user.id)
         throw RepositoryException(s"${session.user} Not authorized")
-      }
       (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
         .insertOrUpdate(User2UserRow(user))
         .map(_.getOrElse(user))
@@ -139,17 +138,15 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       pk:         UserId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id.fold(false)(_ != pk)) {
+      if (session.user != GameService.god && session.user.id.fold(false)(_ != pk))
         throw RepositoryException(s"${session.user} Not authorized")
-      }
       if (softDelete) {
         val q = for {
           u <- UserQuery if u.id === pk
         } yield (u.deleted, u.deleteddate)
         q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
-      } else {
+      } else
         UserQuery.filter(_.id === pk).delete.map(_ > 0)
-      }
     }
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
@@ -180,10 +177,11 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
                u.active = 1 and
                u.email = $email and
                u.hashedpassword = SHA2($password, 512)""".as[Int].map(_.headOption.map(UserId))
-        userOpt <- DBIO
-          .sequence(idOpt.toSeq.map { id =>
-            UserQuery.filter(_.id === id).result
-          }).map(_.flatten.map(UserRow2User).headOption)
+        userOpt <-
+          DBIO
+            .sequence(idOpt.toSeq.map(id => UserQuery.filter(_.id === id).result)).map(
+              _.flatten.map(UserRow2User).headOption
+            )
         //Log the log in.
         _ <- DBIO.sequence(
           idOpt.toSeq.map(id =>
@@ -203,9 +201,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       user:        User,
       newPassword: String
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id != user.id) {
+      if (session.user != GameService.god && session.user.id != user.id)
         throw RepositoryException(s"${session.user} Not authorized")
-      }
       user.id.fold(DBIO.successful(false))(id =>
         sqlu"UPDATE user SET hashedPassword=SHA2($newPassword, 512) WHERE id = ${id.value}"
           .map(_ > 0)
@@ -227,9 +224,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = {
       session: ChutiSession =>
-        if (session.user != GameService.god) { //Only god can get a user's wallet by user id
+        if (session.user != GameService.god) //Only god can get a user's wallet by user id
           throw RepositoryException(s"${session.user} Not authorized")
-        }
         UserWalletQuery
           .filter(_.userId === userId)
           .result.headOption.map(
@@ -244,9 +240,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = {
       session: ChutiSession =>
-        if (session.user != GameService.god) { //Only god can update a user's wallet.
+        if (session.user != GameService.god) //Only god can update a user's wallet.
           throw RepositoryException(s"${session.user} Not authorized")
-        }
 
         val row = UserWallet2UserWalletRow(userWallet)
 
@@ -262,26 +257,23 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
   override val gameOperations: Repository.GameOperations = new GameOperations {
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
-        if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id)) {
+        if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id))
           throw RepositoryException(s"${session.user} Not authorized")
-        }
         for {
-          upserted <- (GameQuery returning GameQuery.map(_.id) into (
-            (
-              _,
-              id
-            ) => game.copy(id = Some(id))
-          )).insertOrUpdate(Game2GameRow(game))
-            .map(_.getOrElse(game))
+          upserted <-
+            (GameQuery returning GameQuery.map(_.id) into ((_, id) => game.copy(id = Some(id))))
+              .insertOrUpdate(Game2GameRow(game))
+              .map(_.getOrElse(game))
         } yield upserted
       }
       for {
         _        <- scalacache.remove(game.id).mapError(e => RepositoryException("Cache error", Some(e)))
         upserted <- upserted
-        _ <- scalacache
-          .put(game.id)(Option(upserted), Option(3.hours)).mapError(e =>
-            RepositoryException("Cache error", Some(e))
-          )
+        _ <-
+          scalacache
+            .put(game.id)(Option(upserted), Option(3.hours)).mapError(e =>
+              RepositoryException("Cache error", Some(e))
+            )
       } yield upserted
 
     }
@@ -308,9 +300,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       pk:         GameId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god) {
+      if (session.user != GameService.god)
         throw RepositoryException(s"${session.user} Not authorized")
-      }
       GameQuery.filter(_.id === pk).delete.map(_ > 0)
 
     }
@@ -348,18 +339,19 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def updatePlayers(game: Game): RepositoryIO[Game] = {
       for {
         _ <- GamePlayersQuery.filter(_.gameId === game.id.get).delete
-        _ <- DBIO
-          .sequence(game.jugadores.zipWithIndex.map {
-            case (player, index) =>
-              GamePlayersQuery.insertOrUpdate(
-                GamePlayersRow(
-                  userId = player.user.id.getOrElse(UserId(0)),
-                  gameId = game.id.getOrElse(GameId(0)),
-                  order = index,
-                  invited = player.invited
+        _ <-
+          DBIO
+            .sequence(game.jugadores.zipWithIndex.map {
+              case (player, index) =>
+                GamePlayersQuery.insertOrUpdate(
+                  GamePlayersRow(
+                    userId = player.user.id.getOrElse(UserId(0)),
+                    gameId = game.id.getOrElse(GameId(0)),
+                    order = index,
+                    invited = player.invited
+                  )
                 )
-              )
-          }).map(_.sum)
+            }).map(_.sum)
       } yield game
     }
 

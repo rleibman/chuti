@@ -154,14 +154,14 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       testRuntime.unsafeRunToFuture {
         (for {
           gameOperations <- ZIO.access[Repository](_.get.gameOperations)
-          saved <- gameOperations
-            .upsert(tester.game).provideSomeLayer[TestLayer](
-              godLayer
-            )
+          saved <-
+            gameOperations
+              .upsert(tester.game).provideSomeLayer[TestLayer](
+                godLayer
+              )
           played <- juegaHastaElFinal(saved.id.get)
-        } yield {
-          assert(tester.testEndState(played._2) == Succeeded && played._1 == Succeeded)
-        }).provideCustomLayer(testLayer())
+        } yield assert(tester.testEndState(played._2) == Succeeded && played._1 == Succeeded))
+          .provideCustomLayer(testLayer())
       }.future
     }
   }

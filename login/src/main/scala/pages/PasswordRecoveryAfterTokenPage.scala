@@ -48,51 +48,60 @@ object PasswordRecoveryAfterTokenPage {
     def render(
       props: Props,
       state: State
-    ): VdomElement = LoginControllerState.ctx.consume { _ =>
-      <.div(
-        ^.width := 800.px,
-        <.div(<.img(^.src := "/unauth/images/logo.png")),
-        <.h1("Recuperar contraseña!"),
-        Form(action = "passwordReset", method = "post", onSubmit = { (event, _) =>
-          handleSubmit(state, event)
-        })(
-          FormField()(
-            Label()("Contraseña"),
-            Input(
-              required = true,
-              name = "password",
-              `type` = "password",
-              value = state.password,
-              onChange = { (_, data) =>
-                $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
+    ): VdomElement =
+      LoginControllerState.ctx.consume { _ =>
+        <.div(
+          ^.width := 800.px,
+          <.div(<.img(^.src := "/unauth/images/logo.png")),
+          <.h1("Recuperar contraseña!"),
+          Form(
+            action = "passwordReset",
+            method = "post",
+            onSubmit = { (event, _) =>
+              handleSubmit(state, event)
+            }
+          )(
+            FormField()(
+              Label()("Contraseña"),
+              Input(
+                required = true,
+                name = "password",
+                `type` = "password",
+                value = state.password,
+                onChange = { (_, data) =>
+                  $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
+                }
+              )()
+            ),
+            FormField()(
+              Label()("Repite contraseña"),
+              Input(
+                required = true,
+                name = "passwordAgain",
+                `type` = "password",
+                value = state.passwordAgain,
+                onChange = { (_, data) =>
+                  $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
+                }
+              )()
+            ),
+            <.input(
+              ^.`type` := "hidden",
+              ^.id     := "token",
+              ^.name   := "token",
+              ^.value  := props.token.getOrElse("")
+            ),
+            Button(compact = true, basic = true, `type` = submit)("Cambia contraseña"),
+            Button(
+              compact = true,
+              basic = true,
+              onClick = { (_, _) =>
+                Callback(window.location.replace("/"))
               }
-            )()
-          ),
-          FormField()(
-            Label()("Repite contraseña"),
-            Input(
-              required = true,
-              name = "passwordAgain",
-              `type` = "password",
-              value = state.passwordAgain,
-              onChange = { (_, data) =>
-                $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
-              }
-            )()
-          ),
-          <.input(
-            ^.`type` := "hidden",
-            ^.id     := "token",
-            ^.name   := "token",
-            ^.value  := props.token.getOrElse("")
-          ),
-          Button(compact = true, basic = true, `type` = submit)("Cambia contraseña"),
-          Button(compact = true, basic = true, onClick = { (_, _) =>
-            Callback(window.location.replace("/"))
-          })("Cancel")
+            )("Cancel")
+          )
         )
-      )
-    }
+      }
   }
 
   case class Props(token: Option[String])

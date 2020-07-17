@@ -76,12 +76,13 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         Queries.getGameInvites,
         jsonInvites => {
           $.modState(
-            _.copy(invites = jsonInvites.toList.flatten.map(json =>
-              gameDecoder.decodeJson(json) match {
-                case Right(game) => game
-                case Left(error) => throw error
-              }
-            )
+            _.copy(invites =
+              jsonInvites.toList.flatten.map(json =>
+                gameDecoder.decodeJson(json) match {
+                  case Right(game) => game
+                  case Left(error) => throw error
+                }
+              )
             )
           )
         }
@@ -97,124 +98,129 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomElement = {
-      def renderNewGameDialog = Modal(open = s.dlg == Dialog.newGame)(
-        ModalHeader()("Juego Nuevo"),
-        ModalContent()(
-          FormField()(
-            Label()("Satoshi por punto"),
-            Input(
-              required = true,
-              name = "satoshiPerPoint",
-              `type` = "number",
-              min = 100,
-              max = 10000,
-              step = 100,
-              value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
-              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                $.modState(s =>
-                  s.copy(newGameDialogState = s.newGameDialogState
-                    .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
-                  )
-                )
-              }
-            )()
-          )
-        ),
-        ModalActions()(
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) =>
-              $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
-            }
-          )("Cancelar"),
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) =>
-              calibanCallThroughJsonOpt[Mutations, Game](
-                Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
-                callback = { gameOpt =>
-                  Toast.success("Juego empezado!") >> p.gameInProgress
-                    .setState(gameOpt) >> $.modState(
-                    _.copy(
-                      dlg = Dialog.none,
-                      newGameDialogState = None
+      def renderNewGameDialog =
+        Modal(open = s.dlg == Dialog.newGame)(
+          ModalHeader()("Juego Nuevo"),
+          ModalContent()(
+            FormField()(
+              Label()("Satoshi por punto"),
+              Input(
+                required = true,
+                name = "satoshiPerPoint",
+                `type` = "number",
+                min = 100,
+                max = 10000,
+                step = 100,
+                value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
+                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                  $.modState(s =>
+                    s.copy(newGameDialogState =
+                      s.newGameDialogState
+                        .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
                     )
                   )
                 }
-              )
-            }
-          )("Crear")
-        )
-      )
-
-      def renderInviteExternalDialog: VdomElement = Modal(open = s.dlg == Dialog.inviteExternal)(
-        ModalHeader()("Invitar amigo externo"),
-        ModalContent()(
-          FormField()(
-            Label()("Nombre"),
-            Input(
-              required = true,
-              name = "Nombre",
-              value = s.inviteExternalDialogState.fold("")(_.name),
-              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                $.modState(s =>
-                  s.copy(inviteExternalDialogState = s.inviteExternalDialogState
-                    .map(_.copy(name = data.value.get.asInstanceOf[String]))
-                  )
-                )
-              }
-            )()
+              )()
+            )
           ),
-          FormField()(
-            Label()("Correo"),
-            Input(
-              required = true,
-              name = "Correo",
-              `type` = "email",
-              value = s.inviteExternalDialogState.fold("")(_.email),
-              onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                $.modState(s =>
-                  s.copy(inviteExternalDialogState = s.inviteExternalDialogState
-                    .map(_.copy(email = data.value.get.asInstanceOf[String]))
-                  )
-                )
-              }
-            )()
-          )
-        ),
-        ModalActions()(
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) =>
-              $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
-            }
-          )("Cancelar"),
-          p.gameInProgress.value.fold(EmptyVdom) { game =>
+          ModalActions()(
             Button(
               compact = true,
               basic = true,
-              onClick = {
-                (_, _) =>
-                  Callback.log(s"Inviting user by email") >>
-                    calibanCall[Mutations, Option[Boolean]](
-                      Mutations.inviteByEmail(
-                        s.inviteExternalDialogState.fold("")(_.name),
-                        s.inviteExternalDialogState.fold("")(_.email),
-                        game.id.fold(0)(_.value)
-                      ),
-                      _ =>
-                        Toast.success("Invitación mandada!") >> $.modState(
-                          _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
-                        )
-                    )
+              onClick = { (_, _) =>
+                $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
               }
-            )("Invitar")
-          }
+            )("Cancelar"),
+            Button(
+              compact = true,
+              basic = true,
+              onClick = { (_, _) =>
+                calibanCallThroughJsonOpt[Mutations, Game](
+                  Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
+                  callback = { gameOpt =>
+                    Toast.success("Juego empezado!") >> p.gameInProgress
+                      .setState(gameOpt) >> $.modState(
+                      _.copy(
+                        dlg = Dialog.none,
+                        newGameDialogState = None
+                      )
+                    )
+                  }
+                )
+              }
+            )("Crear")
+          )
         )
-      )
+
+      def renderInviteExternalDialog: VdomElement =
+        Modal(open = s.dlg == Dialog.inviteExternal)(
+          ModalHeader()("Invitar amigo externo"),
+          ModalContent()(
+            FormField()(
+              Label()("Nombre"),
+              Input(
+                required = true,
+                name = "Nombre",
+                value = s.inviteExternalDialogState.fold("")(_.name),
+                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                  $.modState(s =>
+                    s.copy(inviteExternalDialogState =
+                      s.inviteExternalDialogState
+                        .map(_.copy(name = data.value.get.asInstanceOf[String]))
+                    )
+                  )
+                }
+              )()
+            ),
+            FormField()(
+              Label()("Correo"),
+              Input(
+                required = true,
+                name = "Correo",
+                `type` = "email",
+                value = s.inviteExternalDialogState.fold("")(_.email),
+                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                  $.modState(s =>
+                    s.copy(inviteExternalDialogState =
+                      s.inviteExternalDialogState
+                        .map(_.copy(email = data.value.get.asInstanceOf[String]))
+                    )
+                  )
+                }
+              )()
+            )
+          ),
+          ModalActions()(
+            Button(
+              compact = true,
+              basic = true,
+              onClick = { (_, _) =>
+                $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
+              }
+            )("Cancelar"),
+            p.gameInProgress.value.fold(EmptyVdom) { game =>
+              Button(
+                compact = true,
+                basic = true,
+                onClick = {
+                  (_, _) =>
+                    Callback.log(s"Inviting user by email") >>
+                      calibanCall[Mutations, Option[Boolean]](
+                        Mutations.inviteByEmail(
+                          s.inviteExternalDialogState.fold("")(_.name),
+                          s.inviteExternalDialogState.fold("")(_.email),
+                          game.id.fold(0)(_.value)
+                        ),
+                        _ =>
+                          Toast.success("Invitación mandada!") >> $.modState(
+                            _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                          )
+                      )
+                }
+              )("Invitar")
+            }
+          )
+        )
 
       ChutiState.ctx.consume { chutiState =>
         chutiState.user
@@ -269,8 +275,10 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           EmptyVdom //Put here any action that should only happen when game is active
                         case GameStatus.esperandoJugadoresInvitados =>
                           VdomArray(
-                            if (game.jugadores
-                                  .exists(_.invited) && game.jugadores.head.id == user.id) {
+                            if (
+                              game.jugadores
+                                .exists(_.invited) && game.jugadores.head.id == user.id
+                            ) {
                               Button(
                                 key = "cancelarInvitaciones",
                                 compact = true,
@@ -282,9 +290,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   )
                                 }
                               )("Cancelar invitaciones a aquellos que todavía no aceptan")
-                            } else {
-                              EmptyVdom
-                            },
+                            } else
+                              EmptyVdom,
                             if (game.jugadores.head.id == user.id) {
                               Button(
                                 key = "invitarPorCorreo",
@@ -299,13 +306,21 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                     )
                                   )
                               )("Invitar por correo electrónico")
-                            } else {
+                            } else
                               EmptyVdom
-                            }
                           )
                         case _ => EmptyVdom
                       },
-                      if (game.gameStatus != GameStatus.partidoTerminado) {
+                      if (!game.gameStatus.acabado) {
+                        val costo: Option[Double] =
+                          if (game.gameStatus.enJuego)
+                            game.cuentasCalculadas
+                              .find(_._1.id == user.id).map(n =>
+                                (n._2 + game.abandonedPenalty) * game.satoshiPerPoint
+                              )
+                          else
+                            None
+
                         Button(
                           key = "abandonarJuego",
                           compact = true,
@@ -314,14 +329,17 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             Confirm.confirm(
                               header = Option("Abandonar juego"),
                               question =
-                                s"Estas seguro que quieres abandonar el juego en el que te encuentras? Acuérdate que si ya empezó te va a costar ${game.abandonedPenalty * game.satoshiPerPoint} satoshi",
+                                s"Estas seguro que quieres abandonar el juego en el que te encuentras? ${costo
+                                  .fold("")(n => s"Te va a costar $n satoshi")}",
                               onConfirm = Callback.log(s"Abandoning game") >>
                                 calibanCall[Mutations, Option[Boolean]](
                                   Mutations.abandonGame(game.id.get.value),
                                   res =>
                                     if (res.getOrElse(false)) Toast.success("Juego abandonado!")
                                     else
-                                      Toast.error("Error abandonando juego!") //>> p.gameInProgress.setState(None)
+                                      Toast.error(
+                                        "Error abandonando juego!"
+                                      ) //>> p.gameInProgress.setState(None)
                                 )
                             )
                         )("Abandona Juego")
@@ -335,12 +353,13 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               Mutations.newGameSameUsers(game.id.get.value),
                               gameOpt =>
                                 Toast.success("Juego empezado!") >> p.gameInProgress
-                                  .setState(gameOpt) >> $.modState(_.copy(dlg = Dialog.none)) >> refresh()
+                                  .setState(gameOpt) >> $.modState(
+                                  _.copy(dlg = Dialog.none)
+                                ) >> refresh()
                             )
                         )("Nuevo partido con los mismos jugadores")
-                      } else {
+                      } else
                         EmptyVdom
-                      }
                     )
                   }
                 ),
@@ -504,9 +523,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       playerId <- player.user.id
                                       gameId   <- game.id
                                     } yield
-                                      if (game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
-                                          game.jugadores.head.id == user.id &&
-                                          !game.jugadores.exists(_.id == player.user.id))
+                                      if (
+                                        game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                        game.jugadores.head.id == user.id &&
+                                        !game.jugadores.exists(_.id == player.user.id)
+                                      )
                                         DropdownItem(onClick = { (_, _) =>
                                           calibanCall[Mutations, Option[Boolean]](
                                             Mutations
@@ -553,9 +574,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         )
                       )
                     )
-                  ).when(chutiState.loggedInUsers.nonEmpty), {
-                    ""
-                  }
+                  ).when(chutiState.loggedInUsers.nonEmpty),
+                  ""
                 )
               )
             )
