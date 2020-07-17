@@ -17,9 +17,8 @@
 import chuti.{PagedStringSearch, User, UserId, UserWallet}
 import io.circe.generic.auto._
 import japgolly.scalajs.react.AsyncCallback
-import util.Config
 
-package object service extends Config {
+package object service  {
 
   object UserRESTClient extends LiveRESTClient[User, UserId, PagedStringSearch] {
     override val baseUrl: String = s"/api/auth"

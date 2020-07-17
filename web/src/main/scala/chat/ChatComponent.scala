@@ -23,14 +23,7 @@ import java.util.UUID
 
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  ChatMessage => CalibanChatMessage,
-  LocalDateTime => CalibanLocalDateTime,
-  User => CalibanUser
-}
+import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage => CalibanChatMessage, LocalDateTime => CalibanLocalDateTime, User => CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
@@ -41,6 +34,7 @@ import org.scalajs.dom.raw.HTMLButtonElement
 import typings.semanticUiReact.buttonButtonMod.ButtonProps
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
+import util.Config
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -48,7 +42,7 @@ import scala.util.{Failure, Success}
 object ChatComponent extends ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
   import sttp.client._
-  override val serverUri = uri"http://localhost:8079/api/chat"
+  override val serverUri = uri"http://${Config.chutiHost}/api/chat"
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
   case class State(
@@ -78,7 +72,7 @@ object ChatComponent extends ScalaJSClientAdapter {
       import sttp.client._
       implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
       val mutation = Mutations.say(s.msgInFlux, p.channel.value)
-      val serverUri = uri"http://localhost:8079/api/chat"
+      val serverUri = uri"http://${Config.chutiHost}/api/chat"
       val request = mutation.toRequest(serverUri)
 
       import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -164,7 +158,7 @@ object ChatComponent extends ScalaJSClientAdapter {
             chatMessages = recentMessages.toList.flatten,
             ws = Option(
               makeWebSocketClient[Option[ChatMessage]](
-                uriOrSocket = Left(new URI("ws://localhost:8079/api/chat/ws")),
+                uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/chat/ws")),
                 query = Subscriptions
                   .chatStream(p.channel.value, connectionId)(
                     chatSelectionBuilder

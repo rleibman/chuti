@@ -26,13 +26,7 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType
-}
+import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -43,6 +37,7 @@ import org.scalajs.dom.window
 import router.AppRouter
 import service.UserRESTClient
 import typings.std.global.Audio
+import util.Config
 
 import scala.util.{Failure, Success}
 
@@ -290,7 +285,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
               user = whoami,
               userStream = Option(
                 makeWebSocketClient[Option[(User, CalibanUserEventType)]](
-                  uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                  uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                   query = Subscriptions
                     .userStream(connectionId)(
                       userEventSelectionBuilder
@@ -316,7 +311,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
               else
                 gameInProgressOpt.map(game =>
                   makeWebSocketClient[Option[Json]](
-                    uriOrSocket = Left(new URI("ws://localhost:8079/api/game/ws")),
+                    uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                     query = Subscriptions.gameStream(game.id.get.value, connectionId),
                     onData = { (_, data) =>
                       data.flatten.fold(Callback.empty)(json =>

@@ -30,6 +30,7 @@ import io.circe.{Decoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
+import util.Config
 import zio.duration._
 
 import scala.concurrent.Future
@@ -42,7 +43,7 @@ trait WebSocketHandler {
 
 trait ScalaJSClientAdapter extends TimerSupport {
   import sttp.client._
-  val serverUri = uri"http://localhost:8079/api/game"
+  val serverUri = uri"http://${Config.chutiHost}/api/game"
   implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
 
   def asyncCalibanCall[Origin, A](
