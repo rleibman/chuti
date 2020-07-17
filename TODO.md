@@ -31,7 +31,7 @@ DONE - Join random game (first user)
 DONE - Join random game (second and third users)
 DONE - Join random game (fourth user)
 DONE - Abandon unstarted game
-- Abandon a started game
+DONE- Abandon a started game
 DONE - Invite one existing user to game
 DONE - Invite non-existing user to game
 DONE - Accept game invite
@@ -55,7 +55,8 @@ DONE - Aplicando #C, ya esta listo para caerse pero el juego no lo detecta corre
 DONE - Aplicando #C, me encuentro en una posicion en la que dos personas pueden pedir... porque?
 DONE - 2 filas a la derecha o izquierda look weird.
 - Double pressing of buttons is messing things up!
-- Si haces hoyo técnico y cantaste se te cuentan todos tus puntos negativos 
+DONE - Si haces hoyo técnico y cantaste se te cuentan todos tus puntos negativos
+DONE - Hoyo tecnico cuando: el cantador no tiene la mano, tiene nada mas una ficha y esta a punto de perder. No hay boton de caete.
 
 ## To test
 - Invite by email, unhappy paths
@@ -75,7 +76,7 @@ DONE - Poner un boton en el lobby: "Empezar nuevo partido con los mismos jugador
 DONE - Consistent language
 - Translate to English
 - Versioning and upgrade in Game object
-- FUTURE. Chose domino back logo
+- Chose domino back logo
 
 ##Server
 - Rehydrate the system after restart
@@ -113,7 +114,6 @@ Glimpse into queues
 Accounts, add money, request money transfer
 ### About screen
 
-
 ------------------------------------------------------
 
 #Interesting games
@@ -123,19 +123,8 @@ update game set current_index = 14, status='jugando', lastSnapshot = '{"id": {"v
 
 #Bugs
 - Double pressing of buttons is messing things up!
-- Si haces hoyo técnico y cantaste se te cuentan todos tus puntos negativos
-- Si haces hoyo tecnico,  
-- Hoyo tecnico cuando: el cantador no tiene la mano, tiene nada mas una ficha y esta a punto de perder. No hay boton de caete.
-
-#Still pending v1
-- Abandon a started game
 
 ## To test
 - Invite by email, unhappy paths
 - Transfer of ownership when original user abandons game
 - Add unique constraint to friends
-
-
-update game_players set invited = 1 where game_id = 89 and user_id > 1; update game set current_index = 93, status='esperandoJugadoresInvitados', lastSnapshot = '{"id": {"value": 89}, "created": "2020-07-13T15:53:33.438268", "enJuego": [], "triunfo": null, "jugadores": [{"mano": false, "user": {"id": {"value": 1}, "name": "Roberto", "email": "roberto@leibman.net", "active": true, "created": "2020-04-09T00:28:28", "deleted": false, "isAdmin": false}, "filas": [], "turno": false, "cuenta": [], "fichas": [], "invited": false, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 47}, "name": "aoeuaoeu", "email": "roberto+aoeuaoeu@leibman.net", "active": true, "created": "2020-06-04T09:15:58", "deleted": false, "isAdmin": false}, "filas": [], "turno": false, "cuenta": [], "fichas": [], "invited": true, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 46}, "name": "aoeu", "email": "roberto+aoeu@leibman.net", "active": true, "created": "2020-06-04T09:12:10", "deleted": false, "isAdmin": false}, "filas": [], "turno": false, "cuenta": [], "fichas": [], "invited": true, "cantante": false, "statusString": "", "cuantasCantas": null}, {"mano": false, "user": {"id": {"value": 39}, "name": "test1", "email": "roberto+test1@leibman.net", "active": true, "created": "2020-05-25T11:01:29", "deleted": false, "isAdmin": false}, "filas": [], "turno": false, "cuenta": [], "fichas": [], "invited": true, "cantante": false, "statusString": "", "cuantasCantas": null}], "gameStatus": {"esperandoJugadoresInvitados": {}}, "statusString": "", "estrictaDerecha": false, "satoshiPerPoint": 100, "currentEventIndex": 4}' where id = 89;
-
-Odd winning: 3:2, 3:3, 1:1, 3:4 triunfan 0, gano 3:2?
