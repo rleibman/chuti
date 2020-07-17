@@ -10,6 +10,8 @@ resolvers += Resolver.mavenLocal
 resolvers += Resolver.sonatypeRepo("snapshots")
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 
+enablePlugins(GitVersioning)
+
 lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
