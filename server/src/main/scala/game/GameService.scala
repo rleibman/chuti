@@ -320,7 +320,10 @@ object GameService {
               case (_, appliedEvent) =>
                 broadcast(gameEventQueues, appliedEvent)
             }
-            _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.AbandonedGame))
+            _ <- broadcast(
+              userEventQueues,
+              UserEvent(user, UserEventType.AbandonedGame, savedOpt.flatMap(_._1.id))
+            )
           } yield savedOpt.nonEmpty).mapError(GameException.apply)
 
         def broadcastGameEvent(gameEvent: GameEvent): ZIO[GameLayer, GameException, GameEvent] = {
@@ -381,7 +384,7 @@ object GameService {
             _ <- ZIO.foreachPar(upserted.jugadores.find(_.user.id == user.id))(j =>
               repository.userOperations.upsert(j.user)
             )
-            _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
+            _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, upserted.id))
           } yield upserted).mapError(GameException.apply)
 
         override def getGame(gameId: GameId): ZIO[GameLayer, GameException, Option[Game]] =
@@ -563,7 +566,10 @@ object GameService {
             )
             _ <- broadcast(gameEventQueues, afterApply._2)
             _ <- broadcast(gameEventQueues, afterApply._3)
-            _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame))
+            _ <- broadcast(
+              userEventQueues,
+              UserEvent(user, UserEventType.JoinedGame, afterApply._1.id)
+            )
           } yield afterApply._1
         }
 
@@ -797,7 +803,7 @@ object GameService {
                 //Only broadcast connections if the user is not yet in one of the queues, and don't send
                 //the event to the same user that just logged in (no point, they know they logged in)
                 if (!allUserQueues.exists(_.user.id == user.id)) {
-                  val userEvent = UserEvent(user, UserEventType.Connected)
+                  val userEvent = UserEvent(user, UserEventType.Connected, None)
                   UIO.foreach(allUserQueues)(userQueue => userQueue.queue.offer(userEvent))
                 } else
                   ZIO.unit
@@ -812,7 +818,7 @@ object GameService {
                   userEventQueues.update(_.filterNot(_.connectionId == connectionId)) *>
                   log.debug(s"Shut down user queue") *>
                   //Only broadcast disconnects if it's the last entry of the user in the queue of connections
-                  broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected))
+                  broadcast(userEventQueues, UserEvent(user, UserEventType.Disconnected, None))
                     .whenM(userEventQueues.get.map(!_.exists(_.user.id == user.id)))
               }.catchAllCause { c =>
                 c.prettyPrint

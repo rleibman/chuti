@@ -47,3 +47,5 @@ dist
 debugDist
 dist
 /.env
+/.bloop/
+/.metals/

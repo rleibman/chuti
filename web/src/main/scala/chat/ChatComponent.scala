@@ -34,11 +34,9 @@ import chat.ChatClient.{
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
+import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{ReactMouseEventFrom, _}
-import org.scalajs.dom.raw.HTMLButtonElement
-import typings.semanticUiReact.buttonButtonMod.ButtonProps
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import util.Config
@@ -75,7 +73,7 @@ object ChatComponent extends ScalaJSClientAdapter {
     private def onSend(
       p: Props,
       s: State
-    ) = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+    ): Callback = {
       import sttp.client._
       implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
       val mutation = Mutations.say(s.msgInFlux, p.channel.value)
@@ -121,12 +119,22 @@ object ChatComponent extends ScalaJSClientAdapter {
         ),
         <.div(
           ^.className := "sendMessage",
-          TextArea(value = s.msgInFlux, onChange = onMessageInFluxChange)(),
+          TextArea(
+            value = s.msgInFlux,
+            onChange = onMessageInFluxChange,
+            onKeyPress = { e =>
+              if (e.which == 13 && !e.shiftKey)
+                Callback {
+                  e.preventDefault()
+                } >> onSend(p, s) >> Callback(e.target.focus())
+              else Callback.empty
+            }
+          )(),
           Button(
             compact = true,
             basic = true,
             disabled = s.msgInFlux.trim.isEmpty,
-            onClick = onSend(p, s)
+            onClick = { (_, _) => onSend(p, s) }
           )("Send")
         )
       )
@@ -175,7 +183,11 @@ object ChatComponent extends ScalaJSClientAdapter {
                   Callback.log(s"got data! $flatted")
                   flatted
                     .fold(Callback.empty) { msg =>
-                      msg.toUser.fold($.modState(s => s.copy(s.chatMessages :+ msg))) { _ =>
+                      msg.toUser.fold(
+                        $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
+                          s.copy(s.chatMessages :+ msg)
+                        )
+                      ) { _ =>
                         $.props.flatMap(_.onPrivateMessage(msg))
                       }
                     }
@@ -193,7 +205,8 @@ object ChatComponent extends ScalaJSClientAdapter {
   case class Props(
     user:             User,
     channel:          ChannelId,
-    onPrivateMessage: ChatMessage => Callback
+    onPrivateMessage: ChatMessage => Callback,
+    onMessage:        ChatMessage => Callback
   )
 
   implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
@@ -216,7 +229,10 @@ object ChatComponent extends ScalaJSClientAdapter {
   def apply(
     user:             User,
     channel:          ChannelId,
-    onPrivateMessage: ChatMessage => Callback = _ => Callback.empty
+    onPrivateMessage: ChatMessage => Callback = _ => Callback.empty,
+    onMessage:        ChatMessage => Callback = _ => Callback.empty
   ): Unmounted[Props, State, Backend] =
-    component.withKey(s"chatChannel${channel.value}")(Props(user, channel, onPrivateMessage))
+    component.withKey(s"chatChannel${channel.value}")(
+      Props(user, channel, onPrivateMessage, onMessage)
+    )
 }

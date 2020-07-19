@@ -46,7 +46,8 @@ object UserEventType {
 
 case class UserEvent(
   user:          User,
-  userEventType: UserEventType
+  userEventType: UserEventType,
+  gameId:        Option[GameId]
 )
 
 case class ConnectionId(value: String) extends AnyVal

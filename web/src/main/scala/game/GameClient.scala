@@ -73,6 +73,7 @@ object GameClient {
     def user[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[UserEvent, A] =
       Field("user", Obj(innerSelection))
     def userEventType: SelectionBuilder[UserEvent, UserEventType] = Field("userEventType", Scalar())
+    def gameId:        SelectionBuilder[UserEvent, Option[Int]] = Field("gameId", OptionOf(Scalar()))
   }
 
   type Queries = RootQuery

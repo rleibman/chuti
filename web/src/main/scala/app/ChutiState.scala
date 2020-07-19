@@ -40,7 +40,7 @@ case class ChutiState(
   serverVersion:         Option[String] = None,
   gameInProgress:        Option[Game] = None,
   modGameInProgress:     (Game => Game, Callback) => Callback = (_, c) => c,
-  onRequestGameRefresh:  Callback = Callback.empty,
+  onRequestGameRefresh:  () => Callback = { () => Callback.empty },
   gameStream:            Option[WebSocketHandler] = None,
   gameViewMode:          GameViewMode = GameViewMode.lobby,
   onGameViewModeChanged: GameViewMode => Callback = _ => Callback.empty,
@@ -50,7 +50,8 @@ case class ChutiState(
   loggedInUsers:         List[User] = List.empty,
   currentDialog:         GlobalDialog = GlobalDialog.none,
   muted:                 Boolean = false,
-  toggleSound:           Callback = Callback.empty
+  toggleSound:           Callback = Callback.empty,
+  playSound:             Option[String] => Callback = _ => Callback.empty
 ) {
   lazy val usersAndFriends: Seq[ExtUser] =
     loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++

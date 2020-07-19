@@ -130,8 +130,9 @@ object NewUserAcceptFriendPage {
     ): VdomElement =
       state.user.fold(
         <.div(
-          "Mil disculpas, la clave ya no es valida, tu invitación ha caducado, pero te puedes registrar ",
-          <.a(^.href := "/loginForm", " aquí de cualquier modo!")
+          "Mil disculpas, la clave ya no es valida, tu invitación ha caducado, o puede ser que ya estes registrado, si no es así, te puedes registrar ",
+          <.a(^.href := "/loginForm", " aquí "),
+          "de cualquier modo!"
         )
       )(u =>
         <.div(

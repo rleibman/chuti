@@ -322,7 +322,20 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def getGameForUser: RepositoryIO[Option[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
-        .join(GameQuery).on(_.gameId === _.id)
+        .join(
+          GameQuery.filter(
+            _.gameStatus.inSet(
+              Set(
+                GameStatus.comienzo,
+                GameStatus.requiereSopa,
+                GameStatus.cantando,
+                GameStatus.jugando,
+                GameStatus.esperandoJugadoresAzar,
+                GameStatus.esperandoJugadoresInvitados
+              )
+            )
+          )
+        ).on(_.gameId === _.id)
         .sortBy(_._2.lastupdated.desc)
         .result
         .map(_.headOption.map(row => GameRow2Game(row._2)))

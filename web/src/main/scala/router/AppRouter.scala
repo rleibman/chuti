@@ -226,8 +226,9 @@ object AppRouter extends ChutiComponent {
             onPrivateMessage = { msg =>
               Toast.info(
                 <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
-              ) >> chutiState.onRequestGameRefresh
-            }
+              ) >> chutiState.onRequestGameRefresh()
+            },
+            onMessage = _ => chutiState.playSound(Option("sounds/message.mp3"))
           )
         }
       )

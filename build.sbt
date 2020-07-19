@@ -1,3 +1,5 @@
+////////////////////////////////////////////////////////////////////////////////////
+// Common Stuff
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 
@@ -71,7 +73,9 @@ lazy val commonVmSettings = commonSettings ++ Seq(
   )
 )
 
-lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
+////////////////////////////////////////////////////////////////////////////////////
+// common (i.e. model)
+lazy val common = crossProject(JSPlatform, JVMPlatform)
   .in(file("common"))
   .settings(commonVmSettings)
   .enablePlugins(
@@ -107,12 +111,8 @@ lazy val common: CrossProject = crossProject(JSPlatform, JVMPlatform)
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-lazy val server: Project = project
+lazy val server = project
   .in(file("server"))
-  .configs(IntegrationTest)
-  .dependsOn(commonJVM)
-  .settings(Defaults.itSettings, debianSettings)
-  .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
     GitVersioning,
@@ -124,19 +124,22 @@ lazy val server: Project = project
     SystemloaderPlugin,
     SystemdPlugin
   )
+  .settings(Defaults.itSettings, debianSettings)
+  .settings(commonVmSettings)
+  .configs(IntegrationTest)
+  .dependsOn(commonJVM)
   .settings(
     name := "chuti-server",
     libraryDependencies ++= Seq(
       //Akka
-      "com.typesafe.akka"                  %% "akka-actor-typed" % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-http"        % akkaHttpVersion withSources (),
       "de.heikoseeberger"                  %% "akka-http-circe"  % "1.33.0" withSources (),
       "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
       //DB
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
-      "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
+      "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "mysql"                     % "mysql-connector-java"    % "8.0.21" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
       // Scala Cache
@@ -157,7 +160,7 @@ lazy val server: Project = project
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
       "org.scalatest" %% "scalatest"               % "3.2.0"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources ()
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources (),
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -239,6 +242,10 @@ lazy val debianSettings =
     }
   )
 
+////////////////////////////////////////////////////////////////////////////////////
+// Web
+lazy val reactVersion = "16.13.1"
+
 lazy val web: Project = project
   .in(file("web"))
   .dependsOn(commonJS)
@@ -295,7 +302,7 @@ lazy val web: Project = project
       }
 
       distFolder
-    }
+    },
   )
 
 lazy val commonWeb: Project => Project =
@@ -326,7 +333,6 @@ lazy val commonWeb: Project => Project =
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
-        "org.scalatest" %%% "scalatest"                 % "3.2.0" % "test" withSources ()
       ),
       organizationName := "Roberto Leibman",
       startYear        := Some(2020),
@@ -386,9 +392,6 @@ lazy val commonWeb: Project => Project =
 lazy val bundlerSettings: Project => Project =
   _.enablePlugins(ScalaJSBundlerPlugin)
     .settings(
-      scalaJSUseMainModuleInitializer := true,
-//      /* disabled because it somehow triggers many warnings */
-//      emitSourceMaps    := false,
       startWebpackDevServer / version := "3.1.10",
       webpack / version               := "4.28.3",
       Compile / fastOptJS / webpackExtraArgs += "--mode=development",
@@ -408,9 +411,9 @@ lazy val bundlerSettings: Project => Project =
         ((moduleName in fullOptJS).value + "-opt.js")),
       webpackEmitSourceMaps := true,
       Compile / npmDependencies ++= Seq(
-        "react-dom"         -> "16.13.1",
+        "react-dom"         -> reactVersion,
         "@types/react-dom"  -> "16.9.6",
-        "react"             -> "16.13.1",
+        "react"             -> reactVersion,
         "@types/react"      -> "16.9.32",
         "semantic-ui-react" -> "0.88.2"
       ),

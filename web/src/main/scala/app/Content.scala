@@ -77,11 +77,11 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           if (doRefresh)
             Callback.info(
               "Had to force a refresh because the event index was too far into the future"
-            ) >> refresh()
+            ) >> refresh(initial = false)()
           else
             gameEvent.reapplyMode match {
               case ReapplyMode.none        => Callback.empty
-              case ReapplyMode.fullRefresh => refresh()
+              case ReapplyMode.fullRefresh => refresh(initial = false)()
               case ReapplyMode.reapply     => reapplyEvent(gameEvent)
             }
         }
@@ -92,7 +92,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         updateGame >> {
         gameEvent match {
           case e: TerminaJuego if e.partidoTerminado =>
-            refresh() >> $.modState(s =>
+            refresh(initial = false)() >> $.modState(s =>
               s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
             )
           case _ => Callback.empty
@@ -146,7 +146,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
             oldGame <- chutiState.gameInProgress
           } yield newGame.id != oldGame.id).getOrElse(true)
           if (doRefresh)
-            Callback.log("Full refresh needed") >> refresh() >> callback
+            Callback.log("Full refresh needed") >> refresh(initial = false)() >> callback
           else {
             $.modState(
               s => s.copy(chutiState = s.chutiState.copy(gameInProgress = newGameOpt)),
@@ -204,28 +204,46 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
     def showDialog(dlg: GlobalDialog): Callback =
       $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
 
-    def onUserStreamData(data: Option[(User, CalibanUserEventType)]): Callback = {
+    def onUserStreamData(
+      currentUser:   User,
+      currentGameId: Option[GameId]
+    )(
+      data: Option[(User, CalibanUserEventType, Option[GameId])]
+    ): Callback = {
       import CalibanUserEventType._
       Callback.log(data.toString) >> {
         data match {
           case None => Callback.empty
-          case Some((user, Disconnected)) =>
+          case Some((user, Disconnected, _)) =>
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
                   .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
               )
             )
-          case Some((user, Connected | Modified)) =>
+          case Some((user, Connected | Modified, _)) =>
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
                   .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
               )
             )
-          case Some((_, AbandonedGame | JoinedGame)) =>
-            //TODO for performance, we want to add gameid to the user event, only refresh when user id
-            refresh()
+          case Some((_, AbandonedGame, gameId)) =>
+            //Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
+            //That'll request a refresh.
+            //Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
+            if (gameId != currentGameId)
+              Callback.empty
+            else
+              refresh(initial = false)()
+          case Some((user, JoinedGame, gameId)) =>
+            //Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
+            //That'll request a refresh.
+            //Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
+            if (user.id == currentUser.id || gameId != currentGameId)
+              Callback.empty
+            else
+              refresh(initial = false)()
         }
       }
     }
@@ -245,19 +263,27 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       )
 
     lazy private val userEventSelectionBuilder
-      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType)] =
-      (CalibanUserEvent.user(CalibanUser.id) ~
+      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
+      val t: SelectionBuilder[
+        CalibanUserEvent,
+        ((((Option[Int], String), String), CalibanUserEventType), Option[Int])
+      ] = CalibanUserEvent.user(CalibanUser.id) ~
         CalibanUserEvent.user(CalibanUser.name) ~
         CalibanUserEvent.user(CalibanUser.email) ~
-        CalibanUserEvent.userEventType).map {
-        case (((idOpt, name), email), eventType) =>
+        CalibanUserEvent.userEventType ~
+        CalibanUserEvent.gameId
+
+      t.map {
+        case ((((idOpt, name), email), eventType), gameIdOpt) =>
           (
             User(id = idOpt.map(UserId), name = name, email = email),
-            eventType
+            eventType,
+            gameIdOpt.map(GameId)
           )
       }
+    }
 
-    def refresh(initial: Boolean = false): Callback = {
+    def refresh(initial: Boolean)(): Callback = {
       val ajax = for {
         oldState <- ($.state).asAsyncCallback
         whoami <-
@@ -272,31 +298,38 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
             newGame <- gameInProgressOpt
             _       <- oldState.chutiState.gameStream
           } yield oldGame.id != newGame.id).getOrElse(true)
+
         _ <-
           (if (needNewGameStream)
              oldState.chutiState.gameStream.fold(
                Callback.log("Don't need to close stream, it hasn't been opened yet")
              )(_.close())
            else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
+
       } yield $.modState { s =>
         val copy = if (initial) {
           s.copy(
             chutiState = s.chutiState.copy(
               modGameInProgress = modGameInProgress,
-              onRequestGameRefresh = refresh(),
+              onRequestGameRefresh = refresh(initial = false) _,
               onGameViewModeChanged = onGameViewModeChanged,
               onUserChanged = onUserChanged,
               toggleSound = toggleSound,
               showDialog = showDialog,
+              playSound = playSound,
               user = whoami,
               userStream = Option(
-                makeWebSocketClient[Option[(User, CalibanUserEventType)]](
+                makeWebSocketClient[Option[(User, CalibanUserEventType, Option[GameId])]](
                   uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                   query = Subscriptions
                     .userStream(connectionId)(
                       userEventSelectionBuilder
                     ),
-                  onData = { (_, data) => onUserStreamData(data.flatten) },
+                  onData = { (_, data) =>
+                    whoami.fold(Callback.empty)(currentUser =>
+                      onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten)
+                    )
+                  },
                   operationId = "-",
                   connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.value)}"
                 )
@@ -367,7 +400,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       State(chutiState = ChutiState(gameViewMode = gameViewMode))
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh(initial = true))
+    .componentDidMount($ => $.backend.refresh(initial = true)())
     .componentWillUnmount($ =>
       Callback.log("Closing down gameStream and userStream") >>
         $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>

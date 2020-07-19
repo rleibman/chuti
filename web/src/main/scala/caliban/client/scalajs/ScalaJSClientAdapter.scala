@@ -217,15 +217,19 @@ trait ScalaJSClientAdapter extends TimerSupport {
         lastKAOpt:       Option[LocalDateTime] = None,
         kaIntervalOpt:   Option[Int] = None,
         firstConnection: Boolean = true,
-        reconnectCount:  Int = 0
+        reconnectCount:  Int = 0,
+        closed:          Boolean = false
       )
 
       private var connectionState: ConnectionState = ConnectionState()
 
       def doConnect(): Unit = {
-        val sendMe = GQLConnectionInit()
-        println(s"Sending: $sendMe")
-        socket.send(sendMe.asJson.noSpaces)
+        if (!connectionState.closed) {
+          val sendMe = GQLConnectionInit()
+          println(s"Sending: $sendMe")
+          socket.send(sendMe.asJson.noSpaces)
+        } else
+          println("Connection is already closed")
       }
 
       socket.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
@@ -297,30 +301,34 @@ trait ScalaJSClientAdapter extends TimerSupport {
             connectionState = connectionState.copy(lastKAOpt = Option(LocalDateTime.now()))
             onKeepAlive(payload).runNow()
           case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
-            connectionState = connectionState.copy(reconnectCount = 0)
-            val res = for {
-              payload <- payloadOpt.toRight(DecodingError("No payload"))
-              parsed <-
-                graphQLDecoder
-                  .decodeJson(payload)
-                  .left
-                  .map(ex => DecodingError("Json deserialization error", Some(ex)))
-              data <-
-                if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
-                else Right(parsed.data)
-              objectValue <- data match {
-                case Some(o: ObjectValue) => Right(o)
-                case _ => Left(DecodingError(s"Result is not an object ($data)"))
-              }
-              result <- query.fromGraphQL(objectValue)
-            } yield result
+            if (connectionState.closed)
+              println("Connection is already closed")
+            else {
+              connectionState = connectionState.copy(reconnectCount = 0)
+              val res = for {
+                payload <- payloadOpt.toRight(DecodingError("No payload"))
+                parsed <-
+                  graphQLDecoder
+                    .decodeJson(payload)
+                    .left
+                    .map(ex => DecodingError("Json deserialization error", Some(ex)))
+                data <-
+                  if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
+                  else Right(parsed.data)
+                objectValue <- data match {
+                  case Some(o: ObjectValue) => Right(o)
+                  case _ => Left(DecodingError(s"Result is not an object ($data)"))
+                }
+                result <- query.fromGraphQL(objectValue)
+              } yield result
 
-            res match {
-              case Right(data) =>
-                onData(id.getOrElse(""), Option(data)).runNow()
-              case Left(error) =>
-                error.printStackTrace()
-                onClientError(error).runNow()
+              res match {
+                case Right(data) =>
+                  onData(id.getOrElse(""), Option(data)).runNow()
+                case Left(error) =>
+                  error.printStackTrace()
+                  onClientError(error).runNow()
+              }
             }
           case Right(GQLOperationMessage(GQL_ERROR, id, payload)) =>
             println(s"Error from server $payload")
@@ -340,8 +348,6 @@ trait ScalaJSClientAdapter extends TimerSupport {
         onClientError(new Exception(s"We've got a socket error, no further info ($e)"))
       }
       socket.onopen = { (_: org.scalajs.dom.Event) =>
-//      println(socket.protocol)
-//      println(e.`type`)
         onConnecting.runNow()
         doConnect()
       }
@@ -353,14 +359,15 @@ trait ScalaJSClientAdapter extends TimerSupport {
           ) >>
             setTimeoutMs(close(), 1000)
         } else if (socket.readyState == WebSocket.OPEN) {
-          Callback.log("Closing socket") >> Callback {
+          Callback.log(s"Closing socket: $query") >> Callback {
+            connectionState = connectionState.copy(closed = true)
             connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
             socket.send(GQLStop().asJson.noSpaces)
             socket.send(GQLConnectionTerminate().asJson.noSpaces)
             socket.close()
           }
         } else
-          Callback.log("Socket is already closed")
+          Callback.log(s"Socket is already closed: $query")
       }
     }
 

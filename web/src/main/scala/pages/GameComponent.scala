@@ -350,21 +350,25 @@ object GameComponent {
                     ^.className := s"filas$playerPosition",
                     jugador.filas.zipWithIndex.toVdomArray {
                       case (fila, filaIndex) =>
+                        val abierta =
+                          fila.fichas.size < 4 || fila.index == 0 || (fila.index == (game.jugadores
+                            .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
+                        val fichaGanadora =
+                          if (!abierta) None
+                          else Option(game.fichaGanadora(fila.fichas.head, fila.fichas.tail))
                         <.div(
                           ^.key       := s"fila_${playerIndex}_$filaIndex",
                           ^.className := s"filaFichas$playerPosition",
                           fila.fichas.zipWithIndex.toVdomArray {
                             case (ficha, fichaIndex) =>
-                              val abierta =
-                                fila.fichas.size < 4 || fila.index == 0 || (fila.index == (game.jugadores
-                                  .flatMap(_.filas).size - 1) && game.enJuego.isEmpty)
                               if (abierta) {
                                 <.div(
                                   ^.key       := s"fila_ficha_${playerIndex}_${filaIndex}_$fichaIndex",
                                   ^.className := s"dominoJugado${playerPosition}Container",
                                   <.img(
-                                    ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
-                                    ^.className := s"dominoJugado$playerPosition"
+                                    ^.src := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
+                                    ^.className := s"dominoJugado$playerPosition${if (fichaGanadora.fold(false)(_ == ficha)) " fichaGanadora"
+                                    else ""}"
                                   )
                                 )
                               } else {

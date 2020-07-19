@@ -222,7 +222,7 @@ trait AuthRoute
                           exists <- userOps.userByEmail(request.user.email).map(_.nonEmpty)
                           saved <-
                             if (validate.nonEmpty || exists) ZIO.none
-                            else userOps.upsert(request.user.copy(active = false)).map(Option(_))
+                            else userOps.upsert(request.user.copy(active = true)).map(Option(_))
                           _ <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
                           _ <- (log.info("About to send") *> ZIO
                               .foreach(saved)(postman.registrationEmail).flatMap(envelope =>
@@ -315,7 +315,7 @@ trait AuthRoute
           session <- ZIO.service[SessionProvider.Session].map(_.session)
           runtime <- ZIO.environment[SessionProvider with Logging with OpsService]
         } yield {
-          // This should be protected and accessible only when logged in
+          // These should be protected and accessible only when logged in
           path("whoami") {
             get {
               complete(Option(session.user))
