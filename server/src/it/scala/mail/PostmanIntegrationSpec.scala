@@ -28,7 +28,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
           ).fork
         } yield delivered
 
-        zio.map(test => assert(true)(equalTo(true)))
+        zio.as(assert(true)(equalTo(true)))
       },
       testM("sending a specific email") {
         //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
@@ -39,11 +39,11 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
           delivered <- postman.deliver(envelope).fork
         } yield delivered
 
-        zio.map(test => assert(true)(equalTo(true)))
+        zio.as(assert(true)(equalTo(true)))
       }
     ).provideCustomLayer(
       ZLayer.succeed(CourierPostman.live(config.live)) ++
-      ZLayer.succeed(TokenHolder.live)
+      ZLayer.succeed(TokenHolder.tempCache)
     )
 }
 

@@ -16,7 +16,10 @@
 
 package dao
 
+import api.token.{Token, TokenPurpose}
 import chuti._
+
+import scala.concurrent.duration.Duration
 
 object Repository {
   trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
@@ -41,6 +44,7 @@ object Repository {
     def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet]
   }
   trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {
+    def getHistoricalUserGames: RepositoryIO[Seq[Game]]
     def userInGame(id:      GameId): RepositoryIO[Boolean]
     def updatePlayers(game: Game):   RepositoryIO[Game]
     def gameInvites:              RepositoryIO[Seq[Game]]
@@ -48,9 +52,30 @@ object Repository {
     def getGameForUser:           RepositoryIO[Option[Game]]
   }
 
+  trait TokenOperations {
+    def cleanup: RepositoryIO[Boolean]
+
+    def validateToken(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]]
+    def createToken(
+      user:    User,
+      purpose: TokenPurpose,
+      ttl:     Option[Duration]
+    ): RepositoryIO[Token]
+    def peek(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]]
+  }
+
   trait Service {
     val gameOperations: GameOperations
 
     val userOperations: UserOperations
+
+    val tokenOperations: TokenOperations
+
   }
 }

@@ -16,11 +16,14 @@
 
 package dao
 
+import java.math.BigInteger
+import java.security.SecureRandom
 import java.sql.{SQLException, Timestamp}
 
 import api.ChutiSession
+import api.token.{Token, TokenPurpose}
 import chuti._
-import dao.Repository.{GameOperations, UserOperations}
+import dao.Repository.{GameOperations, TokenOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
 import game.GameService
@@ -45,7 +48,7 @@ object SlickRepository {
 
 final class SlickRepository(databaseProvider: DatabaseProvider)
     extends Repository.Service with SlickToModelInterop {
-  val dbProviderLayer = ZLayer.succeed(databaseProvider)
+  private val dbProviderLayer = ZLayer.succeed(databaseProvider)
   import SlickRepository.gameCache
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
@@ -319,6 +322,23 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         .result
         .map(_.map(row => GameRow2Game(row)))
 
+    override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = { session: ChutiSession =>
+      GamePlayersQuery
+        .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
+        .join(
+          GameQuery.filter(
+            _.gameStatus.inSet(
+              Set(
+                GameStatus.partidoTerminado
+              )
+            )
+          )
+        ).on(_.gameId === _.id)
+        .sortBy(_._2.lastupdated.desc)
+        .result
+        .map(_.map(row => GameRow2Game(row._2)))
+    }
+
     override def getGameForUser: RepositoryIO[Option[Game]] = { session: ChutiSession =>
       GamePlayersQuery
         .filter(p => p.userId === session.user.id.getOrElse(UserId(-1)) && !p.invited)
@@ -373,4 +393,53 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         .filter(gp => gp.gameId === id && gp.userId === chutiSession.user.id).exists.result
     }
   }
+
+  override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+    private val random = SecureRandom.getInstanceStrong
+    override def validateToken(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]] = {
+      for {
+        user <-
+          TokenQuery
+            .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
+            .join(UserQuery).on(_.userId === _.id)
+            .result.map(_.headOption.map(r => UserRow2User(r._2)))
+        _ <-
+          TokenQuery
+            .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
+            .delete
+      } yield user
+    }
+
+    override def createToken(
+      user:    User,
+      purpose: TokenPurpose,
+      ttl:     Option[Duration]
+    ): RepositoryIO[Token] = {
+      val row = TokenRow(
+        tok = new BigInteger(12 * 5, random).toString(32),
+        tokenPurpose = purpose.toString,
+        expireTime =
+          new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
+        userId = user.id.getOrElse(UserId(-1))
+      )
+      TokenQuery.forceInsert(row).map(_ => Token(row.tok))
+    }
+
+    override def peek(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]] =
+      TokenQuery
+        .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
+        .join(UserQuery).on(_.userId === _.id)
+        .result.map(_.headOption.map(r => UserRow2User(r._2)))
+
+    override def cleanup: RepositoryIO[Boolean] = {
+      TokenQuery.filter(_.expireTime >= new Timestamp(System.currentTimeMillis())).delete.map(_ > 0)
+    }
+  }
+
 }

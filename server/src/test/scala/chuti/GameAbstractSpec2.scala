@@ -141,7 +141,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       repositoryLayer(gameFiles: _*) ++
       ZLayer.succeed(postman) ++
       loggingLayer ++
-      ZLayer.succeed(TokenHolder.live) ++
+      ZLayer.succeed(TokenHolder.tempCache) ++
       GameService.make() ++
       (loggingLayer >>> ChatService.make())
   }
@@ -170,8 +170,8 @@ trait GameAbstractSpec2 extends MockitoSugar {
   lazy final val GAME_CANTO4 =
     "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
   def WEIRD_GAME(prefix: String) =
-    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${(System
-      .currentTimeMillis() / 1000)}.json"
+    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${System
+      .currentTimeMillis() / 1000}.json"
 
   protected def userLayer(user: User): ULayer[SessionProvider] = {
     SessionProvider.layer(ChutiSession(user))
@@ -277,7 +277,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
     } yield g4
   }
 
-  def playFullGame =
+  def playFullGame: ZIO[zio.ZEnv, Throwable, (Assertion, Game)] =
     (for {
       gameService <- ZIO.service[GameService.Service]
       start       <- newGame(satoshiPerPoint = 100)
@@ -364,7 +364,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
     gameToPlay: Game
   ): ZIO[TestLayer with Clock with Console, Throwable, (Assertion, Game)] =
     for {
-      gameService    <- ZIO.access[GameService](_.get)
+      gameService    <- ZIO.service[GameService.Service]
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
       getGame <-
         ZIO
@@ -411,7 +411,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
 
   def playRound(filename: String): ZIO[zio.ZEnv, Throwable, (Assertion, Game)] =
     (for {
-      gameService       <- ZIO.access[GameService](_.get)
+      gameService       <- ZIO.service[GameService.Service]
       game              <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[TestLayer](godLayer)
       (asserts, played) <- juegaHastaElFinal(game.id.get)
     } yield (

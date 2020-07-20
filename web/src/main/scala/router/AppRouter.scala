@@ -35,6 +35,8 @@ object AppRouter extends ChutiComponent {
 
   case object GameAppPage extends AppPage
 
+  case object GameHistoryAppPage extends AppPage
+
   case object RulesAppPage extends AppPage
 
   case object UserSettingsAppPage extends AppPage
@@ -173,6 +175,12 @@ object AppRouter extends ChutiComponent {
                         .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
                     }
                   )("Lobby"),
+                  MenuItem(
+                    key = "history",
+                    onClick = { (e, _) =>
+                      page.setEH(GameHistoryAppPage)(e)
+                    }
+                  )("Historia de juegos"),
                   Divider()(),
                   MenuItem(onClick = { (e, _) => page.setEH(RulesAppPage)(e) })("Reglas de Chuti"),
                   MenuItem(onClick = { (_, _) =>
@@ -240,6 +248,7 @@ object AppRouter extends ChutiComponent {
 
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())
+      | staticRoute("#history", GameHistoryAppPage) ~> renderR(_ => GameHistoryPage())
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage())
       | staticRoute("#about", AboutAppPage) ~> renderR(_ => AboutPage())

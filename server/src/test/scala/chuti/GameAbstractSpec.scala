@@ -18,13 +18,13 @@ package chuti
 
 import java.util.UUID
 
-import api.token.TokenHolder
+import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
 import courier.Envelope
 import dao.Repository.GameOperations
-import dao.{DatabaseProvider, Repository}
+import dao.{DatabaseProvider, Repository, RepositoryIO}
 import io.circe.Printer
 import io.circe.generic.auto._
 import io.circe.parser.decode
@@ -35,6 +35,8 @@ import org.mockito.scalatest.MockitoSugar
 import zio._
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
+
+import scala.concurrent.duration.Duration
 
 trait GameAbstractSpec extends MockitoSugar {
   val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
@@ -73,9 +75,28 @@ trait GameAbstractSpec extends MockitoSugar {
       ZLayer.succeed(new Repository.Service {
         override val gameOperations: GameOperations = gameOps
         override val userOperations: Repository.UserOperations = userOps
+        override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
+          override def cleanup: RepositoryIO[Boolean] = ???
+
+          override def validateToken(
+            token:   Token,
+            purpose: TokenPurpose
+          ): RepositoryIO[Option[User]] = ???
+
+          override def createToken(
+            user:    User,
+            purpose: TokenPurpose,
+            ttl:     Option[Duration]
+          ): RepositoryIO[Token] = ???
+
+          override def peek(
+            token:   Token,
+            purpose: TokenPurpose
+          ): RepositoryIO[Option[User]] = ???
+        }
       }) ++
       loggingLayer ++
-      ZLayer.succeed(TokenHolder.live) ++
+      ZLayer.succeed(TokenHolder.tempCache) ++
       ZLayer.succeed(postman) ++
       (loggingLayer >>> ChatService.make())
   }

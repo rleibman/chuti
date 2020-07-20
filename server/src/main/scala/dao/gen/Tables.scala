@@ -467,4 +467,56 @@ trait Tables {
 
   lazy val UserLogQuery = new TableQuery(tag => new UserLogTable(tag))
 
+  case class TokenRow(
+    tok:          String,
+    tokenPurpose: String,
+    expireTime:   Timestamp,
+    userId:       UserId
+  )
+
+  implicit def GetResultTokenRow(
+    implicit e0: GR[String],
+    e1:          GR[Timestamp],
+    e2:          GR[Long],
+    e3:          GR[UserId]
+  ): GR[TokenRow] =
+    GR { prs =>
+      import prs._
+      TokenRow.tupled((<<[String], <<[String], <<[Timestamp], <<[UserId]))
+    }
+
+  class TokenTable(_tableTag: Tag)
+      extends profile.api.Table[TokenRow](_tableTag, Some("chuti"), "token") {
+    def * : ProvenShape[TokenRow] =
+      (tok, tokenPurpose, expireTime, userId) <> (TokenRow.tupled, TokenRow.unapply)
+
+    def ? : MappedProjection[Option[
+      TokenRow
+    ], (Option[String], Option[String], Option[Timestamp], Option[UserId])] =
+      (
+        Rep.Some(tok),
+        Rep.Some(tokenPurpose),
+        Rep.Some(expireTime),
+        Rep.Some(userId)
+      ).shaped.<>(
+        { r =>
+          import r._
+          _1.map(_ => TokenRow.tupled((_1.get, _2.get, _3.get, _4.get)))
+        },
+        (_: Any) => throw new Exception("Inserting into ? projection not supported.")
+      )
+
+    val tok:          Rep[String] = column[String]("tok")
+    val tokenPurpose: Rep[String] = column[String]("tokenPurpose")
+    val expireTime:   Rep[Timestamp] = column[Timestamp]("expireTime")
+    val userId:       Rep[UserId] = column[UserId]("userId")
+
+    lazy val userFk1 = foreignKey("token_user_id", userId, UserQuery)(
+      r => r.id,
+      onUpdate = ForeignKeyAction.Restrict,
+      onDelete = ForeignKeyAction.Restrict
+    )
+  }
+
+  lazy val TokenQuery = new TableQuery(tag => new TokenTable(tag))
 }

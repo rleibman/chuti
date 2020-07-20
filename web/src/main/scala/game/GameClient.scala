@@ -92,6 +92,8 @@ object GameClient {
       innerSelection: SelectionBuilder[User, A]
     ): SelectionBuilder[RootQuery, Option[List[A]]] =
       Field("getLoggedInUsers", OptionOf(ListOf(Obj(innerSelection))))
+    def getHistoricalUserGames: SelectionBuilder[RootQuery, Option[List[Json]]] =
+      Field("getHistoricalUserGames", OptionOf(ListOf(Scalar())))
   }
 
   type Mutations = RootMutation

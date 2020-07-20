@@ -20,9 +20,12 @@ import java.math.BigInteger
 import java.security.SecureRandom
 
 import chuti.User
+import dao.{Repository, SessionProvider}
+import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
-import zio.{Has, Task}
+import zio._
+import zio.logging.{Logger, Logging}
 
 import scala.concurrent.duration.{Duration, _}
 
@@ -30,8 +33,12 @@ package object token {
 
   sealed trait TokenPurpose
   object TokenPurpose {
-    case object NewUser extends TokenPurpose
-    case object LostPassword extends TokenPurpose
+    case object NewUser extends TokenPurpose {
+      override def toString: String = "NewUser"
+    }
+    case object LostPassword extends TokenPurpose {
+      override def toString: String = "LostPassword"
+    }
   }
 
   type TokenHolder = Has[TokenHolder.Service]
@@ -59,7 +66,39 @@ package object token {
       ): Task[Option[User]]
     }
 
-    val live: Service = new Service {
+    def dbLayer: ZLayer[Repository with Logging, Nothing, TokenHolder] =
+      ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
+        new Service {
+//          SessionProvider with Logging
+          val layer: ZLayer[Any, Nothing, SessionProvider with Logging] =
+            GameService.godLayer ++ ZLayer.succeed(log)
+
+          zio.Runtime.default.unsafeRun {
+            val freq = new zio.duration.DurationSyntax(1).hour
+            (log.info("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provideLayer(layer))
+              .repeat(Schedule.spaced(freq).jittered).forkDaemon
+          }
+
+          override def peek(
+            token:   Token,
+            purpose: TokenPurpose
+          ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provideLayer(layer)
+
+          override def createToken(
+            user:    User,
+            purpose: TokenPurpose,
+            ttl:     Option[Duration]
+          ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provideLayer(layer)
+
+          override def validateToken(
+            token:   Token,
+            purpose: TokenPurpose
+          ): Task[Option[User]] =
+            repo.tokenOperations.validateToken(token, purpose).provideLayer(layer)
+        }
+      })
+
+    val tempCache: Service = new Service {
 
       private val random = SecureRandom.getInstanceStrong
       import scalacache.ZioEffect.modes._

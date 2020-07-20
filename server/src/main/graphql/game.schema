@@ -37,6 +37,7 @@ type Queries {
   getFriends: [User!]
   getGameInvites: [Json!]
   getLoggedInUsers: [User!]
+  getHistoricalUserGames: [Json!]
 }
 
 type Subscriptions {

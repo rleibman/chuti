@@ -20,7 +20,6 @@ import api.ChutiSession
 import chuti.CuantasCantas.Buenas
 import dao.{Repository, SessionProvider}
 import game.GameService
-import game.GameService.GameService
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
@@ -28,7 +27,6 @@ import zio._
 import zio.duration._
 
 class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
-  import dao.InMemoryRepository._
   "Printing the game" should "print it" in {
     testRuntime.unsafeRun {
       for {
@@ -61,13 +59,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -146,13 +144,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -230,13 +228,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -288,13 +286,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -376,13 +374,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -446,13 +444,13 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
-      game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      game,
+      gameEvents,
+      userEvents
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(

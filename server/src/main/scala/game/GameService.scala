@@ -87,6 +87,8 @@ object GameService {
 
     def getLoggedInUsers: ZIO[GameLayer, GameException, Seq[User]]
 
+    def getHistoricalUserGames: ZIO[GameLayer, GameException, Seq[Game]]
+
     def inviteByEmail(
       name:   String,
       email:  String,
@@ -184,6 +186,9 @@ object GameService {
 
   def getLoggedInUsers: ZIO[GameService with GameLayer, GameException, Seq[User]] =
     URIO.accessM(_.get.getLoggedInUsers)
+
+  def getHistoricalUserGames: ZIO[GameService with GameLayer, GameException, Seq[Game]] =
+    URIO.accessM(_.get.getHistoricalUserGames)
 
   def acceptGameInvitation(gameId: GameId): ZIO[GameService with GameLayer, GameException, Game] =
     URIO.accessM(_.get.acceptGameInvitation(gameId))
@@ -392,6 +397,12 @@ object GameService {
             repository <- ZIO.service[Repository.Service]
             game       <- repository.gameOperations.get(gameId)
           } yield game).mapError(GameException.apply)
+
+        override def getHistoricalUserGames: ZIO[GameLayer, GameException, Seq[Game]] =
+          (for {
+            repository <- ZIO.service[Repository.Service]
+            games      <- repository.gameOperations.getHistoricalUserGames
+          } yield games).mapError(GameException.apply)
 
         override def getGameForUser: ZIO[GameLayer, GameException, Option[Game]] =
           (for {

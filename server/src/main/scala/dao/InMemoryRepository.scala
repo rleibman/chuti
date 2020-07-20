@@ -16,8 +16,13 @@
 
 package dao
 
+import api.token
+import api.token.{Token, TokenPurpose}
 import chuti._
+import dao.Repository.TokenOperations
 import zio.Task
+
+import scala.concurrent.duration.Duration
 
 object InMemoryRepository {
   val user1: User =
@@ -43,6 +48,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
   )
 
   override val gameOperations: Repository.GameOperations = new Repository.GameOperations {
+    override def getHistoricalUserGames:   RepositoryIO[Seq[Game]] = ???
     override def gameInvites:              RepositoryIO[Seq[Game]] = ???
     override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = ???
     override def getGameForUser:           RepositoryIO[Option[Game]] = ???
@@ -110,5 +116,24 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = ???
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
+  }
+  override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+    override def validateToken(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]] = ???
+
+    override def createToken(
+      user:    User,
+      purpose: TokenPurpose,
+      ttl:     Option[Duration]
+    ): RepositoryIO[Token] = ???
+
+    override def peek(
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]] = ???
+
+    override def cleanup: RepositoryIO[Boolean] = ???
   }
 }
