@@ -17,7 +17,7 @@
 package routes
 
 import akka.http.scaladsl.server.{Directives, Route}
-import api.ZIODirectives
+import api.{SessionUtils, ZIODirectives}
 import api.token.TokenHolder
 import chuti.Search
 import dao._
@@ -43,12 +43,8 @@ trait CRUDRoute[E, PK, SEARCH <: Search] {
 }
 
 object CRUDRoute {
-  abstract class Service[E, PK, SEARCH <: Search]
+  abstract class Service[E: Tag, PK: Tag, SEARCH <: Search: Tag]
       extends Directives with ZIODirectives with ErrorAccumulatingCirceSupport {
-
-    implicit private val tagE:      Tag[E] = Tag[E]
-    implicit private val tagPK:     Tag[PK] = Tag[PK]
-    implicit private val tagSearch: Tag[SEARCH] = Tag[SEARCH]
 
     type OpsService = Has[CRUDOperations[E, PK, SEARCH]]
 
@@ -126,11 +122,12 @@ object CRUDRoute {
       SessionProvider with Logging with OpsService,
       RepositoryException,
       E
-    ] =
+    ] = {
       for {
         ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
         ret <- ops.upsert(obj)
       } yield ret
+    }
 
     def countOperation(search: Option[SEARCH]): ZIO[
       SessionProvider with Logging with OpsService,

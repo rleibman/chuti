@@ -25,7 +25,7 @@ import chuti.{BuildInfo => _, _}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.SessionProvider
+import dao.{CRUDOperations, SessionProvider}
 import game.GameService
 import io.circe.generic.auto._
 import mail.Postman.Postman
@@ -33,6 +33,7 @@ import mail.{CourierPostman, Postman}
 import zio.Cause.Fail
 import zio._
 import zio.logging.{Logging, log}
+import zioslick.RepositoryException
 
 object AuthRoute {
   private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
@@ -61,6 +62,26 @@ trait AuthRoute
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
 
+      override def deleteOperation(
+        objOpt: Option[User]
+      ): ZIO[SessionProvider with Logging with OpsService, Throwable, Boolean] = {
+        for {
+          user <- ZIO.access[SessionProvider](_.get.session.user)
+          sup  <- super.deleteOperation(objOpt)
+          _    <- SessionUtils.removeFromCache(user.id).ignore
+        } yield sup
+      }
+
+      override def upsertOperation(
+        obj: User
+      ): ZIO[SessionProvider with Logging with OpsService, RepositoryException, User] = {
+        for {
+          user <- ZIO.access[SessionProvider](_.get.session.user)
+          sup  <- super.upsertOperation(obj)
+          _    <- SessionUtils.removeFromCache(user.id).ignore
+        } yield sup
+      }
+
       private val staticContentDir: String =
         config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
@@ -78,7 +99,11 @@ trait AuthRoute
             Postman with Logging with TokenHolder
           ].flatMap { r =>
             for {
-              userOps <- ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
+              userOps <-
+                ZIO
+                  .service[CRUDOperations[User, UserId, PagedStringSearch]].map(a =>
+                    a.asInstanceOf[UserOperations]
+                  )
             } yield {
               extractLog { akkaLog =>
                 path("serverVersion") {
@@ -327,6 +352,18 @@ trait AuthRoute
                   userOps <- ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
                   wallet  <- userOps.getWallet
                 } yield wallet).provide(runtime))
+              }
+            } ~
+            path("changePassword") {
+              post {
+                entity(as[String]) { newPassword =>
+                  complete((for {
+                    user <- ZIO.access[SessionProvider](_.get.session.user)
+                    userOps <-
+                      ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
+                    changedPassword <- userOps.changePassword(user, newPassword)
+                  } yield changedPassword).provide(runtime))
+                }
               }
             } ~
             path("doLogout") {

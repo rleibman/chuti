@@ -24,7 +24,7 @@ import api.token.TokenHolder
 import chat.ChatRoute
 import chat.ChatService.ChatService
 import chuti.{PagedStringSearch, User, UserId}
-import dao.{Repository, SessionProvider}
+import dao.{CRUDOperations, Repository, SessionProvider}
 import game.GameRoute
 import game.GameService.{GameLayer, GameService}
 import io.circe.generic.auto._
@@ -32,7 +32,7 @@ import mail.Postman.Postman
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
-import zio.{Layer, RIO, ZIO, ZLayer}
+import zio._
 
 /**
   * For convenience, this trait aggregates all of the model routes.
@@ -56,8 +56,7 @@ trait ModelRoutes extends Directives {
     for {
       repo <- ZIO.access[Repository](_.get)
       auth <- {
-        val opsLayer
-          : Layer[Nothing, CRUDRoute.Service[User, UserId, PagedStringSearch]#OpsService] =
+        val opsLayer: ULayer[Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.unauthRoute.provideSomeLayer[
           Repository with Postman with TokenHolder with Logging
@@ -85,8 +84,9 @@ trait ModelRoutes extends Directives {
       repo <- ZIO.service[Repository.Service]
       game <- gameRoute.route
       auth <- {
+
         val opsLayer
-          : Layer[Nothing, CRUDRoute.Service[User, UserId, PagedStringSearch]#OpsService] =
+          : ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
           .provideSomeLayer[Repository with SessionProvider with Logging](

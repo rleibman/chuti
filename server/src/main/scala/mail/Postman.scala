@@ -22,7 +22,7 @@ import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
 import javax.mail.internet.InternetAddress
 import mail.Postman.Postman
-import zio.{Has, RIO, ZIO}
+import zio.{Has, RIO, Task, ZIO}
 
 import scala.concurrent.duration._
 
@@ -30,7 +30,7 @@ object Postman {
   type Postman = Has[Service]
 
   trait Service {
-    def deliver(email: Envelope): ZIO[Postman, Throwable, Unit]
+    def deliver(email: Envelope): Task[Unit]
     def webHostName: String
 
     //You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
@@ -143,8 +143,7 @@ object CourierPostman {
           ).auth(auth)()
       }
 
-      override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] =
-        ZIO.fromFuture(implicit ec => mailer(email))
+      override def deliver(email: Envelope): Task[Unit] = mailer(email)
 
       override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
 

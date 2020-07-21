@@ -24,6 +24,7 @@ import com.softwaremill.session._
 import dao._
 import game.GameService
 import scalacache.Cache
+import scalacache.ZioEffect.modes._
 import scalacache.caffeine.CaffeineCache
 import zio.logging.log
 import zio.logging.slf4j.Slf4jLogger
@@ -35,13 +36,14 @@ import scala.util.Try
 
 object SessionUtils {
   implicit val userCache: Cache[Option[User]] = CaffeineCache[Option[User]]
+  def removeFromCache(userIdOpt: Option[UserId]): Task[Any] =
+    Task.foreach(userIdOpt)(userId => userCache.remove(userId.value))
 }
 
 trait SessionUtils extends Directives {
   this: HasActorSystem =>
   import SessionUtils._
   import actorSystem.dispatcher
-  import scalacache.ZioEffect.modes._
   import scalacache.memoization._
 
   lazy private val godLayer =

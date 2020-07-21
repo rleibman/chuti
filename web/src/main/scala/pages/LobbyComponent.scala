@@ -599,7 +599,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     .builder[Props]
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init())
+    .componentDidMount(_.backend.init())
     .build
 
   def apply(

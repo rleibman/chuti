@@ -166,7 +166,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
                 $.modState(s => s.copy(chutiState = s.chutiState.copy(user = Some(u))))
             case Failure(t) =>
               t.printStackTrace()
-              Toast.error("Error saving user")
+              Toast.error("Error modificando el usuario")
           }
       }
 
@@ -400,7 +400,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       State(chutiState = ChutiState(gameViewMode = gameViewMode))
     }
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.refresh(initial = true)())
+    .componentDidMount(_.backend.refresh(initial = true)())
     .componentWillUnmount($ =>
       Callback.log("Closing down gameStream and userStream") >>
         $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>

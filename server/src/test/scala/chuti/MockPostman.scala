@@ -19,10 +19,10 @@ package chuti
 import courier.Envelope
 import mail.Postman
 import mail.Postman.Postman
-import zio.ZIO
+import zio.{Task, ZIO}
 
 class MockPostman extends Postman.Service {
-  override def deliver(email: Envelope): ZIO[Postman, Throwable, Unit] = ZIO.succeed(())
+  override def deliver(email: Envelope): Task[Unit] = Task.succeed(())
 
   override def webHostName: String = "chuti.fun"
 }

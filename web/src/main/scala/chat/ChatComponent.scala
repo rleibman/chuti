@@ -123,7 +123,7 @@ object ChatComponent extends ScalaJSClientAdapter {
             value = s.msgInFlux,
             onChange = onMessageInFluxChange,
             onKeyPress = { e =>
-              if (e.which == 13 && !e.shiftKey)
+              if (e.which == 13 && !e.shiftKey && e.target.value.trim.nonEmpty)
                 Callback {
                   e.preventDefault()
                 } >> onSend(p, s) >> Callback(e.target.focus())

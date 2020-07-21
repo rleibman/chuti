@@ -118,7 +118,7 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
     .builder[Unit]
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => $.backend.init)
+    .componentDidMount(_.backend.init)
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()

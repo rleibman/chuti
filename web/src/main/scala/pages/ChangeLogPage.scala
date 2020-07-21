@@ -26,6 +26,13 @@ object ChangeLogPage extends ChutiPage {
   val changeLog: String =
     s"""
        |<h1>Change log</h1>
+       |<h2>Version 1.2.0</h2>
+       |
+       |<h3>User management screen</h3>
+       |<ul>
+       |    <li>Accounts, add money, request money transfer</li>
+       |</ul>
+       |
        |<h2>Version 1.1.0</h2>
        |<ul>
        |  <li>Historia de juegos</li>
@@ -176,11 +183,6 @@ object ChangeLogPage extends ChutiPage {
        |<ul>
        |    <li>Games playing, game index, event list</li>
        |    <li>Glimpse into queues</li>
-       |</ul>
-       |
-       |<h3>User management screen</h3>
-       |<ul>
-       |    <li>Accounts, add money, request money transfer</li>
        |</ul>
        |
        |<h1>Bugs</h1>
