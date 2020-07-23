@@ -433,10 +433,12 @@ h4 {
 }
 
 .domino0Container {
-    display: inline-block;
+    display: inline-grid;
     height: var(--domino-height);
     width: var(--domino-width);
     padding: 2px;
+    grid-template-columns: auto;
+    grid-template-rows: auto;
 }
 
 .domino0 {
@@ -446,6 +448,56 @@ h4 {
     width: var(--domino-width);
     padding: 3px;
     margin: 0;
+    grid-row-start: 1;
+    grid-column-start: 1;
+}
+
+.domino0Container .domino0FlipAction {
+    grid-row-start: 1;
+    grid-column-start: 1;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    align-self: end;
+    justify-self: center;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.domino0Container:hover .domino0FlipAction {
+    opacity: 1;
+}
+
+.domino0Container .domino0MoveRightAction {
+    grid-row-start: 1;
+    grid-column-start: 1;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    align-self: end;
+    justify-self: end;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.domino0Container:hover .domino0MoveRightAction {
+    opacity: 1;
+}
+
+.domino0Container .domino0MoveLeftAction {
+    grid-row-start: 1;
+    grid-column-start: 1;
+    padding: 0;
+    margin: 0;
+    opacity: 0;
+    align-self: end;
+    justify-self: start;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.domino0Container:hover .domino0MoveLeftAction {
+    opacity: 1;
 }
 
 .domino0.selected {
@@ -730,4 +782,8 @@ h4 {
 
 .ui.dropdown.triunfoDropdown>.text {
     display: none;
+}
+
+tr.cuentasSelf {
+    background-color: #f7cbbd;
 }

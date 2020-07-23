@@ -16,6 +16,8 @@
 
 package router
 
+import java.time.format.DateTimeFormatter
+
 import app.{ChutiState, GameViewMode, GlobalDialog}
 import chat.ChatComponent
 import chuti.{ChannelId, GameStatus}
@@ -30,6 +32,7 @@ import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.SemanticICONS
 
 object AppRouter extends ChutiComponent {
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
 
   sealed trait AppPage
 
@@ -46,6 +49,7 @@ object AppRouter extends ChutiComponent {
   case object ChangeLogAppPage extends AppPage
 
   object DialogRenderer {
+
     class Backend($ : BackendScope[_, _]) {
 
       def render(): VdomElement =
@@ -53,7 +57,7 @@ object AppRouter extends ChutiComponent {
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
               Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
-                ModalHeader()(s"Cuentas (${game.satoshiPerPoint} Satoshi per punto)"),
+                ModalHeader()(s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto"),
                 ModalContent()(
                   Table()(
                     TableHeader()(
@@ -66,7 +70,11 @@ object AppRouter extends ChutiComponent {
                     ),
                     TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                       case ((jugador, puntos, satoshi), jugadorIndex) =>
-                        TableRow(key = s"cuenta$jugadorIndex")(
+                        TableRow(
+                          key = s"cuenta$jugadorIndex",
+                          className =
+                            if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                        )(
                           TableCell()(jugador.user.name),
                           TableCell()(
                             jugador.cuenta.zipWithIndex.toVdomArray {
@@ -98,7 +106,22 @@ object AppRouter extends ChutiComponent {
                       s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido."
                     )
                   } else
-                    EmptyVdom
+                    EmptyVdom,
+                  <.div(
+                    <.h1("Puntuacion"),
+                    <.ul(
+                      <.li("Si ganas, cada uno te da 1 punto (o sea, recibes 3 puntos)"),
+                      <.li(
+                        "Si ganas con chuti, cada jugador te da 2 puntos (o sea, recibes 6 puntos)"
+                      ),
+                      <.li(
+                        "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador."
+                      ),
+                      <.li(
+                        "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)"
+                      )
+                    )
+                  )
                 ),
                 ModalActions()(
                   Button(
@@ -112,13 +135,16 @@ object AppRouter extends ChutiComponent {
               )
             }
           }
+
           VdomArray(renderCuentasDialog)
         }
     }
+
     private val component = ScalaComponent
       .builder[Unit]("content")
       .renderBackend[Backend]
       .build
+
     def apply() = component()
   }
 
@@ -142,7 +168,7 @@ object AppRouter extends ChutiComponent {
             )(
               Dropdown(
                 item = true,
-//                simple = true,
+                //                simple = true,
                 compact = true,
                 text = "☰ Menu"
               )(

@@ -34,6 +34,7 @@ import org.scalablytyped.runtime.StringDictionary
 import pages.LobbyComponent.calibanCall
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
+import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES}
 import typings.semanticUiReact.imageImageMod.ImageProps
 
 import scala.scalajs.js.JSConverters._
@@ -70,6 +71,40 @@ object GameComponent {
         _ => clearPlayState() >> Toast.success("Listo!")
       )
     }
+
+    def moveFichaRight(
+      chutiState: ChutiState,
+      jugador:    Jugador,
+      ficha:      FichaConocida
+    ): Callback =
+      chutiState.modGameInProgress(
+        game => {
+          val fichas = game.jugador(jugador.id).fichas
+          val index = fichas.indexOf(ficha)
+          val newFichas = fichas.updated(index + 1, fichas(index)).updated(index, fichas(index + 1))
+          game.copy(jugadores =
+            game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas))
+          )
+        },
+        chutiState.playSound(Option("sounds/moveRight.mp3"))
+      )
+
+    def moveFichaLeft(
+      chutiState: ChutiState,
+      jugador:    Jugador,
+      ficha:      FichaConocida
+    ): Callback =
+      chutiState.modGameInProgress(
+        game => {
+          val fichas = game.jugador(jugador.id).fichas
+          val index = fichas.indexOf(ficha)
+          val newFichas = fichas.updated(index - 1, fichas(index)).updated(index, fichas(index - 1))
+          game.copy(jugadores =
+            game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas))
+          )
+        },
+        chutiState.playSound(Option("sounds/moveLeft.mp3"))
+      )
 
     def render(
       p: Props,
@@ -326,7 +361,8 @@ object GameComponent {
                           ^.className := s"domino${playerPosition}Container",
                           <.img(
                             if (selectable) ^.cursor.pointer else ^.cursor.auto,
-//                            ^.transform := "rotate(180deg)", //TODO allow user to flip the domino
+                            ^.transform := (if (chutiState.isFlipped(ficha)) "rotate(180deg)"
+                                            else "none"),
                             ^.src := s"images/${abajo}_${arriba}x150.png",
                             ^.onClick --> {
                               if (selectable) {
@@ -342,7 +378,55 @@ object GameComponent {
                             },
                             ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
                             else ""}"
-                          )
+                          ),
+                          <.div(
+                            ^.className := "domino0FlipAction",
+                            ^.onClick --> {
+                              chutiState.flipFicha(ficha) >> chutiState.playSound(
+                                Option("sounds/flip.mp3")
+                              ) >> Callback.log(s"flip $ficha")
+                            },
+                            Icon(
+                              name = SemanticICONS.`sync alternate`,
+                              fitted = true,
+                              circular = true,
+                              size = SemanticSIZES.small,
+                              color = SemanticCOLORS.blue,
+                              inverted = true
+                            )()
+                          ),
+                          <.div(
+                            ^.className := "domino0MoveRightAction",
+                            ^.onClick --> {
+                              moveFichaRight(chutiState, jugador, ficha) >> Callback.log(
+                                s"moveFichaRight $ficha"
+                              )
+                            },
+                            Icon(
+                              name = SemanticICONS.`arrow right`,
+                              fitted = true,
+                              circular = true,
+                              size = SemanticSIZES.small,
+                              color = SemanticCOLORS.blue,
+                              inverted = true
+                            )()
+                          ).when(fichaIndex < jugador.fichas.size - 1),
+                          <.div(
+                            ^.className := "domino0MoveLeftAction",
+                            ^.onClick --> {
+                              moveFichaLeft(chutiState, jugador, ficha) >> Callback.log(
+                                s"moveFichaLeft $ficha"
+                              )
+                            },
+                            Icon(
+                              name = SemanticICONS.`arrow left`,
+                              fitted = true,
+                              circular = true,
+                              size = SemanticSIZES.small,
+                              color = SemanticCOLORS.blue,
+                              inverted = true
+                            )()
+                          ).when(fichaIndex > 0)
                         )
                     }
                   ),

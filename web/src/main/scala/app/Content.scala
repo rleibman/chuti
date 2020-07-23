@@ -61,6 +61,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
   class Backend($ : BackendScope[_, State]) {
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
+    def flipFicha(ficha: Ficha): Callback =
+      $.modState(s => {
+        s.copy(chutiState = s.chutiState.copy(flippedFichas = {
+          if (s.chutiState.isFlipped(ficha))
+            s.chutiState.flippedFichas - ficha
+          else
+            s.chutiState.flippedFichas + ficha
+        }))
+      })
+
     def onGameEvent(gameEvent: GameEvent): Callback = {
       val updateGame: Callback = for {
         currentgameOpt <- $.state.map(_.chutiState.gameInProgress)
@@ -310,6 +320,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         val copy = if (initial) {
           s.copy(
             chutiState = s.chutiState.copy(
+              flipFicha = flipFicha,
               modGameInProgress = modGameInProgress,
               onRequestGameRefresh = refresh(initial = false) _,
               onGameViewModeChanged = onGameViewModeChanged,

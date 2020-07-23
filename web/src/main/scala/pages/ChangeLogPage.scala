@@ -30,8 +30,13 @@ object ChangeLogPage extends ChutiPage {
        |
        |<h3>User management screen</h3>
        |<ul>
-       |    <li>Accounts, add money, request money transfer</li>
+       |  <li>Accounts, add money, request money transfer</li>
        |</ul>
+       |<ul>
+       |  <li>Allow user to rearrange the dominos (or do it automatically?)</li>
+       |</ul>
+       |
+       |<h2>Version 1.1.0</h2>
        |
        |<h2>Version 1.1.0</h2>
        |<ul>
@@ -49,15 +54,15 @@ object ChangeLogPage extends ChutiPage {
        |<h2>Version 1.0.0</h2>
        |<h3>General</h3>
        |<ul>
-       |    <li>DONE. Paint all dominos</li>
-       |    <li>DONE. Finalize wireframe</li>
+       |    <li>DONE Paint all dominos</li>
+       |    <li>DONE Finalize wireframe</li>
        |    <li>DONE Where does the "table" go?</li>
-       |    <li>DONE. Database</li>
+       |    <li>DONE Database</li>
        |    <li>DONE mysql with json column</li>
-       |    <li>DONE. Server</li>
-       |    <li>DONE. decide server technology.</li>
+       |    <li>DONE Server</li>
+       |    <li>DONE decide server technology.</li>
        |    <li>DONE Zio, akka-http, caliban, circe</li>
-       |    <li>DONE. Client</li>
+       |    <li>DONE Client</li>
        |    <li>DONE decide client technology</li>
        |    <li>DONE Scalajs, scalablytyped, websockets, caliban, circe</li>
        |    <li>DONE code pages</li>
@@ -68,7 +73,7 @@ object ChangeLogPage extends ChutiPage {
        |    <li>DONE Login</li>
        |    <li>DONE Lost password</li>
        |    <li>DONE Set up table</li>
-       |    <li>DONE. Code game engine</li>
+       |    <li>DONE Code game engine</li>
        |</ul>
        |
        |<h3>Random</h3>
@@ -166,8 +171,6 @@ object ChangeLogPage extends ChutiPage {
        |    <li>El hoyo que camina</li>
        |    <li>Tecnico</li>
        |    </ul></li>
-       |    <li>Allow user to rearrange the dominos (or do it automatically?)</li>
-       |    <li>Show triunfos flipped on top</li>
        |    <li>No ensenes las fichas sino hasta que la sopa este hecha (el audio acabe)</li>
        |</ul>
        |

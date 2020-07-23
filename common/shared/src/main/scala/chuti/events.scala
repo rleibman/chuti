@@ -174,11 +174,12 @@ case class BorloteEvent(
 ) extends GameEvent {
   override def soundUrl: Option[String] =
     borlote match {
-      case Borlote.Hoyo | Borlote.HoyoTecnico => Some("sounds/hoyo.mp3")
-      case Borlote.ElNiñoDelCumpleaños        => Some("sounds/cumpleaños.mp3")
-      case Borlote.Campanita                  => Some("sounds/campanita.mp3")
-      case Borlote.SantaClaus                 => Some("sounds/santaclaus.mp3")
-      case _                                  => None
+      case Borlote.Hoyo                => Some("sounds/hoyo.mp3")
+      case Borlote.HoyoTecnico         => Some("sounds/hoyoTecnico.mp3")
+      case Borlote.ElNiñoDelCumpleaños => Some("sounds/cumpleaños.mp3")
+      case Borlote.Campanita           => Some("sounds/campanita.mp3")
+      case Borlote.SantaClaus          => Some("sounds/santaclaus.mp3")
+      case _                           => None
     }
 
   override def expectedStatus: Option[GameStatus] = None
@@ -918,7 +919,7 @@ case class Caete(
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
   gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/caete.mp3"),
+  soundUrl:            Option[String] = None,
   jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
   ganadorDePartido:    Option[UserId] = None
 ) extends PlayEvent {
@@ -1026,7 +1027,7 @@ case class Caete(
 
     (
       returnEvent.redoEvent(jugador, game),
-      returnEvent
+      returnEvent.copy(soundUrl = Option(s"sounds/caete${jugador.fichas.size}.mp3"))
     )
   }
 

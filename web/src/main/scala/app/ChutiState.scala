@@ -19,7 +19,7 @@ package app
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
 import caliban.client.scalajs.WebSocketHandler
-import chuti.{Game, User, UserWallet}
+import chuti.{Ficha, Game, User, UserWallet}
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 import pages.LobbyComponent.ExtUser
@@ -34,6 +34,8 @@ object GlobalDialog extends Enumeration {
 }
 
 case class ChutiState(
+  flipFicha:             Ficha => Callback = _ => Callback.empty,
+  flippedFichas:         Set[Ficha] = Set.empty,
   onUserChanged:         Option[User] => Callback = _ => Callback.empty,
   user:                  Option[User] = None,
   wallet:                Option[UserWallet] = None,
@@ -53,6 +55,8 @@ case class ChutiState(
   toggleSound:           Callback = Callback.empty,
   playSound:             Option[String] => Callback = _ => Callback.empty
 ) {
+  def isFlipped(ficha: Ficha): Boolean = flippedFichas.contains(ficha)
+
   lazy val usersAndFriends: Seq[ExtUser] =
     loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
       friends

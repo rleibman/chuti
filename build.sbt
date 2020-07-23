@@ -152,7 +152,7 @@ lazy val server = project
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
       "com.github.pathikrit"  %% "better-files"   % "3.9.1" withSources (),
-      "net.leibman" %% "courier"        % "2.1.0" withSources (),
+      "com.github.daddykotex" %% "courier"        % "2.1.0" withSources (),
       "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
       "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources (),
       "commons-codec"         % "commons-codec"   % "1.14",

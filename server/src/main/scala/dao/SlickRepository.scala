@@ -350,6 +350,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
                 GameStatus.requiereSopa,
                 GameStatus.cantando,
                 GameStatus.jugando,
+                GameStatus.partidoTerminado,
                 GameStatus.esperandoJugadoresAzar,
                 GameStatus.esperandoJugadoresInvitados
               )

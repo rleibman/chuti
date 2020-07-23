@@ -16,6 +16,9 @@
 
 package pages
 
+import java.time.format.DateTimeFormatter
+
+import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import game.GameClient.Queries
@@ -35,6 +38,7 @@ import typings.semanticUiReact.components.{
 }
 
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
   case class State(games: Seq[Game] = Seq.empty)
 
   class Backend($ : BackendScope[_, State]) {
@@ -58,60 +62,64 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
       )
     }
 
-    def render(s: State): VdomElement = {
-      <.div(
-        s.games.toVdomArray(game =>
-          <.div(
-            ^.key := s"${game.id}",
-            Container()(
-              Table()(
-                TableHeader()(
-                  TableRow(key = "cuentasHeader1")(
-                    TableHeaderCell(colSpan = 4)(
-                      s"Cuentas (${game.satoshiPerPoint} Satoshi per punto)"
+    def render(s: State): VdomElement =
+      ChutiState.ctx.consume { chutiState =>
+        <.div(
+          s.games.toVdomArray(game =>
+            <.div(
+              ^.key := s"${game.id}",
+              Container()(
+                Table()(
+                  TableHeader()(
+                    TableRow(key = "cuentasHeader1")(
+                      TableHeaderCell(colSpan = 4)(
+                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto"
+                      )
+                    ),
+                    TableRow(key = "cuentasHeader2")(
+                      TableHeaderCell()("Jugador"),
+                      TableHeaderCell()("Cuentas"),
+                      TableHeaderCell()("Total"),
+                      TableHeaderCell()("Satoshi")
                     )
                   ),
-                  TableRow(key = "cuentasHeader2")(
-                    TableHeaderCell()("Jugador"),
-                    TableHeaderCell()("Cuentas"),
-                    TableHeaderCell()("Total"),
-                    TableHeaderCell()("Satoshi")
-                  )
-                ),
-                TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
-                  case ((jugador, puntos, satoshi), jugadorIndex) =>
-                    TableRow(key = s"cuenta$jugadorIndex")(
-                      TableCell()(jugador.user.name),
-                      TableCell()(
-                        jugador.cuenta.zipWithIndex.toVdomArray {
-                          case (cuenta, cuentaIndex) =>
-                            <.span(
-                              ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
-                              ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                              s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
-                            )
-                        }
-                      ),
-                      TableCell()(
-                        <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
-                      ),
-                      TableCell()(
-                        <.span(
+                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                    case ((jugador, puntos, satoshi), jugadorIndex) =>
+                      TableRow(
+                        key = s"cuenta$jugadorIndex",
+                        className = if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                      )(
+                        TableCell()(jugador.user.name),
+                        TableCell()(
+                          jugador.cuenta.zipWithIndex.toVdomArray {
+                            case (cuenta, cuentaIndex) =>
+                              <.span(
+                                ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
+                                ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
+                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                              )
+                          }
+                        ),
+                        TableCell()(
+                          <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                        ),
+                        TableCell()(
                           <.span(
-                            ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                            satoshi
+                            <.span(
+                              ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
+                              satoshi
+                            )
+                              .when(game.gameStatus == GameStatus.partidoTerminado)
                           )
-                            .when(game.gameStatus == GameStatus.partidoTerminado)
                         )
                       )
-                    )
-                })
+                  })
+                )
               )
             )
           )
         )
-      )
-    }
+      }
   }
 
   private val component = ScalaComponent
