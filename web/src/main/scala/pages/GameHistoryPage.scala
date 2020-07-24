@@ -87,7 +87,8 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
                     case ((jugador, puntos, satoshi), jugadorIndex) =>
                       TableRow(
                         key = s"cuenta$jugadorIndex",
-                        className = if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                        className =
+                          if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
                       )(
                         TableCell()(jugador.user.name),
                         TableCell()(

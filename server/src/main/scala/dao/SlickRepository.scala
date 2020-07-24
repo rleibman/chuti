@@ -19,6 +19,7 @@ package dao
 import java.math.BigInteger
 import java.security.SecureRandom
 import java.sql.{SQLException, Timestamp}
+import java.time.LocalDateTime
 
 import api.ChutiSession
 import api.token.{Token, TokenPurpose}
@@ -255,6 +256,13 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         } yield saved
         dbio.map(_ => userWallet)
     }
+
+    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = { chutiSession: ChutiSession =>
+      UserLogQuery
+        .filter(_.userId === chutiSession.user.id.getOrElse(UserId(-1))).map(_.time).min.result.map(
+          _.map(_.toLocalDateTime)
+        )
+    }
   }
 
   override val gameOperations: Repository.GameOperations = new GameOperations {
@@ -391,7 +399,9 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] = { chutiSession: ChutiSession =>
       GamePlayersQuery
-        .filter(gp => gp.gameId === id && gp.userId === chutiSession.user.id).exists.result
+        .filter(gp =>
+          gp.gameId === id && gp.userId === chutiSession.user.id.getOrElse(UserId(-1))
+        ).exists.result
     }
   }
 

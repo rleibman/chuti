@@ -26,7 +26,7 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.{<, _}
 import org.scalajs.dom.raw.HTMLInputElement
 import typings.react.reactStrings.center
 import typings.semanticUiReact.components._
@@ -154,6 +154,50 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             )("Crear")
           )
         )
+
+      def renderFirstLoginWelcome(chutiState: ChutiState): VdomElement = {
+        <.div(
+          <.h1(^.marginBottom := 10.px, s"Bienvenido ${chutiState.user.fold("")(_.name)}!"),
+          <.p(
+            ^.marginBottom := 10.px,
+            s"Como regalo empiezas con 10,000 satoshi en tu cartera, ahorita tienes ${chutiState.wallet
+              .fold("")(_.amount.toString())}, disfrutalos!"
+          ),
+          <.p(
+            ^.marginBottom := 10.px,
+            "Si nunca as jugado chuti, o tiene muchos años que no juegas, familiarizate con las ",
+            <.a(^.href := "#rules", "reglas de chuti")
+          ),
+          <.p(^.marginBottom := 10.px, "Tienes varias opciones para empezar a jugar:"),
+          <.ul(
+            <.li(
+              "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)"
+            ),
+            <.li(
+              "Si aprietas 'Empezar Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico"
+            ),
+            <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación")
+          ),
+          <.p(
+            ^.marginBottom := 10.px,
+            "Una vez que se junten 4 jugadores el juego empieza automáticamente, usa el menu para 'Entrar al Juego'"
+          ),
+          <.p(^.marginBottom := 10.px, "Nada mas puedes jugar un solo juego a la vez."),
+          <.p(
+            ^.marginBottom := 10.px,
+            "Usa el menu para regresar al lobby, ver las cuentas del juego actual, ver la historia de juegos pasados, administrar tu información, etc."
+          )
+        )
+      }
+
+      def renderWelcome(chutiState: ChutiState): VdomElement = {
+        <.div(
+          <.h1(s"Bienvenido ${chutiState.user.fold("")(_.name)}!"),
+          <.p(
+            s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi"
+          )
+        )
+      }
 
       def renderInviteExternalDialog: VdomElement =
         Modal(open = s.dlg == Dialog.inviteExternal)(
@@ -465,20 +509,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
               ),
               <.div(
                 ^.className := "lobbyCol2",
-                <.div(
-                  <.h1(s"Bienvenido ${chutiState.user.fold("")(_.name)}!"),
-                  <.p(
-                    s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi"
-                  )
-                ),
+                if (chutiState.isFirstLogin) renderFirstLoginWelcome(chutiState)
+                else renderWelcome(chutiState),
                 <.div(
                   ^.className := "users",
                   renderNewGameDialog,
                   renderInviteExternalDialog,
                   <.div(
                     ^.key := "jugadores",
-                    <.h1("Otros usuarios"),
-                    <.h2("(en linea o amigos)"),
+                    <.h1("Otros usuarios (en linea o amigos)"),
                     <.table(
                       ^.className := "playersTable",
                       <.tbody(
@@ -578,7 +617,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         }
                       )
                     )
-                  )
+                  ).when(chutiState.usersAndFriends.filter(_.user.id != user.id).nonEmpty)
                 )
               )
             )

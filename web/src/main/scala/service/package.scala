@@ -24,6 +24,8 @@ package object service {
     override val baseUrl: String = s"/api/auth"
 
     case object UserClientService extends LiveClientService {
+      def isFirstLoginToday(): AsyncCallback[Boolean] =
+        RESTOperation[String, Boolean]("get", s"$baseUrl/isFirstLoginToday", None)
       def whoami(): AsyncCallback[Option[User]] =
         RESTOperation[String, Option[User]]("get", s"$baseUrl/whoami", None)
       def wallet(): AsyncCallback[Option[UserWallet]] =

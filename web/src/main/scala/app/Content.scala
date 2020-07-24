@@ -299,6 +299,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         whoami <-
           if (initial) UserRESTClient.remoteSystem.whoami()
           else AsyncCallback.pure(oldState.chutiState.user)
+        isFirstLogin      <- UserRESTClient.remoteSystem.isFirstLoginToday()
         wallet            <- UserRESTClient.remoteSystem.wallet()
         friends           <- asyncCalibanCall(Queries.getFriends(userSelectionBuilder))
         loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
@@ -329,6 +330,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
               showDialog = showDialog,
               playSound = playSound,
               user = whoami,
+              isFirstLogin = isFirstLogin,
               userStream = Option(
                 makeWebSocketClient[Option[(User, CalibanUserEventType, Option[GameId])]](
                   uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),

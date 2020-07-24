@@ -27,7 +27,6 @@ import zio._
 import zio.duration._
 
 class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
-  import dao.InMemoryRepository._
 
   "Creating a new Game" should "create a game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
@@ -45,7 +44,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val game: Game = testRuntime.unsafeRun {
       for {
-        gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+        gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
         operation <-
           gameService
             .newGame(satoshiPerPoint = 100).provideCustomLayer(
@@ -76,10 +75,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     }
 
     val layer = fullLayer(gameOperations, userOperations)
-    val (game: Game, gameEvents: List[GameEvent], userEvents: List[UserEvent]) =
+    val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -136,10 +135,10 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val layer = fullLayer(gameOperations, userOperations)
 
-    val (game: Game, gameEvents: List[GameEvent], userEvents: List[UserEvent]) =
+    val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -217,12 +216,12 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val (
       abandonedGame: Boolean,
-      gameEvents:    List[GameEvent],
-      userEvents:    List[UserEvent]
+      gameEvents:    Chunk[GameEvent],
+      userEvents:    Chunk[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -292,12 +291,12 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val (
       abandonedGame: Boolean,
-      gameEvents:    List[GameEvent],
-      userEvents:    List[UserEvent]
+      gameEvents:    Chunk[GameEvent],
+      userEvents:    Chunk[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -361,12 +360,12 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val (
       invited:    Boolean,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      gameEvents: Chunk[GameEvent],
+      userEvents: Chunk[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -428,12 +427,12 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val (
       game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      gameEvents: Chunk[GameEvent],
+      userEvents: Chunk[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -542,12 +541,12 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
     val (
       game:       Game,
-      gameEvents: List[GameEvent],
-      userEvents: List[UserEvent]
+      gameEvents: Chunk[GameEvent],
+      userEvents: Chunk[UserEvent]
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.access[GameService](_.get).provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(

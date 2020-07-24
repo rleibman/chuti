@@ -38,6 +38,7 @@ case class ChutiState(
   flippedFichas:         Set[Ficha] = Set.empty,
   onUserChanged:         Option[User] => Callback = _ => Callback.empty,
   user:                  Option[User] = None,
+  isFirstLogin:          Boolean = false,
   wallet:                Option[UserWallet] = None,
   serverVersion:         Option[String] = None,
   gameInProgress:        Option[Game] = None,

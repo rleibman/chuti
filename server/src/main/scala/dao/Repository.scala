@@ -16,6 +16,8 @@
 
 package dao
 
+import java.time.LocalDateTime
+
 import api.token.{Token, TokenPurpose}
 import chuti._
 
@@ -23,6 +25,8 @@ import scala.concurrent.duration.Duration
 
 object Repository {
   trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
+    def firstLogin: RepositoryIO[Option[LocalDateTime]]
+
     def login(
       email:    String,
       password: String

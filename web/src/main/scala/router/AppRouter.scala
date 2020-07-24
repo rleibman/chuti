@@ -57,7 +57,9 @@ object AppRouter extends ChutiComponent {
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
               Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
-                ModalHeader()(s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto"),
+                ModalHeader()(
+                  s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto"
+                ),
                 ModalContent()(
                   Table()(
                     TableHeader()(

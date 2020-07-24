@@ -18,13 +18,7 @@ package app
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, React, ScalaComponent}
-import pages.{
-  LoginPage,
-  NewUserAcceptFriendPage,
-  PasswordRecoveryAfterTokenPage,
-  PasswordRecoveryPage,
-  RegistrationPage
-}
+import pages._
 import react.Toast
 //import react.Toast
 import org.scalajs.dom.window
@@ -96,13 +90,17 @@ object LoginController {
             onModeChanged = $.backend.onModeChanged,
             messageForScreen =
               if (queryParams.has("registrationFailed"))
-                Option("Registration confirmation failed, sorry, but you'll have to try again")
+                Option(
+                  "La confirmación del registro fallo, lo sentimos mucho, tendrás que intentar de nuevo"
+                )
               else if (queryParams.has("registrationSucceeded"))
-                Option("Registration succeeded, you can log in now!")
+                Option("Estas registrado! ya puedes usar tu correo y contraseña para ingresar!")
               else if (queryParams.has("passwordChangeFailed"))
-                Option("Password change failed, sorry, but you'll have to try again")
+                Option("El cambio de contraseña fallo, lo siento, tendrás que tratar otra vez.")
               else if (queryParams.has("passwordChangeSucceeded"))
-                Option("Password change succeeded, you can log in now!")
+                Option(
+                  "El cambio de contraseña fue exitoso, ya puedes usar tu nueva contraseña para ingresar!"
+                )
               else
                 None
           )

@@ -46,11 +46,11 @@ object PasswordRecoveryPage {
             $.modState(_.copy(submitted = true))
           case Success(xhr) =>
             Toast.error(
-              s"There was an error submitting the email: ${xhr.statusText}, please try again."
+              s"Hubo un error en el correo electrónico: ${xhr.statusText}, por favor intenta de nuevo."
             )
           case Failure(e: Throwable) =>
             Toast.error(
-              s"There was an error submitting the email: ${e.getLocalizedMessage}, please try again."
+              s"Hubo un error en el correo electrónico: ${e.getLocalizedMessage}, por favor intenta de nuevo."
             )
             e.printStackTrace()
             Callback(e.printStackTrace())
@@ -63,14 +63,18 @@ object PasswordRecoveryPage {
           <.h1("Recuperar contraseña!"),
           if (state.submitted)
             <.div(
-              "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo",
-              Button(
-                compact = true,
-                basic = true,
-                onClick = { (_, _) =>
-                  $.modState(_.copy(submitted = false))
-                }
-              )("Try again")
+              <.p(
+                "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo"
+              ),
+              <.p(
+                Button(
+                  compact = true,
+                  basic = true,
+                  onClick = { (_, _) =>
+                    $.modState(_.copy(submitted = false))
+                  }
+                )("Intenta de nuevo")
+              )
             )
           else {
             <.div(

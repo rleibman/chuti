@@ -16,6 +16,8 @@
 
 package dao
 
+import java.time.LocalDateTime
+
 import api.token
 import api.token.{Token, TokenPurpose}
 import chuti._
@@ -116,6 +118,8 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = ???
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
+
+    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
   }
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
     override def validateToken(
