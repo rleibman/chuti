@@ -256,14 +256,14 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         <.div(
           ^.key    := "contentDiv",
           ^.height := 100.pct,
-          <.button(
-            ^.onClick --> {
-              playSound("filedoesntexist.mp3") >> playSound("sounds/santaclaus.mp3") >> playSound(
-                "sounds/caete3.mp3"
-              )
-            },
-            "Play"
-          ),
+//          <.button(
+//            ^.onClick --> {
+//              playSound("filedoesntexist.mp3") >> playSound("sounds/santaclaus.mp3") >> playSound(
+//                "sounds/caete3.mp3"
+//              )
+//            },
+//            "Play"
+//          ),
           Confirm.render(),
           Toast.render(),
           AppRouter.router()
