@@ -36,15 +36,21 @@ import game.GameClient.{
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, _}
+import org.scalajs.dom.raw.Event
 import org.scalajs.dom.window
 import router.AppRouter
 import service.UserRESTClient
+import typings.std.OnErrorEventHandlerNonNull
 import typings.std.global.Audio
 import util.Config
 
+import scala.collection.mutable
+import scala.scalajs.js
+import scala.scalajs.js.{ThisFunction, |}
 import scala.util.{Failure, Success}
 
 /**
@@ -53,7 +59,7 @@ import scala.util.{Failure, Success}
   * but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and
   * presenting the app menu.
   */
-object Content extends ChutiComponent with ScalaJSClientAdapter {
+object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSupport {
   private val connectionId = UUID.randomUUID().toString
 
   case class State(chutiState: ChutiState)
@@ -98,7 +104,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
       } yield updated
 
       Callback.log(gameEvent.toString) >>
-        playSound(gameEvent.soundUrl) >>
+        Callback.traverse(gameEvent.soundUrl)(playSound) >>
         updateGame >> {
         gameEvent match {
           case e: TerminaJuego if e.partidoTerminado =>
@@ -137,7 +143,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
                 )
             }
         }
-        s.copy(chutiState = s.chutiState.copy(gameInProgress = moddedGame))
+        s.copy(chutiState =
+          s.chutiState.copy(
+            gameInProgress = moddedGame,
+            ultimoBorlote = gameEvent match {
+              case event: BorloteEvent => Option(event.borlote)
+              case _:     Pide         => None
+              case _ => s.chutiState.ultimoBorlote
+            }
+          )
+        )
       })
 
     def toggleSound =
@@ -180,15 +195,56 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
           }
       }
 
-    def playSound(soundUrlOpt: Option[String]): Callback = {
+    val audioQueue: mutable.Queue[String] = mutable.Queue()
+    val audio = new Audio("")
+    audio.onended = ThisFunction.fromFunction2 { (_: Audio, _: Event) =>
+      if (audioQueue.size > 4) {
+        //If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
+        println("play queue got bigger than 4, clearing queue")
+        audioQueue.clear()
+      } else
+        audioQueue.dequeue()
+      if (audioQueue.nonEmpty) {
+        audio.src = audioQueue.head
+        audio.play()
+      }
+    }
+
+    val fn: OnErrorEventHandlerNonNull = {
+      (
+        /* event */ _:     org.scalajs.dom.raw.Event | java.lang.String,
+        /* source */ _:    js.UndefOr[java.lang.String],
+        /* lineno */ _:    js.UndefOr[scala.Double],
+        /* colno */ _:     js.UndefOr[scala.Double],
+        /* error */ error: js.UndefOr[js.Error]
+      ) =>
+        js.Any.fromUnit {
+          println(s"Error playing ${audio.src} ${error.map(_.message)}")
+          if (audioQueue.nonEmpty) {
+            audioQueue.dequeue()
+            audio.src = audioQueue.head
+            audio.play()
+            ()
+          }
+        }
+    }
+
+    audio.onerror = fn
+
+    def playSound(url: String): Callback = {
       $.state.flatMap { s =>
         if (s.chutiState.muted)
           Callback.empty
         else {
-          soundUrlOpt.fold(Callback.empty) { url =>
-            Callback {
-              val sound = new Audio(src = url)
-              sound.play()
+          Callback {
+            if (audioQueue.size > 4) {
+              println("play queue got bigger than 4, clearing queue")
+              audioQueue.clear()
+            }
+            audioQueue.enqueue(url)
+            if (audioQueue.size == 1) {
+              audio.src = url
+              audio.play()
             }
           }
         }
@@ -200,6 +256,14 @@ object Content extends ChutiComponent with ScalaJSClientAdapter {
         <.div(
           ^.key    := "contentDiv",
           ^.height := 100.pct,
+          <.button(
+            ^.onClick --> {
+              playSound("filedoesntexist.mp3") >> playSound("sounds/santaclaus.mp3") >> playSound(
+                "sounds/caete3.mp3"
+              )
+            },
+            "Play"
+          ),
           Confirm.render(),
           Toast.render(),
           AppRouter.router()

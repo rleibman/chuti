@@ -34,9 +34,10 @@ import chat.ChatClient.{
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
-import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{Ref => ReactRef, _}
+import org.scalajs.dom.html.Div
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import util.Config
@@ -59,6 +60,7 @@ object ChatComponent extends ScalaJSClientAdapter {
   lazy private val chatId = UUID.randomUUID().toString
 
   class Backend($ : BackendScope[Props, State]) {
+
     def close(): Callback =
       $.state.flatMap(s =>
         s.ws.fold(Callback.empty)(handler =>
@@ -96,6 +98,11 @@ object ChatComponent extends ScalaJSClientAdapter {
         }
     }
 
+    private val messagesRef = ReactRef[Div]
+
+    def scrollToBottom: Callback =
+      messagesRef.foreach(_.scrollIntoView(top = true))
+
     def render(
       p: Props,
       s: State
@@ -108,13 +115,17 @@ object ChatComponent extends ScalaJSClientAdapter {
           ^.className := "messages",
           s.chatMessages.zipWithIndex.toVdomArray {
             case (msg, index) =>
-              <.div(
+              val div = <.div(
                 ^.key       := s"msg$index",
                 ^.className := "receivedMessage",
                 <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
                 <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
                 <.div(^.className := "messageText", msg.msg)
               )
+              if (index == s.chatMessages.size - 1)
+                div.withRef(messagesRef)
+              else
+                div
           }
         ),
         <.div(
@@ -180,24 +191,24 @@ object ChatComponent extends ScalaJSClientAdapter {
                   ),
                 onData = { (_, data) =>
                   val flatted = data.flatten
-                  Callback.log(s"got data! $flatted")
-                  flatted
-                    .fold(Callback.empty) { msg =>
-                      msg.toUser.fold(
-                        $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
-                          s.copy(s.chatMessages :+ msg)
-                        )
-                      ) { _ =>
-                        $.props.flatMap(_.onPrivateMessage(msg))
+                  Callback.log(s"got data! $flatted") >>
+                    flatted
+                      .fold(Callback.empty) { msg =>
+                        msg.toUser.fold(
+                          $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
+                            s.copy(s.chatMessages :+ msg)
+                          ) >> scrollToBottom
+                        ) { _ =>
+                          $.props.flatMap(_.onPrivateMessage(msg))
+                        }
                       }
-                    }
                 },
                 operationId = s"chat$chatId",
                 connectionId = s"$chatId-${p.channel.value}"
               )
             )
           )
-        }
+        } >> scrollToBottom
       }).completeWith(_.get)
     }
   }

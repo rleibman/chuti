@@ -26,17 +26,30 @@ object ChangeLogPage extends ChutiPage {
   val changeLog: String =
     s"""
        |<h1>Change log</h1>
+       |<h2>Version 1.3.0</h2>
+       |
+       |<ul>
+       |<li>Nuevos sonidos para caídas</li>
+       |<li>Rotar para que triunfo siempre este arriba en el centro</li>
+       |</ul>
+       |
+       |<h3>Bugs</h3>
+       |<ul>
+       |<li>Chat messages with carriage return don’t work.</li>
+       |<li>Corner case of reaching 21</li>
+       |<li>Chat doesn’t automatically scrolls</li>
+       |<li>Chat msg doesn’t take the whole line.</li>
+       |<li>Cuentas cuando alguien esta en cero</li>
+       |<li>Se pueden escuchar mas de un sonido por jugada</li>
+       |</ul>
+       |
        |<h2>Version 1.2.0</h2>
        |
        |<h3>User management screen</h3>
        |<ul>
        |  <li>Accounts, add money, request money transfer</li>
-       |</ul>
-       |<ul>
        |  <li>Allow user to rearrange the dominos (or do it automatically?)</li>
        |</ul>
-       |
-       |<h2>Version 1.1.0</h2>
        |
        |<h2>Version 1.1.0</h2>
        |<ul>
@@ -190,9 +203,7 @@ object ChangeLogPage extends ChutiPage {
        |
        |<h1>Bugs</h1>
        |<ul>
-       |    <li>"Juega con quien sea" is not sending out a game event when joining</li>
        |    <li>Double pressing of buttons is messing things up!</li>
-       |    <li>Chat messages with carriage return don’t work.</li
        |    <li>En Safari no suena</li>
        |</ul>
        |

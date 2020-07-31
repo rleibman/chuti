@@ -29,7 +29,7 @@ import io.circe.syntax._
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.{^, _}
 import org.scalablytyped.runtime.StringDictionary
 import pages.LobbyComponent.calibanCall
 import typings.semanticUiReact.components._
@@ -86,7 +86,7 @@ object GameComponent {
             game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas))
           )
         },
-        chutiState.playSound(Option("sounds/moveRight.mp3"))
+        chutiState.playSound("sounds/moveRight.mp3")
       )
 
     def moveFichaLeft(
@@ -103,7 +103,7 @@ object GameComponent {
             game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas))
           )
         },
-        chutiState.playSound(Option("sounds/moveLeft.mp3"))
+        chutiState.playSound("sounds/moveLeft.mp3")
       )
 
     def render(
@@ -383,7 +383,7 @@ object GameComponent {
                             ^.className := "domino0FlipAction",
                             ^.onClick --> {
                               chutiState.flipFicha(ficha) >> chutiState.playSound(
-                                Option("sounds/flip.mp3")
+                                "sounds/flip.mp3"
                               ) >> Callback.log(s"flip $ficha")
                             },
                             Icon(
@@ -482,7 +482,11 @@ object GameComponent {
                 <.div(
                   ^.className := "juegoStatus",
                   <.div(^.className := "triunfan"),
-                  <.div(^.className := "juegoStatusString", game.statusString)
+                  <.div(
+                    ^.className := "juegoStatusString",
+                    <.p(game.statusString),
+                    <.p(chutiState.ultimoBorlote.fold("")(_.toString))
+                  )
                 ),
                 <.div(^.className := "fichasEnJuegoName"),
                 <.div(
@@ -522,7 +526,21 @@ object GameComponent {
                         game.jugador(Option(user)).user.name
                       ),
                       <.img(
-                        ^.key       := "dominoEnJuego",
+                        ^.key := "dominoEnJuego",
+                        ^.transform := (
+                          if (
+                            game.triunfo match {
+                              case Some(TriunfoNumero(num)) =>
+                                ficha.es(
+                                  num
+                                ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
+                              case _ => false
+                            }
+                          )
+                            "rotate(180deg)"
+                          else
+                            "none"
+                        ),
                         ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
                         ^.className := "dominoEnJuego"
                       )

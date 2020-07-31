@@ -99,7 +99,12 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
                                 ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
                                 s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
                               )
-                          }
+                          },
+                          <.span(
+                            ^.fontSize := "large",
+                            ^.color    := "blue",
+                            if (jugador.ganadorDePartido) "➠" else ""
+                          )
                         ),
                         TableCell()(
                           <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)

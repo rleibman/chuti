@@ -86,7 +86,12 @@ object AppRouter extends ChutiComponent {
                                   ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
                                   s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
                                 )
-                            }
+                            },
+                            <.span(
+                              ^.fontSize := "large",
+                              ^.color    := "blue",
+                              if (jugador.ganadorDePartido) "➠" else ""
+                            )
                           ),
                           TableCell()(
                             <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
@@ -118,6 +123,9 @@ object AppRouter extends ChutiComponent {
                       ),
                       <.li(
                         "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador."
+                      ),
+                      <.li(
+                        "Si alguien quedó en cero, le da un punto al ganador."
                       ),
                       <.li(
                         "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)"
@@ -264,7 +272,7 @@ object AppRouter extends ChutiComponent {
                 <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
               ) >> chutiState.onRequestGameRefresh()
             },
-            onMessage = _ => chutiState.playSound(Option("sounds/message.mp3"))
+            onMessage = _ => chutiState.playSound("sounds/message.mp3")
           )
         }
       )

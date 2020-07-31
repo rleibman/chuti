@@ -102,7 +102,7 @@ object RulesPage extends ChutiPage {
    |        <li>Si te vas con más de un hoyo, se siguen pagando los hoyos.</li>
    |        <li>Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al
    |            ganador.
-   |        </li>
+   |        <li>Si alguien quedó en cero le da un puntos al ganador.</li>
    |        <li>Si se va con chuty, recibe 6 o dos de cada jugador.</li>
    |        <li>Recuerda</li>
    |        <li>Siempre puedes correr la primera.</li>

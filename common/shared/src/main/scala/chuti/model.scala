@@ -327,13 +327,27 @@ import chuti.GameStatus._
 
 sealed trait Borlote extends Product with Serializable
 object Borlote {
-  case object Hoyo extends Borlote
-  case object HoyoTecnico extends Borlote
-  case object ElNiñoDelCumpleaños extends Borlote
-  case object SantaClaus extends Borlote
-  case object Campanita extends Borlote
-  case object Helecho extends Borlote
-  case object TodoConDos extends Borlote
+  case object Hoyo extends Borlote {
+    override def toString: String = "Hoyo!"
+  }
+  case object HoyoTecnico extends Borlote {
+    override def toString: String = "Hoyo Tecnico!"
+  }
+  case object ElNiñoDelCumpleaños extends Borlote {
+    override def toString: String = "El Niño del Cumpleaños!"
+  }
+  case object SantaClaus extends Borlote {
+    override def toString: String = "Santa Claus!"
+  }
+  case object Campanita extends Borlote {
+    override def toString: String = "Campanita!"
+  }
+  case object Helecho extends Borlote {
+    override def toString: String = "Helecho!"
+  }
+  case object TodoConDos extends Borlote {
+    override def toString: String = "Todo con dos!!!!"
+  }
 }
 
 case class GameId(value: Int) extends AnyVal
@@ -448,13 +462,19 @@ case class Game(
             (if (puntos < 0) -2
              else
                0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+            (if (puntos == 0) -1
+             else
+               0) + //Si alguien quedó en cero, le da un punt al ganador.
             (if (j.ganadorDePartido) conPuntos.count(_._2 < 0) * 2
              else
                0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+            (if (j.ganadorDePartido) conPuntos.count(_._2 == 0) * 1
+             else
+               0) + //Si alguien quedó en cero, le da un punt al ganador.
             (if (j.ganadorDePartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
              else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21)))
                -1
-             else 0) + //Si se va con chuty, recibe 6 o dos de cada jugador.
+             else 0) + //Si se va con chuti, recibe 6 o dos de cada jugador.
             conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + //Hoyos ajenos
             (-(j.cuenta.count(_.esHoyo) * 3)) //Hoyos propios
 

@@ -176,7 +176,7 @@ case class BorloteEvent(
     borlote match {
       case Borlote.Hoyo                => Some("sounds/hoyo.mp3")
       case Borlote.HoyoTecnico         => Some("sounds/hoyoTecnico.mp3")
-      case Borlote.ElNiñoDelCumpleaños => Some("sounds/cumpleaños.mp3")
+      case Borlote.ElNiñoDelCumpleaños => Some("sounds/cumpleanos.mp3")
       case Borlote.Campanita           => Some("sounds/campanita.mp3")
       case Borlote.SantaClaus          => Some("sounds/santaclaus.mp3")
       case _                           => None
@@ -571,7 +571,8 @@ case class Canta(
         s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
       )
     } else
-      Option(s"${cantanteActual.user.name} canto $cuantasCantas")
+      Option(s"${cantanteActual.user.name} canto ${if (cuantasCantas == CuantasCantas.Buenas) CuantasCantas.Casa
+      else cuantasCantas} ")
 
     val newGameStatus =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas)
@@ -943,7 +944,7 @@ case class Caete(
       if (
         jugador.cantante && c == CuantasCantas.CantoTodas && (jugador.filas.size + deCaída.size) == 7
       ) 21
-      else deCaída.size
+      else deCaída.size + jugador.filas.size
     )
 
     //Regalos, en orden de mayor a menor.
@@ -953,12 +954,14 @@ case class Caete(
     val jugadores =
       conTriunfos.modifiedJugadores(
         _.id == jugador.id,
-        j =>
+        j => {
+          val ganadorDePartido = (j.cuenta.map(_.puntos).sum + puntosNuevos) >= 21
           j.copy(
             filas = j.filas ++ deCaída,
             fichas = List.empty,
-            ganadorDePartido = (j.cuenta.map(_.puntos).sum + puntosNuevos) >= 21
-          ),
+            ganadorDePartido = ganadorDePartido
+          )
+        },
         j => j.copy(fichas = j.fichas.diff(deCaída.flatMap(_.fichas)))
       )
 
@@ -1027,7 +1030,7 @@ case class Caete(
 
     (
       returnEvent.redoEvent(jugador, game),
-      returnEvent.copy(soundUrl = Option(s"sounds/caete${jugador.fichas.size}.mp3"))
+      returnEvent.copy(soundUrl = Option(s"sounds/caete${jugador.fichas.size - regalos.size}.mp3"))
     )
   }
 
@@ -1123,7 +1126,7 @@ case class HoyoTecnico(
         gameStatus = GameStatus.requiereSopa,
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
-          //El hoyo tecnico no cuenta puntos negativos a menos que seas el que canta, porque hacerte un hoyo tecnico no te debe absolver de los numeros negativos
+          //El hoyo técnico no cuenta puntos negativos a menos que seas el que canta, porque hacerte un hoyo tecnico no te debe absolver de los numeros negativos
           guey =>
             guey.copy(cuenta =
               guey.cuenta :+ Cuenta(

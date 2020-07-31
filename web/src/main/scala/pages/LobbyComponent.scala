@@ -416,7 +416,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     ^.className := "gameInProgress",
                     <.h1("Juego en Curso"),
                     <.div(
-                      <.h2("En este juego"),
+                      <.h2(s"Juego #${game.id.fold(0)(_.value)}"),
                       <.div(game.gameStatus match {
                         case GameStatus.jugando  => <.p("Estamos a medio juego")
                         case GameStatus.cantando => <.p("Estamos a medio juego (cantando)")

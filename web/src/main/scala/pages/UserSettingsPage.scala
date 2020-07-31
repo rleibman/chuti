@@ -46,11 +46,8 @@ object UserSettingsPage extends ChutiPage {
       obj: InputOnChangeData
     ): Callback = {
       val str = obj.value.get.asInstanceOf[String]
-      println(str)
       $.modState(state => {
-        val newUser = state.user.map(fn(_, str))
-        println(newUser)
-        state.copy(user = newUser)
+        state.copy(user = state.user.map(fn(_, str)))
       })
     }
 
