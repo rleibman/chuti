@@ -17,7 +17,9 @@
 package routes
 
 import java.time.LocalDateTime
+import java.util.Locale
 
+import scala.jdk.CollectionConverters._
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server._
 import api._
@@ -32,10 +34,12 @@ import game.GameService
 import io.circe.generic.auto._
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
+import sun.util.locale.LanguageTag
 import zio.Cause.Fail
 import zio._
 import zio.logging.{Logging, log}
 import zioslick.RepositoryException
+
 
 object AuthRoute {
   private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
@@ -129,7 +133,7 @@ trait AuthRoute
                               Throwable,
                               StandardRoute
                             ] = for {
-                              tokenHolder <- ZIO.access[TokenHolder](_.get)
+                              tokenHolder <- ZIO.service[TokenHolder.Service]
                               userOpt <-
                                 tokenHolder
                                   .validateToken(Token(token.get), TokenPurpose.LostPassword)
@@ -222,7 +226,7 @@ trait AuthRoute
                   path("getInvitedUserByToken") {
                     parameters(Symbol("token").as[String]) { token =>
                       (for {
-                        tokenHolder <- ZIO.access[TokenHolder](_.get)
+                        tokenHolder <- ZIO.service[TokenHolder.Service]
                         user        <- tokenHolder.peek(Token(token), TokenPurpose.NewUser)
                       } yield complete(user)).provide(r)
                     }
@@ -272,7 +276,7 @@ trait AuthRoute
                     get {
                       parameters(Symbol("token").as[String]) { token =>
                         (for {
-                          tokenHolder <- ZIO.access[TokenHolder](_.get)
+                          tokenHolder <- ZIO.service[TokenHolder.Service]
                           user        <- tokenHolder.validateToken(Token(token), TokenPurpose.NewUser)
                           activate <-
                             ZIO.foreach(user)(user => userOps.upsert(user.copy(active = true)))
@@ -289,31 +293,40 @@ trait AuthRoute
                   } ~
                   path("doLogin") {
                     post {
-                      formFields(
-                        (
-                          Symbol("email").as[String],
-                          Symbol("password").as[String]
-                        )
-                      ) { (email, password) =>
-                        (for {
-                          login <- userOps.login(email, password)
-                          _ <- login.fold(log.debug(s"Bad login for $email"))(_ =>
-                            log.debug(s"Good Login for $email")
-                          )
-                        } yield {
-                          login match {
-                            case Some(user) =>
-                              mySetSession(ChutiSession(user)) {
-                                setNewCsrfToken(checkHeader) { ctx =>
-                                  ctx.redirect("/", StatusCodes.SeeOther)
+                      formFields("email", "password", "forcedLocale".optional) { (email, password, forcedLocale) =>
+                        selectPreferredLanguage("es-MX", "es", "en-US", "en", "eo") { language =>
+                          (for {
+                            login <- userOps.login(email, password)
+                            _ <- login.fold(log.debug(s"Bad login for $email"))(_ =>
+                              log.debug(s"Good Login for $email")
+                            )
+                          } yield {
+                            login match {
+                              case Some(user) =>
+                                val ranges = Locale.LanguageRange.parse(forcedLocale.getOrElse(language.toString))
+                                val locale = Locale.lookup(
+                                  ranges,
+                                  List(
+                                    new Locale("es", "MX"),
+                                    new Locale("es"),
+                                    new Locale("en", "US"),
+                                    new Locale("en"),
+                                    new Locale("eo")
+                                  ).asJava
+                                )
+
+                                mySetSession(ChutiSession(user, locale)) {
+                                  setNewCsrfToken(checkHeader) { ctx =>
+                                    ctx.redirect("/", StatusCodes.SeeOther)
+                                  }
                                 }
-                              }
-                            case None =>
-                              redirect("/loginForm?bad=true", StatusCodes.SeeOther)
-                          }
-                        }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
-                            Logging with TokenHolder with Postman
-                          ](SessionProvider.layer(adminSession)).provide(r)
+                              case None =>
+                                redirect("/loginForm?bad=true", StatusCodes.SeeOther)
+                            }
+                          }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
+                              Logging with TokenHolder with Postman
+                            ](SessionProvider.layer(adminSession)).provide(r)
+                        }
                       }
                     }
                   } ~
@@ -354,6 +367,18 @@ trait AuthRoute
               }
             }
           } ~
+            path("locale"){
+              get {
+                complete(session.locale.toLanguageTag)
+              } ~
+                put {
+                  entity(as[String]) { languageTag =>
+                  complete {
+                    val locale = Locale.forLanguageTag(languageTag)
+                    SessionUtils.updateSession(session.copy(locale = locale)).as(true)
+                  }}
+                }
+            } ~
             path("whoami") {
               get {
                 complete(Option(session.user))

@@ -279,7 +279,7 @@ object GameService {
               case (game, event) =>
                 repository.gameOperations.updatePlayers(game).map((_, event))
             }
-            _ <- ZIO.foreachPar(players) {
+            _ <- ZIO.foreach(players) {
               case (game, _)
                   if game.jugadores.isEmpty &&
                     (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
@@ -386,7 +386,7 @@ object GameService {
               repository.gameOperations.upsert(game2)
             }
             _ <- repository.gameOperations.updatePlayers(upserted)
-            _ <- ZIO.foreachPar(upserted.jugadores.find(_.user.id == user.id))(j =>
+            _ <- ZIO.foreach(upserted.jugadores.find(_.user.id == user.id))(j =>
               repository.userOperations.upsert(j.user)
             )
             _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, upserted.id))
@@ -572,7 +572,7 @@ object GameService {
               repository.gameOperations.upsert(started).map((_, joinGame, startGame))
             }
             _ <- repository.gameOperations.updatePlayers(afterApply._1)
-            _ <- ZIO.foreachPar(afterApply._1.jugadores.find(_.user.id == user.id))(j =>
+            _ <- ZIO.foreach(afterApply._1.jugadores.find(_.user.id == user.id))(j =>
               repository.userOperations.upsert(j.user)
             )
             _ <- broadcast(gameEventQueues, afterApply._2)
@@ -618,8 +618,8 @@ object GameService {
                   Option(jugador.user)
                 )
             )
-            _ <- ZIO.foreachPar(afterEvent)(g => repository.gameOperations.updatePlayers(g._1))
-            _ <- ZIO.foreachPar(afterEvent) {
+            _ <- ZIO.foreach(afterEvent)(g => repository.gameOperations.updatePlayers(g._1))
+            _ <- ZIO.foreach(afterEvent) {
               case (_, event) =>
                 broadcast(gameEventQueues, event)
             }
@@ -650,7 +650,7 @@ object GameService {
                     Option(jugador.user)
                   )
               )
-            _ <- ZIO.foreachPar(afterEvent)(repository.gameOperations.updatePlayers)
+            _ <- ZIO.foreach(afterEvent)(repository.gameOperations.updatePlayers)
           } yield true).mapError(GameException.apply)
         }
 
@@ -775,10 +775,10 @@ object GameService {
                     repository.userOperations
                       .updateWallet(wallet.copy(amount = wallet.amount + satoshi))
                   )
-                } yield updated.toSeq
+                } yield updated.toList
             }.provideSomeLayer[
               Repository with Logging
-            ](godLayer).map(_.flatten)
+            ](godLayer).map(_.flatten.toList)
         }
 
         override def gameStream(

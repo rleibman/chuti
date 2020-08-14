@@ -17,13 +17,15 @@
 package pages
 
 import app.ChutiState
-import chuti.User
+import chuti.{CuantasCantas, User}
 import components.Toast
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.{<, _}
+import org.scalajs.dom.window
 import service.UserRESTClient
 import typings.semanticUiReact.components.{FormGroup, _}
+import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
 import typings.semanticUiReact.genericMod.SemanticWIDTHS
 import typings.semanticUiReact.inputInputMod.InputOnChangeData
 
@@ -31,6 +33,13 @@ object UserSettingsPage extends ChutiPage {
 
   case class State(
     user:         Option[User] = None,
+    locale: String = {
+      val loc = window.sessionStorage.getItem("locale")
+      println(s"locale = $loc")
+      if (loc == null || loc.isEmpty)
+        "es-MX"
+      else loc
+    },
     passwordPair: (String, String) = ("", "")
   )
 
@@ -77,7 +86,7 @@ object UserSettingsPage extends ChutiPage {
       if (valid.nonEmpty)
         Toast.error(valid.map(s => <.p(s)).toVdomArray)
       else
-        chutiState.onUserChanged(s.user)
+        chutiState.onSessionChanged(s.user, s.locale)
     }
 
     def doChangePassword(
@@ -112,6 +121,22 @@ object UserSettingsPage extends ChutiPage {
               `type` = "email",
               onChange = onUserInputChange((user, value) => user.copy(email = value)),
               value = state.user.fold("")(_.email)
+            )()
+          )
+        ),
+        FormGroup()(
+          FormField(width = SemanticWIDTHS.`6`)(
+            Label()("Idioma"),
+            Dropdown(
+              placeholder = "Selecciona Idioma",
+              fluid = true,
+              selection = true,
+              value = state.locale,
+              onChange = { (_, dropDownProps) => $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))},
+              options = scalajs.js.Array(
+                DropdownItemProps(value = "en-US", flag = "us", text = "Ingles"),
+                DropdownItemProps(value = "es-MX", flag = "mx", text = "Español")
+              )
             )()
           )
         ),

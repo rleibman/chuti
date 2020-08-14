@@ -16,6 +16,7 @@
 
 package api
 
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
 import chuti.{User, UserId}
 import com.softwaremill.session.SessionDirectives._
@@ -35,9 +36,13 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 object SessionUtils {
-  implicit val userCache: Cache[Option[User]] = CaffeineCache[Option[User]]
+
+  implicit val sessionCache: Cache[Option[ChutiSession]] = CaffeineCache[Option[ChutiSession]]
+  def updateSession(session: ChutiSession): Task[Unit] = {
+    SessionUtils.sessionCache.put(session.user.id)(Option(session)).unit
+  }
   def removeFromCache(userIdOpt: Option[UserId]): Task[Any] =
-    Task.foreach(userIdOpt)(userId => userCache.remove(userId.value))
+    Task.foreach(userIdOpt)(userId => sessionCache.remove(userId.value))
 }
 
 trait SessionUtils extends Directives {
@@ -53,18 +58,18 @@ trait SessionUtils extends Directives {
       SessionProvider.layer(ChutiSession(GameService.god)) ++
       Slf4jLogger.make((_, str) => str)
 
-  def getUser(id: Int): Task[Option[User]] =
+  def getChutiSession(id: Int): Task[Option[ChutiSession]] =
     memoizeF(Option(1.hour)) {
-      val me: Task[Option[User]] = (for {
+      val me: Task[Option[ChutiSession]] = (for {
         repository <- ZIO.service[Repository.Service]
-        user <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
+        userOpt <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
           case e: RepositoryException =>
             ZIO.succeed {
               e.printStackTrace()
               None
             }
         }
-      } yield user).provideLayer(godLayer)
+      } yield userOpt.map(u => ChutiSession(u))).provideLayer(godLayer)
       me
     }
 
@@ -73,11 +78,9 @@ trait SessionUtils extends Directives {
       _.user.id.fold("-1")(_.value.toString),
       (id: String) =>
         Try {
-          val user =
-            zio.Runtime.default.unsafeRun(getUser(id.toInt))
-          if (user.isEmpty)
-            throw new Exception("The user was not found!")
-          ChutiSession(user.get)
+          zio.Runtime.default
+            .unsafeRun(getChutiSession(id.toInt))
+            .getOrElse(throw new Exception("The user was not found!"))
         }
     )
 

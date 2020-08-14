@@ -6,7 +6,6 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import org.apache.commons.io.FileUtils
 import sbt.Keys.testFrameworks
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
-import sbtcrossproject.CrossProject
 
 resolvers += Resolver.mavenLocal
 resolvers += Resolver.sonatypeRepo("snapshots")
@@ -35,14 +34,14 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.7"
-lazy val akkaHttpVersion = "10.1.12"
+lazy val akkaVersion = "2.6.8"
+lazy val akkaHttpVersion = "10.2.0"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.9.0"
+lazy val calibanVersion = "0.9.1"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.0-RC21-2"
-lazy val monocleVersion = "2.0.5"
+lazy val zioVersion = "1.0.0"
+lazy val monocleVersion = "2.1.0"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
@@ -132,35 +131,35 @@ lazy val server = project
     name := "chuti-server",
     libraryDependencies ++= Seq(
       //Akka
-      "com.typesafe.akka"                  %% "akka-stream"      % akkaVersion withSources (),
-      "com.typesafe.akka"                  %% "akka-http"        % akkaHttpVersion withSources (),
-      "de.heikoseeberger"                  %% "akka-http-circe"  % "1.33.0" withSources (),
-      "com.softwaremill.akka-http-session" %% "core"             % "0.5.11" withSources (),
+      "com.typesafe.akka"                  %% "akka-stream"     % akkaVersion withSources (),
+      "com.typesafe.akka"                  %% "akka-http"       % akkaHttpVersion withSources (),
+      "de.heikoseeberger"                  %% "akka-http-circe" % "1.34.0" withSources (),
+      "com.softwaremill.akka-http-session" %% "core"            % "0.5.11" withSources (),
       //DB
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
-      "mysql"                     % "mysql-connector-java"    % "8.0.21" withSources (),
+      "mysql"                      % "mysql-connector-java"   % "8.0.21" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.3.2" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.4.0" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
-      "com.github.pathikrit"  %% "better-files"   % "3.9.1" withSources (),
-      "com.github.daddykotex" %% "courier"        % "2.1.0" withSources (),
-      "ch.qos.logback"        % "logback-classic" % "1.2.3" withSources (),
-      "org.slf4j"             % "slf4j-nop"       % "1.7.30" withSources (),
-      "commons-codec"         % "commons-codec"   % "1.14",
+      "com.github.pathikrit"  %% "better-files"    % "3.9.1" withSources (),
+      "com.github.daddykotex" %% "courier"         % "2.1.0" withSources (),
+      "ch.qos.logback"         % "logback-classic" % "1.2.3" withSources (),
+      "org.slf4j"              % "slf4j-nop"       % "1.7.30" withSources (),
+      "commons-codec"          % "commons-codec"   % "1.14",
       //Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.2.0"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources (),
+      "org.scalatest" %% "scalatest"               % "3.2.1"    % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -227,14 +226,14 @@ lazy val login: Project = project
 
 lazy val debianSettings =
   Seq(
-    name in Debian := "chuti",
-    normalizedName in Debian := "chuti",
+    name in Debian               := "chuti",
+    normalizedName in Debian     := "chuti",
     packageDescription in Debian := "The game of chuti",
-    packageSummary in Debian := "The game of chuti",
-    maintainer in Linux := "Roberto Leibman <roberto@leibman.net>",
-    daemonUser in Linux := "chuti",
-    daemonGroup in Linux := "chuti",
-    serverLoading in Debian := Some(ServerLoader.Systemd),
+    packageSummary in Debian     := "The game of chuti",
+    maintainer in Linux          := "Roberto Leibman <roberto@leibman.net>",
+    daemonUser in Linux          := "chuti",
+    daemonGroup in Linux         := "chuti",
+    serverLoading in Debian      := Some(ServerLoader.Systemd),
     mappings in Universal += {
       val src = sourceDirectory.value
       val conf = src / "templates" / "application.conf"
@@ -302,7 +301,7 @@ lazy val web: Project = project
       }
 
       distFolder
-    },
+    }
   )
 
 lazy val commonWeb: Project => Project =
@@ -318,21 +317,21 @@ lazy val commonWeb: Project => Project =
         "io.circe" %%% "circe-literal"
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
-        "commons-io"                                    % "commons-io" % "2.7" withSources (),
+        "commons-io"                                    % "commons-io"                    % "2.7" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.2.1" withSources (),
-        "com.softwaremill.sttp.client"                  %% "async-http-client-backend-zio" % "2.2.1",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.4" withSources (),
+        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.4",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
-        "org.scala-js" %%% "scalajs-dom"                % "1.0.0" withSources (),
+        "org.scala-js" %%% "scalajs-dom"                % "1.1.0" withSources (),
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.3" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.3" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.4" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.4" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
-        "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources (),
+        "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources ()
       ),
       organizationName := "Roberto Leibman",
       startYear        := Some(2020),

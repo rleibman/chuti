@@ -74,7 +74,7 @@ package object token {
             GameService.godLayer ++ ZLayer.succeed(log)
 
           zio.Runtime.default.unsafeRun {
-            val freq = new zio.duration.DurationSyntax(1).hour
+            val freq = new zio.DurationSyntax(1).hour
             (log.info("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provideLayer(layer))
               .repeat(Schedule.spaced(freq).jittered).forkDaemon
           }

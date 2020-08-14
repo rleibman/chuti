@@ -16,6 +16,8 @@
 
 package api
 
+import java.util.Locale
+
 import chuti.User
 
-case class ChutiSession(user: User)
+case class ChutiSession(user: User, locale: Locale = new Locale("es", "MX"))

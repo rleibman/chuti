@@ -32,7 +32,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
 
     val (
       game:       Game,
-      gameEvents: List[GameEvent]
+      gameEvents: Chunk[GameEvent]
     ) =
       testRuntime.unsafeRun {
         (for {
@@ -71,7 +71,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
 
     val (
       game:       Game,
-      gameEvents: List[GameEvent]
+      gameEvents: Chunk[GameEvent]
     ) =
       testRuntime.unsafeRun {
         (for {
@@ -113,7 +113,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     val gameId = GameId(1)
     val (
       game:       Game,
-      gameEvents: List[GameEvent]
+      gameEvents: Chunk[GameEvent]
     ) =
       testRuntime.unsafeRun {
         (for {

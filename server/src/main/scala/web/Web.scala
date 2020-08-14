@@ -57,10 +57,10 @@ trait Web {
 
   private val serverSource: Source[Http.IncomingConnection, Future[Http.ServerBinding]] =
     Http()
-      .bind(
-        interface = config.config.getString(s"${config.configKey}.host"),
-        port = config.config.getInt(s"${config.configKey}.port")
-      )
+      .newServerAt(
+        config.config.getString(s"${config.configKey}.host"),
+        config.config.getInt(s"${config.configKey}.port")
+      ).connectionSource()
 
   private val shutdownDeadline: FiniteDuration = 30.seconds
 

@@ -22,6 +22,7 @@ import caliban.client.scalajs.WebSocketHandler
 import chuti._
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
+import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
@@ -34,10 +35,17 @@ object GlobalDialog extends Enumeration {
 }
 
 case class ChutiState(
-  flipFicha:             Ficha => Callback = _ => Callback.empty,
-  ultimoBorlote:         Option[Borlote] = None,
-  flippedFichas:         Set[Ficha] = Set.empty,
-  onUserChanged:         Option[User] => Callback = _ => Callback.empty,
+  flipFicha:        Ficha => Callback = _ => Callback.empty,
+  ultimoBorlote:    Option[Borlote] = None,
+  flippedFichas:    Set[Ficha] = Set.empty,
+  onSessionChanged: (Option[User], String) => Callback = (_, _) => Callback.empty,
+  locale: String = {
+    val loc = window.sessionStorage.getItem("locale")
+    println(s"locale = $loc")
+    if (loc == null || loc.isEmpty)
+      "es-MX"
+    else loc
+  },
   user:                  Option[User] = None,
   isFirstLogin:          Boolean = false,
   wallet:                Option[UserWallet] = None,

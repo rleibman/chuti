@@ -27,7 +27,6 @@ package components
 
 import java.time.LocalDate
 
-//import scala.concurrent.Future
 import scala.scalajs.js
 
 /**

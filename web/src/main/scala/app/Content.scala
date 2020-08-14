@@ -51,7 +51,6 @@ import util.Config
 import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
-import scala.util.{Failure, Success}
 
 /**
   * This is a helper class meant to load initial app state, scalajs-react normally
@@ -181,19 +180,20 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         }
       } yield ())
 
-    def onUserChanged(userOpt: Option[User]): Callback =
-      userOpt.fold(Callback.empty) { user =>
-        UserRESTClient.remoteSystem
-          .upsert(user)
-          .completeWith {
-            case Success(u) =>
-              Toast.success("User successfully saved ") >>
-                $.modState(s => s.copy(chutiState = s.chutiState.copy(user = Some(u))))
-            case Failure(t) =>
-              t.printStackTrace()
-              Toast.error("Error modificando el usuario")
-          }
+    def onSessionChanged(userOpt: Option[User], languageTag: String): Callback = {
+      val async = for {
+        user <- AsyncCallback.traverse(userOpt.toSeq)(user => UserRESTClient.remoteSystem.upsert(user))
+        locale <- UserRESTClient.remoteSystem.setLocale(languageTag)
+      } yield {
+        Callback(window.sessionStorage.setItem("locale", languageTag)) >>
+        $.modState(s => s.copy(
+          chutiState = s.chutiState.copy(
+            user = user.headOption,
+            locale = languageTag)
+        )) >> Toast.success("Usuario guardado!")
       }
+      async.completeWith(_.get)
+    }
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
     val audio = new Audio("")
@@ -389,7 +389,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               modGameInProgress = modGameInProgress,
               onRequestGameRefresh = refresh(initial = false) _,
               onGameViewModeChanged = onGameViewModeChanged,
-              onUserChanged = onUserChanged,
+              onSessionChanged = onSessionChanged,
               toggleSound = toggleSound,
               showDialog = showDialog,
               playSound = playSound,

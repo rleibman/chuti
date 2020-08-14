@@ -125,7 +125,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
 
   def repositoryLayer(gameFiles: String*): ULayer[Repository] =
     ZLayer.fromEffect {
-      val z: ZIO[Any, Throwable, List[Game]] =
+      val z: ZIO[Any, Throwable, Seq[Game]] =
         ZIO.foreachPar(gameFiles)(filename => readGame(filename))
       val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
       zz

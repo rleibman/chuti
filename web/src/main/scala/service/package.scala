@@ -32,6 +32,8 @@ package object service {
         RESTOperation[String, Option[UserWallet]]("get", s"$baseUrl/userWallet", None)
       def changePassword(password: String): AsyncCallback[Boolean] =
         RESTOperation[String, Boolean]("post", s"$baseUrl/changePassword", Option(password))
+      def setLocale(languageTag: String): AsyncCallback[Boolean] =
+        RESTOperation[String, Boolean]("put", s"$baseUrl/locale", Option(languageTag))
     }
     override def remoteSystem = UserClientService
   }
