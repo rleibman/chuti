@@ -39,6 +39,7 @@ object SessionUtils {
 
   implicit val sessionCache: Cache[Option[ChutiSession]] = CaffeineCache[Option[ChutiSession]]
   def updateSession(session: ChutiSession): Task[Unit] = {
+    println(s"updating session $session")
     SessionUtils.sessionCache.put(session.user.id)(Option(session)).unit
   }
   def removeFromCache(userIdOpt: Option[UserId]): Task[Any] =

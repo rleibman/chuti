@@ -16,6 +16,8 @@
 
 package app
 
+import java.util.Locale
+
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
 import caliban.client.scalajs.WebSocketHandler
@@ -39,9 +41,9 @@ case class ChutiState(
   ultimoBorlote:    Option[Borlote] = None,
   flippedFichas:    Set[Ficha] = Set.empty,
   onSessionChanged: (Option[User], String) => Callback = (_, _) => Callback.empty,
-  locale: String = {
-    val loc = window.sessionStorage.getItem("locale")
-    println(s"locale = $loc")
+  languageTag: String = {
+    val loc = window.sessionStorage.getItem("languageTag")
+    println(s"languageTag = $loc")
     if (loc == null || loc.isEmpty)
       "es-MX"
     else loc
@@ -65,6 +67,8 @@ case class ChutiState(
   toggleSound:           Callback = Callback.empty,
   playSound:             String => Callback = _ => Callback.empty
 ) {
+  lazy val locale: Locale = Locale.forLanguageTag(languageTag)
+
   def isFlipped(ficha: Ficha): Boolean = flippedFichas.contains(ficha)
 
   lazy val usersAndFriends: Seq[ExtUser] =

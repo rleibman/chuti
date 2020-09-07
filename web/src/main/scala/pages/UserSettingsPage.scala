@@ -32,10 +32,10 @@ import typings.semanticUiReact.inputInputMod.InputOnChangeData
 object UserSettingsPage extends ChutiPage {
 
   case class State(
-    user:         Option[User] = None,
+    user: Option[User] = None,
     locale: String = {
-      val loc = window.sessionStorage.getItem("locale")
-      println(s"locale = $loc")
+      val loc = window.sessionStorage.getItem("languageTag")
+      println(s"languageTag = $loc")
       if (loc == null || loc.isEmpty)
         "es-MX"
       else loc
@@ -132,7 +132,9 @@ object UserSettingsPage extends ChutiPage {
               fluid = true,
               selection = true,
               value = state.locale,
-              onChange = { (_, dropDownProps) => $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))},
+              onChange = { (_, dropDownProps) =>
+                $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))
+              },
               options = scalajs.js.Array(
                 DropdownItemProps(value = "en-US", flag = "us", text = "Ingles"),
                 DropdownItemProps(value = "es-MX", flag = "mx", text = "Español")

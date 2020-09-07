@@ -81,8 +81,9 @@ object ChatApi
       maxFields(22) @@ // query analyzer that limit query fields
       maxDepth(30) @@ // query analyzer that limit query depth
       timeout(3.seconds) @@ // wrapper that fails slow queries
-      printSlowQueries(500.millis) @@ // wrapper that logs slow queries
-      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
+      printSlowQueries(3.seconds)
+//  @@ // wrapper that logs slow queries
+//      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
     "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar LocalDateTime\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  created: LocalDateTime!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: LocalDateTime!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: LocalDateTime!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"
   //Generate client with

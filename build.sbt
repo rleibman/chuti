@@ -38,9 +38,9 @@ lazy val akkaVersion = "2.6.8"
 lazy val akkaHttpVersion = "10.2.0"
 lazy val slickVersion = "3.3.2"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.9.1"
+lazy val calibanVersion = "0.9.1+36-6320c24d-SNAPSHOT"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.0"
+lazy val zioVersion = "1.0.1"
 lazy val monocleVersion = "2.1.0"
 
 lazy val commonSettings = Seq(
@@ -146,7 +146,7 @@ lazy val server = project
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.4.0" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.5.0" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -154,12 +154,12 @@ lazy val server = project
       "com.github.daddykotex" %% "courier"         % "2.1.0" withSources (),
       "ch.qos.logback"         % "logback-classic" % "1.2.3" withSources (),
       "org.slf4j"              % "slf4j-nop"       % "1.7.30" withSources (),
-      "commons-codec"          % "commons-codec"   % "1.14",
+      "commons-codec"          % "commons-codec"   % "1.15",
       //Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.2.1"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.14.8"   % "it, test" withSources ()
+      "org.scalatest" %% "scalatest"               % "3.2.2"    % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.15.0"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -320,15 +320,15 @@ lazy val commonWeb: Project => Project =
         "commons-io"                                    % "commons-io"                    % "2.7" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.2.4" withSources (),
-        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.4",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.7" withSources (),
+        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.7",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "1.1.0" withSources (),
         "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.4" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.4" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.5" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.5" withSources (),
         "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources ()

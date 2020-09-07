@@ -60,41 +60,44 @@ trait Api
             unauth <- unauthRoute
           } yield {
             DebuggingDirectives.logRequest("Request") {
-              path("helloworld") {
-                get {
-                  complete {
-                    "Hello World"
+//              randomTokenCsrfProtection(checkHeader) //Need to Add some stuff in the client if you want to make this work
+              {
+                path("helloworld") {
+                  get {
+                    complete {
+                      "Hello World"
+                    }
                   }
-                }
-              } ~
-                extractLog { log =>
-                  unauth ~ {
-                    ensureSession { sessionResult =>
-                      extractRequestContext { requestContext =>
-                        sessionResult.toOption match {
-                          case Some(session) =>
-                            val me: ZIO[
-                              Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder,
-                              Throwable,
-                              Route
-                            ] = apiRoute
-                              .provideSomeLayer[
-                                Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder
-                              ](SessionProvider.layer(session))
-                            val meme = me.provide(r)
+                } ~
+                  extractLog { log =>
+                    unauth ~ {
+                      ensureSession { sessionResult =>
+                        extractRequestContext { requestContext =>
+                          sessionResult.toOption match {
+                            case Some(session) =>
+                              val me: ZIO[
+                                Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder,
+                                Throwable,
+                                Route
+                              ] = apiRoute
+                                .provideSomeLayer[
+                                  Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder
+                                ](SessionProvider.layer(session))
+                              val meme = me.provide(r)
 
-                            meme
-                          case None =>
-                            log.info(
-                              s"Unauthorized ${requestContext.request.method.value} request of ${requestContext.unmatchedPath}, redirecting to login"
-                            )
-                            redirect("/loginForm", StatusCodes.SeeOther)
+                              meme
+                            case None =>
+                              log.info(
+                                s"Unauthorized ${requestContext.request.method.value} request of ${requestContext.unmatchedPath}, redirecting to login"
+                              )
+                              redirect("/loginForm", StatusCodes.SeeOther)
+                          }
                         }
                       }
-                    }
-                  } ~
-                    htmlRoute
-                }
+                    } ~
+                      htmlRoute
+                  }
+              }
             }
           }
         }

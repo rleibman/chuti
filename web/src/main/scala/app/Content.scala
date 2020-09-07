@@ -180,17 +180,21 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         }
       } yield ())
 
-    def onSessionChanged(userOpt: Option[User], languageTag: String): Callback = {
+    def onSessionChanged(
+      userOpt:     Option[User],
+      languageTag: String
+    ): Callback = {
       val async = for {
-        user <- AsyncCallback.traverse(userOpt.toSeq)(user => UserRESTClient.remoteSystem.upsert(user))
+        user <-
+          AsyncCallback.traverse(userOpt.toSeq)(user => UserRESTClient.remoteSystem.upsert(user))
         locale <- UserRESTClient.remoteSystem.setLocale(languageTag)
       } yield {
-        Callback(window.sessionStorage.setItem("locale", languageTag)) >>
-        $.modState(s => s.copy(
-          chutiState = s.chutiState.copy(
-            user = user.headOption,
-            locale = languageTag)
-        )) >> Toast.success("Usuario guardado!")
+        Callback(window.sessionStorage.setItem("languageTag", languageTag)) >>
+          $.modState(s =>
+            s.copy(
+              chutiState = s.chutiState.copy(user = user.headOption, languageTag = languageTag)
+            )
+          ) >> Toast.success("Usuario guardado!")
       }
       async.completeWith(_.get)
     }

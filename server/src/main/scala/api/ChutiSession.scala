@@ -20,4 +20,7 @@ import java.util.Locale
 
 import chuti.User
 
-case class ChutiSession(user: User, locale: Locale = new Locale("es", "MX"))
+case class ChutiSession(
+  user:   User,
+  locale: Locale = new Locale("es", "MX")
+)
