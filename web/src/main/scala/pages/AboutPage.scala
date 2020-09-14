@@ -30,7 +30,7 @@ object AboutPage extends ChutiPage {
    |<h2>Agradecimientos</h2>
    |<p>Un gran agradecimiento a mis amigos con los que jugué chuti en la Ibero, y que me ayudaron a acordarme como se juega:
    |Wilfrido Cruz, Francisco Briseño, Alfredo Galindo, Hiram Garcia, Juan Carlos Escobar, Juan Carlos Garfias, Paul Uribe.</p>
-   |<p>... Y a todos los demas con los que no platico por Whatsapp a diario (pero que también fueron clientes).</p>
+   |<p>... Y a todos los demás con los que no platico por Whatsapp a diario (pero que también fueron clientes).</p>
    |</div>
    |""".stripMargin
 

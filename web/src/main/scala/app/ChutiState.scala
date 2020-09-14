@@ -26,6 +26,7 @@ import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
+import util.LocalizedMessages
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value
@@ -77,6 +78,33 @@ case class ChutiState(
         .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
           ExtUser(_, isFriend = true, isLoggedIn = false)
         ).sortBy(_.user.name)
+
+  object ChutiMessages extends LocalizedMessages {
+    override def bundles: Map[String, ChutiMessages.MessageBundle] =
+      Map(
+        "es" -> MessageBundle(
+          "es",
+          Map(
+            "Chuti.jugador"       -> "Jugador",
+            "Chuti.cuentas"       -> "Cuentas",
+            "Chuti.total"         -> "Total",
+            "Chuti.satoshi"       -> "Satoshi",
+            "Chuti.entrarAlJuego" -> "Entrar al Juego"
+          )
+        ),
+        "en" -> MessageBundle(
+          "en",
+          Map(
+            "Chuti.jugador"       -> "Player",
+            "Chuti.cuentas"       -> "Accounting",
+            "Chuti.total"         -> "Total",
+            "Chuti.satoshi"       -> "Satoshi",
+            "Chuti.entrarAlJuego" -> "Enter game"
+          )
+        )
+      )
+  }
+
 
 }
 

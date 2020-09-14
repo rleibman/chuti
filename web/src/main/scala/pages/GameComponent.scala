@@ -31,15 +31,28 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{^, _}
 import org.scalablytyped.runtime.StringDictionary
+import pages.GameComponent.GameComponentMessages
 import pages.LobbyComponent.calibanCall
+import pages.RulesPage.RulesPageMessages
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
 import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES}
 import typings.semanticUiReact.imageImageMod.ImageProps
+import util.LocalizedMessages
 
 import scala.scalajs.js.JSConverters._
 
 object GameComponent {
+  object GameComponentMessages extends LocalizedMessages {
+    override def bundles: Map[String, GameComponentMessages.MessageBundle] = Map(
+      "es" -> MessageBundle("es",
+        Map("GameComponent.listo" -> "Listo!")),
+      "en" -> MessageBundle("en",
+        Map("GameComponent.listo" -> "Ready!")),
+    )
+  }
+  import GameComponentMessages._
+
   case class Props(
     gameInProgress: Option[Game],
     gameViewMode:   StateSnapshot[GameViewMode]
@@ -68,7 +81,7 @@ object GameComponent {
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
         Mutations.play(gameId.value, event.asJson),
-        _ => clearPlayState() >> Toast.success("Listo!")
+        _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
       )
     }
 
@@ -152,10 +165,10 @@ object GameComponent {
                     ),
                     <.div(
                       ^.className := "userStatus",
-                      if (jugador.turno) "Le toco cantar. " else "",
+                      if (jugador.turno) "Le toco cantar. " else "", //TODO i8n
                       jugador.cuantasCantas
                         .fold("")(c =>
-                          s"Canto ${if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa
+                          s"Canto ${if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa //TODO i8n
                           else c}"
                         ),
                       jugador.statusString
@@ -188,7 +201,7 @@ object GameComponent {
                               className = "cantaDropdown",
                               compact = true,
                               fluid = false,
-                              placeholder = "Cuantas Cantas?",
+                              placeholder = "Cuantas Cantas?", //TODO i8n
                               selection = true,
                               value = s.cuantasCantas.getOrElse(defaultCuantas).prioridad.toDouble,
                               options = cantasOptions,
@@ -208,7 +221,7 @@ object GameComponent {
                                   Canta(s.cuantasCantas.getOrElse(defaultCuantas))
                                 )
                               }
-                            )("Canta")
+                            )("Canta") //TODO i8n
                           )
                         case JugadorState.dando =>
                           Button(
@@ -218,13 +231,13 @@ object GameComponent {
                             onClick = { (_, _) =>
                               play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
                             }
-                          )("Dá")
+                          )("Dá") //TODO i8n
                         case jugadorState @ (JugadorState.pidiendo |
                             JugadorState.pidiendoInicial) =>
                           <.span(
                             if (jugadorState == JugadorState.pidiendoInicial) {
                               <.span(
-                                Label()("Triunfan"),
+                                Label()("Triunfan"), //TODO i8n
                                 <.div(
                                   ^.className := "triunfoNum",
                                   s.triunfo match {
@@ -234,7 +247,7 @@ object GameComponent {
                                         ^.src           := s"images/${num.value}.svg",
                                         ^.height        := 28.px
                                       )
-                                    case Some(SinTriunfos) => <.span("Sin Triunfos")
+                                    case Some(SinTriunfos) => <.span("Sin Triunfos") //TODO i8n
                                     case _                 => EmptyVdom
                                   }
                                 ),
@@ -242,7 +255,7 @@ object GameComponent {
                                   className = "triunfoDropdown",
                                   text = "",
                                   labeled = true,
-                                  placeholder = "Triunfo",
+                                  placeholder = "Triunfo", //TODO i8n
                                   value = s.triunfo.fold("")(_.toString),
                                   onChange = { (_, dropDownProps) =>
                                     val value = dropDownProps.value.asInstanceOf[String]
@@ -273,7 +286,7 @@ object GameComponent {
                             <.span(
                               Checkbox(
                                 toggle = true,
-                                label = "Estricta Derecha",
+                                label = "Estricta Derecha", //TODO i8n
                                 checked = s.estrictaDerecha,
                                 onChange = { (_, checkBoxProps) =>
                                   $.modState(
@@ -296,7 +309,7 @@ object GameComponent {
                                     )
                                   )
                                 }
-                              )("Pide"),
+                              )("Pide"), //TODO i8n
                               if (
                                 s.triunfo.nonEmpty && game
                                   .copy(triunfo = s.triunfo).puedesCaerte(jugador)
@@ -308,7 +321,7 @@ object GameComponent {
                                   onClick = { (_, _) =>
                                     play(game.id.get, Caete(triunfo = s.triunfo))
                                   }
-                                )("Cáete")
+                                )("Cáete") //TODO i8n
                               } else
                                 EmptyVdom
                             )
@@ -320,7 +333,7 @@ object GameComponent {
                             onClick = { (_, _) =>
                               play(game.id.get, Sopa())
                             }
-                          )("Sopa")
+                          )("Sopa") //TODO i8n
                         case JugadorState.esperandoCanto   => EmptyVdom
                         case JugadorState.esperando        => EmptyVdom
                         case JugadorState.partidoTerminado => EmptyVdom
@@ -332,11 +345,11 @@ object GameComponent {
                           basic = true,
                           onClick = { (_, _) =>
                             Confirm.confirm(
-                              question = "Estas seguro que te quieres rendir?",
+                              question = "Estas seguro que te quieres rendir?", //TODO i8n
                               onConfirm = play(game.id.get, MeRindo())
                             )
                           }
-                        )("Me Rindo")
+                        )("Me Rindo") //TODO i8n
                       } else
                         EmptyVdom
                     )
@@ -497,7 +510,7 @@ object GameComponent {
                       chutiState
                         .onGameViewModeChanged(GameViewMode.lobby)
                     }
-                  )("Regresa al Lobby")
+                  )("Regresa al Lobby") //TODO i8n
                 )
               )
             } else {
@@ -506,11 +519,11 @@ object GameComponent {
                 <.div(
                   ^.className := "juegoStatus",
                   game.triunfo match {
-                    case Some(SinTriunfos) => <.div(^.className := "triunfan", "Sin Triunfos")
+                    case Some(SinTriunfos) => <.div(^.className := "triunfan", "Sin Triunfos") //TODO i8n
                     case Some(TriunfoNumero(num)) =>
                       <.div(
                         ^.className := "triunfan",
-                        "Triunfan",
+                        "Triunfan", //TODO i8n
                         <.img(^.src := s"images/${num.value}.svg", ^.height := 28.px)
                       )
                     case None => <.div()

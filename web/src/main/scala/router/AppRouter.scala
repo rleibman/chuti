@@ -17,6 +17,7 @@
 package router
 
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 import app.{ChutiState, GameViewMode, GlobalDialog}
 import chat.ChatComponent
@@ -27,7 +28,7 @@ import japgolly.scalajs.react.extra.router._
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom._
-import pages._
+import pages.{RulesPage, _}
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.genericMod.SemanticICONS
 
@@ -54,20 +55,22 @@ object AppRouter extends ChutiComponent {
 
       def render(): VdomElement =
         ChutiState.ctx.consume { chutiState =>
+          import chutiState.ChutiMessages._
+          implicit val locale: Locale = chutiState.locale
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
               Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
                 ModalHeader()(
-                  s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto"
+                  s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" //TODO I8n
                 ),
                 ModalContent()(
                   Table()(
                     TableHeader()(
                       TableRow(key = "cuentasHeader")(
-                        TableHeaderCell()("Jugador"),
-                        TableHeaderCell()("Cuentas"),
-                        TableHeaderCell()("Total"),
-                        TableHeaderCell()("Satoshi")
+                        TableHeaderCell()(localized("Chuti.jugador")),
+                        TableHeaderCell()(localized("Chuti.cuentas")),
+                        TableHeaderCell()(localized("Chuti.total")),
+                        TableHeaderCell()(localized("Chuti.satoshi"))
                       )
                     ),
                     TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
@@ -110,11 +113,11 @@ object AppRouter extends ChutiComponent {
                   ),
                   if (game.gameStatus == GameStatus.partidoTerminado) {
                     <.div(
-                      s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido."
+                      s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido."//TODO I8n
                     )
                   } else
                     EmptyVdom,
-                  <.div(
+                  <.div(//TODO I8n
                     <.h1("Puntuacion"),
                     <.ul(
                       <.li("Si ganas, cada uno te da 1 punto (o sea, recibes 3 puntos)"),
@@ -140,7 +143,7 @@ object AppRouter extends ChutiComponent {
                     onClick = { (_, _) =>
                       chutiState.showDialog(GlobalDialog.none)
                     }
-                  )("Ok")
+                  )("Ok")//TODO I8n
                 )
               )
             }
@@ -164,6 +167,8 @@ object AppRouter extends ChutiComponent {
   ): VdomElement = {
     assert(page != null)
     ChutiState.ctx.consume { chutiState =>
+      import chutiState.ChutiMessages._
+      implicit val locale: Locale = chutiState.locale
       def renderMenu = {
         VdomArray(
           <.div(
@@ -180,7 +185,7 @@ object AppRouter extends ChutiComponent {
                 item = true,
                 //                simple = true,
                 compact = true,
-                text = "☰ Menu"
+                text = "☰ Menu" //TODO I8n
               )(
                 DropdownMenu()(
                   chutiState.gameInProgress
@@ -195,13 +200,13 @@ object AppRouter extends ChutiComponent {
                               .onGameViewModeChanged(GameViewMode.game) >> page
                               .setEH(GameAppPage)(e)
                           }
-                        )("Entrar al Juego"),
+                        )(localized("Chuti.entrarAlJuego")),
                         MenuItem(
                           key = "menuCuentas",
                           onClick = { (_, _) =>
                             chutiState.showDialog(GlobalDialog.cuentas)
                           }
-                        )("Cuentas")
+                        )("Cuentas") //TODO I8n
                       )
                     },
                   MenuItem(
@@ -210,22 +215,22 @@ object AppRouter extends ChutiComponent {
                       chutiState
                         .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
                     }
-                  )("Lobby"),
+                  )("Lobby"),//TODO I8n
                   MenuItem(
                     key = "history",
                     onClick = { (e, _) =>
                       page.setEH(GameHistoryAppPage)(e)
                     }
-                  )("Historia de juegos"),
+                  )("Historia de juegos"),//TODO I8n
                   Divider()(),
-                  MenuItem(onClick = { (e, _) => page.setEH(RulesAppPage)(e) })("Reglas de Chuti"),
+                  MenuItem(onClick = { (e, _) => page.setEH(RulesAppPage)(e) })("Reglas de Chuti"),//TODO I8n
                   MenuItem(onClick = { (_, _) =>
                     Callback {
                       document.location.href = "/api/auth/doLogout"
                     }
-                  })("Cerrar sesión"),
+                  })("Cerrar sesión"), //TODO I8n
                   MenuItem(onClick = { (e, _) => page.setEH(UserSettingsAppPage)(e) })(
-                    "Administración de usuario"
+                    "Administración de usuario" //TODO I8n
                   ),
                   Divider()(),
                   MenuItem(onClick = { (_, _) => chutiState.toggleSound })(
@@ -233,12 +238,12 @@ object AppRouter extends ChutiComponent {
                       if (chutiState.muted) SemanticICONS.`volume up`
                       else SemanticICONS.`volume off`
                     )(),
-                    if (chutiState.muted) "Con Sonido" else "Sin Sonido"
+                    if (chutiState.muted) "Con Sonido" else "Sin Sonido" //TODO I8n
                   ),
                   Divider()(),
-                  MenuItem(onClick = { (e, _) => page.setEH(ChangeLogAppPage)(e) })("ChangeLog"),
+                  MenuItem(onClick = { (e, _) => page.setEH(ChangeLogAppPage)(e) })("ChangeLog"), //TODO I8n
                   MenuItem(onClick = { (e, _) => page.setEH(AboutAppPage)(e) })(
-                    "Acerca de chuti.fun"
+                    "Acerca de chuti.fun" //TODO I8n
                   )
                 )
               )
@@ -247,7 +252,7 @@ object AppRouter extends ChutiComponent {
           <.div(
             ^.key       := "user",
             ^.className := "user",
-            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}"
+            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}" //TODO I8n
           )
         )
       }
@@ -269,7 +274,7 @@ object AppRouter extends ChutiComponent {
             channelId,
             onPrivateMessage = { msg =>
               Toast.info(
-                <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg)
+                <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) //TODO I8n
               ) >> chutiState.onRequestGameRefresh()
             },
             onMessage = _ => chutiState.playSound("sounds/message.mp3")

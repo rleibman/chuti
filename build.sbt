@@ -34,11 +34,11 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.8"
+lazy val akkaVersion = "2.6.9"
 lazy val akkaHttpVersion = "10.2.0"
-lazy val slickVersion = "3.3.2"
+lazy val slickVersion = "3.3.3"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.9.1+36-6320c24d-SNAPSHOT"
+lazy val calibanVersion = "0.9.2"
 lazy val scalaCacheVersion = "0.28.0"
 lazy val zioVersion = "1.0.1"
 lazy val monocleVersion = "2.1.0"
@@ -140,13 +140,13 @@ lazy val server = project
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "mysql"                      % "mysql-connector-java"   % "8.0.21" withSources (),
-      "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.0.0" withSources (),
+      "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.5.0" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.5.1" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -317,12 +317,12 @@ lazy val commonWeb: Project => Project =
         "io.circe" %%% "circe-literal"
       ).map(_ % circeVersion),
       libraryDependencies ++= Seq(
-        "commons-io"                                    % "commons-io"                    % "2.7" withSources (),
+        "commons-io"                                    % "commons-io"                    % "2.8.0" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.2.7" withSources (),
-        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.7",
-        "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.4" withSources (),
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.8" withSources (),
+        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.8",
+        "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.5" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "1.1.0" withSources (),

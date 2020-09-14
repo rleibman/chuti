@@ -19,36 +19,15 @@ package pages
 import java.util.Locale
 
 import app.ChutiState
-import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.{BackendScope, ScalaComponent}
+import util.LocalizedMessages
 
 object RulesPage extends ChutiPage {
   case class State()
 
-  trait Messages {
-    case class MessageBundle(
-      locale: String,
-      map:    Map[String, String]
-    )
-    def bundles: Map[String, MessageBundle]
-
-    def getLocalizedString(
-      key:     String,
-      default: String = ""
-    )(
-      implicit locale: Locale = new Locale("es", "MX")
-    ): String = {
-      println(s"getLocalizedString $locale")
-      (for {
-        //TODO, find the most specific match, first by language-country, then by language or use whatever is found.
-        bundle <- bundles.get(locale.getLanguage)
-        str    <- bundle.map.get(key)
-      } yield str).getOrElse(default)
-    }
-  }
-
-  object RulesPageMessages extends Messages {
+  object RulesPageMessages extends LocalizedMessages {
     override def bundles: Map[String, RulesPageMessages.MessageBundle] =
       Map(
         "en" ->
@@ -266,14 +245,14 @@ object RulesPage extends ChutiPage {
   }
 
   class Backend($ : BackendScope[_, State]) {
+    import RulesPageMessages._
 
     def render(S: State): VdomElement = {
       ChutiState.ctx.consume { chutiState =>
         implicit val locale: Locale = chutiState.locale
         <.div(
           ^.margin := 10.px,
-          ^.dangerouslySetInnerHtml := RulesPageMessages
-            .getLocalizedString("RulesPage.rules")
+          ^.dangerouslySetInnerHtml := localized("RulesPage.rules")
         )
       }
 
