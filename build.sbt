@@ -34,18 +34,18 @@ lazy val root = (project in file("."))
     headerLicense      := None
   )
 
-lazy val akkaVersion = "2.6.9"
-lazy val akkaHttpVersion = "10.2.0"
+lazy val akkaVersion = "2.6.10"
+lazy val akkaHttpVersion = "10.2.1"
 lazy val slickVersion = "3.3.3"
 lazy val circeVersion = "0.13.0"
-lazy val calibanVersion = "0.9.2"
+lazy val calibanVersion = "0.9.3"
 lazy val scalaCacheVersion = "0.28.0"
-lazy val zioVersion = "1.0.1"
+lazy val zioVersion = "1.0.3"
 lazy val monocleVersion = "2.1.0"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
-  scalaVersion     := "2.13.3",
+  scalaVersion     := "2.13.4",
   startYear        := Some(2020),
   organizationName := "Roberto Leibman",
   headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
@@ -133,20 +133,20 @@ lazy val server = project
       //Akka
       "com.typesafe.akka"                  %% "akka-stream"     % akkaVersion withSources (),
       "com.typesafe.akka"                  %% "akka-http"       % akkaHttpVersion withSources (),
-      "de.heikoseeberger"                  %% "akka-http-circe" % "1.34.0" withSources (),
+      "de.heikoseeberger"                  %% "akka-http-circe" % "1.35.2" withSources (),
       "com.softwaremill.akka-http-session" %% "core"            % "0.5.11" withSources (),
       //DB
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
-      "mysql"                      % "mysql-connector-java"   % "8.0.21" withSources (),
+      "mysql"                      % "mysql-connector-java"   % "8.0.22" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       //ZIO
       "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.5.1" withSources (),
+      "dev.zio"               %% "zio-logging-slf4j" % "0.5.3" withSources (),
       "com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
@@ -158,8 +158,8 @@ lazy val server = project
       //Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.2.2"    % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.15.0"   % "it, test" withSources ()
+      "org.scalatest" %% "scalatest"               % "3.2.3"    % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest" % "1.16.3"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -309,6 +309,7 @@ lazy val commonWeb: Project => Project =
     .settings(
       resolvers += Resolver.bintrayRepo("oyvindberg", "converter"),
       stFlavour := Flavour.Japgolly,
+      stEnableLongApplyMethod := true,
       stIgnore ++= List("react-dom"),
       libraryDependencies ++= Seq(
         "io.circe" %%% "circe-core",
@@ -320,16 +321,16 @@ lazy val commonWeb: Project => Project =
         "commons-io"                                    % "commons-io"                    % "2.8.0" withSources (),
         "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
         "dev.zio" %%% "zio"                             % zioVersion withSources (),
-        "com.softwaremill.sttp.client" %%% "core"       % "2.2.8" withSources (),
-        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.8",
+        "com.softwaremill.sttp.client" %%% "core"       % "2.2.9" withSources (),
+        "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.2.9",
         "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.5" withSources (),
         "io.github.cquiroz" %%% "scala-java-time"       % "2.0.0" withSources (),
         "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.0.0" withSources (),
         "org.scala-js" %%% "scalajs-dom"                % "1.1.0" withSources (),
-        "com.olvind" %%% "scalablytyped-runtime"        % "2.1.0",
-        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.5" withSources (),
-        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.5" withSources (),
-        "com.lihaoyi" %%% "scalatags"                   % "0.9.1" withSources (),
+        "com.olvind" %%% "scalablytyped-runtime"        % "2.2.0",
+        "com.github.japgolly.scalajs-react" %%% "core"  % "1.7.6" withSources (),
+        "com.github.japgolly.scalajs-react" %%% "extra" % "1.7.6" withSources (),
+        "com.lihaoyi" %%% "scalatags"                   % "0.9.2" withSources (),
         "com.github.japgolly.scalacss" %%% "core"       % "0.6.1" withSources (),
         "com.github.japgolly.scalacss" %%% "ext-react"  % "0.6.1" withSources ()
       ),
