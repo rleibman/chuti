@@ -35,7 +35,7 @@ lazy val root = (project in file("."))
   )
 
 lazy val akkaVersion = "2.6.10"
-lazy val akkaHttpVersion = "10.2.1"
+lazy val akkaHttpVersion = "10.2.1+147-b0322ceb"
 lazy val slickVersion = "3.3.3"
 lazy val circeVersion = "0.13.0"
 lazy val calibanVersion = "0.9.3"
@@ -132,7 +132,7 @@ lazy val server = project
     libraryDependencies ++= Seq(
       //Akka
       "com.typesafe.akka"                  %% "akka-stream"     % akkaVersion withSources (),
-      "com.typesafe.akka"                  %% "akka-http"       % akkaHttpVersion withSources (),
+      "com.typesafe.akka"                  %% "akka-http"  % akkaHttpVersion withSources (),
       "de.heikoseeberger"                  %% "akka-http-circe" % "1.35.2" withSources (),
       "com.softwaremill.akka-http-session" %% "core"            % "0.5.11" withSources (),
       //DB
@@ -308,7 +308,7 @@ lazy val commonWeb: Project => Project =
   _.enablePlugins(ScalablyTypedConverterPlugin)
     .settings(
       resolvers += Resolver.bintrayRepo("oyvindberg", "converter"),
-      stFlavour := Flavour.Japgolly,
+      stFlavour               := Flavour.Japgolly,
       stEnableLongApplyMethod := true,
       stIgnore ++= List("react-dom"),
       stReactEnableTreeShaking := Selection.All,

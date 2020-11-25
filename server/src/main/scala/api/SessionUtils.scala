@@ -39,7 +39,7 @@ object SessionUtils {
   implicit val sessionCache: Cache[Option[ChutiSession]] = CaffeineCache[Option[ChutiSession]]
   def updateSession(session: ChutiSession): Task[Unit] = {
     println(s"updating session $session")
-    SessionUtils.sessionCache.put(session.user.id)(Option(session)).unit
+    sessionCache.put(session.user.id)(Option(session)).unit
   }
   def removeFromCache(userIdOpt: Option[UserId]): Task[Any] =
     Task.foreach(userIdOpt)(userId => sessionCache.remove(userId.value))
@@ -78,17 +78,6 @@ trait SessionUtils extends Directives {
       _.user.id.fold("-1")(_.value.toString),
       (id: String) =>
         Try {
-//          ChutiSession(
-//            User(
-//              Some(UserId(1)),
-//              "roberto@leibman.net",
-//              "Roberto Leibman",
-//              LocalDateTime.now,
-//              active = true,
-//              deleted = false,
-//              isAdmin = false
-//            )
-//          )
           zio.Runtime.default
             .unsafeRun(getChutiSession(id.toInt))
             .getOrElse(throw new Exception(s"The user $id was not found!"))
