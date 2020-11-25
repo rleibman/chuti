@@ -243,7 +243,7 @@ lazy val debianSettings =
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Web
-lazy val reactVersion = "16.13.1"
+lazy val reactVersion = "17.0.0"
 
 lazy val web: Project = project
   .in(file("web"))
@@ -311,6 +311,7 @@ lazy val commonWeb: Project => Project =
       stFlavour := Flavour.Japgolly,
       stEnableLongApplyMethod := true,
       stIgnore ++= List("react-dom"),
+      stReactEnableTreeShaking := Selection.All,
       libraryDependencies ++= Seq(
         "io.circe" %%% "circe-core",
         "io.circe" %%% "circe-generic",
@@ -412,10 +413,10 @@ lazy val bundlerSettings: Project => Project =
       webpackEmitSourceMaps := true,
       Compile / npmDependencies ++= Seq(
         "react-dom"         -> reactVersion,
-        "@types/react-dom"  -> "16.9.6",
+        "@types/react-dom"  -> reactVersion,
         "react"             -> reactVersion,
-        "@types/react"      -> "16.9.32",
-        "semantic-ui-react" -> "0.88.2"
+        "@types/react"      -> reactVersion,
+        "semantic-ui-react" -> "2.0.1"
       ),
       npmDevDependencies.in(Compile) := Seq(
         "style-loader"               -> "0.23.1",

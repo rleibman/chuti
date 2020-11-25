@@ -36,7 +36,7 @@ import pages.LobbyComponent.calibanCall
 import pages.RulesPage.RulesPageMessages
 import typings.semanticUiReact.components._
 import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
-import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES}
+import typings.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
 import typings.semanticUiReact.imageImageMod.ImageProps
 import util.LocalizedMessages
 
@@ -266,15 +266,15 @@ object GameComponent {
                                       DropdownItemProps(
                                         StringDictionary =
                                           StringDictionary("key" -> triunfo.toString),
-                                        image = triunfo match {
+                                        image = (triunfo match {
                                           case SinTriunfos => null
                                           case TriunfoNumero(num) =>
                                             ImageProps(StringDictionary =
                                               StringDictionary(
                                                 "src" -> s"images/${num.value}.svg"
                                               )
-                                            )
-                                        },
+                                            ).asInstanceOf[SemanticShorthandItem[ImageProps]]
+                                        }),
                                         value = triunfo.toString,
                                         text = triunfo.toString
                                       )

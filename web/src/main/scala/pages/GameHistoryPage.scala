@@ -71,12 +71,16 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
               Container()(
                 Table()(
                   TableHeader()(
-                    TableRow(key = "cuentasHeader1")(
+                    TableRow(
+//                      key = "cuentasHeader1"
+                    )(
                       TableHeaderCell(colSpan = 4)(
                         s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" //TODO i8n
                       )
                     ),
-                    TableRow(key = "cuentasHeader2")(
+                    TableRow(
+//                      key = "cuentasHeader2"
+                    )(
                       TableHeaderCell()("Jugador"), //TODO i8n
                       TableHeaderCell()("Cuentas"), //TODO i8n
                       TableHeaderCell()("Total"), //TODO i8n
@@ -86,7 +90,7 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
                   TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                     case ((jugador, puntos, satoshi), jugadorIndex) =>
                       TableRow(
-                        key = s"cuenta$jugadorIndex",
+//                        key = s"cuenta$jugadorIndex",
                         className =
                           if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
                       )(

@@ -16,9 +16,8 @@
 
 package api
 
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
-import chuti.{User, UserId}
+import chuti.UserId
 import com.softwaremill.session.SessionDirectives._
 import com.softwaremill.session.SessionOptions._
 import com.softwaremill.session._
@@ -79,9 +78,20 @@ trait SessionUtils extends Directives {
       _.user.id.fold("-1")(_.value.toString),
       (id: String) =>
         Try {
+//          ChutiSession(
+//            User(
+//              Some(UserId(1)),
+//              "roberto@leibman.net",
+//              "Roberto Leibman",
+//              LocalDateTime.now,
+//              active = true,
+//              deleted = false,
+//              isAdmin = false
+//            )
+//          )
           zio.Runtime.default
             .unsafeRun(getChutiSession(id.toInt))
-            .getOrElse(throw new Exception("The user was not found!"))
+            .getOrElse(throw new Exception(s"The user $id was not found!"))
         }
     )
 
@@ -95,5 +105,7 @@ trait SessionUtils extends Directives {
   protected def mySetSession(v: ChutiSession): Directive0 = setSession(refreshable, usingCookies, v)
   lazy protected val ensureSession: Directive1[SessionResult[ChutiSession]] =
     session(refreshable, usingCookies)
-  lazy protected val myInvalidateSession: Directive0 = invalidateSession(refreshable, usingCookies)
+  lazy protected val myInvalidateSession: Directive0 = {
+    invalidateSession(refreshable, usingCookies)
+  }
 }

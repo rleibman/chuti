@@ -23,7 +23,7 @@ libraryDependencies += "org.vafer"   % "jdeb"                % "1.8" artifacts A
 
 resolvers += Resolver.bintrayRepo("oyvindberg", "converter")
 
-addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta28")
+addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta28+38-93537ada")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Testing

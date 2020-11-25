@@ -17,7 +17,7 @@
 package pages
 
 import app.ChutiState
-import chuti.{CuantasCantas, User}
+import chuti.User
 import components.Toast
 import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted

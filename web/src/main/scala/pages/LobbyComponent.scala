@@ -273,7 +273,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         chutiState.user
           .fold(
             <.div(
-              Loader(key = "cargando", active = true, size = SemanticSIZES.massive)("Cargando") //TODO i8n
+              Loader(//key = "cargando",
+                active = true, size = SemanticSIZES.massive)("Cargando") //TODO i8n
             )
           ) { user =>
             <.div(
@@ -285,7 +286,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   ^.className := "lobbyActions",
                   VdomArray(
                     Button(
-                      key = "juegaConQuienSea",
+//                      key = "juegaConQuienSea",
                       compact = true,
                       basic = true,
                       onClick = (_, _) =>
@@ -299,7 +300,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           )
                     )("Juega Con Quien sea"), //TODO i8n
                     Button(
-                      key = "empezarJuegoNuevo",
+//                      key = "empezarJuegoNuevo",
                       compact = true,
                       basic = true,
                       onClick = (_, _) =>
@@ -327,7 +328,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                 .exists(_.invited) && game.jugadores.head.id == user.id
                             ) {
                               Button(
-                                key = "cancelarInvitaciones",
+//                                key = "cancelarInvitaciones",
                                 compact = true,
                                 basic = true,
                                 onClick = { (_, _) =>
@@ -341,7 +342,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               EmptyVdom,
                             if (game.jugadores.head.id == user.id) {
                               Button(
-                                key = "invitarPorCorreo",
+//                                key = "invitarPorCorreo",
                                 compact = true,
                                 basic = true,
                                 onClick = (_, _) =>
@@ -369,7 +370,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             None
 
                         Button(
-                          key = "abandonarJuego",
+//                          key = "abandonarJuego",
                           compact = true,
                           basic = true,
                           onClick = (_, _) =>
@@ -392,7 +393,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         )("Abandona Juego") //TODO i8n
                       } else if (s.invites.isEmpty) {
                         Button(
-                          key = "nuevoJuegoMismosJugadores",
+//                          key = "nuevoJuegoMismosJugadores",
                           compact = true,
                           basic = true,
                           onClick = (_, _) =>
@@ -522,7 +523,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                       <.tbody(
                         chutiState.usersAndFriends.filter(_.user.id != user.id).toVdomArray {
                           player =>
-                            TableRow(key = player.user.id.fold("")(_.toString))(
+                            TableRow(
+//                              key = player.user.id.fold("")(_.toString)
+                            )(
                               TableCell(width = SemanticWIDTHS.`1`)(
                                 if (player.isFriend)
                                   Popup(

@@ -28,8 +28,9 @@ import chuti.{BuildInfo => _, _}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.{CRUDOperations, SessionProvider}
+import dao.{CRUDOperations, Repository, SessionProvider}
 import game.GameService
+import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
@@ -66,7 +67,6 @@ trait AuthRoute
 
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
-
       override def deleteOperation(
         objOpt: Option[User]
       ): ZIO[SessionProvider with Logging with OpsService, Throwable, Boolean] = {
@@ -253,7 +253,7 @@ trait AuthRoute
                           saved <-
                             if (validate.nonEmpty || exists) ZIO.none
                             else userOps.upsert(request.user.copy(active = false)).map(Option(_))
-                          _ <- ZIO.foreach(saved)(userOps.changePassword(_, request.password))
+                          _ <- ZIO.foreach_(saved)(userOps.changePassword(_, request.password))
                           _ <- (log.info("About to send") *> ZIO
                               .foreach(saved)(postman.registrationEmail).flatMap(envelope =>
                                 ZIO.foreach(envelope)(postman.deliver)
@@ -409,18 +409,13 @@ trait AuthRoute
             } ~
             path("doLogout") {
               extractLog { akkaLog =>
-                post {
+                (post | get) {
                   myInvalidateSession { ctx =>
                     akkaLog.info(s"Logging out $session")
+                    SessionUtils.removeFromCache(session.user.id)
                     ctx.redirect("/loginForm", StatusCodes.SeeOther)
                   }
-                } ~
-                  get {
-                    myInvalidateSession { ctx =>
-                      akkaLog.info(s"Logging out $session")
-                      ctx.redirect("/loginForm", StatusCodes.SeeOther)
-                    }
-                  }
+                }
               }
             }
         }

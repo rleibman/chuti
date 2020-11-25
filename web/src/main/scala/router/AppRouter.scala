@@ -59,14 +59,18 @@ object AppRouter extends ChutiComponent {
           implicit val locale: Locale = chutiState.locale
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
-              Modal(key = "cuentasDialog", open = chutiState.currentDialog == GlobalDialog.cuentas)(
+              Modal(
+//                key = "cuentasDialog",
+                open = chutiState.currentDialog == GlobalDialog.cuentas)(
                 ModalHeader()(
                   s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" //TODO I8n
                 ),
                 ModalContent()(
                   Table()(
                     TableHeader()(
-                      TableRow(key = "cuentasHeader")(
+                      TableRow(
+//                        key = "cuentasHeader"
+                      )(
                         TableHeaderCell()(localized("Chuti.jugador")),
                         TableHeaderCell()(localized("Chuti.cuentas")),
                         TableHeaderCell()(localized("Chuti.total")),
@@ -76,7 +80,7 @@ object AppRouter extends ChutiComponent {
                     TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                       case ((jugador, puntos, satoshi), jugadorIndex) =>
                         TableRow(
-                          key = s"cuenta$jugadorIndex",
+//                          key = s"cuenta$jugadorIndex",
                           className =
                             if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
                         )(
@@ -194,7 +198,7 @@ object AppRouter extends ChutiComponent {
                     ).map { _ =>
                       VdomArray(
                         MenuItem(
-                          key = "menuEntrarAlJuego",
+//                          key = "menuEntrarAlJuego",
                           onClick = { (e, _) =>
                             chutiState
                               .onGameViewModeChanged(GameViewMode.game) >> page
@@ -202,7 +206,7 @@ object AppRouter extends ChutiComponent {
                           }
                         )(localized("Chuti.entrarAlJuego")),
                         MenuItem(
-                          key = "menuCuentas",
+//                          key = "menuCuentas",
                           onClick = { (_, _) =>
                             chutiState.showDialog(GlobalDialog.cuentas)
                           }
@@ -210,14 +214,14 @@ object AppRouter extends ChutiComponent {
                       )
                     },
                   MenuItem(
-                    key = "menuLobby",
+//                    key = "menuLobby",
                     onClick = { (e, _) =>
                       chutiState
                         .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
                     }
                   )("Lobby"),//TODO I8n
                   MenuItem(
-                    key = "history",
+//                    key = "history",
                     onClick = { (e, _) =>
                       page.setEH(GameHistoryAppPage)(e)
                     }
