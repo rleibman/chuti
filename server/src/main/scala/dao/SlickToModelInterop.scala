@@ -17,25 +17,11 @@
 package dao
 import java.sql.Timestamp
 
-import chuti.GameStatus.comienzo
-import chuti.{
-  Ficha,
-  Game,
-  GameException,
-  GameId,
-  GameStatus,
-  Jugador,
-  Triunfo,
-  User,
-  UserId,
-  UserWallet
-}
-import gen.Tables._
-import io.circe
+import chuti._
+import dao.gen.Tables._
 import io.circe.Decoder
-import io.circe.parser._
-import io.circe.syntax._
 import io.circe.generic.auto._
+import io.circe.syntax._
 
 trait SlickToModelInterop {
   def UserRow2User(row: UserRow): User =

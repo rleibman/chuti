@@ -28,7 +28,9 @@ case class User(
   active:  Boolean = false,
   deleted: Boolean = false,
   isAdmin: Boolean = false
-) {}
+) {
+  def isBot: Boolean = id.fold(false)(i => i.value < -1 && i != godUserId)
+}
 
 case class UserWallet(
   userId: UserId,

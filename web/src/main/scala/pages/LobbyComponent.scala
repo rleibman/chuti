@@ -29,14 +29,9 @@ import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{<, _}
 import org.scalajs.dom.raw.HTMLInputElement
 import typings.react.reactStrings.center
-import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.{
-  SemanticCOLORS,
-  SemanticICONS,
-  SemanticSIZES,
-  SemanticWIDTHS
-}
-import typings.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.components.{ModalActions, _}
+import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
+import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
@@ -50,7 +45,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
 
   object Dialog extends Enumeration {
     type Dialog = Value
-    val none, newGame, inviteExternal = Value
+    val none, newGame, inviteExternal, startWithBots = Value
+
   }
   import Dialog._
 
@@ -98,6 +94,31 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
       p: Props,
       s: State
     ): VdomElement = {
+      def renderStartWithBotsDialog =
+        Modal(open = s.dlg == Dialog.startWithBots)(
+          ModalHeader()("Empezar juego (el resto de los jugadores serán bots)"), //TODO i8n
+          ModalContent()("Estas seguro que quieres empezar este juego? Los jugadores que faltan serán bots, y son muy malos jugando (pero están aprendiendo), nota que no puedes ganar satoshis jugando con bots"), //TODO i8n
+            ModalActions()(
+            Button(
+              compact = true,
+              basic = true,
+              onClick = { (_, _) =>
+                $.modState(_.copy(dlg = Dialog.none))
+              }
+            )("Cancelar"), //TODO i8n
+            Button(
+              compact = true,
+              basic = true,
+              onClick = { (_, _) =>
+                Callback.log("Starting game") >> calibanCall(
+                  Mutations.startGame(p.gameInProgress.value.flatMap(_.id).fold(-1)(_.value)),
+                  callback =  (_: Option[Boolean]) => Toast.success("Juego creado!") //TODO i8n
+                )
+              }
+            )("Crear") //TODO i8n
+          )
+        )
+
       def renderNewGameDialog =
         Modal(open = s.dlg == Dialog.newGame)(
           ModalHeader()("Juego Nuevo"), //TODO i8n
@@ -174,7 +195,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
               "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)" //TODO i8n
             ),
             <.li(
-              "Si aprietas 'Empezar Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico" //TODO i8n
+              "Si aprietas 'Crear Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico" //TODO i8n
             ),
             <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación") //TODO i8n
           ),
@@ -311,7 +332,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           )
                         )
                     )(
-                      "Empezar Juego Nuevo" //TODO i8n
+                      "Crear Juego Nuevo" //TODO i8n
                     )
                   ).when(
                     p.gameInProgress.value.fold(true)(_.gameStatus == GameStatus.partidoTerminado)
@@ -341,6 +362,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             } else
                               EmptyVdom,
                             if (game.jugadores.head.id == user.id) {
+                              VdomArray(
                               Button(
 //                                key = "invitarPorCorreo",
                                 compact = true,
@@ -353,7 +375,19 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                         Option(InviteExternalDialogState())
                                     )
                                   )
-                              )("Invitar por correo electrónico") //TODO i8n
+                              )("Invitar por correo electrónico"), //TODO i8n
+                                Button(
+                                  //                                key = "invitarPorCorreo",
+                                  compact = true,
+                                  basic = true,
+                                  onClick = (_, _) =>
+                                    $.modState(
+                                      _.copy(
+                                        dlg = Dialog.startWithBots
+                                      )
+                                    )
+                                )("Empezar juego (el resto de los jugadores serán bots)"), //TODO i8n
+                              )
                             } else
                               EmptyVdom
                           )
@@ -513,6 +547,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                 else renderWelcome(chutiState),
                 <.div(
                   ^.className := "users",
+                  renderStartWithBotsDialog,
                   renderNewGameDialog,
                   renderInviteExternalDialog,
                   <.div(
@@ -619,7 +654,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         }
                       )
                     )
-                  ).when(chutiState.usersAndFriends.filter(_.user.id != user.id).nonEmpty)
+                  ).when(chutiState.usersAndFriends.exists(_.user.id != user.id))
                 )
               )
             )

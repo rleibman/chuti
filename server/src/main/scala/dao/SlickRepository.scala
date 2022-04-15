@@ -27,14 +27,13 @@ import chuti._
 import dao.Repository.{GameOperations, TokenOperations, UserOperations}
 import dao.gen.Tables
 import dao.gen.Tables._
-import game.GameService
 import scalacache.Cache
 import scalacache.ZioEffect.modes._
 import scalacache.caffeine.CaffeineCache
 import slick.SlickException
 import slick.dbio.DBIO
 import slick.jdbc.MySQLProfile.api._
-import zio.{URLayer, ZIO, ZLayer}
+import zio.{Task, URLayer, ZIO, ZLayer}
 import zioslick.RepositoryException
 
 import scala.concurrent.ExecutionContext
@@ -123,7 +122,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     }
 
     override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id != user.id)
+      if (session.user != chuti.god && session.user.id != user.id)
         throw RepositoryException(s"${session.user} Not authorized")
       (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
         .insertOrUpdate(User2UserRow(user))
@@ -142,7 +141,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       pk:         UserId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id.fold(false)(_ != pk))
+      if (session.user != chuti.god && session.user.id.fold(false)(_ != pk))
         throw RepositoryException(s"${session.user} Not authorized")
       if (softDelete) {
         val q = for {
@@ -205,7 +204,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       user:        User,
       newPassword: String
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god && session.user.id != user.id)
+      if (session.user != chuti.god && session.user.id != user.id)
         throw RepositoryException(s"${session.user} Not authorized")
       user.id.fold(DBIO.successful(false))(id =>
         sqlu"UPDATE user SET hashedPassword=SHA2($newPassword, 512) WHERE id = ${id.value}"
@@ -228,7 +227,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = {
       session: ChutiSession =>
-        if (session.user != GameService.god) //Only god can get a user's wallet by user id
+        if (session.user != chuti.god) //Only god can get a user's wallet by user id
           throw RepositoryException(s"${session.user} Not authorized")
         UserWalletQuery
           .filter(_.userId === userId)
@@ -244,7 +243,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = {
       session: ChutiSession =>
-        if (session.user != GameService.god) //Only god can update a user's wallet.
+        if (session.user != chuti.god) //Only god can update a user's wallet.
           throw RepositoryException(s"${session.user} Not authorized")
 
         val row = UserWallet2UserWalletRow(userWallet)
@@ -268,7 +267,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
   override val gameOperations: Repository.GameOperations = new GameOperations {
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
-        if (session.user != GameService.god && !game.jugadores.exists(_.user.id == session.user.id))
+        if (session.user != chuti.god && !game.jugadores.exists(_.user.id == session.user.id))
           throw RepositoryException(s"${session.user} Not authorized")
         for {
           upserted <-
@@ -298,12 +297,13 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       }
       for {
         gameOpt <- zio
-        _ <- ZIO.foreach(gameOpt)(game =>
-          scalacache
-            .put(pk)(Option(game), Option(3.hours)).mapError(e =>
+        _ <- ZIO.foreach_(gameOpt) {
+          game =>
+            scalacache
+              .put(pk)(Option(game), Option(3.hours)).mapError(e =>
               RepositoryException("Cache error", Some(e))
             )
-        )
+        }
       } yield gameOpt
     }
 
@@ -311,7 +311,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       pk:         GameId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != GameService.god)
+      if (session.user != chuti.god)
         throw RepositoryException(s"${session.user} Not authorized")
       GameQuery.filter(_.id === pk).delete.map(_ > 0)
 
@@ -383,7 +383,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         _ <- GamePlayersQuery.filter(_.gameId === game.id.get).delete
         _ <-
           DBIO
-            .sequence(game.jugadores.zipWithIndex.map {
+            .sequence(game.jugadores.filter(!_.user.isBot).zipWithIndex.map {
               case (player, index) =>
                 GamePlayersQuery.insertOrUpdate(
                   GamePlayersRow(
@@ -398,10 +398,15 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     }
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] = { chutiSession: ChutiSession =>
-      GamePlayersQuery
-        .filter(gp =>
-          gp.gameId === id && gp.userId === chutiSession.user.id.getOrElse(UserId(-1))
-        ).exists.result
+      if (chutiSession.user.isBot) {
+        DBIO.successful(false)
+      }
+      else {
+        GamePlayersQuery
+          .filter(gp =>
+            gp.gameId === id && gp.userId === chutiSession.user.id.getOrElse(UserId(-1))
+          ).exists.result
+      }
     }
   }
 

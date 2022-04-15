@@ -30,7 +30,7 @@ import mail.CourierPostman
 import mail.Postman.Postman
 import zio.logging.slf4j.Slf4jLogger
 import zio.logging.{Logging, log}
-import zio.{ULayer, ZIO, ZLayer}
+import zio.{ULayer, URLayer, ZIO, ZLayer}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,11 +67,9 @@ trait Web {
   private val binding: ZIO[Any, Throwable, Http.ServerBinding] = {
     ZLayer.succeed(CourierPostman.live(config))
     val configLayer: ULayer[Config] = ZLayer.succeed(config)
-    val postmanLayer: ZLayer[Config, Nothing, Postman] = ZLayer.fromEffect {
-      for {
-        config <- ZIO.service[Config.Service]
-      } yield CourierPostman.live(config)
-    }
+    val postmanLayer: URLayer[Config, Postman] = (for {
+      config <- ZIO.service[Config.Service]
+    } yield CourierPostman.live(config)).toLayer
     val loggingLayer: ULayer[Logging] = Slf4jLogger.make((_, b) => b)
     val repositoryLayer: ULayer[Repository] =
       (configLayer ++ loggingLayer) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live

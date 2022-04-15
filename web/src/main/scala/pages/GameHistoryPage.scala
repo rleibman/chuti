@@ -27,7 +27,7 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import typings.semanticUiReact.components.{
+import net.leibman.chuti.semanticUiReact.components.{
   Container,
   Table,
   TableBody,

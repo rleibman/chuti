@@ -26,7 +26,7 @@ import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
-import util.LocalizedMessages
+import _root_.util.LocalizedMessages
 object GameViewMode extends Enumeration {
   type GameViewMode = Value
   val lobby, game, none = Value

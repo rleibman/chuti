@@ -41,7 +41,7 @@ trait Api
     with SessionUtils with HasActorSystem with ZIODirectives {
   this: CoreActors with Core =>
 
-  implicit private val _ = actorSystem.dispatcher
+  implicit private val dispatcher = actorSystem.dispatcher
 
   val routes: ZIO[
     Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder,

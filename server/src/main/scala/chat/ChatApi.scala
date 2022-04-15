@@ -17,8 +17,7 @@
 package chat
 
 import caliban.GraphQL.graphQL
-import caliban.schema.GenericSchema
-import caliban.wrappers.ApolloTracing.apolloTracing
+import caliban.schema.{GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
@@ -60,8 +59,8 @@ object ChatApi
     ]
   )
 
-  implicit val userSchema:        Typeclass[User] = gen[User]
-  implicit val chatMessageSchema: Typeclass[ChatMessage] = gen[ChatMessage]
+  implicit val userSchema: Schema[Any, User] = gen[Any, User]
+  implicit val chatMessageSchema: Schema[Any, ChatMessage] = gen[Any, ChatMessage]
 
   lazy val api: GraphQL[
     Console with Clock with ChatService with Repository with SessionProvider with Logging

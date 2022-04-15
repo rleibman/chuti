@@ -19,17 +19,18 @@ package chat
 import akka.http.scaladsl.server.{Directives, Route}
 import api.HasActorSystem
 import api.config.Config
-import caliban.interop.circe.AkkaHttpCirceAdapter
+import caliban.AkkaHttpAdapter
 import dao.{Repository, SessionProvider}
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
 import zio.logging.Logging
 import zio.{RIO, ZIO}
+import sttp.tapir.json.circe._
 
 import scala.concurrent.ExecutionContextExecutor
 
-trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
+trait ChatRoute extends Directives with HasActorSystem {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService._
 
@@ -48,11 +49,11 @@ trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
       val staticContentDir =
         config.config.getString(s"${config.configKey}.staticContentDir")
 
-      implicit val r = runtime
+      implicit val r: zio.Runtime[Console with Clock with ChatService with Repository with SessionProvider with Logging with Config] = runtime
 
       pathPrefix("chat") {
         pathEndOrSingleSlash {
-          adapter.makeHttpService(
+          AkkaHttpAdapter.makeHttpService(
             interpreter
           )
         } ~
@@ -60,7 +61,7 @@ trait ChatRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
             get(complete(ChatApi.api.render))
           } ~
           path("ws") {
-            adapter.makeWebSocketService(
+            AkkaHttpAdapter.makeWebSocketService(
               interpreter,
               skipValidation = false,
               keepAliveTime = Option(5.minutes)

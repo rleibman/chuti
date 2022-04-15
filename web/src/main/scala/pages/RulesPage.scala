@@ -22,7 +22,7 @@ import app.ChutiState
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
-import util.LocalizedMessages
+import _root_.util.LocalizedMessages
 
 object RulesPage extends ChutiPage {
   case class State()

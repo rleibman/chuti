@@ -28,9 +28,7 @@ import chuti.{BuildInfo => _, _}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.{CRUDOperations, Repository, SessionProvider}
-import game.GameService
-import io.circe.{Decoder, Encoder}
+import dao.{CRUDOperations, SessionProvider}
 import io.circe.generic.auto._
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
@@ -42,7 +40,7 @@ import zioslick.RepositoryException
 import scala.jdk.CollectionConverters._
 
 object AuthRoute {
-  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
+//  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
 }
 
 trait AuthRoute
@@ -63,7 +61,7 @@ trait AuthRoute
     "/webfonts/fa-solid-900.ttf"
   )
 
-  lazy private val adminSession = ChutiSession(GameService.god)
+  lazy private val adminSession = ChutiSession(chuti.god)
 
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {

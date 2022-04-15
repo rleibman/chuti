@@ -21,7 +21,6 @@ import api.token.{TokenHolder, TokenPurpose}
 import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
 import javax.mail.internet.InternetAddress
-import mail.Postman.Postman
 import zio.{Has, RIO, Task, ZIO}
 
 import scala.concurrent.duration._
@@ -143,7 +142,7 @@ object CourierPostman {
           ).auth(auth)()
       }
 
-      override def deliver(email: Envelope): Task[Unit] = mailer(email)
+      override def deliver(email: Envelope): Task[Unit] = Task.fromFuture(implicit ec => mailer(email))
 
       override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
 

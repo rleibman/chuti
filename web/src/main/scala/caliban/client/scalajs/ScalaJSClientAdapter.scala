@@ -30,7 +30,7 @@ import io.circe.{Decoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
-import util.Config
+import _root_.util.Config
 import zio.duration._
 
 import scala.concurrent.Future

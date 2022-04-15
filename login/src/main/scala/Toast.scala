@@ -18,8 +18,8 @@ package react
 
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, Ref, ScalaComponent}
-import typings.semanticUiReact.genericMod.SemanticICONS
-import typings.semanticUiReact.components.Icon
+import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
+import net.leibman.chuti.semanticUiReact.components.Icon
 
 import scala.concurrent.duration.{Duration, _}
 import scala.language.postfixOps

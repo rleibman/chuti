@@ -22,6 +22,7 @@ type Mutations {
   joinRandomGame: Json
   abandonGame(value: Int!): Boolean
   inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean
+  startGame(value: Int!): Boolean
   inviteToGame(userId: Int!, gameId: Int!): Boolean
   acceptGameInvitation(value: Int!): Json
   declineGameInvitation(value: Int!): Boolean

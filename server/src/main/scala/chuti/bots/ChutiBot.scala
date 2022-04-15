@@ -18,7 +18,7 @@ package chuti.bots
 
 import chuti.{Game, GameId, PlayEvent, User}
 import dao.{Repository, SessionProvider}
-import game.GameService.GameService
+import game.GameService.{GameLayer, GameService}
 import zio.ZIO
 
 trait ChutiBot {
@@ -27,7 +27,7 @@ trait ChutiBot {
     game: Game
   ): Option[PlayEvent]
 
-  def takeTurn(gameId: GameId) = {
+  def takeTurn(gameId: GameId): ZIO[GameLayer with GameService, Exception, Game] = {
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
       gameService    <- ZIO.access[GameService](_.get)

@@ -17,8 +17,6 @@
 package dao
 
 import chuti.Search
-import zio.{IO, ZIO}
-import zioslick.RepositoryException
 
 /**
   * Collects the basic CRUD operations of a single object (or object graph) against a data source.

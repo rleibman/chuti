@@ -28,10 +28,10 @@ import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.raw.HTMLButtonElement
 import org.scalajs.dom.window
 import react.Toast
-import typings.semanticUiReact.buttonButtonMod.ButtonProps
-import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.SemanticWIDTHS
-import typings.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
+import net.leibman.chuti.semanticUiReact.components._
+import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 object NewUserAcceptFriendPage {
   case class State(

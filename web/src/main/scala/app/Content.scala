@@ -18,7 +18,6 @@ package app
 
 import java.net.URI
 import java.util.UUID
-
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
 import caliban.client.SelectionBuilder
@@ -26,13 +25,7 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti._
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType
-}
+import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -40,13 +33,13 @@ import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, _}
+import net.leibman.chuti.std.OnErrorEventHandlerNonNull
+import net.leibman.chuti.std.global.Audio
 import org.scalajs.dom.raw.Event
 import org.scalajs.dom.window
 import router.AppRouter
 import service.UserRESTClient
-import typings.std.OnErrorEventHandlerNonNull
-import typings.std.global.Audio
-import util.Config
+import _root_.util.Config
 
 import scala.collection.mutable
 import scala.scalajs.js

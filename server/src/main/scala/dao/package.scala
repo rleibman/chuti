@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-import api.ChutiSession
-import slick.basic.BasicBackend
 import zio.logging.Logging
-import zio.{Has, Layer, UIO, ZIO, ZLayer}
+import zio.{Has, ZIO}
 import zioslick.RepositoryException
 
 package object dao {

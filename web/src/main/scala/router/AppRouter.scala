@@ -29,8 +29,8 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom._
 import pages.{RulesPage, _}
-import typings.semanticUiReact.components._
-import typings.semanticUiReact.genericMod.SemanticICONS
+import net.leibman.chuti.components._
+import net.leibman.chuti.genericMod.SemanticICONS
 
 object AppRouter extends ChutiComponent {
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")

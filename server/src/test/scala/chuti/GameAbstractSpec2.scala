@@ -55,7 +55,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(GameService.god))
+            SessionProvider.layer(ChutiSession(chuti.god))
           )
       looped <-
         ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
@@ -94,7 +94,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(GameService.god))
+            SessionProvider.layer(ChutiSession(chuti.god))
           )
       mano = game.mano.get
       sigiuente1 = game.nextPlayer(mano)
@@ -124,12 +124,12 @@ trait GameAbstractSpec2 extends MockitoSugar {
   }
 
   def repositoryLayer(gameFiles: String*): ULayer[Repository] =
-    ZLayer.fromEffect {
+    {
       val z: ZIO[Any, Throwable, Seq[Game]] =
         ZIO.foreachPar(gameFiles)(filename => readGame(filename))
       val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
       zz
-    }
+    }.toLayer
 
   type TestLayer = DatabaseProvider
     with Repository with Postman with Logging with TokenHolder with GameService with ChatService
@@ -177,7 +177,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
     SessionProvider.layer(ChutiSession(user))
   }
   protected def godLayer: ULayer[SessionProvider] = {
-    SessionProvider.layer(ChutiSession(GameService.god))
+    SessionProvider.layer(ChutiSession(chuti.god))
   }
 
   def assertSoloUnoCanta(game: Game): Assertion = {
@@ -323,7 +323,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
           .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
             TestLayer
           ](
-            SessionProvider.layer(ChutiSession(GameService.god))
+            SessionProvider.layer(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {
@@ -394,7 +394,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
           .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
             TestLayer
           ](
-            SessionProvider.layer(ChutiSession(GameService.god))
+            SessionProvider.layer(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {

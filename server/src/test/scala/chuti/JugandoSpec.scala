@@ -52,7 +52,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(GameService.god))
+                SessionProvider.layer(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (mano1, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
@@ -94,7 +94,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(GameService.god))
+                SessionProvider.layer(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (mano4, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
@@ -133,7 +133,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(GameService.god))
+                SessionProvider.layer(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))

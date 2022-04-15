@@ -24,7 +24,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.window
 import react.Toast
 import typings.react.reactStrings.submit
-import typings.semanticUiReact.components.{Button, Form, FormField, Input, Label}
+import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}
 import org.scalajs.dom.raw.HTMLFormElement
 
 object PasswordRecoveryAfterTokenPage {

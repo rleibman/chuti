@@ -24,10 +24,10 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.{<, _}
 import org.scalajs.dom.window
 import service.UserRESTClient
-import typings.semanticUiReact.components.{FormGroup, _}
-import typings.semanticUiReact.dropdownItemMod.DropdownItemProps
-import typings.semanticUiReact.genericMod.SemanticWIDTHS
-import typings.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.components.{FormGroup, _}
+import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
+import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 object UserSettingsPage extends ChutiPage {
 

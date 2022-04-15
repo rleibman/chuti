@@ -18,7 +18,7 @@ package components
 
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, Ref, ScalaComponent}
-import typings.semanticUiReact.components.{Confirm => SuiConfirm}
+import net.leibman.chuti.semanticUiReact.components.{Confirm => SuiConfirm}
 
 object Confirm {
 
@@ -35,17 +35,15 @@ object Confirm {
   class Backend($ : BackendScope[Unit, ConfirmState]) {
     def render(state: ConfirmState): VdomNode =
       <.div(
-        SuiConfirm(
-          open = state.open,
-          content = state.question,
-          cancelButton = state.cancelText,
-          confirmButton = state.confirmText,
-          header = state.header.getOrElse("").toString,
-          onConfirm = { (_, _) => $.modState(s => s.copy(open = false), state.onConfirm) },
-          onCancel = { (_, _) =>
+        SuiConfirm().open(state.open)
+          .content(state.question)
+          .cancelButton(state.cancelText)
+          .confirmButton (state.confirmText)
+          .header (state.header.getOrElse("").toString)
+          .onConfirm({ (_, _) => $.modState(s => s.copy(open = false), state.onConfirm) })
+          .onCancel ({ (_, _) =>
             $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
-          }
-        )()
+          })()
       )
 
     def confirm(

@@ -38,9 +38,9 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Ref => ReactRef, _}
 import org.scalajs.dom.html.Div
-import typings.semanticUiReact.components._
-import typings.semanticUiReact.textAreaTextAreaMod.TextAreaProps
-import util.Config
+import net.leibman.chuti.semanticUiReact.components._
+import net.leibman.chuti.semanticUiReact.textAreaTextAreaMod.TextAreaProps
+import _root_.util.Config
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -130,23 +130,23 @@ object ChatComponent extends ScalaJSClientAdapter {
         ),
         <.div(
           ^.className := "sendMessage",
-          TextArea(
-            value = s.msgInFlux,
-            onChange = onMessageInFluxChange,
-            onKeyPress = { e =>
+          TextArea
+            .value(s.msgInFlux)
+            .onChange(onMessageInFluxChange)
+            .onKeyPress({ e =>
               if (e.which == 13 && !e.shiftKey && e.target.value.trim.nonEmpty)
                 Callback {
                   e.preventDefault()
                 } >> onSend(p, s) >> Callback(e.target.focus())
               else Callback.empty
-            }
-          )(),
-          Button(
-            compact = true,
-            basic = true,
-            disabled = s.msgInFlux.trim.isEmpty,
-            onClick = { (_, _) => onSend(p, s) }
-          )("Send")
+            })
+            (),
+          Button
+            .compact(true)
+            .basic(true)
+            .disabled(s.msgInFlux.trim.isEmpty)
+            .onClick({ (_, _) => onSend(p, s) })
+            ("Send")
         )
       )
 

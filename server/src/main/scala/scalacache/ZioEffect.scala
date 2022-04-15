@@ -37,9 +37,9 @@ object ZioEffect {
 
     def pure[A](a: A): Task[A] = Task.succeed(a)
 
-    def map[A, B](fa: Task[A])(f: (A) => B): Task[B] = fa.map(f)
+    def map[A, B](fa: Task[A])(f: A => B): Task[B] = fa.map(f)
 
-    def flatMap[A, B](fa: Task[A])(f: (A) => Task[B]): Task[B] = fa.flatMap(f)
+    def flatMap[A, B](fa: Task[A])(f: A => Task[B]): Task[B] = fa.flatMap(f)
 
     def raiseError[A](t: Throwable): Task[A] = Task.fail(t)
 

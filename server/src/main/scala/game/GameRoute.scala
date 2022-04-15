@@ -18,18 +18,19 @@ package game
 
 import akka.http.scaladsl.server.{Directives, Route}
 import api.{HasActorSystem, config}
-import caliban.interop.circe.AkkaHttpCirceAdapter
+import caliban.AkkaHttpAdapter
 import chat.ChatService.ChatService
 import zio._
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration._
+import sttp.tapir.json.circe._
 
 import scala.concurrent.ExecutionContextExecutor
 
 case class GameArgs()
 
-trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem {
+trait GameRoute extends Directives with HasActorSystem {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import GameService._
   val staticContentDir: String =
@@ -39,11 +40,11 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
     for {
       runtime <- ZIO.runtime[Console with Clock with GameService with GameLayer with ChatService]
     } yield {
-      implicit val r = runtime
+      implicit val r: Runtime[Console with Clock with GameService with GameLayer with ChatService] = runtime
 
       pathPrefix("game") {
         pathEndOrSingleSlash {
-          adapter.makeHttpService(
+          AkkaHttpAdapter.makeHttpService(
             interpreter
           )
         } ~
@@ -51,7 +52,7 @@ trait GameRoute extends Directives with AkkaHttpCirceAdapter with HasActorSystem
             get(complete(GameApi.api.render))
           } ~
           path("ws") {
-            adapter.makeWebSocketService(
+            AkkaHttpAdapter.makeWebSocketService(
               interpreter,
               skipValidation = false,
               keepAliveTime = Option(5.minutes)

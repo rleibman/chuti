@@ -55,7 +55,7 @@ trait SessionUtils extends Directives {
     ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(
       config.live
     )) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
-      SessionProvider.layer(ChutiSession(GameService.god)) ++
+      SessionProvider.layer(ChutiSession(chuti.god)) ++
       Slf4jLogger.make((_, str) => str)
 
   def getChutiSession(id: Int): Task[Option[ChutiSession]] =

@@ -121,6 +121,8 @@ object GameClient {
         arguments =
           List(Argument("name", name), Argument("email", email), Argument("gameId", gameId))
       )
+    def startGame(value: Int): SelectionBuilder[RootMutation, Option[Boolean]] =
+      Field("startGame", OptionOf(Scalar()), arguments = List(Argument("value", value)))
     def inviteToGame(
       userId: Int,
       gameId: Int
@@ -175,3 +177,4 @@ object GameClient {
   }
 
 }
+

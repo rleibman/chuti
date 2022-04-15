@@ -17,9 +17,7 @@
 package dao
 
 import api.ChutiSession
-import chuti.{Game, GameException}
-import game.GameService.{GameLayer, GameService}
-import zio.{Has, Layer, ZIO, ZLayer}
+import zio.{Has, Layer, ZLayer}
 
 object SessionProvider {
   trait Session {

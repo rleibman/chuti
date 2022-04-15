@@ -23,8 +23,8 @@ import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.raw.HTMLInputElement
 import react.Toast
-import typings.semanticUiReact.components.{Button, Form, FormField, Input, Label}
-import typings.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}
+import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 import scala.util.{Failure, Success}
 
