@@ -21,7 +21,7 @@ import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import org.scalajs.dom.window
-import typings.react.reactStrings.submit
+import net.leibman.chuti.react.reactStrings.submit
 import net.leibman.chuti.semanticUiReact.components._
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticCOLORS
 

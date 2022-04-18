@@ -27,8 +27,8 @@ import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{<, _}
-import org.scalajs.dom.raw.HTMLInputElement
-import typings.react.reactStrings.center
+import org.scalajs.dom.HTMLInputElement
+import net.leibman.chuti.react.reactStrings.center
 import net.leibman.chuti.semanticUiReact.components.{ModalActions, _}
 import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
@@ -95,21 +95,21 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
       s: State
     ): VdomElement = {
       def renderStartWithBotsDialog =
-        Modal(open = s.dlg == Dialog.startWithBots)(
+        Modal().open(s.dlg == Dialog.startWithBots)(
           ModalHeader()("Empezar juego (el resto de los jugadores serán bots)"), //TODO i8n
           ModalContent()("Estas seguro que quieres empezar este juego? Los jugadores que faltan serán bots, y son muy malos jugando (pero están aprendiendo), nota que no puedes ganar satoshis jugando con bots"), //TODO i8n
             ModalActions()(
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
+            Button()
+              .compact(true)
+              .basic(true)
+              .onClick({ (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none))
               }
             )("Cancelar"), //TODO i8n
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
+            Button()
+              .compact(true)
+              .basic(true)
+              .onClick({ (_, _) =>
                 Callback.log("Starting game") >> calibanCall(
                   Mutations.startGame(p.gameInProgress.value.flatMap(_.id).fold(-1)(_.value)),
                   callback =  (_: Option[Boolean]) => Toast.success("Juego creado!") //TODO i8n
@@ -120,20 +120,20 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         )
 
       def renderNewGameDialog =
-        Modal(open = s.dlg == Dialog.newGame)(
+        Modal().open(s.dlg == Dialog.newGame)(
           ModalHeader()("Juego Nuevo"), //TODO i8n
           ModalContent()(
             FormField()(
               Label()("Satoshi por punto"), //TODO i8n
-              Input(
-                required = true,
-                name = "satoshiPerPoint",
-                `type` = "number",
-                min = 100,
-                max = 10000,
-                step = 100,
-                value = s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble),
-                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+              Input()
+                .required(true)
+                .name("satoshiPerPoint")
+                .`type`("number")
+                .min(100)
+                .max(10000)
+                .step(100)
+                .value(s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble))
+                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(newGameDialogState =
                       s.newGameDialogState
@@ -145,17 +145,17 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             )
           ),
           ModalActions()(
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
+            Button()
+              .compact(true)
+              .basic(true)
+              .onClick({ (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
               }
             )("Cancelar"), //TODO i8n
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
+            Button()
+              .compact(true)
+              .basic(true)
+              .onClick({ (_, _) =>
                 Callback.log("Calling new Game") >> calibanCallThroughJsonOpt[Mutations, Game](
                   Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
                   callback = { gameOpt =>
@@ -221,16 +221,16 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
       }
 
       def renderInviteExternalDialog: VdomElement =
-        Modal(open = s.dlg == Dialog.inviteExternal)(
+        Modal().open(s.dlg == Dialog.inviteExternal)(
           ModalHeader()("Invitar amigo externo"), //TODO i8n
           ModalContent()(
             FormField()(
               Label()("Nombre"), //TODO i8n
-              Input(
-                required = true,
-                name = "Nombre", //TODO i8n
-                value = s.inviteExternalDialogState.fold("")(_.name),
-                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+              Input()
+                .required(true)
+                .name("Nombre") //TODO i8n
+                .value(s.inviteExternalDialogState.fold("")(_.name))
+                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(inviteExternalDialogState =
                       s.inviteExternalDialogState
@@ -242,12 +242,12 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             ),
             FormField()(
               Label()("Correo"), //TODO i8n
-              Input(
-                required = true,
-                name = "Correo", //TODO i8n
-                `type` = "email",
-                value = s.inviteExternalDialogState.fold("")(_.email),
-                onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+              Input()
+                .required(true)
+                .name("Correo") //TODO i8n
+                .`type`("email")
+                .value(s.inviteExternalDialogState.fold("")(_.email))
+                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(inviteExternalDialogState =
                       s.inviteExternalDialogState
@@ -259,18 +259,18 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
             )
           ),
           ModalActions()(
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
+            Button()
+            .  compact(true)
+              .basic(true)
+              .onClick({ (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
               }
             )("Cancelar"), //TODO i8n
             p.gameInProgress.value.fold(EmptyVdom) { game =>
-              Button(
-                compact = true,
-                basic = true,
-                onClick = {
+              Button()
+                .compact(true)
+                .basic(true)
+                .onClick({
                   (_, _) =>
                     Callback.log(s"Inviting user by email") >>
                       calibanCall[Mutations, Option[Boolean]](
@@ -294,8 +294,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         chutiState.user
           .fold(
             <.div(
-              Loader(//key = "cargando",
-                active = true, size = SemanticSIZES.massive)("Cargando") //TODO i8n
+              Loader()//key = "cargando",
+                .active(true)
+              .size(SemanticSIZES.massive)("Cargando") //TODO i8n
             )
           ) { user =>
             <.div(
@@ -306,11 +307,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                 <.div(
                   ^.className := "lobbyActions",
                   VdomArray(
-                    Button(
-//                      key = "juegaConQuienSea",
-                      compact = true,
-                      basic = true,
-                      onClick = (_, _) =>
+                    Button()
+//                      .key("juegaConQuienSea")
+                      .compact(true)
+                      .basic(true)
+                      .onClick((_, _) =>
                         Callback.log(s"Calling joinRandomGame") >>
                           calibanCallThroughJsonOpt[Mutations, Game](
                             Mutations.joinRandomGame,
@@ -320,11 +321,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               )
                           )
                     )("Juega Con Quien sea"), //TODO i8n
-                    Button(
-//                      key = "empezarJuegoNuevo",
-                      compact = true,
-                      basic = true,
-                      onClick = (_, _) =>
+                    Button()
+//                      .key("empezarJuegoNuevo")
+                      .compact(true)
+                      .basic(true)
+                      .onClick((_, _) =>
                         $.modState(
                           _.copy(
                             dlg = Dialog.newGame,
@@ -348,11 +349,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               game.jugadores
                                 .exists(_.invited) && game.jugadores.head.id == user.id
                             ) {
-                              Button(
-//                                key = "cancelarInvitaciones",
-                                compact = true,
-                                basic = true,
-                                onClick = { (_, _) =>
+                              Button()
+//                                .key("cancelarInvitaciones")
+                                .compact(true)
+                                .basic(true)
+                                .onClick({ (_, _) =>
                                   calibanCall[Mutations, Option[Boolean]](
                                     Mutations.cancelUnacceptedInvitations(game.id.get.value),
                                     _ => chutiState.onRequestGameRefresh() >> refresh()
@@ -363,11 +364,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               EmptyVdom,
                             if (game.jugadores.head.id == user.id) {
                               VdomArray(
-                              Button(
-//                                key = "invitarPorCorreo",
-                                compact = true,
-                                basic = true,
-                                onClick = (_, _) =>
+                              Button()
+//                                .key("invitarPorCorreo")
+                                .compact(true)
+                                .basic(true)
+                                .onClick((_, _) =>
                                   $.modState(
                                     _.copy(
                                       dlg = Dialog.inviteExternal,
@@ -376,11 +377,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                     )
                                   )
                               )("Invitar por correo electrónico"), //TODO i8n
-                                Button(
-                                  //                                key = "invitarPorCorreo",
-                                  compact = true,
-                                  basic = true,
-                                  onClick = (_, _) =>
+                                Button()
+                                  //                                .key("invitarPorCorreo")
+                                  .compact(true)
+                                  .basic(true)
+                                  .onClick((_, _) =>
                                     $.modState(
                                       _.copy(
                                         dlg = Dialog.startWithBots
@@ -403,11 +404,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           else
                             None
 
-                        Button(
-//                          key = "abandonarJuego",
-                          compact = true,
-                          basic = true,
-                          onClick = (_, _) =>
+                        Button()
+//                          .key("abandonarJuego")
+                          .compact(true)
+                          .basic(true)
+                          .onClick((_, _) =>
                             Confirm.confirm(
                               header = Option("Abandonar juego"), //TODO i8n
                               question =
@@ -426,11 +427,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             )
                         )("Abandona Juego") //TODO i8n
                       } else if (s.invites.isEmpty) {
-                        Button(
-//                          key = "nuevoJuegoMismosJugadores",
-                          compact = true,
-                          basic = true,
-                          onClick = (_, _) =>
+                        Button()
+//                          key("nuevoJuegoMismosJugadores")
+                          .compact(true)
+                          .basic(true)
+                          .onClick((_, _) =>
                             calibanCallThroughJsonOpt[Mutations, Game](
                               Mutations.newGameSameUsers(game.id.get.value),
                               gameOpt =>
@@ -506,11 +507,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" //TODO i8n
                             ),
                             <.td(
-                              Button(
-                                compact = true,
-                                basic = true,
-                                primary = true,
-                                onClick = (_, _) => {
+                              Button()
+                                .compact(true)
+                                .basic(true)
+                                .primary(true)
+                                .onClick((_, _) => {
                                   calibanCallThroughJsonOpt[Mutations, Game](
                                     Mutations.acceptGameInvitation(
                                       game.id.fold(0)(_.value)
@@ -519,10 +520,10 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   )
                                 }
                               )("Aceptar"), //TODO i8n
-                              Button(
-                                compact = true,
-                                basic = true,
-                                onClick = (_, _) => {
+                              Button()
+                                .compact(true)
+                                .basic(true)
+                                .onClick((_, _) => {
                                   calibanCall[Mutations, Option[Boolean]](
                                     Mutations.declineGameInvitation(
                                       game.id.fold(0)(_.value)
@@ -559,41 +560,44 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         chutiState.usersAndFriends.filter(_.user.id != user.id).toVdomArray {
                           player =>
                             TableRow(
-//                              key = player.user.id.fold("")(_.toString)
+//                              key(player.user.id.fold("")(_.toString)
                             )(
-                              TableCell(width = SemanticWIDTHS.`1`)(
+                              TableCell()
+                                .width(SemanticWIDTHS.`1`)(
                                 if (player.isFriend)
-                                  Popup(
-                                    content = "Amigo", //TODO i8n
-                                    trigger = Icon(
-                                      className = "icon",
-                                      name = SemanticICONS.star,
-                                      color = SemanticCOLORS.yellow,
-                                      circular = true,
-                                      fitted = true
+                                  Popup()
+                                    .content("Amigo") //TODO i8n
+                                    .trigger(Icon()
+                                      .className("icon")
+                                      .name(SemanticICONS.star)
+                                      .color(SemanticCOLORS.yellow)
+                                      .circular(true)
+                                      .fitted(true
                                     )()
                                   )()
                                 else
                                   EmptyVdom,
                                 if (player.isLoggedIn)
-                                  Popup(
-                                    content = "En linea", //TODO i8n
-                                    trigger = Icon(
-                                      className = "icon",
-                                      name = SemanticICONS.`user outline`,
-                                      circular = true,
-                                      fitted = true
+                                  Popup()
+                                    .content("En linea") //TODO i8n
+                                    .trigger(Icon()
+                                      .className("icon")
+                                      .name(SemanticICONS.`user outline`)
+                                      .circular(true)
+                                      .fitted(true
                                     )()
                                   )()
                                 else
                                   EmptyVdom
                               ),
-                              TableCell(width = SemanticWIDTHS.`1`, align = center)(
-                                Dropdown(
-                                  className = "menuBurger",
-                                  trigger = Icon(
-                                    name = SemanticICONS.`ellipsis vertical`,
-                                    fitted = true
+                              TableCell()
+                                .width(SemanticWIDTHS.`1`)
+                                  .align(center)(
+                                Dropdown()
+                                  .className("menuBurger")
+                                  .trigger(Icon()
+                                    .name(SemanticICONS.`ellipsis vertical`)
+                                    .fitted(true
                                   )()
                                 )(
                                   DropdownMenu()(
@@ -608,7 +612,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                         game.jugadores.head.id == user.id &&
                                         !game.jugadores.exists(_.id == player.user.id)
                                       )
-                                        DropdownItem(onClick = { (_, _) =>
+                                        DropdownItem()
+                                          .onClick({ (_, _) =>
                                           calibanCall[Mutations, Option[Boolean]](
                                             Mutations
                                               .inviteToGame(playerId.value, gameId.value),
@@ -621,7 +626,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       else
                                         EmptyVdom).getOrElse(EmptyVdom),
                                     if (player.isFriend)
-                                      DropdownItem(onClick = { (_, _) =>
+                                      DropdownItem()
+                          .onClick({ (_, _) =>
                                         calibanCall[Mutations, Option[Boolean]](
                                           Mutations.unfriend(player.user.id.get.value),
                                           res =>
@@ -634,7 +640,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                         )
                                       })("Ya no quiero ser tu amigo") //TODO i8n
                                     else
-                                      DropdownItem(onClick = { (_, _) =>
+                                      DropdownItem()
+                                        .onClick({ (_, _) =>
                                         calibanCall[Mutations, Option[Boolean]](
                                           Mutations.friend(player.user.id.get.value),
                                           res =>
@@ -649,7 +656,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   )
                                 )
                               ),
-                              TableCell(width = SemanticWIDTHS.`14`)(player.user.name)
+                              TableCell()
+                                .width(SemanticWIDTHS.`14`)(player.user.name)
                             )
                         }
                       )

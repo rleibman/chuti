@@ -180,7 +180,7 @@ object AboutPage extends ChutiPage {
         )
       )
 
-    def render(S: State): VdomElement = {
+    def render(): VdomElement = {
       <.div(
         <.h1("Chuti.fun"),
         <.p("Copyright ©2020, Roberto Leibman"),

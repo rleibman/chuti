@@ -31,14 +31,11 @@ import japgolly.scalajs.react._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{^, _}
-import org.scalablytyped.runtime.StringDictionary
-import pages.GameComponent.GameComponentMessages
-import pages.LobbyComponent.calibanCall
-import pages.RulesPage.RulesPageMessages
 import net.leibman.chuti.semanticUiReact.components._
 import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
 import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
 import net.leibman.chuti.semanticUiReact.imageImageMod.ImageProps
+import pages.LobbyComponent.calibanCall
 
 import scala.scalajs.js.JSConverters._
 
@@ -185,13 +182,11 @@ object GameComponent {
                           .map(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
                             Canto5
                           )
-                        val cantasOptions = (defaultCuantas +: CuantasCantas
-                          .posibilidades(min)).map { cuantas =>
-                          DropdownItemProps(
-                            StringDictionary = StringDictionary("key" -> cuantas.prioridad),
-                            value = cuantas.prioridad,
-                            text = cuantas.toString
-                          )
+                        val cantasOptions = (defaultCuantas +: CuantasCantas.posibilidades(min)).map { cuantas =>
+                          DropdownItemProps()
+                            .setText(cuantas.toString)
+                            .set("key", cuantas.prioridad.toString)
+                            .setValue(cuantas.prioridad.toString)
                         }.toJSArray
 
                         <.div(
@@ -256,23 +251,23 @@ object GameComponent {
                                   $.modState(_.copy(triunfo = Option(Triunfo(value))))
                                 }
                                 .options(
-                                  Triunfo.posibilidades
-                                    .map(triunfo =>
-                                      DropdownItemProps(
-                                        StringDictionary = StringDictionary("key" -> triunfo.toString),
-                                        image = triunfo match {
-                                          case SinTriunfos => null
-                                          case TriunfoNumero(num) =>
-                                            ImageProps(StringDictionary =
-                                              StringDictionary(
-                                                "src" -> s"images/${num.value}.svg"
-                                              )
-                                            ).asInstanceOf[SemanticShorthandItem[ImageProps]]
-                                        },
-                                        value = triunfo.toString,
-                                        text = triunfo.toString
-                                      )
-                                    ).toJSArray
+                                  Triunfo.posibilidades.map { triunfo =>
+                                    val props = DropdownItemProps()
+                                      .set("key", triunfo.toString)
+                                      .setValue(triunfo.toString)
+                                      .setText(triunfo.toString)
+
+                                    triunfo match {
+                                      case SinTriunfos => props.setImageNull
+                                      case TriunfoNumero(num) =>
+                                        props.setImage(
+                                          ImageProps()
+                                            .setHref(s"images/${num.value}.svg")
+                                            .asInstanceOf[SemanticShorthandItem[ImageProps]]
+                                        )
+                                    }
+
+                                  }.toJSArray
                                 )()
                             )
                           } else

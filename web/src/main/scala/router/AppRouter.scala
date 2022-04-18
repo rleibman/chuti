@@ -18,7 +18,6 @@ package router
 
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
 import app.{ChutiState, GameViewMode, GlobalDialog}
 import chat.ChatComponent
 import chuti.{ChannelId, GameStatus}
@@ -29,10 +28,12 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom._
 import pages.{RulesPage, _}
-import net.leibman.chuti.components._
-import net.leibman.chuti.genericMod.SemanticICONS
+import net.leibman.chuti.semanticUiReact.components._
+import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
+import net.leibman.chuti.semanticUiReact.menuMenuMod.MenuProps
 
 object AppRouter extends ChutiComponent {
+
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
 
   sealed trait AppPage
@@ -59,102 +60,98 @@ object AppRouter extends ChutiComponent {
           implicit val locale: Locale = chutiState.locale
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
-              Modal(
+              Modal()
 //                key = "cuentasDialog",
-                open = chutiState.currentDialog == GlobalDialog.cuentas)(
-                ModalHeader()(
-                  s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" //TODO I8n
-                ),
-                ModalContent()(
-                  Table()(
-                    TableHeader()(
-                      TableRow(
-//                        key = "cuentasHeader"
-                      )(
-                        TableHeaderCell()(localized("Chuti.jugador")),
-                        TableHeaderCell()(localized("Chuti.cuentas")),
-                        TableHeaderCell()(localized("Chuti.total")),
-                        TableHeaderCell()(localized("Chuti.satoshi"))
-                      )
-                    ),
-                    TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
-                      case ((jugador, puntos, satoshi), jugadorIndex) =>
+                .open(chutiState.currentDialog == GlobalDialog.cuentas)(
+                  ModalHeader()(
+                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO I8n
+                  ),
+                  ModalContent()(
+                    Table()(
+                      TableHeader()(
                         TableRow(
-//                          key = s"cuenta$jugadorIndex",
-                          className =
-                            if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+//                        key("cuentasHeader"
                         )(
-                          TableCell()(jugador.user.name),
-                          TableCell()(
-                            jugador.cuenta.zipWithIndex.toVdomArray {
-                              case (cuenta, cuentaIndex) =>
+                          TableHeaderCell()(localized("Chuti.jugador")),
+                          TableHeaderCell()(localized("Chuti.cuentas")),
+                          TableHeaderCell()(localized("Chuti.total")),
+                          TableHeaderCell()(localized("Chuti.satoshi"))
+                        )
+                      ),
+                      TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray { case ((jugador, puntos, satoshi), jugadorIndex) =>
+                        TableRow()
+//                          key(s"cuenta$jugadorIndex",
+                          .className(if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else "")(
+                            TableCell()(jugador.user.name),
+                            TableCell()(
+                              jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
                                 <.span(
                                   ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
                                   ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
                                   s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
                                 )
-                            },
-                            <.span(
-                              ^.fontSize := "large",
-                              ^.color    := "blue",
-                              if (jugador.ganadorDePartido) "➠" else ""
-                            )
-                          ),
-                          TableCell()(
-                            <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
-                          ),
-                          TableCell()(
-                            <.span(
+                              },
                               <.span(
-                                ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                                satoshi
+                                ^.fontSize := "large",
+                                ^.color    := "blue",
+                                if (jugador.ganadorDePartido) "➠" else ""
                               )
-                                .when(game.gameStatus == GameStatus.partidoTerminado)
+                            ),
+                            TableCell()(
+                              <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                            ),
+                            TableCell()(
+                              <.span(
+                                <.span(
+                                  ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
+                                  satoshi
+                                )
+                                  .when(game.gameStatus == GameStatus.partidoTerminado)
+                              )
                             )
                           )
+                      })
+                    ),
+                    if (game.gameStatus == GameStatus.partidoTerminado) {
+                      <.div(
+                        s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido." // TODO I8n
+                      )
+                    } else
+                      EmptyVdom,
+                    <.div( // TODO I8n
+                      <.h1("Puntuacion"),
+                      <.ul(
+                        <.li("Si ganas, cada uno te da 1 punto (o sea, recibes 3 puntos)"),
+                        <.li(
+                          "Si ganas con chuti, cada jugador te da 2 puntos (o sea, recibes 6 puntos)"
+                        ),
+                        <.li(
+                          "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador."
+                        ),
+                        <.li(
+                          "Si alguien quedó en cero, le da un punto al ganador."
+                        ),
+                        <.li(
+                          "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)"
                         )
-                    })
-                  ),
-                  if (game.gameStatus == GameStatus.partidoTerminado) {
-                    <.div(
-                      s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido."//TODO I8n
-                    )
-                  } else
-                    EmptyVdom,
-                  <.div(//TODO I8n
-                    <.h1("Puntuacion"),
-                    <.ul(
-                      <.li("Si ganas, cada uno te da 1 punto (o sea, recibes 3 puntos)"),
-                      <.li(
-                        "Si ganas con chuti, cada jugador te da 2 puntos (o sea, recibes 6 puntos)"
-                      ),
-                      <.li(
-                        "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador."
-                      ),
-                      <.li(
-                        "Si alguien quedó en cero, le da un punto al ganador."
-                      ),
-                      <.li(
-                        "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)"
                       )
                     )
+                  ),
+                  ModalActions()(
+                    Button()
+                      .compact(true)
+                      .basic(true)
+                      .onClick { (_, _) =>
+                        chutiState.showDialog(GlobalDialog.none)
+                      }("Ok") // TODO I8n
                   )
-                ),
-                ModalActions()(
-                  Button(
-                    compact = true,
-                    basic = true,
-                    onClick = { (_, _) =>
-                      chutiState.showDialog(GlobalDialog.none)
-                    }
-                  )("Ok")//TODO I8n
                 )
-              )
             }
           }
 
           VdomArray(renderCuentasDialog)
         }
+
     }
 
     private val component = ScalaComponent
@@ -163,6 +160,7 @@ object AppRouter extends ChutiComponent {
       .build
 
     def apply() = component()
+
   }
 
   private def layout(
@@ -179,84 +177,80 @@ object AppRouter extends ChutiComponent {
             ^.key       := "menu",
             ^.height    := 100.pct,
             ^.className := "no-print headerMenu",
-            Menu(
-              attached = false,
-              compact = true,
-              text = true,
-              borderless = true
-            )(
-              Dropdown(
-                item = true,
-                //                simple = true,
-                compact = true,
-                text = "☰ Menu" //TODO I8n
+            Menu.withProps(
+              MenuProps()
+                .setAttached(false)
+                .setCompact(true)
+                .setText(true)
+                .setBorderless(true)
+            )
+          )(
+            Dropdown()
+              .item(true)
+              //                simple(true)
+              .compact(true)
+              .text(
+                "☰ Menu" // TODO I8n
               )(
                 DropdownMenu()(
                   chutiState.gameInProgress
-                    .filter(g =>
-                      g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado
-                    ).map { _ =>
+                    .filter(g => g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado).map { _ =>
                       VdomArray(
-                        MenuItem(
-//                          key = "menuEntrarAlJuego",
-                          onClick = { (e, _) =>
+                        MenuItem()
+//                          key("menuEntrarAlJuego",
+                          .onClick { (e, _) =>
                             chutiState
                               .onGameViewModeChanged(GameViewMode.game) >> page
                               .setEH(GameAppPage)(e)
-                          }
-                        )(localized("Chuti.entrarAlJuego")),
-                        MenuItem(
-//                          key = "menuCuentas",
-                          onClick = { (_, _) =>
+                          }(localized("Chuti.entrarAlJuego")),
+                        MenuItem()
+//                          key("menuCuentas",
+                          .onClick { (_, _) =>
                             chutiState.showDialog(GlobalDialog.cuentas)
-                          }
-                        )("Cuentas") //TODO I8n
+                          }("Cuentas") // TODO I8n
                       )
                     },
-                  MenuItem(
-//                    key = "menuLobby",
-                    onClick = { (e, _) =>
+                  MenuItem()
+//                    key("menuLobby",
+                    .onClick { (e, _) =>
                       chutiState
                         .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
-                    }
-                  )("Lobby"),//TODO I8n
-                  MenuItem(
-//                    key = "history",
-                    onClick = { (e, _) =>
+                    }("Lobby"), // TODO I8n
+                  MenuItem()
+//                    key("history",
+                    .onClick { (e, _) =>
                       page.setEH(GameHistoryAppPage)(e)
-                    }
-                  )("Historia de juegos"),//TODO I8n
+                    }("Historia de juegos"), // TODO I8n
                   Divider()(),
-                  MenuItem(onClick = { (e, _) => page.setEH(RulesAppPage)(e) })("Reglas de Chuti"),//TODO I8n
-                  MenuItem(onClick = { (_, _) =>
+                  MenuItem().onClick((e, _) => page.setEH(RulesAppPage)(e))("Reglas de Chuti"), // TODO I8n
+                  MenuItem().onClick { (_, _) =>
                     Callback {
                       document.location.href = "/api/auth/doLogout"
                     }
-                  })("Cerrar sesión"), //TODO I8n
-                  MenuItem(onClick = { (e, _) => page.setEH(UserSettingsAppPage)(e) })(
-                    "Administración de usuario" //TODO I8n
+                  }("Cerrar sesión"), // TODO I8n
+                  MenuItem().onClick((e, _) => page.setEH(UserSettingsAppPage)(e))(
+                    "Administración de usuario" // TODO I8n
                   ),
                   Divider()(),
-                  MenuItem(onClick = { (_, _) => chutiState.toggleSound })(
-                    Icon(name =
+                  MenuItem().onClick((_, _) => chutiState.toggleSound)(
+                    Icon().name(
                       if (chutiState.muted) SemanticICONS.`volume up`
                       else SemanticICONS.`volume off`
                     )(),
-                    if (chutiState.muted) "Con Sonido" else "Sin Sonido" //TODO I8n
+                    if (chutiState.muted) "Con Sonido" else "Sin Sonido" // TODO I8n
                   ),
                   Divider()(),
-                  MenuItem(onClick = { (e, _) => page.setEH(ChangeLogAppPage)(e) })("ChangeLog"), //TODO I8n
-                  MenuItem(onClick = { (e, _) => page.setEH(AboutAppPage)(e) })(
-                    "Acerca de chuti.fun" //TODO I8n
+                  MenuItem().onClick((e, _) => page.setEH(ChangeLogAppPage)(e))("ChangeLog"), // TODO I8n
+                  MenuItem().onClick((e, _) => page.setEH(AboutAppPage)(e))(
+                    "Acerca de chuti.fun" // TODO I8n
                   )
                 )
               )
-            )
           ),
           <.div(
             ^.key       := "user",
             ^.className := "user",
-            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}" //TODO I8n
+            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}" // TODO I8n
           )
         )
       }
@@ -278,7 +272,7 @@ object AppRouter extends ChutiComponent {
             channelId,
             onPrivateMessage = { msg =>
               Toast.info(
-                <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) //TODO I8n
+                <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) // TODO I8n
               ) >> chutiState.onRequestGameRefresh()
             },
             onMessage = _ => chutiState.playSound("sounds/message.mp3")
@@ -304,4 +298,5 @@ object AppRouter extends ChutiComponent {
   private val baseUrl: BaseUrl = BaseUrl.fromWindowOrigin_/
 
   val router: Router[AppPage] = Router.apply(baseUrl, config)
+
 }

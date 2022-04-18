@@ -35,7 +35,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, _}
 import net.leibman.chuti.std.OnErrorEventHandlerNonNull
 import net.leibman.chuti.std.global.Audio
-import org.scalajs.dom.raw.Event
+import org.scalajs.dom.Event
 import org.scalajs.dom.window
 import router.AppRouter
 import service.UserRESTClient
@@ -45,18 +45,18 @@ import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
 
-/**
-  * This is a helper class meant to load initial app state, scalajs-react normally
-  * suggests (and rightfully so) that the router should be the main content of the app,
-  * but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and
-  * presenting the app menu.
+/** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the router should be the main
+  * content of the app, but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and presenting
+  * the app menu.
   */
 object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSupport {
+
   private val connectionId = UUID.randomUUID().toString
 
   case class State(chutiState: ChutiState)
 
   class Backend($ : BackendScope[_, State]) {
+
     private val gameEventDecoder = implicitly[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
@@ -76,7 +76,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
           val doRefresh = currentgameOpt.fold(true)(game =>
             gameEvent.index match {
               case Some(index) if index == game.nextIndex + 1 =>
-                //If it's a future event, which means we missed an event somewhere, we'll need to call for a full refresh
+                // If it's a future event, which means we missed an event somewhere, we'll need to call for a full refresh
                 true
               case _ => false
             }
@@ -96,44 +96,41 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       } yield updated
 
       Callback.log(gameEvent.toString) >>
-        Callback.traverse(gameEvent.soundUrl)(playSound) >>
+        Callback.traverse(gameEvent.soundUrl.toSeq)(playSound) >>
         updateGame >> {
-        gameEvent match {
-          case e: TerminaJuego if e.partidoTerminado =>
-            refresh(initial = false)() >> $.modState(s =>
-              s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
-            )
-          case _ => Callback.empty
+          gameEvent match {
+            case e: TerminaJuego if e.partidoTerminado =>
+              refresh(initial = false)() >> $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas)))
+            case _ => Callback.empty
+          }
         }
-      }
     }
 
     private def reapplyEvent(gameEvent: GameEvent): Callback =
       $.modState(s => {
-        val moddedGame = s.chutiState.gameInProgress.flatMap {
-          currentGame: Game =>
-            gameEvent.index match {
-              case None =>
-                throw GameException(
-                  "Esto es imposible (el evento no tiene indice)"
-                )
-              case Some(index) if index == currentGame.currentEventIndex =>
-                //If the game event is the next one to be applied, apply it to the game
-                val reapplied = currentGame.reapplyEvent(gameEvent)
-                if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty)
-                  None
-                else
-                  Option(reapplied)
-              case Some(index) if index > currentGame.currentEventIndex =>
-                //If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-                //In a few seconds, just get the full game.
-                Option(currentGame)
-              case Some(index) =>
-                //If it's past, mark an error, how could we have a past event???
-                throw GameException(
-                  s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-                )
-            }
+        val moddedGame = s.chutiState.gameInProgress.flatMap { currentGame: Game =>
+          gameEvent.index match {
+            case None =>
+              throw GameException(
+                "Esto es imposible (el evento no tiene indice)"
+              )
+            case Some(index) if index == currentGame.currentEventIndex =>
+              // If the game event is the next one to be applied, apply it to the game
+              val reapplied = currentGame.reapplyEvent(gameEvent)
+              if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty)
+                None
+              else
+                Option(reapplied)
+            case Some(index) if index > currentGame.currentEventIndex =>
+              // If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
+              // In a few seconds, just get the full game.
+              Option(currentGame)
+            case Some(index) =>
+              // If it's past, mark an error, how could we have a past event???
+              throw GameException(
+                s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
+              )
+          }
         }
         s.copy(chutiState =
           s.chutiState.copy(
@@ -147,8 +144,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         )
       })
 
-    def toggleSound =
-      $.modState(s => s.copy(chutiState = s.chutiState.copy(muted = !s.chutiState.muted)))
+    def toggleSound: Callback = $.modState(s => s.copy(chutiState = s.chutiState.copy(muted = !s.chutiState.muted)))
 
     def modGameInProgress(
       fn:       Game => Game,
@@ -180,7 +176,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       val async = for {
         user <-
           AsyncCallback.traverse(userOpt.toSeq)(user => UserRESTClient.remoteSystem.upsert(user))
-        locale <- UserRESTClient.remoteSystem.setLocale(languageTag)
+        _ <- UserRESTClient.remoteSystem.setLocale(languageTag)
       } yield {
         Callback(window.sessionStorage.setItem("languageTag", languageTag)) >>
           $.modState(s =>
@@ -196,11 +192,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
     val audio = new Audio("")
     audio.onended = ThisFunction.fromFunction2 { (_: Audio, _: Event) =>
       if (audioQueue.size > 4) {
-        //If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
+        // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
         println("play queue got bigger than 4, clearing queue")
         audioQueue.clear()
-      } else
-        audioQueue.dequeue()
+      } else audioQueue.dequeue()
       if (audioQueue.nonEmpty) {
         audio.src = audioQueue.head
         audio.play()
@@ -209,7 +204,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
     val fn: OnErrorEventHandlerNonNull = {
       (
-        /* event */ _:     org.scalajs.dom.raw.Event | java.lang.String,
+        /* event */ _:     org.scalajs.dom.Event | java.lang.String,
         /* source */ _:    js.UndefOr[java.lang.String],
         /* lineno */ _:    js.UndefOr[scala.Double],
         /* colno */ _:     js.UndefOr[scala.Double],
@@ -268,12 +263,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       }
 
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
-      Callback.log("============== onGameViewModeChanged") >> $.modState(s =>
-        s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode))
-      )
+      Callback.log("============== onGameViewModeChanged") >> $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
 
-    def showDialog(dlg: GlobalDialog): Callback =
-      $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
+    def showDialog(dlg: GlobalDialog): Callback = $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
 
     def onUserStreamData(
       currentUser:   User,
@@ -300,17 +292,17 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               )
             )
           case Some((_, AbandonedGame, gameId)) =>
-            //Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
-            //That'll request a refresh.
-            //Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
+            // Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
+            // That'll request a refresh.
+            // Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
             if (gameId != currentGameId)
               Callback.empty
             else
               refresh(initial = false)()
           case Some((user, JoinedGame, gameId)) =>
-            //Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
-            //That'll request a refresh.
-            //Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
+            // Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
+            // That'll request a refresh.
+            // Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
             if (user.id == currentUser.id || gameId != currentGameId)
               Callback.empty
             else
@@ -333,30 +325,26 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         }
       )
 
-    lazy private val userEventSelectionBuilder
-      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
-      val t: SelectionBuilder[
-        CalibanUserEvent,
-        ((((Option[Int], String), String), CalibanUserEventType), Option[Int])
-      ] = CalibanUserEvent.user(CalibanUser.id) ~
-        CalibanUserEvent.user(CalibanUser.name) ~
-        CalibanUserEvent.user(CalibanUser.email) ~
-        CalibanUserEvent.userEventType ~
-        CalibanUserEvent.gameId
+    lazy private val userEventSelectionBuilder: SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
+      val t: SelectionBuilder[CalibanUserEvent, (Option[Int], String, String, CalibanUserEventType, Option[Int])] =
+        CalibanUserEvent.user(CalibanUser.id) ~
+          CalibanUserEvent.user(CalibanUser.name) ~
+          CalibanUserEvent.user(CalibanUser.email) ~
+          CalibanUserEvent.userEventType ~
+          CalibanUserEvent.gameId
 
-      t.map {
-        case ((((idOpt, name), email), eventType), gameIdOpt) =>
-          (
-            User(id = idOpt.map(UserId), name = name, email = email),
-            eventType,
-            gameIdOpt.map(GameId)
-          )
+      t.map { case (idOpt, name, email, eventType, gameIdOpt) =>
+        (
+          User(id = idOpt.map(UserId), name = name, email = email),
+          eventType,
+          gameIdOpt.map(GameId)
+        )
       }
     }
 
     def refresh(initial: Boolean)(): Callback = {
       val ajax = for {
-        oldState <- ($.state).asAsyncCallback
+        oldState <- $.state.asAsyncCallback
         whoami <-
           if (initial) UserRESTClient.remoteSystem.whoami()
           else AsyncCallback.pure(oldState.chutiState.user)
@@ -366,10 +354,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
         gameInProgressOpt <- asyncCalibanCallThroughJsonOpt[Queries, Game](Queries.getGameForUser)
         needNewGameStream = (for {
-            oldGame <- oldState.chutiState.gameInProgress
-            newGame <- gameInProgressOpt
-            _       <- oldState.chutiState.gameStream
-          } yield oldGame.id != newGame.id).getOrElse(true)
+          oldGame <- oldState.chutiState.gameInProgress
+          newGame <- gameInProgressOpt
+          _       <- oldState.chutiState.gameStream
+        } yield oldGame.id != newGame.id).getOrElse(true)
 
         _ <-
           (if (needNewGameStream)
@@ -384,7 +372,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
             chutiState = s.chutiState.copy(
               flipFicha = flipFicha,
               modGameInProgress = modGameInProgress,
-              onRequestGameRefresh = refresh(initial = false) _,
+              onRequestGameRefresh = refresh(initial = false),
               onGameViewModeChanged = onGameViewModeChanged,
               onSessionChanged = onSessionChanged,
               toggleSound = toggleSound,
@@ -400,9 +388,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                       userEventSelectionBuilder
                     ),
                   onData = { (_, data) =>
-                    whoami.fold(Callback.empty)(currentUser =>
-                      onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten)
-                    )
+                    whoami.fold(Callback.empty)(currentUser => onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten))
                   },
                   operationId = "-",
                   connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.value)}"
@@ -434,8 +420,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                       )
                     },
                     operationId = "-",
-                    connectionId =
-                      s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
+                    connectionId = s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
                   )
                 )
           )
@@ -464,11 +449,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               GameViewMode.lobby
           }
         if (ret == GameViewMode.none) {
-          //Should not happen, but let's be sure it doesn't happen again
+          // Should not happen, but let's be sure it doesn't happen again
           window.sessionStorage.setItem("gamePageMode", GameViewMode.lobby.toString)
           GameViewMode.lobby
-        } else
-          ret
+        } else ret
       }
 
       State(chutiState = ChutiState(gameViewMode = gameViewMode))
@@ -483,4 +467,5 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()
+
 }

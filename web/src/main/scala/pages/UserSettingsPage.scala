@@ -44,6 +44,7 @@ object UserSettingsPage extends ChutiPage {
   )
 
   class Backend($ : BackendScope[Unit, State]) {
+
     def init: Callback =
       UserRESTClient.remoteSystem
         .whoami().map(u => $.modState(_.copy(user = u))).completeWith(_.get)
@@ -55,27 +56,25 @@ object UserSettingsPage extends ChutiPage {
       obj: InputOnChangeData
     ): Callback = {
       val str = obj.value.get.asInstanceOf[String]
-      $.modState(state => {
-        state.copy(user = state.user.map(fn(_, str)))
-      })
+      $.modState(state => state.copy(user = state.user.map(fn(_, str))))
     }
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.user.get.name.trim.isEmpty) Seq("El nombre no puede estar vacío") //TODO i8n
+        (if (state.user.get.name.trim.isEmpty) Seq("El nombre no puede estar vacío") // TODO i8n
          else Nil) ++
         (if (state.user.get.email.trim.isEmpty)
-           Seq("La dirección de correo electrónico no puede estar vacía") //TODO i8n
+           Seq("La dirección de correo electrónico no puede estar vacía") // TODO i8n
          else Nil)
 
     private def validatePassword(
       state: State
     ): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") //TODO i8n
+        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") // TODO i8n
          else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
-           Seq("Las dos contraseñas tienen que ser iguales") //TODO i8n
+           Seq("Las dos contraseñas tienen que ser iguales") // TODO i8n
          else Nil)
 
     def doUpdate(
@@ -97,7 +96,7 @@ object UserSettingsPage extends ChutiPage {
         Toast.error(valid.map(s => <.p(s)).toVdomArray)
       else
         UserRESTClient.remoteSystem
-          .changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada")) //TODO i8n
+          .changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada")) // TODO i8n
     }
 
     private def renderUserInfo(
@@ -106,94 +105,87 @@ object UserSettingsPage extends ChutiPage {
     ): VdomElement =
       <.div(
         FormGroup()(
-          FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Nombre"), //TODO i8n
-            Input(
-              onChange = onUserInputChange((user, value) => user.copy(name = value)),
-              value = state.user.fold("")(_.name)
-            )()
+          FormField().width(SemanticWIDTHS.`3`)(
+            Label()("Nombre"), // TODO i8n
+            Input()
+              .onChange(onUserInputChange((user, value) => user.copy(name = value)))
+              .value(state.user.fold("")(_.name))()
           )
         ),
         FormGroup()(
-          FormField(width = SemanticWIDTHS.`6`)(
-            Label()("Correo Electrónico"), //TODO i8n
-            Input(
-              `type` = "email",
-              onChange = onUserInputChange((user, value) => user.copy(email = value)),
-              value = state.user.fold("")(_.email)
-            )()
+          FormField().width(SemanticWIDTHS.`6`)(
+            Label()("Correo Electrónico"), // TODO i8n
+            Input()
+              .`type`("email")
+              .onChange(onUserInputChange((user, value) => user.copy(email = value)))
+              .value(state.user.fold("")(_.email))()
           )
         ),
         FormGroup()(
-          FormField(width = SemanticWIDTHS.`6`)(
-            Label()("Idioma"), //TODO i8n
-            Dropdown(
-              placeholder = "Selecciona Idioma", //TODO i8n
-              fluid = true,
-              selection = true,
-              value = state.locale,
-              onChange = { (_, dropDownProps) =>
+          FormField().width(SemanticWIDTHS.`6`)(
+            Label()("Idioma"), // TODO i8n
+            Dropdown()
+              .placeholder("Selecciona Idioma") // TODO i8n
+              .fluid(true)
+              .selection(true)
+              .value(state.locale)
+              .onChange { (_, dropDownProps) =>
                 $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))
-              },
-              options = scalajs.js.Array(
-                DropdownItemProps(value = "en-US", flag = "us", text = "Ingles"), //TODO i8n
-                DropdownItemProps(value = "es-MX", flag = "mx", text = "Español") //TODO i8n
-              )
-            )()
+              }
+              .options(
+                scalajs.js.Array(
+                  DropdownItemProps()
+                    .setValue("en-US")
+                    .setFlag("us")
+                    .setText("Ingles"), // TODO i8n
+                  DropdownItemProps()
+                    .setValue("es-MX")
+                    .setFlag("mx")
+                    .setText("Español") // TODO i8n
+                )
+              )()
           )
         ),
         FormGroup()(
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) => doUpdate(state, chutiState) }
-          )("Guardar") //TODO i8n
+          Button()
+            .compact(true)
+            .basic(true)
+            .onClick { (_, _) => doUpdate(state, chutiState) }("Guardar") // TODO i8n
         ),
         Divider()(),
         FormGroup()(
-          FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Contraseña"), //TODO i8n
-            Input(
-              required = true,
-              name = "password",
-              `type` = "password",
-              value = state.passwordPair._1,
-              onChange = { (_, obj) =>
-                $.modState(state =>
-                  state.copy(passwordPair =
-                    (obj.value.get.asInstanceOf[String], state.passwordPair._2)
-                  )
-                )
-              }
-            )()
+          FormField().width(SemanticWIDTHS.`3`)(
+            Label()("Contraseña"), // TODO i8n
+            Input()
+              .required(true)
+              .name("password")
+              .`type`("password")
+              .value(state.passwordPair._1)
+              .onChange { (_, obj) =>
+                $.modState(state => state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)))
+              }()
           ),
-          FormField(width = SemanticWIDTHS.`3`)(
-            Label()("Repite Contraseña"), //TODO i8n
-            Input(
-              `type` = "password",
-              name = "password",
-              value = state.passwordPair._2,
-              onChange = { (_, obj) =>
-                $.modState(state =>
-                  state.copy(passwordPair =
-                    (state.passwordPair._1, obj.value.get.asInstanceOf[String])
-                  )
-                )
-              }
-            )()
+          FormField().width(SemanticWIDTHS.`3`)(
+            Label()("Repite Contraseña"), // TODO i8n
+            Input()
+              .`type`("password")
+              .name("password")
+              .value(state.passwordPair._2)
+              .onChange { (_, obj) =>
+                $.modState(state => state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])))
+              }()
           )
         ),
         FormGroup()(
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) => doChangePassword(state) }
-          )("Cambiar Contraseña") //TODO i8n
+          Button()
+            .compact(true)
+            .basic(true)
+            .onClick { (_, _) => doChangePassword(state) }("Cambiar Contraseña") // TODO i8n
         ),
         Divider()(),
-        <.h2("Cartera"), //TODO i8n
+        <.h2("Cartera"), // TODO i8n
         <.p(
-          s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi, si quieres cambiar el numero de satoshi que tienes, comunicate con nosotros a ", //TODO i8n
+          s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi, si quieres cambiar el numero de satoshi que tienes, comunicate con nosotros a ", // TODO i8n
           <.a(^.href := "mailto:info@chuti.fun", "info@chuti.fun")
         )
       )
@@ -203,12 +195,13 @@ object UserSettingsPage extends ChutiPage {
     ): VdomElement =
       ChutiState.ctx.consume { chutiState =>
         <.div(
-          <.h1("Administración de Usuario"), //TODO i8n
+          <.h1("Administración de Usuario"), // TODO i8n
           Form()(
             renderUserInfo(state, chutiState)
           )
         )
       }
+
   }
 
   private val component = ScalaComponent
@@ -219,4 +212,5 @@ object UserSettingsPage extends ChutiPage {
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()
+
 }

@@ -247,7 +247,7 @@ object RulesPage extends ChutiPage {
   class Backend($ : BackendScope[_, State]) {
     import RulesPageMessages._
 
-    def render(S: State): VdomElement = {
+    def render(): VdomElement = {
       ChutiState.ctx.consume { chutiState =>
         implicit val locale: Locale = chutiState.locale
         <.div(

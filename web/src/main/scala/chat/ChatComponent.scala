@@ -16,38 +16,29 @@
 
 package chat
 
-import java.net.URI
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, ZoneOffset}
-import java.util.UUID
-
+import _root_.util.Config
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{
-  Mutations,
-  Queries,
-  Subscriptions,
-  ChatMessage => CalibanChatMessage,
-  LocalDateTime => CalibanLocalDateTime,
-  User => CalibanUser
-}
+import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage => CalibanChatMessage, LocalDateTime => CalibanLocalDateTime, User => CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto._
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Ref => ReactRef, _}
-import org.scalajs.dom.html.Div
 import net.leibman.chuti.semanticUiReact.components._
 import net.leibman.chuti.semanticUiReact.textAreaTextAreaMod.TextAreaProps
-import _root_.util.Config
+import org.scalajs.dom.html.Div
+import sttp.client3._
 
-import scala.concurrent.Future
+import java.net.URI
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDateTime, ZoneOffset}
+import java.util.UUID
 import scala.util.{Failure, Success}
 
 object ChatComponent extends ScalaJSClientAdapter {
   private val connectionId = UUID.randomUUID().toString
-  import sttp.client._
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
 
@@ -76,8 +67,6 @@ object ChatComponent extends ScalaJSClientAdapter {
       p: Props,
       s: State
     ): Callback = {
-      import sttp.client._
-      implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
       val mutation = Mutations.say(s.msgInFlux, p.channel.value)
       val serverUri = uri"http://${Config.chutiHost}/api/chat"
       val request = mutation.toRequest(serverUri)
@@ -87,7 +76,7 @@ object ChatComponent extends ScalaJSClientAdapter {
       Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(
         _.copy(msgInFlux = "")
       ) >> AsyncCallback
-        .fromFuture(request.send())
+        .fromFuture(request.send(FetchBackend()))
         .completeWith {
           case Success(response) if response.code.isSuccess || response.code.isInformational =>
             Callback.log("Message sent")

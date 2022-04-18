@@ -33,17 +33,19 @@ object Confirm {
   )
 
   class Backend($ : BackendScope[Unit, ConfirmState]) {
+
     def render(state: ConfirmState): VdomNode =
       <.div(
-        SuiConfirm().open(state.open)
+        SuiConfirm()
+          .open(state.open)
           .content(state.question)
           .cancelButton(state.cancelText)
-          .confirmButton (state.confirmText)
-          .header (state.header.getOrElse("").toString)
-          .onConfirm({ (_, _) => $.modState(s => s.copy(open = false), state.onConfirm) })
-          .onCancel ({ (_, _) =>
+          .confirmButton(state.confirmText)
+          .header(state.header.getOrElse("").toString)
+          .onConfirm((_, _) => $.modState(s => s.copy(open = false), state.onConfirm))
+          .onCancel { (_, _) =>
             $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
-          })()
+          }()
       )
 
     def confirm(
@@ -57,6 +59,7 @@ object Confirm {
       $.setState(
         ConfirmState(question, open = true, onConfirm, onCancel, cancelText, confirmText, header)
       )
+
   }
 
   private val component =
@@ -79,10 +82,6 @@ object Confirm {
     header:      Option[String] = None
   ): Callback =
     ref.get
-      .map(
-        _.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header)
-      )
-      .getOrElse(Callback.empty)
-      .flatten
+      .flatMap(_.fold(Callback.empty)(_.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header)))
 
 }

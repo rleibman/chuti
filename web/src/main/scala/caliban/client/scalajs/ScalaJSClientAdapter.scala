@@ -16,12 +16,9 @@
 
 package caliban.client.scalajs
 
-import java.net.URI
-import java.time.LocalDateTime
-
+import _root_.util.Config
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.Operations.{IsOperation, RootSubscription}
-import caliban.client.Value.ObjectValue
 import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
 import io.circe.generic.auto._
 import io.circe.parser._
@@ -30,9 +27,12 @@ import io.circe.{Decoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
-import _root_.util.Config
+import sttp.capabilities
+import sttp.client3._
 import zio.duration._
 
+import java.net.URI
+import java.time.LocalDateTime
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -42,9 +42,8 @@ trait WebSocketHandler {
 }
 
 trait ScalaJSClientAdapter extends TimerSupport {
-  import sttp.client._
   val serverUri = uri"http://${Config.chutiHost}/api/game"
-  implicit val backend: SttpBackend[Future, Nothing, NothingT] = FetchBackend()
+  implicit val backend: SttpBackend[Future, capabilities.WebSockets] = FetchBackend()
 
   def asyncCalibanCall[Origin, A](
     selectionBuilder: SelectionBuilder[Origin, A]
@@ -55,7 +54,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
     //TODO add headers as necessary
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     AsyncCallback
-      .fromFuture(request.send())
+      .fromFuture(request.send(backend))
       .map(_.body match {
         case Left(exception) => throw exception
         case Right(value)    => value
@@ -89,7 +88,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
     AsyncCallback
-      .fromFuture(request.send())
+      .fromFuture(request.send(backend))
       .completeWith {
         case Success(response) if response.code.isSuccess || response.code.isInformational =>
           response.body match {
@@ -316,7 +315,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                   if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
                   else Right(parsed.data)
                 objectValue <- data match {
-                  case Some(o: ObjectValue) => Right(o)
+                  case Some(o) => Right(o)
                   case _ => Left(DecodingError(s"Result is not an object ($data)"))
                 }
                 result <- query.fromGraphQL(objectValue)

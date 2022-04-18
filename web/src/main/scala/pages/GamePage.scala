@@ -53,8 +53,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     }
 
     def render(
-      p: Props,
-      s: State
+      p: Props
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
         val gameViewMode =

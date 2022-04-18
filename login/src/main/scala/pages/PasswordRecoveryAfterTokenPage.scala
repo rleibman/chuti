@@ -23,7 +23,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.window
 import react.Toast
-import typings.react.reactStrings.submit
+import net.leibman.chuti.react.reactStrings.submit
 import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}
 import org.scalajs.dom.raw.HTMLFormElement
 

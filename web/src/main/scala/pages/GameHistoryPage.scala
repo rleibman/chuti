@@ -27,21 +27,15 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import net.leibman.chuti.semanticUiReact.components.{
-  Container,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableHeaderCell,
-  TableRow
-}
+import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow}
 
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
+
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
   case class State(games: Seq[Game] = Seq.empty)
 
   class Backend($ : BackendScope[_, State]) {
+
     private val gameDecoder = implicitly[Decoder[Game]]
 
     def init: Callback = {
@@ -74,35 +68,33 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
                     TableRow(
 //                      key = "cuentasHeader1"
                     )(
-                      TableHeaderCell(colSpan = 4)(
-                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" //TODO i8n
+                      TableHeaderCell().colSpan(4)(
+                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO i8n
                       )
                     ),
                     TableRow(
 //                      key = "cuentasHeader2"
                     )(
-                      TableHeaderCell()("Jugador"), //TODO i8n
-                      TableHeaderCell()("Cuentas"), //TODO i8n
-                      TableHeaderCell()("Total"), //TODO i8n
-                      TableHeaderCell()("Satoshi") //TODO i8n
+                      TableHeaderCell()("Jugador"), // TODO i8n
+                      TableHeaderCell()("Cuentas"), // TODO i8n
+                      TableHeaderCell()("Total"), // TODO i8n
+                      TableHeaderCell()("Satoshi") // TODO i8n
                     )
                   ),
-                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
-                    case ((jugador, puntos, satoshi), jugadorIndex) =>
-                      TableRow(
+                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray { case ((jugador, puntos, satoshi), jugadorIndex) =>
+                    TableRow()
 //                        key = s"cuenta$jugadorIndex",
-                        className =
-                          if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                      .className(
+                        if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
                       )(
                         TableCell()(jugador.user.name),
                         TableCell()(
-                          jugador.cuenta.zipWithIndex.toVdomArray {
-                            case (cuenta, cuentaIndex) =>
-                              <.span(
-                                ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
-                                ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
-                              )
+                          jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                            <.span(
+                              ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
+                              ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
+                              s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                            )
                           },
                           <.span(
                             ^.fontSize := "large",
@@ -130,6 +122,7 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
           )
         )
       }
+
   }
 
   private val component = ScalaComponent
