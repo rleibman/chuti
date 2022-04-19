@@ -25,7 +25,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
-import org.scalajs.dom.raw.HTMLButtonElement
+import org.scalajs.dom.HTMLButtonElement
 import org.scalajs.dom.window
 import react.Toast
 import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
@@ -34,6 +34,7 @@ import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 object NewUserAcceptFriendPage {
+
   case class State(
     passwordPair: (String, String) = ("", ""),
     user:         Option[User] = None
@@ -46,9 +47,7 @@ object NewUserAcceptFriendPage {
         _:   ReactEventFromInput,
         obj: InputOnChangeData
       ) =>
-        $.modState(state =>
-          state.copy(user = state.user.map(u => fn(u, obj.value.get.asInstanceOf[String])))
-        )
+        $.modState(state => state.copy(user = state.user.map(u => fn(u, obj.value.get.asInstanceOf[String]))))
     }
 
     private def validate(state: State): Seq[String] =
@@ -137,68 +136,56 @@ object NewUserAcceptFriendPage {
       )(u =>
         <.div(
           FormGroup()(
-            FormField(width = SemanticWIDTHS.`3`)(
+            FormField().width(SemanticWIDTHS.`3`)(
               Label()("Nombre"),
-              Input(
-                onChange = onUserInputChange((user, value) => user.copy(name = value)),
-                value = u.name
-              )()
+              Input()
+                .onChange(onUserInputChange((user, value) => user.copy(name = value)))
+                .value(u.name)()
             )
           ),
           FormGroup()(
-            FormField(width = SemanticWIDTHS.`6`)(
+            FormField().width(SemanticWIDTHS.`6`)(
               Label()("Correo Electrónico"),
-              Input(
-                disabled = true,
-                `type` = "email",
-                value = u.email
-              )()
+              Input()
+                .disabled(true)
+                .`type`("email")
+                .value(u.email)()
             )
           ),
           FormGroup()(
-            FormField(width = SemanticWIDTHS.`3`)(
+            FormField().width(SemanticWIDTHS.`3`)(
               Label()("Contraseña"),
-              Input(
-                required = true,
-                name = "password",
-                `type` = "password",
-                value = state.passwordPair._1,
-                onChange = { (_, obj) =>
-                  $.modState(state =>
-                    state.copy(passwordPair =
-                      (obj.value.get.asInstanceOf[String], state.passwordPair._2)
-                    )
-                  )
-                }
-              )()
+              Input()
+                .required(true)
+                .name("password")
+                .`type`("password")
+                .value(state.passwordPair._1)
+                .onChange { (_, obj) =>
+                  $.modState(state => state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)))
+                }()
             ),
-            FormField(width = SemanticWIDTHS.`3`)(
+            FormField().width(SemanticWIDTHS.`3`)(
               Label()("Repite Contraseña"),
-              Input(
-                `type` = "password",
-                name = "password",
-                value = state.passwordPair._2,
-                onChange = { (_, obj) =>
-                  $.modState(state =>
-                    state.copy(passwordPair =
-                      (state.passwordPair._1, obj.value.get.asInstanceOf[String])
-                    )
-                  )
-                }
-              )()
+              Input()
+                .`type`("password")
+                .name("password")
+                .value(state.passwordPair._2)
+                .onChange { (_, obj) =>
+                  $.modState(state => state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])))
+                }()
             )
           ),
           FormGroup()(
-            Button(compact = true, basic = true, onClick = doCreate(state, props, context))(
-              "Crear cuenta"
-            ),
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
+            Button()
+              .compact(true).basic(true).onClick(doCreate(state, props, context))(
+                "Crear cuenta"
+              ),
+            Button()
+              .compact(true)
+              .basic(true)
+              .onClick { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
                 Callback(window.location.replace("/"))
-              }
-            )("Cancelar")
+              }("Cancelar")
           )
         )
       )
@@ -216,6 +203,7 @@ object NewUserAcceptFriendPage {
           )
         )
       }
+
   }
 
   case class Props(token: Option[String])
@@ -228,4 +216,5 @@ object NewUserAcceptFriendPage {
     .build
 
   def apply(token: Option[String]): Unmounted[Props, State, Backend] = component(Props(token))
+
 }

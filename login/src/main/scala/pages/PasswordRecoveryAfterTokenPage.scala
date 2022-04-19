@@ -25,15 +25,17 @@ import org.scalajs.dom.window
 import react.Toast
 import net.leibman.chuti.react.reactStrings.submit
 import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}
-import org.scalajs.dom.raw.HTMLFormElement
+import org.scalajs.dom.HTMLFormElement
 
 object PasswordRecoveryAfterTokenPage {
+
   case class State(
     password:      String = "",
     passwordAgain: String = ""
   )
 
   class Backend($ : BackendScope[Props, State]) {
+
     def handleSubmit(
       state: State,
       event: ReactEventFrom[HTMLFormElement]
@@ -54,54 +56,54 @@ object PasswordRecoveryAfterTokenPage {
           ^.width := 800.px,
           <.div(<.img(^.src := "/unauth/images/logo.png")),
           <.h1("Recuperar contraseña!"),
-          Form(
-            action = "passwordReset",
-            method = "post",
-            onSubmit = { (event, _) =>
+          Form()
+            .action("passwordReset")
+            .method("post")
+            .onSubmit { (event, _) =>
               handleSubmit(state, event)
-            }
-          )(
-            FormField()(
-              Label()("Contraseña"),
-              Input(
-                required = true,
-                name = "password",
-                `type` = "password",
-                value = state.password,
-                onChange = { (_, data) =>
-                  $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
-                }
-              )()
-            ),
-            FormField()(
-              Label()("Repite contraseña"),
-              Input(
-                required = true,
-                name = "passwordAgain",
-                `type` = "password",
-                value = state.passwordAgain,
-                onChange = { (_, data) =>
-                  $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
-                }
-              )()
-            ),
-            <.input(
-              ^.`type` := "hidden",
-              ^.id     := "token",
-              ^.name   := "token",
-              ^.value  := props.token.getOrElse("")
-            ),
-            Button(compact = true, basic = true, `type` = submit)("Cambia contraseña"),
-            Button(
-              compact = true,
-              basic = true,
-              onClick = { (_, _) =>
-                Callback(window.location.replace("/"))
-              }
-            )("Cancel")
-          )
+            }(
+              FormField()(
+                Label()("Contraseña"),
+                Input()
+                  .required(true)
+                  .name("password")
+                  .`type`("password")
+                  .value(state.password)
+                  .onChange { (_, data) =>
+                    $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
+                  }()
+              ),
+              FormField()(
+                Label()("Repite contraseña"),
+                Input()
+                  .required(true)
+                  .name("passwordAgain")
+                  .`type`("password")
+                  .value(state.passwordAgain)
+                  .onChange { (_, data) =>
+                    $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
+                  }()
+              ),
+              <.input(
+                ^.`type` := "hidden",
+                ^.id     := "token",
+                ^.name   := "token",
+                ^.value  := props.token.getOrElse("")
+              ),
+              Button()
+                .compact(true)
+                .basic(true)
+                .`type`(submit)("Cambia contraseña"),
+              Button()
+                .compact(true)
+                .basic(true)
+                .onClick { (_, _) =>
+                  Callback(window.location.replace("/"))
+                }("Cancel")
+            )
         )
       }
+
   }
 
   case class Props(token: Option[String])
@@ -113,4 +115,5 @@ object PasswordRecoveryAfterTokenPage {
     .build
 
   def apply(token: Option[String]): Unmounted[Props, State, Backend] = component(Props(token))
+
 }

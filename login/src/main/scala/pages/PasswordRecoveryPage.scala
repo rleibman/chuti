@@ -57,7 +57,7 @@ object PasswordRecoveryPage {
         }
 
     def render(state: State) =
-      LoginControllerState.ctx.consume { context =>
+      LoginControllerState.ctx.consume { _ =>
         <.div(
           <.div(<.img(^.src := "/unauth/images/logo.png")),
           <.h1("Recuperar contraseña!"),
@@ -67,10 +67,10 @@ object PasswordRecoveryPage {
                 "Te hemos mandado un correo a tu cuenta con instrucciones para recuperar to contraseña, tienes 3 horas para cambiarla, si no vas a tener que tratar de nuevo"
               ),
               <.p(
-                Button(
-                  compact = true,
-                  basic = true,
-                  onClick = { (_, _) =>
+                Button()
+                  .compact(true)
+                  .basic(true)
+                  .onClick({ (_, _) =>
                     $.modState(_.copy(submitted = false))
                   }
                 )("Intenta de nuevo")
@@ -82,20 +82,20 @@ object PasswordRecoveryPage {
               Form()(
                 FormField()(
                   Label()("Correo electrónico"),
-                  Input(
-                    required = true,
-                    name = "email",
-                    `type` = "email",
-                    value = state.email,
-                    onChange = { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                  Input()
+                    .required(true)
+                    .name("email")
+                    .`type`("email")
+                    .value(state.email)
+                    .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                       $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
                     }
                   )()
                 ),
-                Button(
-                  compact = true,
-                  basic = true,
-                  onClick = { (_, _) =>
+                Button()
+                  .compact(true)
+                  .basic(true)
+                  .onClick({ (_, _) =>
                     onSubmitEmailAddress(state.email)
                   }
                 )("Aceptar")

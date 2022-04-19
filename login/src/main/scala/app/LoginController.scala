@@ -39,7 +39,7 @@ case class LoginControllerState(
   onModeChanged:    (Mode, Option[String]) => Callback = { (_, _) => Callback.empty }
 )
 object LoginController {
-  lazy val queryParams = new org.scalajs.dom.experimental.URLSearchParams(window.location.search)
+  lazy val queryParams = new org.scalajs.dom.URLSearchParams(window.location.search)
 
   case class State(
     context: LoginControllerState = LoginControllerState(),

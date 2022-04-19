@@ -33,8 +33,7 @@ object LoginPage {
     val query: String = window.location.search.substring(1)
     val isBad: Boolean = query.contains("bad=true")
     def render(
-      P: Props,
-      S: State
+      P: Props
     ): VdomElement =
       LoginControllerState.ctx.consume { context =>
         <.div(
@@ -43,7 +42,7 @@ object LoginPage {
             "Bienvenido a el juego de chuti... por favor pon tu nombre y contraseña, o registrate si todavía no lo has hecho!"
           ),
           <.span(
-            Message(color = SemanticCOLORS.red)(
+            Message().color(SemanticCOLORS.red)(
               "Contraseña errónea! Tu correo electrónico y contraseña no están en el sistema, intentalo de nuevo!"
             )
           ).when(isBad),
@@ -55,25 +54,25 @@ object LoginPage {
             ^.width     := 800.px,
             FormField()(
               Label()("Correo Electrónico"),
-              Input(required = true, name = "email", `type` = "email")()
+              Input().required(true).name("email").`type`("email")()
             ),
             FormField()(
               Label()("Contraseña"),
-              Input(`type` = "password", required = true, name = "password")()
+              Input().`type`("password").required(true).name("password")()
             ),
-            Button(compact = true, basic = true, `type` = submit)("Entrar")
+            Button().compact(true).basic(true).`type`(submit)("Entrar")
           ),
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) =>
+          Button()
+            .compact(true)
+            .basic(true)
+            .onClick({ (_, _) =>
               context.onModeChanged(Mode.registration, None)
             }
           )("Registrarse por primera vez"),
-          Button(
-            compact = true,
-            basic = true,
-            onClick = { (_, _) =>
+          Button()
+            .compact(true)
+            .basic(true)
+            .onClick({ (_, _) =>
               context.onModeChanged(Mode.passwordRecoveryRequest, None)
             }
           )("Perdí mi Contraseña")

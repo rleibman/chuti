@@ -250,11 +250,11 @@ lazy val bundlerSettings: Project => Project =
     .settings(
       startWebpackDevServer / version := "3.1.10",
       webpack / version               := "4.28.3",
-      Compile / fastOptJS / webpackExtraArgs += "--mode=development",
+//      Compile / fastOptJS / webpackExtraArgs += "--mode=development",
       Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
       Compile / fastOptJS / artifactPath := ((Compile / fastOptJS / crossTarget).value /
         ((fastOptJS / moduleName).value + "-opt.js")),
-      Compile / fullOptJS / webpackExtraArgs += "--mode=production",
+//      Compile / fullOptJS / webpackExtraArgs += "--mode=production",
       Compile / fullOptJS / webpackDevServerExtraArgs += "--mode=production",
       Compile / fullOptJS / artifactPath := ((Compile / fullOptJS / crossTarget).value /
         ((fullOptJS / moduleName).value + "-opt.js")),
@@ -371,7 +371,8 @@ lazy val commonWeb: Project => Project =
       "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.0" withSources (),
       "com.lihaoyi" %%% "scalatags"                   % "0.11.1" withSources (),
       "com.github.japgolly.scalacss" %%% "core"       % "1.0.0" withSources (),
-      "com.github.japgolly.scalacss" %%% "ext-react"  % "1.0.0" withSources ()
+      "com.github.japgolly.scalacss" %%% "ext-react"  % "1.0.0" withSources (),
+      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
     ),
     organizationName := "Roberto Leibman",
     startYear        := Some(2020),
