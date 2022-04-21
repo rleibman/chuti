@@ -20,12 +20,12 @@ import akka.http.scaladsl.server.{Directives, Route}
 import api.{SessionUtils, ZIODirectives}
 import api.token.TokenHolder
 import chuti.Search
-import dao._
+import dao.*
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport
 import io.circe.parser.decode
 import io.circe.{Decoder, Encoder, Json}
 import mail.Postman.Postman
-import zio._
+import zio.*
 import zio.logging.Logging
 import zioslick.RepositoryException
 

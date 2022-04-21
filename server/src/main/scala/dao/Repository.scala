@@ -19,7 +19,7 @@ package dao
 import java.time.LocalDateTime
 
 import api.token.{Token, TokenPurpose}
-import chuti._
+import chuti.*
 
 import scala.concurrent.duration.Duration
 

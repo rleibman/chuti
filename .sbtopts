@@ -12,3 +12,4 @@
 # must be enabled for CMSClassUnloadingEnabled to work
 #-J-XX:+UseConcMarkSweepGC
 -mem 4048
+-J-XX:+UseG1GC

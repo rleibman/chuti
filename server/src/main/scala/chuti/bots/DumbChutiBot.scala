@@ -16,8 +16,8 @@
 
 package chuti.bots
 
-import chuti.Triunfo._
-import chuti._
+import chuti.Triunfo.*
+import chuti.*
 
 case object DumbChutiBot extends ChutiBot {
   private def calculaCasa(
@@ -175,7 +175,7 @@ case object DumbChutiBot extends ChutiBot {
     jugador: Jugador,
     game:    Game
   ): Canta = {
-    import CuantasCantas._
+    import CuantasCantas.*
     val (cuantas, _) = calculaCanto(jugador, game)
 
     val cuantasCantas =

@@ -17,9 +17,9 @@
 package pages
 
 import chuti.BuildInfo
-import japgolly.scalajs.react._
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 
 object AboutPage extends ChutiPage {
   case class State()

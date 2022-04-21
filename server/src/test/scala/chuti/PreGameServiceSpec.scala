@@ -23,8 +23,8 @@ import game.GameService.GameService
 import org.mockito.captor.ArgCaptor
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
-import zio._
-import zio.duration._
+import zio.*
+import zio.duration.*
 
 class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 

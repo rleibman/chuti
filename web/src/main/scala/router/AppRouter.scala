@@ -23,12 +23,12 @@ import chat.ChatComponent
 import chuti.{ChannelId, GameStatus}
 import components.Toast
 import components.components.ChutiComponent
-import japgolly.scalajs.react.extra.router._
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.extra.router.*
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.scalajs.dom._
+import org.scalajs.dom.*
 import pages.{RulesPage, _}
-import net.leibman.chuti.semanticUiReact.components._
+import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
 import net.leibman.chuti.semanticUiReact.menuMenuMod.MenuProps
 
@@ -56,7 +56,7 @@ object AppRouter extends ChutiComponent {
 
       def render(): VdomElement =
         ChutiState.ctx.consume { chutiState =>
-          import chutiState.ChutiMessages._
+          import chutiState.ChutiMessages.*
           implicit val locale: Locale = chutiState.locale
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
@@ -169,7 +169,7 @@ object AppRouter extends ChutiComponent {
   ): VdomElement = {
     assert(page != null)
     ChutiState.ctx.consume { chutiState =>
-      import chutiState.ChutiMessages._
+      import chutiState.ChutiMessages.*
       implicit val locale: Locale = chutiState.locale
       def renderMenu = {
         VdomArray(
@@ -283,7 +283,7 @@ object AppRouter extends ChutiComponent {
   }
 
   private val config: RouterConfig[AppPage] = RouterConfigDsl[AppPage].buildConfig { dsl =>
-    import dsl._
+    import dsl.*
 
     (trimSlashes
       | staticRoute("#game", GameAppPage) ~> renderR(_ => GamePage())

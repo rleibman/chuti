@@ -16,12 +16,14 @@
 
 package dao
 import java.sql.Timestamp
-
-import chuti._
-import dao.gen.Tables._
+import chuti.*
+import chuti.CuantasCantas.CuantasCantas
+import dao.gen.Tables.*
 import io.circe.Decoder
-import io.circe.generic.auto._
-import io.circe.syntax._
+import io.circe.generic.auto.*
+import io.circe.syntax.*
+
+import java.time.LocalDateTime
 
 trait SlickToModelInterop {
   def UserRow2User(row: UserRow): User =

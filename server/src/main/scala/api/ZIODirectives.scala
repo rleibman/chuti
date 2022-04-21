@@ -19,11 +19,10 @@ package api
 import akka.http.scaladsl.marshalling.{Marshaller, ToResponseMarshaller}
 import akka.http.scaladsl.model.HttpResponse
 import akka.http.scaladsl.server.{Directive, Directive1, Route}
-import akka.http.scaladsl.util.FastFuture._
+import akka.http.scaladsl.util.FastFuture.*
 import zio.{Task, ZIO}
 
 import scala.concurrent.{Future, Promise}
-import scala.language.implicitConversions
 import scala.util.{Failure, Success}
 
 /**

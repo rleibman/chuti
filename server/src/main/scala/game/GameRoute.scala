@@ -20,27 +20,28 @@ import akka.http.scaladsl.server.{Directives, Route}
 import api.{HasActorSystem, config}
 import caliban.AkkaHttpAdapter
 import chat.ChatService.ChatService
-import zio._
+import zio.*
 import zio.clock.Clock
 import zio.console.Console
-import zio.duration._
-import sttp.tapir.json.circe._
+import zio.duration.*
+import sttp.tapir.json.circe.*
 
 import scala.concurrent.ExecutionContextExecutor
 
 case class GameArgs()
 
 trait GameRoute extends Directives with HasActorSystem {
+
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-  import GameService._
+  import GameService.*
   val staticContentDir: String =
     config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
-  def route: URIO[Console with Clock with GameService with GameLayer with ChatService, Route] =
+  def route: URIO[Console & Clock & GameService & GameLayer & ChatService, Route] =
     for {
-      runtime <- ZIO.runtime[Console with Clock with GameService with GameLayer with ChatService]
+      runtime <- ZIO.runtime[Console & Clock & GameService & GameLayer & ChatService]
     } yield {
-      implicit val r: Runtime[Console with Clock with GameService with GameLayer with ChatService] = runtime
+      implicit val r: Runtime[Console & Clock & GameService & GameLayer & ChatService] = runtime
 
       pathPrefix("game") {
         pathEndOrSingleSlash {
@@ -58,8 +59,9 @@ trait GameRoute extends Directives with HasActorSystem {
               keepAliveTime = Option(5.minutes)
             )
           } ~ path("graphiql") {
-          getFromFile(s"$staticContentDir/graphiql.html")
-        }
+            getFromFile(s"$staticContentDir/graphiql.html")
+          }
       }
     }
+
 }

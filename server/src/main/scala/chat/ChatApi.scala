@@ -21,11 +21,11 @@ import caliban.schema.{GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
-import chuti._
+import chuti.*
 import dao.{Repository, SessionProvider}
 import zio.clock.Clock
 import zio.console.Console
-import zio.duration._
+import zio.duration.*
 import zio.logging.Logging
 import zio.stream.ZStream
 import zio.{URIO, ZIO}
@@ -37,23 +37,23 @@ case class SayRequest(
 )
 
 object ChatApi
-    extends GenericSchema[ChatService with Repository with SessionProvider with Logging] {
+    extends GenericSchema[ChatService & Repository & SessionProvider & Logging] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
     connectionId: ConnectionId
   )
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService with SessionProvider, GameException, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & SessionProvider, GameException, Seq[
       ChatMessage
     ]]
   )
   case class Mutations(
-    say: SayRequest => URIO[ChatService with Repository with SessionProvider with Logging, Boolean]
+    say: SayRequest => URIO[ChatService & Repository & SessionProvider & Logging, Boolean]
   )
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService with Repository with SessionProvider with Logging,
+      ChatService & Repository & SessionProvider & Logging,
       GameException,
       ChatMessage
     ]
@@ -63,7 +63,7 @@ object ChatApi
   implicit val chatMessageSchema: Schema[Any, ChatMessage] = gen[Any, ChatMessage]
 
   lazy val api: GraphQL[
-    Console with Clock with ChatService with Repository with SessionProvider with Logging
+    Console & Clock & ChatService & Repository & SessionProvider & Logging
   ] =
     graphQL(
       RootResolver(

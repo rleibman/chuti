@@ -20,7 +20,6 @@ lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
 
-
 enablePlugins(
   GitVersioning,
   CalibanPlugin
@@ -35,6 +34,7 @@ val scalaCacheVersion = "0.28.0"
 val zioVersion = "1.0.14"
 val monocleVersion = "2.1.0"
 val tapirVersion = "0.20.1"
+val quillVersion = "3.16.3"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
@@ -44,8 +44,43 @@ lazy val commonSettings = Seq(
   headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
 )
 
+//lazy val scala3CompatOpts = Seq(
+//  // Scala 2.13 in scala 3 compatibility mode
+//  "-Xsource:3",
+//  "-explaintypes", // Explain type errors in more detail.
+//  "-feature", // Emit warning and location for usages of features that should be imported explicitly.
+//  "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
+//  "-language:experimental.macros", // Allow macro definition (besides implementation and application)
+//  "-language:higherKinds", // Allow higher-kinded types
+//  "-language:implicitConversions", // Allow definition of implicit functions called views
+//  "-Xlint:nonlocal-return", // A return statement used an exception for flow control.
+//  "-Xlint:implicit-not-found", // Check @implicitNotFound and @implicitAmbiguous messages.
+//  "-Xlint:serial", // @SerialVersionUID on traits and non-serializable classes.
+//  "-Xlint:valpattern", // Enable pattern checks in val definitions.
+//  "-Xlint:eta-zero", // Warn on eta-expansion (rather than auto-application) of zero-ary method.
+//  "-Xlint:eta-sam", // Warn on eta-expansion to meet a Java-defined functional interface that is not explicitly annotated with @FunctionalInterface.
+//  "-Xlint:implicit-recursion", // Warn when an implicit resolves to an enclosing self-definition.
+//  "-Wextra-implicit", // Warn when more than one implicit parameter section is defined.
+//  "-Wmacros:both", // Lints code before and after applying a macro
+//  "-Wnumeric-widen", // Warn when numerics are widened.
+//  "-Woctal-literal", // Warn on obsolete octal syntax.
+//  // weird interaction with Zio... "-Wdead-code",                       // Warn when dead code is identified.
+//  "-Wunused:imports", // Warn if an import selector is not referenced.
+//  "-Wunused:patvars", // Warn if a variable bound in a pattern is unused.
+//  "-Wunused:privates", // Warn if a private member is unused.
+//  "-Wunused:locals", // Warn if a local definition is unused.
+//  "-Wunused:explicits", // Warn if an explicit parameter is unused.
+//  "-Wunused:implicits", // Warn if an implicit parameter is unused.
+//  "-Wunused:params", // Enable -Wunused:explicits,implicits.
+//  "-Wunused:linted",
+//  "-Wvalue-discard", // Warn when non-Unit expression results are unused.
+//  "-Ymacro-annotations", // required to enable @ConfiguredJsonCodec annotation from circe
+//  "-Ywarn-macros:after" // this is to avoid `unused local variable warning` for implicits; https://github.com/scala/bug/issues/10599,
+//)
+
 lazy val commonVmSettings = commonSettings ++ Seq(
   scalacOptions ++= Seq(
+    "-Xsource:3",
     "-deprecation" // Emit warning and location for usages of deprecated APIs.
   ),
   libraryDependencies ++= Seq(
@@ -126,16 +161,17 @@ lazy val server = project
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "mysql"                      % "mysql-connector-java"   % "8.0.28" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
+      "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       // ZIO
-      "dev.zio"               %% "zio"               % zioVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j" % "0.5.14" withSources (),
+      "dev.zio"                     %% "zio"               % zioVersion withSources (),
+      "dev.zio"                     %% "zio-logging-slf4j" % "0.5.14" withSources (),
       "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"              % tapirVersion withSources(),
-"com.github.ghostdogpr" %% "caliban"           % calibanVersion withSources (),
+      "com.github.ghostdogpr"       %% "caliban"           % calibanVersion withSources (),
       "com.github.ghostdogpr" %% "caliban-tapir"           % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources (),
+      "com.github.ghostdogpr"       %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
       "com.github.pathikrit"  %% "better-files"    % "3.9.1" withSources (),
       "com.github.daddykotex" %% "courier"         % "3.1.0" withSources (),
@@ -378,6 +414,7 @@ lazy val commonWeb: Project => Project =
     startYear        := Some(2020),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
     scalacOptions ++= Seq(
+      "-Xsource:3",
       // Feature options
       "-explaintypes", // Explain type errors in more detail.
       "-feature", // Emit warning and location for usages of features that should be imported explicitly.

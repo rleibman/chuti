@@ -34,8 +34,8 @@ case class UserCreationResponse(error: Option[String])
 trait Search
 
 trait PagedSearch {
-  val pageIndex: Int
-  val pageSize:  Int
+  def pageIndex: Int
+  def pageSize:  Int
 }
 
 case class EmptySearch() extends Search

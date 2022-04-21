@@ -23,7 +23,7 @@ import courier.{Envelope, Mailer, Multipart}
 import javax.mail.internet.InternetAddress
 import zio.{Has, RIO, Task, ZIO}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object Postman {
   type Postman = Has[Service]

@@ -17,7 +17,7 @@
 package chuti
 
 import chuti.Numero.Numero0
-import chuti.Triunfo._
+import chuti.Triunfo.*
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 

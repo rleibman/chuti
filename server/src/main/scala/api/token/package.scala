@@ -24,10 +24,10 @@ import dao.{Repository, SessionProvider}
 import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
-import zio._
+import zio.*
 import zio.logging.{Logger, Logging}
 
-import scala.concurrent.duration.{Duration, _}
+import scala.concurrent.duration.*
 
 package object token {
 
@@ -66,11 +66,11 @@ package object token {
       ): Task[Option[User]]
     }
 
-    def dbLayer: ZLayer[Repository with Logging, Nothing, TokenHolder] =
+    def dbLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
       ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
         new Service {
-//          SessionProvider with Logging
-          val layer: ZLayer[Any, Nothing, SessionProvider with Logging] =
+//          SessionProvider & Logging
+          val layer: ZLayer[Any, Nothing, SessionProvider & Logging] =
             GameService.godLayer ++ ZLayer.succeed(log)
 
           zio.Runtime.default.unsafeRun {
@@ -101,7 +101,7 @@ package object token {
     val tempCache: Service = new Service {
 
       private val random = SecureRandom.getInstanceStrong
-      import scalacache.ZioEffect.modes._
+      import scalacache.ZioEffect.modes.*
       implicit val userTokenCache: Cache[User] = CaffeineCache[User]
 
       override def createToken(

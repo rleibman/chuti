@@ -20,16 +20,16 @@ import _root_.util.Config
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.Operations.{IsOperation, RootSubscription}
 import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
-import io.circe.generic.auto._
-import io.circe.parser._
-import io.circe.syntax._
+import io.circe.generic.auto.*
+import io.circe.parser.*
+import io.circe.syntax.*
 import io.circe.{Decoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
 import sttp.capabilities
-import sttp.client3._
-import zio.duration._
+import sttp.client3.*
+import zio.duration.*
 
 import java.net.URI
 import java.time.LocalDateTime
@@ -142,7 +142,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
       }
     )
 
-  import GQLOperationMessage._
+  import GQLOperationMessage.*
 
   case class GQLOperationMessage(
     `type`:  String,

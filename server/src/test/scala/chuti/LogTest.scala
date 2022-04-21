@@ -19,9 +19,9 @@ package chuti
 import java.util.UUID
 
 import zio.clock.Clock
-import zio.duration._
-import zio.logging._
-import zio.logging.slf4j._
+import zio.duration.*
+import zio.logging.*
+import zio.logging.slf4j.*
 import zio.{App, ExitCode, UIO, ZIO, ZLayer}
 
 case class SomethingElse(string: String) {

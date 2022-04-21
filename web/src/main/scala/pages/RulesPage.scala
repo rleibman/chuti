@@ -20,7 +20,7 @@ import java.util.Locale
 
 import app.ChutiState
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
 import _root_.util.LocalizedMessages
 
@@ -245,7 +245,7 @@ object RulesPage extends ChutiPage {
   }
 
   class Backend($ : BackendScope[_, State]) {
-    import RulesPageMessages._
+    import RulesPageMessages.*
 
     def render(): VdomElement = {
       ChutiState.ctx.consume { chutiState =>

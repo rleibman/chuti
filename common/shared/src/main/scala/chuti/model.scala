@@ -17,29 +17,35 @@
 package chuti
 
 import java.time.LocalDateTime
-
-import chuti.Numero._
+import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import io.circe.{Decoder, Encoder}
 
 import scala.annotation.tailrec
 
 object GameException {
+
   def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
+
 }
 
 case class GameException(
   msg:   String = "",
   cause: Option[Throwable] = None
 ) extends Exception(msg, cause.orNull) {
+
   this.printStackTrace()
+
 }
 
 sealed class Numero(val value: Int) {
+
   override def toString: String = value.toString
+
 }
 
 object Numero {
+
   def max(
     arriba: Numero,
     abajo:  Numero
@@ -76,6 +82,7 @@ object Numero {
 }
 
 object CuantasCantas {
+
   def posibilidades(min: CuantasCantas): Seq[CuantasCantas] = {
     values.filter(_.prioridad >= min.prioridad)
   }
@@ -88,8 +95,7 @@ object CuantasCantas {
       case _ => Casa
     }
 
-  def byPriority(prioridad: Int): CuantasCantas =
-    (Buenas +: values).find(_.prioridad == prioridad).get
+  def byPriority(prioridad: Int): CuantasCantas = (Buenas +: values).find(_.prioridad == prioridad).get
 
   sealed abstract class CuantasCantas protected (
     val numFilas:  Int,
@@ -98,29 +104,42 @@ object CuantasCantas {
   ) {}
 
   case object Casa extends CuantasCantas(4, 4, 4) {
+
     override def toString: String = "Casa"
+
   }
   case object Canto5 extends CuantasCantas(5, 5, 5) {
+
     override def toString: String = "Cinco"
+
   }
   case object Canto6 extends CuantasCantas(6, 6, 6) {
+
     override def toString: String = "Seis"
+
   }
   case object Canto7 extends CuantasCantas(7, 7, 7) {
+
     override def toString: String = "Siete (?!?)"
+
   }
   case object CantoTodas extends CuantasCantas(7, 21, 8) {
+
     override def toString: String = "Chuti!"
+
   }
   case object Buenas extends CuantasCantas(-1, 0, -1) {
+
     override def toString: String = "Buenas"
+
   }
 
-  val values = Seq(Casa, Canto5, Canto6, Canto7, CantoTodas)
+  val values: Seq[CuantasCantas] = Seq(Casa, Canto5, Canto6, Canto7, CantoTodas)
 
 }
 
 object Ficha {
+
   def apply(
     a: Numero,
     b: Numero
@@ -137,7 +156,7 @@ object Ficha {
 
   implicit val decodeFicha: Decoder[Ficha] =
     Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
-      case ("tapada", _, _) => FichaTapada
+      case ("tapada", _, _)                   => FichaTapada
       case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
     }
 
@@ -146,83 +165,99 @@ object Ficha {
       case FichaTapada                  => ("tapada", Numero0, Numero0)
       case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
     }
+
 }
 
 sealed trait Ficha extends Product with Serializable {
+
   def arriba: Numero
   def abajo:  Numero
   def esMula: Boolean
   def value:  Int
   def es(num:    Numero): Boolean
   def other(num: Numero): Numero
+
 }
 
 case object FichaTapada extends Ficha {
-  override def arriba: Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def abajo:  Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def esMula: Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def value:  Int = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def es(num: Numero): Boolean =
-    throw GameException("No puedes hacer esto con una ficha tapada")
-  override def other(num: Numero): Numero =
-    throw GameException("No puedes hacer esto con una ficha tapada")
-  override def toString: String = "?:?"
+
+  override def arriba:             Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def abajo:              Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def esMula:             Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def value:              Int = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def es(num: Numero):    Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def other(num: Numero): Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def toString:           String = "?:?"
+
 }
 
 case class FichaConocida private[chuti] (
   arriba: Numero,
   abajo:  Numero
 ) extends Ficha {
-  lazy override val esMula: Boolean = arriba == abajo
-  lazy override val value:  Int = arriba.value + abajo.value
-  override def es(num: Numero): Boolean = arriba == num || abajo == num
+
+  lazy override val esMula:        Boolean = arriba == abajo
+  lazy override val value:         Int = arriba.value + abajo.value
+  override def es(num: Numero):    Boolean = arriba == num || abajo == num
   override def other(num: Numero): Numero = { if (arriba == num) abajo else arriba }
-  override def toString: String = s"${arriba.value}:${abajo.value}"
+  override def toString:           String = s"${arriba.value}:${abajo.value}"
+
 }
 
 object Fila {
+
   def apply(
     index:  Int,
     fichas: Ficha*
   ): Fila = new Fila(fichas.toSeq, index)
+
 }
 
-case class Fila private[chuti] (
+case class Fila (
   fichas: Seq[Ficha],
   index:  Int = 0
 )
 
-import chuti.CuantasCantas._
+import chuti.CuantasCantas.*
 
 object JugadorState extends Enumeration {
-  protected case class Val(description: String) extends super.Val
-  type JugadorState = Val
-  val dando:                   Val = Val("Dando ficha")
-  val cantando:                Val = Val("Cantando")
-  val esperandoCanto:          Val = Val("Esperando Canto")
-  val pidiendoInicial:         Val = Val("Pidiendo (inicial)")
-  val pidiendo:                Val = Val("Pidiendo")
-  val esperando:               Val = Val("Esperando")
-  val haciendoSopa:            Val = Val("Haciendo Sopa")
-  val partidoTerminado:        Val = Val("-")
-  val invitedNotAnswered:      Val = Val("Esperando a que acepte")
-  val waitingOthersAcceptance: Val = Val("Esperando a que los demas acepten")
+
+  type JugadorState = Value
+
+  val dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado, invitedNotAnswered,
+    waitingOthersAcceptance = Value
+
+  def description(state: JugadorState): String =
+    state match {
+      case JugadorState.dando                   => "Dando ficha"
+      case JugadorState.cantando                => "Cantando"
+      case JugadorState.esperandoCanto          => "Esperando Canto"
+      case JugadorState.pidiendoInicial         => "Pidiendo (inicial)"
+      case JugadorState.pidiendo                => "Pidiendo"
+      case JugadorState.esperando               => "Esperando"
+      case JugadorState.haciendoSopa            => "Haciendo Sopa"
+      case JugadorState.partidoTerminado        => "-"
+      case JugadorState.invitedNotAnswered      => "Esperando a que acepte"
+      case JugadorState.waitingOthersAcceptance => "Esperando a que los demas acepten"
+    }
+
 }
-import chuti.JugadorState._
+import chuti.JugadorState.*
 
 case class Jugador(
   user:             User,
-  invited:          Boolean = false, //Should really reverse this and call it "accepted"
+  invited:          Boolean = false, // Should really reverse this and call it "accepted"
   fichas:           List[Ficha] = List.empty,
   filas:            List[Fila] = List.empty,
-  turno:            Boolean = false, //A quien le tocaba cantar este juego
-  cantante:         Boolean = false, //Quien esta cantando este juego
-  mano:             Boolean = false, //Quien tiene la mano en este momento
+  turno:            Boolean = false, // A quien le tocaba cantar este juego
+  cantante:         Boolean = false, // Quien esta cantando este juego
+  mano:             Boolean = false, // Quien tiene la mano en este momento
   cuantasCantas:    Option[CuantasCantas] = None,
   statusString:     String = "",
   ganadorDePartido: Boolean = false,
   cuenta:           Seq[Cuenta] = Seq.empty
 ) {
+
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
       throw GameException("Si no canta no se puede hacer!!")
@@ -254,11 +289,16 @@ case class Jugador(
 sealed trait Triunfo extends Product with Serializable
 
 object Triunfo {
+
   case object SinTriunfos extends Triunfo {
+
     override def toString: String = "SinTriunfos"
+
   }
   case class TriunfoNumero(num: Numero) extends Triunfo {
+
     override def toString: String = num.value.toString
+
   }
 
   lazy val posibilidades: Seq[Triunfo] = Seq(SinTriunfos) ++ Numero.values.map(TriunfoNumero)
@@ -268,45 +308,64 @@ object Triunfo {
       case "SinTriunfos" => SinTriunfos
       case str           => TriunfoNumero(Numero(str.toInt))
     }
+
 }
 
 sealed trait GameStatus extends Product with Serializable {
+
   def value: String
   def enJuego: Boolean = false
   def acabado: Boolean = false
+
 }
 
 object GameStatus {
 
   case object esperandoJugadoresInvitados extends GameStatus {
+
     override def value: String = "esperandoJugadoresInvitados"
+
   }
   case object esperandoJugadoresAzar extends GameStatus {
+
     override def value: String = "esperandoJugadoresAzar"
+
   }
   case object comienzo extends GameStatus {
+
     override def value:   String = "comienzo"
     override def enJuego: Boolean = true
+
   }
   case object cantando extends GameStatus {
+
     override def value:   String = "cantando"
     override def enJuego: Boolean = true
+
   }
   case object jugando extends GameStatus {
+
     override def value:   String = "jugando"
     override def enJuego: Boolean = true
+
   }
   case object requiereSopa extends GameStatus {
+
     override def value:   String = "requiereSopa"
     override def enJuego: Boolean = true
+
   }
   case object abandonado extends GameStatus {
+
     override def value:   String = "abandonado"
     override def acabado: Boolean = true
+
   }
   case object partidoTerminado extends GameStatus {
+
     override def value:   String = "partidoTerminado"
     override def acabado: Boolean = true
+
   }
   def withName(str: String): GameStatus =
     str match {
@@ -323,50 +382,65 @@ object GameStatus {
 
 }
 
-import chuti.GameStatus._
+import chuti.GameStatus.*
 
 sealed trait Borlote extends Product with Serializable
 object Borlote {
+
   case object Hoyo extends Borlote {
+
     override def toString: String = "Hoyo!"
+
   }
   case object HoyoTecnico extends Borlote {
+
     override def toString: String = "Hoyo Tecnico!"
+
   }
   case object ElNiñoDelCumpleaños extends Borlote {
+
     override def toString: String = "El Niño del Cumpleaños!"
+
   }
   case object SantaClaus extends Borlote {
+
     override def toString: String = "Santa Claus!"
+
   }
   case object Campanita extends Borlote {
+
     override def toString: String = "Campanita!"
+
   }
   case object Helecho extends Borlote {
+
     override def toString: String = "Helecho!"
+
   }
   case object TodoConDos extends Borlote {
+
     override def toString: String = "Todo con dos!!!!"
+
   }
+
 }
 
 case class GameId(value: Int) extends AnyVal
 
 object Game {
+
   val laMulota:  Ficha = Ficha(Numero6, Numero6)
   val campanita: Ficha = Ficha(Numero0, Numero1)
 
   lazy val todaLaFicha: List[Ficha] = (0 to 6)
-    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>
-    Ficha(Numero(i), Numero(i))
-  )
+    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i => Ficha(Numero(i), Numero(i)))
 
   def calculaJugadorGanador(
     fichas:   Seq[(UserId, Ficha)],
     pidiendo: Ficha,
     triunfo:  Triunfo
   ): (UserId, Ficha) = {
-    //could use fichaGanadora instead
+    // could use fichaGanadora instead
     triunfo match {
       case SinTriunfos =>
         if (pidiendo.esMula) fichas.find(_._2 == pidiendo).get
@@ -379,12 +453,11 @@ object Game {
         else {
           if (pidiendo.esMula && pidiendo.es(triunfoVal)) fichas.find(_._2 == pidiendo).get
           else
-            triunfos.maxBy(f =>
-              if (f._2.arriba == triunfoVal) f._2.abajo.value else f._2.arriba.value
-            )
+            triunfos.maxBy(f => if (f._2.arriba == triunfoVal) f._2.abajo.value else f._2.arriba.value)
         }
     }
   }
+
 }
 
 case class Game(
@@ -392,7 +465,7 @@ case class Game(
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
   created:           LocalDateTime = LocalDateTime.now,
-  //Game State
+  // Game State
   triunfo:         Option[Triunfo] = None,
   enJuego:         List[(UserId, Ficha)] = List.empty,
   estrictaDerecha: Boolean = false,
@@ -449,40 +522,39 @@ case class Game(
   lazy val turno: Option[Jugador] = jugadores.find(_.turno)
   @transient
   lazy val quienCanta:  Option[Jugador] = jugadores.find(_.cantante)
-  val abandonedPenalty: Int = 10 //Times the satoshiPerPoint of the game
+  val abandonedPenalty: Int = 10 // Times the satoshiPerPoint of the game
   val numPlayers:       Int = 4
 
   @transient
   lazy val cuentasCalculadas: Seq[(Jugador, Int, Double)] = {
     val conPuntos = jugadores.map(j => (j, j.cuenta.map(_.puntos).sum))
-    conPuntos.map {
-      case (j, puntos) =>
-        val total =
-          (if (j.ganadorDePartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
-            (if (puntos < 0) -2
-             else
-               0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
-            (if (puntos == 0) -1
-             else
-               0) + //Si alguien quedó en cero, le da un punt al ganador.
-            (if (j.ganadorDePartido) conPuntos.count(_._2 < 0) * 2
-             else
-               0) + //Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
-            (if (j.ganadorDePartido) conPuntos.count(_._2 == 0) * 1
-             else
-               0) + //Si alguien quedó en cero, le da un punt al ganador.
-            (if (j.ganadorDePartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
-             else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21)))
-               -1
-             else 0) + //Si se va con chuti, recibe 6 o dos de cada jugador.
-            conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + //Hoyos ajenos
-            (-(j.cuenta.count(_.esHoyo) * 3)) //Hoyos propios
+    conPuntos.map { case (j, puntos) =>
+      val total =
+        (if (j.ganadorDePartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
+          (if (puntos < 0) -2
+           else
+             0) + // Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+          (if (puntos == 0) -1
+           else
+             0) + // Si alguien quedó en cero, le da un punt al ganador.
+          (if (j.ganadorDePartido) conPuntos.count(_._2 < 0) * 2
+           else
+             0) + // Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
+          (if (j.ganadorDePartido) conPuntos.count(_._2 == 0) * 1
+           else
+             0) + // Si alguien quedó en cero, le da un punt al ganador.
+          (if (j.ganadorDePartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
+           else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21)))
+             -1
+           else 0) + // Si se va con chuti, recibe 6 o dos de cada jugador.
+          conPuntos.filter(_._1.id != j.id).map(_._1.cuenta.count(_.esHoyo)).sum + // Hoyos ajenos
+          (-(j.cuenta.count(_.esHoyo) * 3)) // Hoyos propios
 
-        (j, puntos, total * satoshiPerPoint)
+      (j, puntos, total * satoshiPerPoint)
     }
   }
 
-  //Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
+  // Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
     fichas:    Seq[Ficha],
     remainder: Seq[Ficha]
@@ -516,12 +588,9 @@ case class Game(
     loop(fichas, remainder, Seq.empty)
   }
 
-  /**
-    * @return
-    *         1100 + valor si pides otra cosa y te ganan con triunfo
-    *         1000 + valor si te gana
-    *         100 + valor si no te gana, pero por lo menos te dio lo que pediste
-    *         0 si ni siquiera es lo que pediste
+  /** @return
+    *   1100 + valor si pides otra cosa y te ganan con triunfo 1000 + valor si te gana 100 + valor si no te gana, pero por lo menos te dio lo que
+    *   pediste 0 si ni siquiera es lo que pediste
     */
   def score(
     pide: Ficha,
@@ -531,29 +600,29 @@ case class Game(
       case None => throw GameException("Nuncamente!")
       case Some(SinTriunfos) =>
         if (!da.es(pide.arriba))
-          0 //Ni siquiera es lo que pediste.
+          0 // Ni siquiera es lo que pediste.
         else if (pide.esMula || pide.abajo.value > da.other(pide.arriba).value)
-          100 + da.other(pide.arriba).value //Ganas por valor
+          100 + da.other(pide.arriba).value // Ganas por valor
         else
-          1000 + da.other(pide.arriba).value //Te ganaron
+          1000 + da.other(pide.arriba).value // Te ganaron
       case Some(TriunfoNumero(triunfo)) =>
         if (pide.es(triunfo) && !da.es(triunfo))
-          0 //Ni siquiera es lo que pediste.
+          0 // Ni siquiera es lo que pediste.
         else if (!pide.es(triunfo) && da.es(triunfo))
-          1100 + da.other(triunfo).value //Te ganaron con triunfo.
+          1100 + da.other(triunfo).value // Te ganaron con triunfo.
         else if (
           pide.es(triunfo) && (pide.esMula || pide
             .other(triunfo).value > da.other(triunfo).value)
         )
-          100 + da.other(triunfo).value //Mula de triunfos, o ambos triunfos, pero tu ganas
+          100 + da.other(triunfo).value // Mula de triunfos, o ambos triunfos, pero tu ganas
         else if (pide.es(triunfo) && pide.other(triunfo).value < da.other(triunfo).value)
-          1000 + da.other(triunfo).value //Ambos triunfos, pero te ganaron
+          1000 + da.other(triunfo).value // Ambos triunfos, pero te ganaron
         else if (!da.es(pide.arriba))
-          0 //Ni siquiera es lo que pediste.
+          0 // Ni siquiera es lo que pediste.
         else if (pide.esMula || pide.abajo.value > da.other(pide.arriba).value)
-          100 + da.other(pide.arriba).value //Ganas por valor
+          100 + da.other(pide.arriba).value // Ganas por valor
         else
-          1000 + da.other(pide.arriba).value //Te ganaron
+          1000 + da.other(pide.arriba).value // Te ganaron
     }
   }
 
@@ -576,11 +645,10 @@ case class Game(
   ): Ficha = if (score(pide, da) > 1000) da else pide
 
   def puedesCaerte(jugador: Jugador): Boolean = {
-    if (jugador.fichas.isEmpty)
-      true
+    if (jugador.fichas.isEmpty) true
     else {
-      //Calcula cuantas puedes hacer de caida, dadas las fichas que tienes y las fichas que ya se jugaron,
-      //primero calcula las fichas que quedan
+      // Calcula cuantas puedes hacer de caida, dadas las fichas que tienes y las fichas que ya se jugaron,
+      // primero calcula las fichas que quedan
       val resto = Game.todaLaFicha.diff(
         jugador.fichas ++ jugadores.flatMap(_.filas.flatMap(_.fichas))
       )
@@ -593,15 +661,15 @@ case class Game(
               _.numFilas
             )
         )
-          true //Eres el cantante y ya estas hecho, caete!
+          true // Eres el cantante y ya estas hecho, caete!
         else if (
           jugador.id != cantante.id &&
           (jugador.fichas.size + cantante.filas.size - cuantas.size) < cantante.cuantasCantas
             .fold(0)(_.numFilas)
         )
-          true //Ya es hoyo, deten esa masacre
+          true // Ya es hoyo, deten esa masacre
         else
-          false //No sabemos mas alla de las que cantaste.
+          false // No sabemos mas alla de las que cantaste.
       }
     }
   }
@@ -716,32 +784,32 @@ case class Game(
   def nextIndex: Int = currentEventIndex + 1
 
   def canTransitionTo(transitionState: GameStatus): Boolean = {
-    //NOTE fill this up and follow every place state changes
+    // NOTE fill this up and follow every place state changes
     transitionState match {
       case GameStatus.requiereSopa =>
         jugadores.length == numPlayers &&
-          (gameStatus == GameStatus.jugando ||
-            gameStatus == GameStatus.esperandoJugadoresAzar ||
-            gameStatus == GameStatus.esperandoJugadoresInvitados) &&
-          jugadores.forall(!_.invited) //Not everyone has accepted
+        (gameStatus == GameStatus.jugando ||
+          gameStatus == GameStatus.esperandoJugadoresAzar ||
+          gameStatus == GameStatus.esperandoJugadoresInvitados) &&
+        jugadores.forall(!_.invited) // Not everyone has accepted
       case _ => false
     }
   }
 
-  //Returns the newly modified state, and any changes to the event
+  // Returns the newly modified state, and any changes to the event
   def applyEvent(
     userOpt: Option[User],
     event:   GameEvent
   ): (Game, GameEvent) = {
-    //It is the responsibility of each event to make sure the event *can* be applied "legally"
+    // It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex)
       throw GameException("Error! El evento no tenia el indice correcto")
     (processed._1.copy(currentEventIndex = nextIndex), processed._2)
   }
 
-  //very similar to apply event, but for the client, this re-applies an event that the server has already processed
-  //No new events are generated
+  // very similar to apply event, but for the client, this re-applies an event that the server has already processed
+  // No new events are generated
   def reapplyEvent(event: GameEvent): Game = {
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
     val user = jugadores.find(_.user.id == event.userId).map(_.user)

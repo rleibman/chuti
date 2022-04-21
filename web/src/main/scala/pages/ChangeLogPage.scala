@@ -16,9 +16,9 @@
 
 package pages
 
-import japgolly.scalajs.react._
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 
 object ChangeLogPage extends ChutiPage {
   case class State()

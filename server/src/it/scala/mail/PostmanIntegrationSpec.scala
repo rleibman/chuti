@@ -6,10 +6,10 @@ import chuti.User
 import courier.{Envelope, Text}
 
 import javax.mail.internet.InternetAddress
-import zio._
-import zio.console._
-import zio.test.Assertion._
-import zio.test.environment._
+import zio.*
+import zio.console.*
+import zio.test.Assertion.*
+import zio.test.environment.*
 import zio.test.{DefaultRunnableSpec, _}
 
 import java.io.IOException

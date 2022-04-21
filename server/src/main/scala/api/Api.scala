@@ -39,21 +39,19 @@ import zio.logging.{Logging, log}
 trait Api
     extends RouteConcatenation with Directives with StaticHTMLRoute with ModelRoutes
     with SessionUtils with HasActorSystem with ZIODirectives {
-  this: CoreActors with Core =>
-
-  implicit private val dispatcher = actorSystem.dispatcher
+  this: CoreActors & Core =>
 
   val routes: ZIO[
-    Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder,
+    Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder,
     Throwable,
     Route
   ] = ZIO
     .environment[
-      Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder
+      Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
     ].flatMap {
       r: Console
-        with Clock with GameService with ChatService with Logging with Config with Repository
-        with Postman with TokenHolder =>
+        & Clock & GameService & ChatService & Logging & Config & Repository
+        & Postman & TokenHolder =>
         {
           for {
             _      <- log.info("Started routes")
@@ -76,12 +74,12 @@ trait Api
                           sessionResult.toOption match {
                             case Some(session) =>
                               val me: ZIO[
-                                Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder,
+                                Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder,
                                 Throwable,
                                 Route
                               ] = apiRoute
                                 .provideSomeLayer[
-                                  Console with Clock with GameService with ChatService with Logging with Config with Repository with Postman with TokenHolder
+                                  Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
                                 ](SessionProvider.layer(session))
                               val meme = me.provide(r)
 

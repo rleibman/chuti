@@ -20,12 +20,12 @@ import java.time.format.DateTimeFormatter
 
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti._
+import chuti.*
 import game.GameClient.Queries
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow}
 
@@ -34,7 +34,7 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
   case class State(games: Seq[Game] = Seq.empty)
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     private val gameDecoder = implicitly[Decoder[Game]]
 

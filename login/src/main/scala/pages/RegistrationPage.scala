@@ -20,18 +20,18 @@ import java.time.LocalDateTime
 
 import app.{LoginControllerState, Mode}
 import chuti.{User, UserCreationRequest, UserCreationResponse}
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import io.circe.parser.decode
-import io.circe.syntax._
+import io.circe.syntax.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.HTMLButtonElement
 import org.scalajs.dom.window
 import react.Toast
 import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
-import net.leibman.chuti.semanticUiReact.components._
+import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 

@@ -18,7 +18,7 @@ package web
 
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http
-import akka.stream.scaladsl._
+import akka.stream.scaladsl.*
 import api.Api
 import api.config.Config
 import api.token.TokenHolder
@@ -32,7 +32,7 @@ import zio.logging.slf4j.Slf4jLogger
 import zio.logging.{Logging, log}
 import zio.{ULayer, URLayer, ZIO, ZLayer}
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 

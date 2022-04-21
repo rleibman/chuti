@@ -16,65 +16,60 @@
 
 package dao
 
-import java.time.LocalDateTime
-
-import api.token.*
 import chuti.*
-import dao.Repository.TokenOperations
-import zio.Task
+import scalacache.Cache
+import scalacache.caffeine.CaffeineCache
+import zio.*
+import api.config.*
+import api.token.*
+import io.getquill.*
 
+import java.time.LocalDateTime
 import scala.concurrent.duration.Duration
 
-object InMemoryRepository {
-  val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
-  val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2")
-  val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3")
-  val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
+object QuillRepository {
 
+  implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
+  val live: URLayer[Config, Repository] =
+    (for {
+      config <- ZIO.service[Config.Service]
+    } yield QuillRepository(config)).toLayer
 }
 
-class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
-  import InMemoryRepository.*
-  private val games =
-    scala.collection.mutable.Map[GameId, Game](loadedGames.map(game => game.id.get -> game): _*)
-  private val users = scala.collection.mutable.Map[UserId, User](
-    UserId(1) -> user1,
-    UserId(2) -> user2,
-    UserId(3) -> user3,
-    UserId(4) -> user4
-  )
+case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   override val gameOperations: Repository.GameOperations = new Repository.GameOperations {
-    override def getHistoricalUserGames:   RepositoryIO[Seq[Game]] = ???
-    override def gameInvites:              RepositoryIO[Seq[Game]] = ???
+
+    override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = ???
+
+    override def userInGame(id: GameId): RepositoryIO[Boolean] = ???
+
+    override def updatePlayers(game: Game): RepositoryIO[Game] = ???
+
+    override def gameInvites: RepositoryIO[Seq[Game]] = ???
+
     override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = ???
-    override def getGameForUser:           RepositoryIO[Option[Game]] = ???
-    override def upsert(e: Game): RepositoryIO[Game] = {
-      val id = e.id.getOrElse(GameId(games.size + 1))
-      Task.succeed {
-        games.put(id, e.copy(id = Option(id)))
-        games(id)
-      }
-    }
-    override def get(pk: GameId): RepositoryIO[Option[Game]] = Task.succeed(games.get(pk))
+
+    override def getGameForUser: RepositoryIO[Option[Game]] = ???
+
+    override def upsert(e: Game): RepositoryIO[Game] = ???
+
+    override def get(pk: GameId): RepositoryIO[Option[Game]] = ???
+
     override def delete(
       pk:         GameId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = ???
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-      Task.succeed(games.values.toSeq)
-    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = Task.succeed(games.size.toLong)
 
-    override def updatePlayers(game: Game): RepositoryIO[Game] = Task.succeed(game)
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = ???
 
-    override def userInGame(id: GameId): RepositoryIO[Boolean] = Task.succeed(true)
+    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
+
   }
-
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
+
+    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
+
     override def login(
       email:    String,
       password: String
@@ -95,17 +90,13 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
 
     override def getWallet: RepositoryIO[Option[UserWallet]] = ???
 
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
+
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
 
-    override def upsert(e: User): RepositoryIO[User] = {
-      val id = e.id.getOrElse(UserId(users.size + 1))
-      Task.succeed {
-        users.put(id, e.copy(id = Option(id)))
-        users(id)
-      }
-    }
+    override def upsert(e: User): RepositoryIO[User] = ???
 
-    override def get(pk: UserId): RepositoryIO[Option[User]] = Task.succeed(users.get(pk))
+    override def get(pk: UserId): RepositoryIO[Option[User]] = ???
 
     override def delete(
       pk:         UserId,
@@ -116,11 +107,11 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = ???
 
-    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
-
-    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
   }
-  override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+  override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
+
+    override def cleanup: RepositoryIO[Boolean] = ???
+
     override def validateToken(
       token:   Token,
       purpose: TokenPurpose
@@ -137,6 +128,6 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
       purpose: TokenPurpose
     ): RepositoryIO[Option[User]] = ???
 
-    override def cleanup: RepositoryIO[Boolean] = ???
   }
+
 }

@@ -18,8 +18,8 @@ package pages
 
 import app.LoginControllerState
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react._
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.*
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.window
 import react.Toast

@@ -18,12 +18,12 @@ package pages
 
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti._
+import chuti.*
 import components.{Confirm, Toast}
 import game.GameClient.{Mutations, Queries}
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import io.circe.{Decoder, Json}
-import japgolly.scalajs.react._
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{<, _}
@@ -35,7 +35,7 @@ import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
-  import app.GameViewMode._
+  import app.GameViewMode.*
 
   case class ExtUser(
     user:       User,
@@ -48,7 +48,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     val none, newGame, inviteExternal, startWithBots = Value
 
   }
-  import Dialog._
+  import Dialog.*
 
   case class NewGameDialogState(satoshiPerPoint: Int = 100)
 
@@ -485,7 +485,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             <.tr(
                               ^.key := s"jugador${jugador.id}",
                               <.td(jugador.user.name),
-                              <.td(game.jugadorState(jugador).description)
+                              <.td(JugadorState.description(game.jugadorState(jugador)))
                             )
                           }
                         )

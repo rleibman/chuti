@@ -23,19 +23,19 @@ import caliban.AkkaHttpAdapter
 import dao.{Repository, SessionProvider}
 import zio.clock.Clock
 import zio.console.Console
-import zio.duration._
+import zio.duration.*
 import zio.logging.Logging
 import zio.{RIO, ZIO}
-import sttp.tapir.json.circe._
+import sttp.tapir.json.circe.*
 
 import scala.concurrent.ExecutionContextExecutor
 
 trait ChatRoute extends Directives with HasActorSystem {
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-  import ChatService._
+  import ChatService.*
 
   def route: RIO[
-    Console with Clock with ChatService with Repository with SessionProvider with Logging with Config,
+    Console & Clock & ChatService & Repository & SessionProvider & Logging & Config,
     Route
   ] = {
     for {
@@ -43,13 +43,13 @@ trait ChatRoute extends Directives with HasActorSystem {
       runtime <-
         ZIO
           .runtime[
-            Console with Clock with ChatService with Repository with SessionProvider with Logging with Config
+            Console & Clock & ChatService & Repository & SessionProvider & Logging & Config
           ]
     } yield {
       val staticContentDir =
         config.config.getString(s"${config.configKey}.staticContentDir")
 
-      implicit val r: zio.Runtime[Console with Clock with ChatService with Repository with SessionProvider with Logging with Config] = runtime
+      implicit val r: zio.Runtime[Console & Clock & ChatService & Repository & SessionProvider & Logging & Config] = runtime
 
       pathPrefix("chat") {
         pathEndOrSingleSlash {

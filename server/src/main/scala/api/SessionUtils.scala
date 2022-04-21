@@ -18,20 +18,19 @@ package api
 
 import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
 import chuti.UserId
-import com.softwaremill.session.SessionDirectives._
-import com.softwaremill.session.SessionOptions._
-import com.softwaremill.session._
-import dao._
-import game.GameService
+import com.softwaremill.session.SessionDirectives.*
+import com.softwaremill.session.SessionOptions.*
+import com.softwaremill.session.*
+import dao.*
 import scalacache.Cache
-import scalacache.ZioEffect.modes._
+import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
-import zio.logging.log
+import zio.logging.{Logging, log}
 import zio.logging.slf4j.Slf4jLogger
 import zio.{Task, ZIO, ZLayer}
 import zioslick.RepositoryException
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Try
 
 object SessionUtils {
@@ -47,9 +46,9 @@ object SessionUtils {
 
 trait SessionUtils extends Directives {
   this: HasActorSystem =>
-  import SessionUtils._
+  import SessionUtils.*
   import actorSystem.dispatcher
-  import scalacache.memoization._
+  import scalacache.memoization.*
 
   lazy private val godLayer =
     ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(
@@ -90,7 +89,7 @@ trait SessionUtils extends Directives {
   implicit protected val sessionManager: SessionManager[ChutiSession] =
     new SessionManager[ChutiSession](sessionConfig)
   implicit private val refreshTokenStorage: InMemoryRefreshTokenStorage[ChutiSession] =
-    (msg: String) => log.info(msg)
+    (msg: String) => zio.Runtime.default.unsafeRun(log.info(msg).provideLayer(Logging.console()))
   protected def mySetSession(v: ChutiSession): Directive0 = setSession(refreshable, usingCookies, v)
   lazy protected val ensureSession: Directive1[SessionResult[ChutiSession]] =
     session(refreshable, usingCookies)

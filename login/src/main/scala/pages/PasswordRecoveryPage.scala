@@ -17,10 +17,10 @@
 package pages
 
 import app.LoginControllerState
-import io.circe.syntax._
-import japgolly.scalajs.react._
+import io.circe.syntax.*
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.extra.Ajax
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.raw.HTMLInputElement
 import react.Toast
 import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}

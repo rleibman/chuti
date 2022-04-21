@@ -16,7 +16,7 @@
 
 package components
 
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, Ref, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
 import net.leibman.chuti.semanticUiReact.components.Icon
@@ -25,7 +25,7 @@ import scala.concurrent.duration.{Duration, _}
 import scala.language.postfixOps
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
-import scala.scalajs.js.timers._
+import scala.scalajs.js.timers.*
 
 object HorizontalPosition extends Enumeration {
 
@@ -42,8 +42,8 @@ object VerticalPosition extends Enumeration {
 
 object Toast {
 
-  import HorizontalPosition._
-  import VerticalPosition._
+  import HorizontalPosition.*
+  import VerticalPosition.*
 
   private case class Toast(
     icon:      UndefOr[SemanticICONS] = js.undefined,

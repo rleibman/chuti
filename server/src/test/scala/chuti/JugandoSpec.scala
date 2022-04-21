@@ -21,11 +21,11 @@ import dao.SessionProvider
 import game.GameService
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
-import zio._
-import zio.duration._
+import zio.*
+import zio.duration.*
 
 class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
-  import dao.InMemoryRepository._
+  import dao.InMemoryRepository.*
 
   "primera mano" should "work" in {
     val gameId = GameId(1)

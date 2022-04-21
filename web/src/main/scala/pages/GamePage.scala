@@ -20,15 +20,15 @@ import java.time.ZoneOffset
 
 import app.{ChutiState, GameViewMode}
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti._
-import japgolly.scalajs.react._
+import chuti.*
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.window
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
-  import app.GameViewMode._
+  import app.GameViewMode.*
 
   case class State()
 

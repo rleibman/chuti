@@ -17,8 +17,8 @@
 package service
 
 import chuti.Search
-import io.circe.parser._
-import io.circe.syntax._
+import io.circe.parser.*
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Error}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.{AsyncCallback, Callback}

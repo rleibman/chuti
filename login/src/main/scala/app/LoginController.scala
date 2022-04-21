@@ -16,9 +16,9 @@
 
 package app
 import japgolly.scalajs.react.React.Context
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, React, ScalaComponent}
-import pages._
+import pages.*
 import react.Toast
 //import react.Toast
 import org.scalajs.dom.window
@@ -28,7 +28,7 @@ object Mode extends Enumeration {
   val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken,
     newUserAcceptFriend = Value
 }
-import app.Mode._
+import app.Mode.*
 object LoginControllerState {
   val ctx: Context[LoginControllerState] = React.createContext(LoginControllerState())
 }

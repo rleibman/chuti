@@ -40,7 +40,7 @@ trait Tables {
   import slick.model.ForeignKeyAction
 
   object MyApi extends profile.API with profile.CirceJsonImplicits
-  import MyApi._
+  import MyApi.*
 
   implicit val estadoType: JdbcType[GameStatus] with BaseTypedType[GameStatus] =
     profile.MappedColumnType.base[GameStatus, String](
@@ -70,7 +70,7 @@ trait Tables {
     e1:          GR[Boolean]
   ): GR[FriendsRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       FriendsRow.tupled((<<[UserId], <<[UserId]))
     }
 
@@ -82,7 +82,7 @@ trait Tables {
     def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
       (Rep.Some(one), Rep.Some(two)).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => FriendsRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -124,7 +124,7 @@ trait Tables {
     e2:          GR[Timestamp]
   ): GR[GameRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       GameRow.tupled(
         (
           <<[GameId],
@@ -161,7 +161,7 @@ trait Tables {
         Rep.Some(currentIndex)
       ).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => GameRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -200,7 +200,7 @@ trait Tables {
     e1:          GR[String]
   ): GR[GameEventRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       GameEventRow.tupled((<<[GameId], <<[Int], <<[String]))
     }
 
@@ -212,7 +212,7 @@ trait Tables {
     def ? : MappedProjection[Option[GameEventRow], (Option[GameId], Option[Int], Option[String])] =
       (Rep.Some(gameId), Rep.Some(currentIndex), Rep.Some(eventData)).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => GameEventRow.tupled((_1.get, _2.get, _3.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -249,7 +249,7 @@ trait Tables {
     e3:          GR[Boolean]
   ): GR[GamePlayersRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int], <<[Boolean]))
     }
 
@@ -263,7 +263,7 @@ trait Tables {
     ], (Option[UserId], Option[GameId], Option[Int], Option[Boolean])] =
       (Rep.Some(userId), Rep.Some(gameId), Rep.Some(order), Rep.Some(invited)).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => GamePlayersRow.tupled((_1.get, _2.get, _3.get, _4.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -312,7 +312,7 @@ trait Tables {
     e4:          GR[Boolean]
   ): GR[UserRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       UserRow.tupled(
         (
           <<[UserId],
@@ -352,7 +352,7 @@ trait Tables {
         deleteddate
       ).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ =>
             UserRow.tupled(
               (_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7)
@@ -393,7 +393,7 @@ trait Tables {
     e1:          GR[BigDecimal]
   ): GR[UserWalletRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
     }
 
@@ -405,7 +405,7 @@ trait Tables {
     def ? : MappedProjection[Option[UserWalletRow], (Option[UserId], Option[BigDecimal])] =
       (Rep.Some(userId), Rep.Some(amount)).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => UserWalletRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -435,7 +435,7 @@ trait Tables {
     e1:          GR[Timestamp]
   ): GR[UserLogRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       UserLogRow.tupled((<<[UserId], <<[Timestamp]))
     }
 
@@ -447,7 +447,7 @@ trait Tables {
     def ? : MappedProjection[Option[UserLogRow], (Option[UserId], Option[Timestamp])] =
       (Rep.Some(userId), Rep.Some(time)).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => UserLogRow.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
@@ -481,7 +481,7 @@ trait Tables {
     e3:          GR[UserId]
   ): GR[TokenRow] =
     GR { prs =>
-      import prs._
+      import prs.*
       TokenRow.tupled((<<[String], <<[String], <<[Timestamp], <<[UserId]))
     }
 
@@ -500,7 +500,7 @@ trait Tables {
         Rep.Some(userId)
       ).shaped.<>(
         { r =>
-          import r._
+          import r.*
           _1.map(_ => TokenRow.tupled((_1.get, _2.get, _3.get, _4.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")

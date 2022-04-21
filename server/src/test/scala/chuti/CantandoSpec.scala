@@ -23,8 +23,8 @@ import game.GameService
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.Assertion
 import org.scalatest.flatspec.AnyFlatSpec
-import zio._
-import zio.duration._
+import zio.*
+import zio.duration.*
 
 class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
   "Printing the game" should "print it" in {

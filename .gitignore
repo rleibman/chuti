@@ -52,3 +52,4 @@ dist
 /project/metals.sbt
 
 .bsp
+/tree.txt

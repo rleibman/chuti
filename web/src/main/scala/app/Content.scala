@@ -22,17 +22,16 @@ import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti._
+import chuti.*
 import components.components.ChutiComponent
 import components.{Confirm, Toast}
 import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
-import io.circe.generic.auto._
-import io.circe.{Decoder, Json}
+import io.circe.*, io.circe.generic.auto.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
-import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{Callback, _}
+import japgolly.scalajs.react.vdom.html_<^.*
+import japgolly.scalajs.react.*
 import net.leibman.chuti.std.OnErrorEventHandlerNonNull
 import net.leibman.chuti.std.global.Audio
 import org.scalajs.dom.Event
@@ -57,7 +56,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
   class Backend($ : BackendScope[_, State]) {
 
-    private val gameEventDecoder = implicitly[Decoder[GameEvent]]
+    private val gameEventDecoder: Decoder[GameEvent] = implicitly[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
       $.modState(s => {
@@ -273,7 +272,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
     )(
       data: Option[(User, CalibanUserEventType, Option[GameId])]
     ): Callback = {
-      import CalibanUserEventType._
+      import CalibanUserEventType.*
       Callback.log(data.toString) >> {
         data match {
           case None => Callback.empty

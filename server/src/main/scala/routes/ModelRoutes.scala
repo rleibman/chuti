@@ -27,12 +27,12 @@ import chuti.{PagedStringSearch, User, UserId}
 import dao.{CRUDOperations, Repository, SessionProvider}
 import game.GameRoute
 import game.GameService.{GameLayer, GameService}
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import mail.Postman.Postman
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
-import zio._
+import zio.*
 
 /**
   * For convenience, this trait aggregates all of the model routes.
@@ -52,14 +52,14 @@ trait ModelRoutes extends Directives {
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 
-  def unauthRoute: RIO[Repository with Postman with TokenHolder with Logging, Route] =
+  def unauthRoute: RIO[Repository & Postman & TokenHolder & Logging, Route] =
     for {
       repo <- ZIO.access[Repository](_.get)
       auth <- {
         val opsLayer: ULayer[Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.unauthRoute.provideSomeLayer[
-          Repository with Postman with TokenHolder with Logging
+          Repository & Postman & TokenHolder & Logging
         ](opsLayer)
       }
     } yield auth
@@ -76,7 +76,7 @@ trait ModelRoutes extends Directives {
   //  }
 
   def apiRoute: ZIO[
-    Console with Clock with ChatService with Repository with SessionProvider with Logging with Config with GameService with GameLayer,
+    Console & Clock & ChatService & Repository & SessionProvider & Logging & Config & GameService & GameLayer,
     Throwable,
     Route
   ] = {
@@ -89,7 +89,7 @@ trait ModelRoutes extends Directives {
           : ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
-          .provideSomeLayer[Repository with SessionProvider with Logging](
+          .provideSomeLayer[Repository & SessionProvider & Logging](
             opsLayer
           )
       }

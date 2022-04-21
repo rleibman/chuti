@@ -21,7 +21,7 @@ import java.util.Locale
 import app.GameViewMode.GameViewMode
 import app.GlobalDialog.GlobalDialog
 import caliban.client.scalajs.WebSocketHandler
-import chuti._
+import chuti.*
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 import org.scalajs.dom.window

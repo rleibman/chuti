@@ -16,29 +16,27 @@
 
 package dao
 
+import api.ChutiSession
+import api.token.{Token, TokenPurpose}
+import chuti.*
+import dao.Repository.{GameOperations, TokenOperations, UserOperations}
+import dao.gen.Tables
+import dao.gen.Tables.*
+import scalacache.Cache
+import scalacache.ZioEffect.modes.*
+import scalacache.caffeine.CaffeineCache
+import slick.SlickException
+import slick.dbio.DBIO
+import slick.jdbc.MySQLProfile.api.*
+import zio.{URLayer, ZIO, ZLayer}
+import zioslick.RepositoryException
+
 import java.math.BigInteger
 import java.security.SecureRandom
 import java.sql.{SQLException, Timestamp}
 import java.time.LocalDateTime
-
-import api.ChutiSession
-import api.token.{Token, TokenPurpose}
-import chuti._
-import dao.Repository.{GameOperations, TokenOperations, UserOperations}
-import dao.gen.Tables
-import dao.gen.Tables._
-import scalacache.Cache
-import scalacache.ZioEffect.modes._
-import scalacache.caffeine.CaffeineCache
-import slick.SlickException
-import slick.dbio.DBIO
-import slick.jdbc.MySQLProfile.api._
-import zio.{Task, URLayer, ZIO, ZLayer}
-import zioslick.RepositoryException
-
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.language.implicitConversions
+import scala.concurrent.duration.*
 
 object SlickRepository {
   implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
@@ -48,7 +46,6 @@ object SlickRepository {
 
 final class SlickRepository(databaseProvider: DatabaseProvider)
     extends Repository.Service with SlickToModelInterop {
-  private val dbProviderLayer = ZLayer.succeed(databaseProvider)
   import SlickRepository.gameCache
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC

@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-import java.security.{InvalidKeyException, NoSuchAlgorithmException}
+import org.apache.commons.codec.binary.Hex
+import zio.{Has, Task, ULayer, ZLayer}
 
-import api.config.Config
+import java.security.{InvalidKeyException, NoSuchAlgorithmException}
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
-import org.apache.commons.codec.binary.Hex
-import zio.{Has, Task, URLayer, ZLayer}
 
 package object coinbase {
   object Currency extends Enumeration {
@@ -28,7 +27,7 @@ package object coinbase {
     val BTC: Currency = Value
   }
 
-  import Currency._
+  import Currency.*
 
   type Coinbase = Has[Service]
 
@@ -52,9 +51,9 @@ package object coinbase {
     def walletCreateAddress(name: String): Task[String]
   }
 
-  def akkaHttpLayer: URLayer[Config, Coinbase] = ZLayer.fromService(config => akkaHttp(config))
+  def akkaHttpLayer: ULayer[Coinbase] = ZLayer.succeed(akkaHttp())
 
-  def akkaHttp(config: Config.Service): Service =
+  def akkaHttp(): Service =
     new Service {
       override def transactionRequest(
         to:          String,

@@ -17,8 +17,8 @@
 package chuti
 
 import org.scalatest.flatspec.AsyncFlatSpec
-import zio.console._
-import zio.duration._
+import zio.console.*
+import zio.duration.*
 import zio.stream.ZStream
 import zio.{Queue, UIO, ZIO, ZQueue}
 

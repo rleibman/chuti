@@ -20,8 +20,8 @@ import java.time.LocalDateTime
 import java.util.Locale
 
 import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server._
-import api._
+import akka.http.scaladsl.server.*
+import api.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chuti.{BuildInfo => _, _}
@@ -29,15 +29,15 @@ import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
 import dao.{CRUDOperations, SessionProvider}
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
 import zio.Cause.Fail
-import zio._
+import zio.*
 import zio.logging.{Logging, log}
 import zioslick.RepositoryException
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object AuthRoute {
 //  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))

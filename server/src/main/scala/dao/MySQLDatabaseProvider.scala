@@ -18,7 +18,7 @@ package dao
 
 import api.config
 import slick.basic.BasicBackend
-import slick.jdbc.JdbcBackend._
+import slick.jdbc.JdbcBackend.*
 import zio.{UIO, ULayer, ZIO, ZLayer}
 
 object MySQLDatabaseProvider {

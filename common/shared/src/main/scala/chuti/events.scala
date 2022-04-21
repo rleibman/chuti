@@ -28,7 +28,7 @@ sealed trait EventInfo[T <: GameEvent] {
     jugador: Jugador,
     game:    Game
   ): Boolean
-  val values: Seq[EventInfo[_]] = Seq(NoOp)
+  val values: Seq[EventInfo[?]] = Seq(NoOp)
 }
 
 object ReapplyMode extends Enumeration {
@@ -36,7 +36,7 @@ object ReapplyMode extends Enumeration {
   val none, fullRefresh, reapply = Value
 }
 
-import chuti.ReapplyMode._
+import chuti.ReapplyMode.*
 
 sealed trait GameEvent {
   val gameId:           Option[GameId]
@@ -444,7 +444,7 @@ case class Sopa(
   firstSopa:           Boolean = false
 ) extends PlayEvent {
   override val reapplyMode: ReapplyMode = fullRefresh
-  import Game._
+  import Game.*
   def sopa:                    List[Ficha] = Random.shuffle(todaLaFicha)
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.requiereSopa)
   override def doEvent(
@@ -510,7 +510,7 @@ case class Sopa(
 //////////////////////////////////////////////////////////////////////////////////////
 // Cantando
 
-import chuti.CuantasCantas._
+import chuti.CuantasCantas.*
 
 case class Canta(
   cuantasCantas:       CuantasCantas,
@@ -566,7 +566,7 @@ case class Canta(
         a
     }
 
-    val salvoString = if (nuevoCantante.user.id != nuevoCantante.user.id) {
+    val salvoString = if (nuevoCantante.user.id != cantanteActual.user.id) {
       Option(
         s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
       )
@@ -785,7 +785,7 @@ case class Da(
         //Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
         //Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
         //could rewrite this using game.fichaGanadora(
-        val (ganador, fichaGanadora): (UserId, Ficha) =
+        val (ganador, fichaGanadora@_): (UserId, Ficha) =
           Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
         val totalFilas = game.jugadores.flatMap(_.filas).size
         //I'm not sure who has it, but the code b
@@ -1239,7 +1239,7 @@ case class TerminaJuego(
           soundUrl = if (fueHoyo) Option("sounds/hoyo.mp3") else Option("sounds/gano.mp3"),
           gameId = game.id,
           userId = jugador.id,
-          gameStatusString = leTocaLaSopa.map(j =>
+          gameStatusString = leTocaLaSopa.map(_ =>
             s"$statusStr Se termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa"
           )
         )

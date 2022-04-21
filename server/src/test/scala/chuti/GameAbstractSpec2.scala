@@ -30,17 +30,17 @@ import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
 import game.GameService.GameService
 import game.GameService
 import io.circe.Printer
-import io.circe.generic.auto._
+import io.circe.generic.auto.*
 import io.circe.parser.decode
-import io.circe.syntax._
+import io.circe.syntax.*
 import mail.Postman
 import mail.Postman.Postman
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.{Assertion, Succeeded}
-import zio._
+import zio.*
 import zio.clock.Clock
 import zio.console.Console
-import zio.duration._
+import zio.duration.*
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 
