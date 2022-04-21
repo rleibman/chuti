@@ -67,7 +67,7 @@ trait AuthRoute
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
       override def deleteOperation(
         objOpt: Option[User]
-      ): ZIO[SessionProvider with Logging with OpsService, Throwable, Boolean] = {
+      ): ZIO[SessionProvider & Logging & OpsService, Throwable, Boolean] = {
         for {
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sup  <- super.deleteOperation(objOpt)
@@ -77,7 +77,7 @@ trait AuthRoute
 
       override def upsertOperation(
         obj: User
-      ): ZIO[SessionProvider with Logging with OpsService, RepositoryException, User] = {
+      ): ZIO[SessionProvider & Logging & OpsService, RepositoryException, User] = {
         for {
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sup  <- super.upsertOperation(obj)
@@ -93,13 +93,13 @@ trait AuthRoute
       override def getPK(obj: User): UserId = obj.id.get
 
       override def unauthRoute: ZIO[
-        Postman with Logging with TokenHolder with OpsService,
+        Postman & Logging & TokenHolder & OpsService,
         Nothing,
         Route
       ] =
         ZIO
           .environment[
-            Postman with Logging with TokenHolder
+            Postman & Logging & TokenHolder
           ].flatMap { r =>
             for {
               userOps <-
@@ -126,7 +126,7 @@ trait AuthRoute
                             reject(ValidationRejection("You need to pass a token and password"))
                           else {
                             val z: ZIO[
-                              SessionProvider with Logging with TokenHolder,
+                              SessionProvider & Logging & TokenHolder,
                               Throwable,
                               StandardRoute
                             ] = for {
@@ -149,7 +149,7 @@ trait AuthRoute
                             z.tapError(e =>
                               log.error("Resetting Password", Fail(e))
                             ).provideSomeLayer[
-                                Logging with TokenHolder
+                                Logging & TokenHolder
                               ](SessionProvider.layer(adminSession)).provide(r)
                           }
                       }
@@ -171,7 +171,7 @@ trait AuthRoute
                             .tapError(e =>
                               log.error("In Password Recover Request", Fail(e))
                             ).provideSomeLayer[
-                              Logging with TokenHolder with Postman
+                              Logging & TokenHolder & Postman
                             ](SessionProvider.layer(adminSession)).provide(r)
                         }
                       }
@@ -215,7 +215,7 @@ trait AuthRoute
                           .tapError(e =>
                             log.error("Updating invited user", Fail(e))
                           ).provideSomeLayer[
-                            Logging with TokenHolder with Postman
+                            Logging & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -264,7 +264,7 @@ trait AuthRoute
                           else
                             complete(UserCreationResponse(validate))
                         }).tapError(e => log.error("Creating user", Fail(e))).provideSomeLayer[
-                            Logging with TokenHolder with Postman
+                            Logging & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -283,7 +283,7 @@ trait AuthRoute
                           .tapError(e =>
                             log.error("Confirming registration", Fail(e))
                           ).provideSomeLayer[
-                            Logging with TokenHolder with Postman
+                            Logging & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -324,7 +324,7 @@ trait AuthRoute
                                   redirect("/loginForm?bad=true", StatusCodes.SeeOther)
                               }
                             }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
-                                Logging with TokenHolder with Postman
+                                Logging & TokenHolder & Postman
                               ](SessionProvider.layer(adminSession)).provide(r)
                           }
                       }
@@ -350,10 +350,10 @@ trait AuthRoute
             }
           }
 
-      override def other: RIO[SessionProvider with Logging with OpsService, Route] =
+      override def other: RIO[SessionProvider & Logging & OpsService, Route] =
         for {
           session <- ZIO.service[SessionProvider.Session].map(_.session)
-          runtime <- ZIO.environment[SessionProvider with Logging with OpsService]
+          runtime <- ZIO.environment[SessionProvider & Logging & OpsService]
         } yield {
           // These should be protected and accessible only when logged in
           path("isFirstLoginToday") {

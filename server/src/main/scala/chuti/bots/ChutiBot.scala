@@ -27,7 +27,7 @@ trait ChutiBot {
     game: Game
   ): Option[PlayEvent]
 
-  def takeTurn(gameId: GameId): ZIO[GameLayer with GameService, Exception, Game] = {
+  def takeTurn(gameId: GameId): ZIO[GameLayer & GameService, Exception, Game] = {
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
       gameService    <- ZIO.access[GameService](_.get)

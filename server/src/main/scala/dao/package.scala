@@ -26,5 +26,5 @@ package object dao {
   type SessionProvider = Has[SessionProvider.Session]
 
   type RepositoryIO[E] =
-    ZIO[SessionProvider with Logging, RepositoryException, E]
+    ZIO[SessionProvider & Logging, RepositoryException, E]
 }

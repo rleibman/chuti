@@ -26,7 +26,7 @@ object DatabaseProvider {
     def db: UIO[BasicBackend#DatabaseDef]
   }
 
-  val live: ZLayer[Has[Config] with Has[JdbcBackend], Throwable, DatabaseProvider] =
+  val live: ZLayer[Has[Config] & Has[JdbcBackend], Throwable, DatabaseProvider] =
     ZLayer.fromServicesManaged[Config, JdbcBackend, Any, Throwable, Service] {
       (cfg: Config, backend: JdbcBackend) =>
         ZManaged

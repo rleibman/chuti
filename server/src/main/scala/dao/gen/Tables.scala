@@ -34,7 +34,7 @@ object Tables extends {
 
 /** Slick data model trait for extension, choice of backend or usage in the cake pattern. (Make sure to initialize this late.) */
 trait Tables {
-  val profile: ExMySQLProfile with MySQLCirceJsonSupport
+  val profile: ExMySQLProfile & MySQLCirceJsonSupport
 
   import slick.jdbc.{GetResult => GR}
   import slick.model.ForeignKeyAction
@@ -42,15 +42,15 @@ trait Tables {
   object MyApi extends profile.API with profile.CirceJsonImplicits
   import MyApi.*
 
-  implicit val estadoType: JdbcType[GameStatus] with BaseTypedType[GameStatus] =
+  implicit val estadoType: JdbcType[GameStatus] & BaseTypedType[GameStatus] =
     profile.MappedColumnType.base[GameStatus, String](
       estado => if (estado == null) null else estado.value,
       str => if (str == null) null else GameStatus.withName(str)
     )
 
-  implicit lazy val userIdColumnType: JdbcType[UserId] with BaseTypedType[UserId] =
+  implicit lazy val userIdColumnType: JdbcType[UserId] & BaseTypedType[UserId] =
     MappedColumnType.base[UserId, Int](_.value, UserId)
-  implicit lazy val gameIdColumnType: JdbcType[GameId] with BaseTypedType[GameId] =
+  implicit lazy val gameIdColumnType: JdbcType[GameId] & BaseTypedType[GameId] =
     MappedColumnType.base[GameId, Int](_.value, GameId)
 
   val hashPassword: (Rep[String], Rep[Int]) => Rep[String] =

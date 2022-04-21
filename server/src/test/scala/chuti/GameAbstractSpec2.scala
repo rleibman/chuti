@@ -132,7 +132,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
     }.toLayer
 
   type TestLayer = DatabaseProvider
-    with Repository with Postman with Logging with TokenHolder with GameService with ChatService
+    & Repository & Postman & Logging & TokenHolder & GameService & ChatService
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
@@ -362,7 +362,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
 
   def playGame(
     gameToPlay: Game
-  ): ZIO[TestLayer with Clock with Console, Throwable, (Assertion, Game)] =
+  ): ZIO[TestLayer & Clock & Console, Throwable, (Assertion, Game)] =
     for {
       gameService    <- ZIO.service[GameService.Service]
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)

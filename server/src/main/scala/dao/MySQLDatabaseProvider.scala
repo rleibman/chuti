@@ -33,7 +33,7 @@ object MySQLDatabaseProvider {
 //  // this doesn't work as expected, what we should do instead is bubble up the zmanaged and use that in the
 //  //  same way that we do the memoized chat and game layers
 //  @deprecated
-//  val liveManagedLayer: URLayer[Config with Logging, DatabaseProvider] =
+//  val liveManagedLayer: URLayer[Config & Logging, DatabaseProvider] =
 //    ZLayer
 //      .fromServicesManaged[Config.Service, Logger[String], Any, Nothing, DatabaseProvider.Service] {
 //        (cfg, log) =>
