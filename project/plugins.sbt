@@ -2,7 +2,7 @@
 // Common stuff
 addSbtPlugin("com.dwijnand"       % "sbt-travisci"             % "1.2.0")
 addSbtPlugin("com.typesafe.sbt"   % "sbt-git"                  % "1.0.2")
-addSbtPlugin("de.heikoseeberger"  % "sbt-header"               % "5.6.5")
+addSbtPlugin("de.heikoseeberger"  % "sbt-header"               % "5.7.0")
 addSbtPlugin("com.typesafe.sbt"   % "sbt-native-packager"      % "1.8.1")
 addSbtPlugin("com.eed3si9n"       % "sbt-buildinfo"            % "0.11.0")
 addSbtPlugin("org.portable-scala" % "sbt-scalajs-crossproject" % "1.2.0")

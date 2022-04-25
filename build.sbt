@@ -159,7 +159,7 @@ lazy val server = project
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
-      "mysql"                      % "mysql-connector-java"   % "8.0.28" withSources (),
+      "mysql"                      % "mysql-connector-java"   % "8.0.29" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
       "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
       // Scala Cache
@@ -181,7 +181,7 @@ lazy val server = project
       // Testing
       "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
       "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.2.11"   % "it, test" withSources (),
+      "org.scalatest" %% "scalatest"               % "3.2.12"   % "it, test" withSources (),
       "org.mockito"   %% "mockito-scala-scalatest" % "1.17.5"   % "it, test" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
