@@ -37,7 +37,7 @@ case class SayRequest(
 )
 
 object ChatApi
-    extends GenericSchema[ChatService & Repository & SessionProvider & Logging] {
+    extends GenericSchema[ChatService & Repository & SessionProvider & Logging & Clock] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -49,11 +49,11 @@ object ChatApi
     ]]
   )
   case class Mutations(
-    say: SayRequest => URIO[ChatService & Repository & SessionProvider & Logging, Boolean]
+    say: SayRequest => URIO[ChatService & Repository & SessionProvider & Logging & Clock, Boolean]
   )
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & Repository & SessionProvider & Logging,
+      ChatService & Repository & SessionProvider & Logging & Clock,
       GameException,
       ChatMessage
     ]
@@ -62,9 +62,7 @@ object ChatApi
   implicit val userSchema: Schema[Any, User] = gen[Any, User]
   implicit val chatMessageSchema: Schema[Any, ChatMessage] = gen[Any, ChatMessage]
 
-  lazy val api: GraphQL[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging
-  ] =
+  lazy val api: GraphQL[Console & Clock & ChatService & Repository & SessionProvider & Logging] =
     graphQL(
       RootResolver(
         Queries(channelId => ChatService.getRecentMessages(channelId)),

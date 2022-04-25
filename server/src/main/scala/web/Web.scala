@@ -24,10 +24,12 @@ import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
 import core.{Core, CoreActors}
-import dao.{MySQLDatabaseProvider, Repository, SlickRepository}
+import dao.slick.{MySQLDatabaseProvider, SlickRepository}
+import dao.Repository
 import game.GameService
 import mail.CourierPostman
 import mail.Postman.Postman
+import zio.clock.Clock
 import zio.logging.slf4j.Slf4jLogger
 import zio.logging.{Logging, log}
 import zio.{ULayer, URLayer, ZIO, ZLayer}
@@ -78,13 +80,14 @@ trait Web {
     GameService.make().memoize.use { gameServiceLayer =>
       ChatService.make().memoize.use { chatServiceLayer =>
         val fullLayer = zio.ZEnv.live ++
-          (loggingLayer >>> chatServiceLayer) ++
+          ((loggingLayer ++ Clock.live) >>> chatServiceLayer) ++
           gameServiceLayer ++
           loggingLayer ++
           configLayer ++
           repositoryLayer ++
           (configLayer >>> postmanLayer) ++
           tokenLayer
+
         (for {
           _      <- log.info("Initializing Routes")
           routes <- routes

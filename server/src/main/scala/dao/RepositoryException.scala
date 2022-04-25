@@ -14,7 +14,16 @@
  * limitations under the License.
  */
 
-package zioslick
+package dao
+
+object RepositoryException {
+  def apply(t: Throwable): RepositoryException = {
+    t match {
+      case t: RepositoryException => t
+      case t => RepositoryException("", Some(t))
+    }
+  }
+}
 
 case class RepositoryException(
   msg:   String = "",

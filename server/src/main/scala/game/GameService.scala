@@ -24,7 +24,7 @@ import chat.*
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import chuti.*
-import dao.{Repository, SessionProvider}
+import dao.{Repository, RepositoryException, SessionProvider}
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Json}
@@ -35,7 +35,6 @@ import zio.clock.Clock
 import zio.console.Console
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
-import zioslick.RepositoryException
 
 object GameService {
 
@@ -46,7 +45,7 @@ object GameService {
 
   type GameService = Has[GameService.Service]
 
-  type GameLayer = SessionProvider & Repository & Postman & Logging & TokenHolder
+  type GameLayer = SessionProvider & Repository & Postman & Logging & TokenHolder & Clock
 
   trait Service {
 
@@ -247,7 +246,7 @@ object GameService {
               // God needs to save this user, because the user has already left the game
               repository.gameOperations
                 .upsert(gameAfterApply).map((_, appliedEvent)).provideSomeLayer[
-                  Logging
+                  Logging & Clock
                 ](godLayer)
             }
           }
@@ -261,14 +260,14 @@ object GameService {
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
                 .delete(game.id.get).provideSomeLayer[
-                  Logging
+                Logging & Clock
                 ](
                   godLayer
                 )
             case (game, _) if game.jugadores.isEmpty =>
               repository.gameOperations
                 .delete(game.id.get, softDelete = true).provideSomeLayer[
-                  Logging
+                Logging & Clock
                 ](godLayer)
             case (game, _) => ZIO.succeed(game)
           }
@@ -292,7 +291,7 @@ object GameService {
               repository.userOperations
                 .updateWallet(
                   wallet.copy(amount = wallet.amount - ((lostPoints + game.abandonedPenalty) * game.satoshiPerPoint))
-                ).provideSomeLayer[Logging](godLayer)
+                ).provideSomeLayer[Logging & Clock](godLayer)
             case _ => ZIO.succeed(true)
           }
           _ <- ZIO.foreach_(savedOpt) { case (_, appliedEvent) =>
@@ -323,13 +322,13 @@ object GameService {
               (game.jugadores.size until game.numPlayers)
                 .foldLeft(
                   ZIO(game).asInstanceOf[
-                    ZIO[Repository & Postman & Logging & TokenHolder, Throwable, Game]
+                    ZIO[Repository & Postman & Logging & Clock & TokenHolder, Throwable, Game]
                   ]
                 )((foldedGame, _) =>
                   foldedGame
                     .map(g =>
                       joinGame(Option(g))
-                        .provideSomeLayer[Repository & Postman & Logging & TokenHolder](
+                        .provideSomeLayer[Repository & Postman & Logging & Clock & TokenHolder](
                           botLayer
                         )
                     ).flatten
@@ -476,7 +475,7 @@ object GameService {
           invited <- invitedOpt.fold(
             repository.userOperations
               .upsert(User(None, email, name))
-              .provideSomeLayer[Logging](godLayer)
+              .provideSomeLayer[Logging & Clock](godLayer)
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.user.id == user.id))
@@ -552,7 +551,7 @@ object GameService {
               .upsert(
                 Game(None, gameStatus = GameStatus.esperandoJugadoresAzar)
               ).provideSomeLayer[
-                Logging
+              Logging & Clock
               ](godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
@@ -606,7 +605,7 @@ object GameService {
             val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
             repository.gameOperations
               .upsert(afterEvent).map((_, declinedEvent))
-              .provideSomeLayer[Logging](godLayer)
+              .provideSomeLayer[Logging & Clock](godLayer)
           }
           _ <- ZIO.foreachPar_(afterEvent.toSeq.flatMap(_._1.jugadores)) { jugador =>
             ChatService
@@ -636,7 +635,7 @@ object GameService {
               )
             repository.gameOperations
               .upsert(game.copy(jugadores = game.jugadores.filter(!_.invited)))
-              .provideSomeLayer[Logging](godLayer)
+              .provideSomeLayer[Logging & Clock](godLayer)
           }
           _ <- ZIO.foreachPar_(gameOpt.toSeq.flatMap(_.jugadores.filter(_.id != user.id))) { jugador =>
             ChatService
@@ -757,7 +756,7 @@ object GameService {
 
       def updateAccounting(
         game: Game
-      ): ZIO[Repository & Logging, RepositoryException, List[UserWallet]] = {
+      ): ZIO[Repository & Logging & Clock, RepositoryException, List[UserWallet]] = {
         ZIO
           .foreach(game.cuentasCalculadas) { case (jugador, _, satoshi) =>
             for {
@@ -765,11 +764,11 @@ object GameService {
               walletOpt  <- repository.userOperations.getWallet(jugador.id.get)
               updated <- ZIO.foreach(walletOpt)(wallet =>
                 repository.userOperations
-                  .updateWallet(wallet.copy(amount = wallet.amount + satoshi)).provideSomeLayer[Logging](godLayer)
+                  .updateWallet(wallet.copy(amount = wallet.amount + satoshi)).provideSomeLayer[Logging & Clock](godLayer)
               )
             } yield updated.toList
           }.provideSomeLayer[
-            Repository & Logging
+            Repository & Logging & Clock
           ](godLayer).map(_.flatten.toList)
       }
 

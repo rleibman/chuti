@@ -17,7 +17,6 @@
 package chuti
 
 import java.util.UUID
-
 import api.ChutiSession
 import api.token.TokenHolder
 import better.files.File
@@ -26,6 +25,7 @@ import chat.ChatService.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
+import dao.slick.DatabaseProvider
 import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
 import game.GameService.GameService
 import game.GameService
@@ -132,7 +132,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
     }.toLayer
 
   type TestLayer = DatabaseProvider
-    & Repository & Postman & Logging & TokenHolder & GameService & ChatService
+    & Repository & Postman & Logging & TokenHolder & GameService & ChatService & Clock
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
@@ -143,7 +143,8 @@ trait GameAbstractSpec2 extends MockitoSugar {
       loggingLayer ++
       ZLayer.succeed(TokenHolder.tempCache) ++
       GameService.make() ++
-      (loggingLayer >>> ChatService.make())
+      (loggingLayer >>> ChatService.make()) ++
+      Clock.live //Change for a fixed clock
   }
 
   def writeGame(

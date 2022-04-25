@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package dao
+package dao.slick
 
 import api.config
+import dao.DatabaseProvider
 import slick.basic.BasicBackend
-import slick.jdbc.JdbcBackend.*
+import slick.jdbc.JdbcBackend.Database
 import zio.{UIO, ULayer, ZIO, ZLayer}
 
 object MySQLDatabaseProvider {
+
   lazy private val privateDB = {
     println(">>>>>>>>>>>>>>>>>>>>>>>>>> This should only ever be seen once")
     Database.forConfig(config.live.configKey)
   }
   lazy val liveLayer: ULayer[DatabaseProvider] = ZLayer.succeed(new DatabaseProvider.Service {
+
     override def db: UIO[BasicBackend#DatabaseDef] = ZIO.succeed(privateDB)
+
   })
 
 //  // this doesn't work as expected, what we should do instead is bubble up the zmanaged and use that in the

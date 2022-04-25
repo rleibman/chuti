@@ -52,14 +52,14 @@ trait ModelRoutes extends Directives {
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
   }
 
-  def unauthRoute: RIO[Repository & Postman & TokenHolder & Logging, Route] =
+  def unauthRoute: RIO[Repository & Postman & TokenHolder & Logging & Clock, Route] =
     for {
       repo <- ZIO.access[Repository](_.get)
       auth <- {
         val opsLayer: ULayer[Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.unauthRoute.provideSomeLayer[
-          Repository & Postman & TokenHolder & Logging
+          Repository & Postman & TokenHolder & Logging & Clock
         ](opsLayer)
       }
     } yield auth
@@ -89,7 +89,7 @@ trait ModelRoutes extends Directives {
           : ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
-          .provideSomeLayer[Repository & SessionProvider & Logging](
+          .provideSomeLayer[Repository & SessionProvider & Logging & Clock](
             opsLayer
           )
       }

@@ -24,7 +24,8 @@ import chat.ChatService
 import chat.ChatService.ChatService
 import courier.Envelope
 import dao.Repository.GameOperations
-import dao.{DatabaseProvider, Repository, RepositoryIO}
+import dao.slick.DatabaseProvider
+import dao.{Repository, RepositoryIO}
 import io.circe.Printer
 import io.circe.generic.auto.*
 import io.circe.parser.decode

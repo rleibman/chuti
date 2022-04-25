@@ -18,24 +18,23 @@ package routes
 
 import java.time.LocalDateTime
 import java.util.Locale
-
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.*
 import api.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
-import chuti.{BuildInfo => _, _}
+import chuti.{BuildInfo as _, *}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.{CRUDOperations, SessionProvider}
+import dao.{CRUDOperations, RepositoryException, SessionProvider}
 import io.circe.generic.auto.*
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
 import zio.Cause.Fail
 import zio.*
+import zio.clock.Clock
 import zio.logging.{Logging, log}
-import zioslick.RepositoryException
 
 import scala.jdk.CollectionConverters.*
 
@@ -67,7 +66,7 @@ trait AuthRoute
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
       override def deleteOperation(
         objOpt: Option[User]
-      ): ZIO[SessionProvider & Logging & OpsService, Throwable, Boolean] = {
+      ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] = {
         for {
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sup  <- super.deleteOperation(objOpt)
@@ -77,7 +76,7 @@ trait AuthRoute
 
       override def upsertOperation(
         obj: User
-      ): ZIO[SessionProvider & Logging & OpsService, RepositoryException, User] = {
+      ): ZIO[SessionProvider & Logging & Clock & OpsService, RepositoryException, User] = {
         for {
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sup  <- super.upsertOperation(obj)
@@ -93,13 +92,13 @@ trait AuthRoute
       override def getPK(obj: User): UserId = obj.id.get
 
       override def unauthRoute: ZIO[
-        Postman & Logging & TokenHolder & OpsService,
+        Postman & Logging & Clock & TokenHolder & OpsService,
         Nothing,
         Route
       ] =
         ZIO
           .environment[
-            Postman & Logging & TokenHolder
+            Postman & Logging & Clock & TokenHolder
           ].flatMap { r =>
             for {
               userOps <-
@@ -126,7 +125,7 @@ trait AuthRoute
                             reject(ValidationRejection("You need to pass a token and password"))
                           else {
                             val z: ZIO[
-                              SessionProvider & Logging & TokenHolder,
+                              SessionProvider & Logging & Clock & TokenHolder,
                               Throwable,
                               StandardRoute
                             ] = for {
@@ -149,7 +148,7 @@ trait AuthRoute
                             z.tapError(e =>
                               log.error("Resetting Password", Fail(e))
                             ).provideSomeLayer[
-                                Logging & TokenHolder
+                              Logging & Clock & TokenHolder
                               ](SessionProvider.layer(adminSession)).provide(r)
                           }
                       }
@@ -171,7 +170,7 @@ trait AuthRoute
                             .tapError(e =>
                               log.error("In Password Recover Request", Fail(e))
                             ).provideSomeLayer[
-                              Logging & TokenHolder & Postman
+                            Logging & Clock & TokenHolder & Postman
                             ](SessionProvider.layer(adminSession)).provide(r)
                         }
                       }
@@ -215,7 +214,7 @@ trait AuthRoute
                           .tapError(e =>
                             log.error("Updating invited user", Fail(e))
                           ).provideSomeLayer[
-                            Logging & TokenHolder & Postman
+                          Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -264,7 +263,7 @@ trait AuthRoute
                           else
                             complete(UserCreationResponse(validate))
                         }).tapError(e => log.error("Creating user", Fail(e))).provideSomeLayer[
-                            Logging & TokenHolder & Postman
+                          Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -283,7 +282,7 @@ trait AuthRoute
                           .tapError(e =>
                             log.error("Confirming registration", Fail(e))
                           ).provideSomeLayer[
-                            Logging & TokenHolder & Postman
+                          Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -324,7 +323,7 @@ trait AuthRoute
                                   redirect("/loginForm?bad=true", StatusCodes.SeeOther)
                               }
                             }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
-                                Logging & TokenHolder & Postman
+                              Logging & Clock & TokenHolder & Postman
                               ](SessionProvider.layer(adminSession)).provide(r)
                           }
                       }
@@ -350,10 +349,10 @@ trait AuthRoute
             }
           }
 
-      override def other: RIO[SessionProvider & Logging & OpsService, Route] =
+      override def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] =
         for {
           session <- ZIO.service[SessionProvider.Session].map(_.session)
-          runtime <- ZIO.environment[SessionProvider & Logging & OpsService]
+          runtime <- ZIO.environment[SessionProvider & Logging & Clock & OpsService]
         } yield {
           // These should be protected and accessible only when logged in
           path("isFirstLoginToday") {

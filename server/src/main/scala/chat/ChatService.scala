@@ -37,12 +37,12 @@ object ChatService {
     def getRecentMessages(
       channelId: ChannelId
     ): ZIO[SessionProvider, GameException, Seq[ChatMessage]]
-    def say(msg: SayRequest): URIO[Repository & SessionProvider & Logging, ChatMessage]
+    def say(msg: SayRequest): URIO[Repository & SessionProvider & Logging & Clock, ChatMessage]
     def chatStream(
       channelId:    ChannelId,
       connectionId: ConnectionId
     ): ZStream[
-      Repository & SessionProvider & Logging,
+      Repository & SessionProvider & Logging & Clock,
       GameException,
       ChatMessage
     ]
@@ -51,7 +51,7 @@ object ChatService {
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   lazy val interpreter: GraphQLInterpreter[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging,
+    Console & Clock & ChatService & Repository & SessionProvider & Logging & Clock,
     CalibanError
   ] =
     runtime.unsafeRun(ChatApi.api.interpreter)
@@ -61,7 +61,7 @@ object ChatService {
     channelId: ChannelId,
     toUser:    Option[User]
   ): ZIO[
-    ChatService & Repository & SessionProvider & Logging,
+    ChatService & Repository & SessionProvider & Logging & Clock,
     Nothing,
     ChatMessage
   ] =
@@ -71,7 +71,7 @@ object ChatService {
     } yield sent
 
   def say(request: SayRequest): URIO[
-    ChatService & Repository & SessionProvider & Logging,
+    ChatService & Repository & SessionProvider & Logging & Clock,
     ChatMessage
   ] =
     URIO.accessM(_.get.say(request))
@@ -80,7 +80,7 @@ object ChatService {
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    ChatService & Repository & SessionProvider & Logging,
+    ChatService & Repository & SessionProvider & Logging & Clock,
     GameException,
     ChatMessage
   ] =
@@ -120,7 +120,7 @@ object ChatService {
         }
 
         override def say(request: SayRequest): ZIO[
-          Repository & SessionProvider & Logging,
+          Repository & SessionProvider & Logging & Clock,
           Nothing,
           ChatMessage
         ] =
@@ -157,7 +157,7 @@ object ChatService {
           channelId:    ChannelId,
           connectionId: ConnectionId
         ): ZStream[
-          Repository & SessionProvider & Logging,
+          Repository & SessionProvider & Logging & Clock,
           GameException,
           ChatMessage
         ] =

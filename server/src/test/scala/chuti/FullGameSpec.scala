@@ -88,7 +88,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     testEndState: Game => Assertion
   )
 
-  val gamesToTest = Seq(
+  private val gamesToTest = Seq(
     GameTester(
       "cantar 7 pero no de caida (no estan pegadas)",
       Seq("3:3,5:3,4:3,3:2,3:1,6:6,6:4", "6:3,4:5,1:2,2:0,1:4,1:5,6:5"),
@@ -149,7 +149,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     )
   )
 
-  gamesToTest.map { tester =>
+  gamesToTest.foreach { tester =>
     tester.description should "work" in {
       testRuntime.unsafeRunToFuture {
         (for {

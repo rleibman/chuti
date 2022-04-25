@@ -26,8 +26,8 @@ import io.circe.parser.decode
 import io.circe.{Decoder, Encoder, Json}
 import mail.Postman.Postman
 import zio.*
+import zio.clock.Clock
 import zio.logging.Logging
-import zioslick.RepositoryException
 
 import scala.util.matching.Regex
 
@@ -59,7 +59,7 @@ object CRUDRoute {
       *
       * @return
       */
-    def other: RIO[SessionProvider & Logging & OpsService, Route] =
+    def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] =
       ZIO.succeed(reject)
 
     /**
@@ -67,7 +67,7 @@ object CRUDRoute {
       *
       * @return
       */
-    def unauthRoute: URIO[Postman & TokenHolder & Logging & OpsService, Route] =
+    def unauthRoute: URIO[Postman & TokenHolder & Logging & Clock & OpsService, Route] =
       ZIO.succeed(reject)
 
     /**
@@ -79,7 +79,7 @@ object CRUDRoute {
     def childrenRoutes(
       pk:  PK,
       obj: Option[E]
-    ): RIO[SessionProvider & Logging & OpsService, Seq[Route]] =
+    ): RIO[SessionProvider & Logging & Clock & OpsService, Seq[Route]] =
       ZIO.succeed(Seq.empty)
 
     /**
@@ -92,13 +92,13 @@ object CRUDRoute {
 
 //    def fullLayer(
 //      session: ChutiSession
-//    ): ULayer[SessionProvider  & Logging with TokenHolder] =
+//    ): ULayer[SessionProvider  & Logging & Clock with TokenHolder] =
 //      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
 //        (_, b) => b
 //      ) ++ ZLayer.succeed(TokenHolder.live)
 
     def getOperation(id: PK): ZIO[
-      SessionProvider & Logging & OpsService,
+      SessionProvider & Logging & Clock & OpsService,
       RepositoryException,
       Option[E]
     ] = {
@@ -110,7 +110,7 @@ object CRUDRoute {
 
     def deleteOperation(
       objOpt: Option[E]
-    ): ZIO[SessionProvider & Logging & OpsService, Throwable, Boolean] =
+    ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] =
       for {
         ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
         ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj =>
@@ -119,7 +119,7 @@ object CRUDRoute {
       } yield ret
 
     def upsertOperation(obj: E): ZIO[
-      SessionProvider & Logging & OpsService,
+      SessionProvider & Logging & Clock & OpsService,
       RepositoryException,
       E
     ] = {
@@ -130,7 +130,7 @@ object CRUDRoute {
     }
 
     def countOperation(search: Option[SEARCH]): ZIO[
-      SessionProvider & Logging & OpsService,
+      SessionProvider & Logging & Clock & OpsService,
       RepositoryException,
       Long
     ] =
@@ -140,7 +140,7 @@ object CRUDRoute {
       } yield ret
 
     def searchOperation(search: Option[SEARCH]): ZIO[
-      SessionProvider & Logging & OpsService,
+      SessionProvider & Logging & Clock & OpsService,
       RepositoryException,
       Seq[E]
     ] =
@@ -165,7 +165,7 @@ object CRUDRoute {
       searchEncoder: Encoder[SEARCH],
       pkEncoder:     Encoder[PK]
     ): ZIO[
-      Repository & SessionProvider & Logging & OpsService,
+      Repository & SessionProvider & Logging & Clock & OpsService,
       Throwable,
       Route
     ] =
@@ -174,7 +174,7 @@ object CRUDRoute {
         runtime <-
           ZIO
             .environment[
-              Repository & SessionProvider & Logging & OpsService
+              Repository & SessionProvider & Logging & Clock & OpsService
             ]
       } yield {
         pathPrefix(url) {

@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package dao
+package dao.slick
 
 import api.ChutiSession
 import api.token.{Token, TokenPurpose}
 import chuti.*
 import dao.Repository.{GameOperations, TokenOperations, UserOperations}
-import dao.gen.Tables
-import dao.gen.Tables.*
+import dao.slick.gen.Tables
+import dao.{DatabaseProvider, FriendsRow, Game2GameRow, GamePlayersRow, GameRow2Game, Repository, RepositoryException, RepositoryIO, SessionProvider, TokenRow, User2UserRow, UserLogRow, UserRow, UserRow2User, UserWallet2UserWalletRow, UserWalletRow, UserWalletRow2UserWallet}
 import scalacache.Cache
 import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
@@ -29,7 +29,6 @@ import slick.SlickException
 import slick.dbio.DBIO
 import slick.jdbc.MySQLProfile.api.*
 import zio.{URLayer, ZIO, ZLayer}
-import zioslick.RepositoryException
 
 import java.math.BigInteger
 import java.security.SecureRandom
@@ -37,6 +36,7 @@ import java.sql.{SQLException, Timestamp}
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
+import dao.slick.gen.Tables.*
 
 object SlickRepository {
   implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
@@ -45,7 +45,7 @@ object SlickRepository {
 }
 
 final class SlickRepository(databaseProvider: DatabaseProvider)
-    extends Repository.Service with SlickToModelInterop {
+    extends Repository.Service {
   import SlickRepository.gameCache
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
@@ -77,6 +77,54 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     } yield ret
 
   override val userOperations: Repository.UserOperations = new UserOperations {
+    def get(pk: UserId): RepositoryIO[Option[User]] =
+      fromDBIO {
+        UserQuery
+          .filter(u => u.id === pk && !u.deleted).result.headOption.map(
+          _.map(UserRow2User)
+        )
+      }
+
+    override def delete(
+                         pk:         UserId,
+                         softDelete: Boolean
+                       ): RepositoryIO[Boolean] = { session: ChutiSession =>
+      if (session.user != chuti.god && session.user.id.fold(false)(_ != pk))
+        throw RepositoryException(s"${session.user} Not authorized")
+      if (softDelete) {
+        val q = for {
+          u <- UserQuery if u.id === pk
+        } yield (u.deleted, u.deletedDate)
+        q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
+      } else
+        UserQuery.filter(_.id === pk).delete.map(_ > 0)
+    }
+
+    override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
+      if (session.user != chuti.god && session.user.id != user.id)
+        throw RepositoryException(s"${session.user} Not authorized")
+      (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
+        .insertOrUpdate(User2UserRow(user))
+        .map(_.getOrElse(user))
+    }
+
+    override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
+      search
+        .fold(UserQuery: Query[Tables.UserTable, UserRow, Seq]) { s =>
+          UserQuery
+            .filter(u => u.email.like(s"%${s.text}%"))
+            .drop(s.pageSize * s.pageIndex)
+            .take(s.pageSize)
+        }.result.map(_.map(UserRow2User))
+    }
+
+    override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
+      search
+        .fold(UserQuery: Query[Tables.UserTable, UserRow, Seq]) { s =>
+          UserQuery
+            .filter(u => u.email.like(s"%${s.text}%"))
+        }.length.result.map(_.toLong)
+
     override def unfriend(enemy: User): RepositoryIO[Boolean] = { session: ChutiSession =>
       val rowOpt = for {
         one <- session.user.id
@@ -117,54 +165,6 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
             }
         ).map(_.flatten.map(UserRow2User))
     }
-
-    override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
-      if (session.user != chuti.god && session.user.id != user.id)
-        throw RepositoryException(s"${session.user} Not authorized")
-      (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
-        .insertOrUpdate(User2UserRow(user))
-        .map(_.getOrElse(user))
-    }
-
-    def get(pk: UserId): RepositoryIO[Option[User]] =
-      fromDBIO {
-        UserQuery
-          .filter(u => u.id === pk && !u.deleted).result.headOption.map(
-            _.map(UserRow2User)
-          )
-      }
-
-    override def delete(
-      pk:         UserId,
-      softDelete: Boolean
-    ): RepositoryIO[Boolean] = { session: ChutiSession =>
-      if (session.user != chuti.god && session.user.id.fold(false)(_ != pk))
-        throw RepositoryException(s"${session.user} Not authorized")
-      if (softDelete) {
-        val q = for {
-          u <- UserQuery if u.id === pk
-        } yield (u.deleted, u.deleteddate)
-        q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
-      } else
-        UserQuery.filter(_.id === pk).delete.map(_ > 0)
-    }
-
-    override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
-      search
-        .fold(UserQuery: Query[Tables.UserTable, Tables.UserRow, Seq]) { s =>
-          UserQuery
-            .filter(u => u.email.like(s"%${s.text}%"))
-            .drop(s.pageSize * s.pageIndex)
-            .take(s.pageSize)
-        }.result.map(_.map(UserRow2User))
-    }
-
-    override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
-      search
-        .fold(UserQuery: Query[Tables.UserTable, Tables.UserRow, Seq]) { s =>
-          UserQuery
-            .filter(u => u.email.like(s"%${s.text}%"))
-        }.length.result.map(_.toLong)
 
     override def login(
       email:    String,

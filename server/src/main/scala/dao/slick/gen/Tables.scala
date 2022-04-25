@@ -14,30 +14,32 @@
  * limitations under the License.
  */
 
-package dao.gen
+package dao.slick.gen
 
 import java.sql.Timestamp
-
 import chuti.{GameId, GameStatus, UserId}
 import com.foerstertechnologies.slickmysql.{ExMySQLProfile, MySQLCirceJsonSupport}
+import dao.*
 import io.circe.Json
-import slick.ast.BaseTypedType
-import slick.jdbc.JdbcType
-import slick.lifted.{MappedProjection, ProvenShape}
+import _root_.slick.ast.BaseTypedType
+import _root_.slick.jdbc.JdbcType
+import _root_.slick.lifted.{MappedProjection, ProvenShape}
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object ChutiProfile extends ExMySQLProfile with MySQLCirceJsonSupport
 
-object Tables extends {
-  val profile = ChutiProfile
-} with Tables
+object Tables
+    extends {
+      val profile: ExMySQLProfile & MySQLCirceJsonSupport = ChutiProfile
+    } with Tables
 
 /** Slick data model trait for extension, choice of backend or usage in the cake pattern. (Make sure to initialize this late.) */
 trait Tables {
+
   val profile: ExMySQLProfile & MySQLCirceJsonSupport
 
-  import slick.jdbc.{GetResult => GR}
-  import slick.model.ForeignKeyAction
+  import _root_.slick.jdbc.{GetResult => GR}
+  import _root_.slick.model.ForeignKeyAction
 
   object MyApi extends profile.API with profile.CirceJsonImplicits
   import MyApi.*
@@ -60,11 +62,6 @@ trait Tables {
   lazy val schema: profile.SchemaDescription =
     FriendsQuery.schema ++ GameQuery.schema ++ GameEventQuery.schema ++ GamePlayersQuery.schema ++ UserQuery.schema ++ UserWalletQuery.schema
 
-  case class FriendsRow(
-    one: UserId,
-    two: UserId
-  )
-
   implicit def GetResultFriendsRow(
     implicit e0: GR[UserId],
     e1:          GR[Boolean]
@@ -74,10 +71,9 @@ trait Tables {
       FriendsRow.tupled((<<[UserId], <<[UserId]))
     }
 
-  class Friends(_tableTag: Tag)
-      extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
-    def * : ProvenShape[FriendsRow] =
-      (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
+  class Friends(_tableTag: Tag) extends profile.api.Table[FriendsRow](_tableTag, Some("chuti"), "friends") {
+
+    def * : ProvenShape[FriendsRow] = (one, two) <> (FriendsRow.tupled, FriendsRow.unapply)
 
     def ? : MappedProjection[Option[FriendsRow], (Option[UserId], Option[UserId])] =
       (Rep.Some(one), Rep.Some(two)).shaped.<>(
@@ -103,18 +99,10 @@ trait Tables {
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
+
   }
 
   lazy val FriendsQuery = new TableQuery(tag => new Friends(tag))
-
-  case class GameRow(
-    id:           GameId,
-    lastSnapshot: Json,
-    gameStatus:   GameStatus,
-    created:      Timestamp,
-    lastupdated:  Timestamp,
-    currentIndex: Int = 0
-  )
 
   implicit def GetResultGameRow(
     implicit e0: GR[GameId],
@@ -137,8 +125,8 @@ trait Tables {
       )
     }
 
-  class GameTable(_tableTag: Tag)
-      extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
+  class GameTable(_tableTag: Tag) extends profile.api.Table[GameRow](_tableTag, Some("chuti"), "game") {
+
     def * : ProvenShape[GameRow] =
       (
         id,
@@ -184,15 +172,10 @@ trait Tables {
     val created: Rep[Timestamp] = column[Timestamp]("created")
 
     val lastupdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
+
   }
 
   lazy val GameQuery = new TableQuery(tag => new GameTable(tag))
-
-  case class GameEventRow(
-    gameId:       GameId,
-    currentIndex: Int = 0,
-    eventData:    String
-  )
 
   implicit def GetResultGameEventRow(
     implicit e0: GR[GameId],
@@ -204,10 +187,9 @@ trait Tables {
       GameEventRow.tupled((<<[GameId], <<[Int], <<[String]))
     }
 
-  class GameEvent(_tableTag: Tag)
-      extends profile.api.Table[GameEventRow](_tableTag, Some("chuti"), "game_event") {
-    def * : ProvenShape[GameEventRow] =
-      (gameId, currentIndex, eventData) <> (GameEventRow.tupled, GameEventRow.unapply)
+  class GameEvent(_tableTag: Tag) extends profile.api.Table[GameEventRow](_tableTag, Some("chuti"), "game_event") {
+
+    def * : ProvenShape[GameEventRow] = (gameId, currentIndex, eventData) <> (GameEventRow.tupled, GameEventRow.unapply)
 
     def ? : MappedProjection[Option[GameEventRow], (Option[GameId], Option[Int], Option[String])] =
       (Rep.Some(gameId), Rep.Some(currentIndex), Rep.Some(eventData)).shaped.<>(
@@ -231,16 +213,10 @@ trait Tables {
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
+
   }
 
   lazy val GameEventQuery = new TableQuery(tag => new GameEvent(tag))
-
-  case class GamePlayersRow(
-    userId:  UserId,
-    gameId:  GameId,
-    order:   Int,
-    invited: Boolean
-  )
 
   implicit def GetResultGamePlayersRow(
     implicit e0: GR[GameId],
@@ -253,10 +229,9 @@ trait Tables {
       GamePlayersRow.tupled((<<[UserId], <<[GameId], <<[Int], <<[Boolean]))
     }
 
-  class GamePlayers(_tableTag: Tag)
-      extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
-    def * : ProvenShape[GamePlayersRow] =
-      (userId, gameId, order, invited) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
+  class GamePlayers(_tableTag: Tag) extends profile.api.Table[GamePlayersRow](_tableTag, Some("chuti"), "game_players") {
+
+    def * : ProvenShape[GamePlayersRow] = (userId, gameId, order, invited) <> (GamePlayersRow.tupled, GamePlayersRow.unapply)
 
     def ? : MappedProjection[Option[
       GamePlayersRow
@@ -290,19 +265,10 @@ trait Tables {
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
+
   }
 
   lazy val GamePlayersQuery = new TableQuery(tag => new GamePlayers(tag))
-
-  case class UserRow(
-    id:          UserId,
-    name:        String,
-    email:       String,
-    created:     Timestamp,
-    active:      Boolean = false,
-    deleted:     Boolean = false,
-    deleteddate: Option[Timestamp] = None
-  )
 
   implicit def GetResultUserRow(
     implicit e0: GR[UserId],
@@ -326,8 +292,8 @@ trait Tables {
       )
     }
 
-  class UserTable(_tableTag: Tag)
-      extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
+  class UserTable(_tableTag: Tag) extends profile.api.Table[UserRow](_tableTag, Some("chuti"), "user") {
+
     def * : ProvenShape[UserRow] =
       (
         id,
@@ -336,7 +302,7 @@ trait Tables {
         created,
         active,
         deleted,
-        deleteddate
+        deletedDate
       ) <> (UserRow.tupled, UserRow.unapply)
 
     def ? : MappedProjection[Option[
@@ -349,7 +315,7 @@ trait Tables {
         Rep.Some(created),
         Rep.Some(active),
         Rep.Some(deleted),
-        deleteddate
+        deletedDate
       ).shaped.<>(
         { r =>
           import r.*
@@ -375,18 +341,14 @@ trait Tables {
 
     val active: Rep[Boolean] = column[Boolean]("active", O.Default(false))
 
-    val deleteddate: Rep[Option[Timestamp]] =
+    val deletedDate: Rep[Option[Timestamp]] =
       column[Option[Timestamp]]("deletedDate", O.Default(None))
 
     val index1 = index("email", email, unique = true)
+
   }
 
   lazy val UserQuery = new TableQuery(tag => new UserTable(tag))
-
-  case class UserWalletRow(
-    user:   UserId,
-    amount: BigDecimal
-  )
 
   implicit def GetResultUserWalletRow(
     implicit e0: GR[UserId],
@@ -397,10 +359,9 @@ trait Tables {
       UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
     }
 
-  class UserWalletTable(_tableTag: Tag)
-      extends profile.api.Table[UserWalletRow](_tableTag, Some("chuti"), "userWallet") {
-    def * : ProvenShape[UserWalletRow] =
-      (userId, amount) <> (UserWalletRow.tupled, UserWalletRow.unapply)
+  class UserWalletTable(_tableTag: Tag) extends profile.api.Table[UserWalletRow](_tableTag, Some("chuti"), "userWallet") {
+
+    def * : ProvenShape[UserWalletRow] = (userId, amount) <> (UserWalletRow.tupled, UserWalletRow.unapply)
 
     def ? : MappedProjection[Option[UserWalletRow], (Option[UserId], Option[BigDecimal])] =
       (Rep.Some(userId), Rep.Some(amount)).shaped.<>(
@@ -425,11 +386,6 @@ trait Tables {
 
   lazy val UserWalletQuery = new TableQuery(tag => new UserWalletTable(tag))
 
-  case class UserLogRow(
-    user: UserId,
-    time: Timestamp
-  )
-
   implicit def GetResultUserLogRow(
     implicit e0: GR[UserId],
     e1:          GR[Timestamp]
@@ -439,10 +395,9 @@ trait Tables {
       UserLogRow.tupled((<<[UserId], <<[Timestamp]))
     }
 
-  class UserLogTable(_tableTag: Tag)
-      extends profile.api.Table[UserLogRow](_tableTag, Some("chuti"), "userLog") {
-    def * : ProvenShape[UserLogRow] =
-      (userId, time) <> (UserLogRow.tupled, UserLogRow.unapply)
+  class UserLogTable(_tableTag: Tag) extends profile.api.Table[UserLogRow](_tableTag, Some("chuti"), "userLog") {
+
+    def * : ProvenShape[UserLogRow] = (userId, time) <> (UserLogRow.tupled, UserLogRow.unapply)
 
     def ? : MappedProjection[Option[UserLogRow], (Option[UserId], Option[Timestamp])] =
       (Rep.Some(userId), Rep.Some(time)).shaped.<>(
@@ -467,13 +422,6 @@ trait Tables {
 
   lazy val UserLogQuery = new TableQuery(tag => new UserLogTable(tag))
 
-  case class TokenRow(
-    tok:          String,
-    tokenPurpose: String,
-    expireTime:   Timestamp,
-    userId:       UserId
-  )
-
   implicit def GetResultTokenRow(
     implicit e0: GR[String],
     e1:          GR[Timestamp],
@@ -485,10 +433,9 @@ trait Tables {
       TokenRow.tupled((<<[String], <<[String], <<[Timestamp], <<[UserId]))
     }
 
-  class TokenTable(_tableTag: Tag)
-      extends profile.api.Table[TokenRow](_tableTag, Some("chuti"), "token") {
-    def * : ProvenShape[TokenRow] =
-      (tok, tokenPurpose, expireTime, userId) <> (TokenRow.tupled, TokenRow.unapply)
+  class TokenTable(_tableTag: Tag) extends profile.api.Table[TokenRow](_tableTag, Some("chuti"), "token") {
+
+    def * : ProvenShape[TokenRow] = (tok, tokenPurpose, expireTime, userId) <> (TokenRow.tupled, TokenRow.unapply)
 
     def ? : MappedProjection[Option[
       TokenRow
@@ -516,7 +463,9 @@ trait Tables {
       onUpdate = ForeignKeyAction.Restrict,
       onDelete = ForeignKeyAction.Restrict
     )
+
   }
 
   lazy val TokenQuery = new TableQuery(tag => new TokenTable(tag))
+
 }

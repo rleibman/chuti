@@ -149,6 +149,7 @@ lazy val server = project
   .dependsOn(commonJVM)
   .settings(
     name := "chuti-server",
+    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
     libraryDependencies ++= Seq(
       // Akka
       "com.typesafe.akka"                  %% "akka-stream"     % akkaVersion withSources (),
@@ -162,15 +163,16 @@ lazy val server = project
       "mysql"                      % "mysql-connector-java"   % "8.0.29" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
       "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
+      "io.getquill"               %% "quill-jasync-mysql"     % quillVersion withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
       // ZIO
       "dev.zio"                     %% "zio"               % zioVersion withSources (),
       "dev.zio"                     %% "zio-logging-slf4j" % "0.5.14" withSources (),
-      "com.softwaremill.sttp.tapir"   %% "tapir-json-circe"              % tapirVersion withSources(),
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"  % tapirVersion withSources (),
       "com.github.ghostdogpr"       %% "caliban"           % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-tapir"           % calibanVersion withSources (),
+      "com.github.ghostdogpr"       %% "caliban-tapir"     % calibanVersion withSources (),
       "com.github.ghostdogpr"       %% "caliban-akka-http" % calibanVersion withSources (),
       // Other random utilities
       "com.github.pathikrit"  %% "better-files"    % "3.9.1" withSources (),

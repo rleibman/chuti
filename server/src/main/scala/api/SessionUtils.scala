@@ -22,13 +22,14 @@ import com.softwaremill.session.SessionDirectives.*
 import com.softwaremill.session.SessionOptions.*
 import com.softwaremill.session.*
 import dao.*
+import dao.slick.{MySQLDatabaseProvider, SlickRepository}
 import scalacache.Cache
 import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
+import zio.clock.Clock
 import zio.logging.{Logging, log}
 import zio.logging.slf4j.Slf4jLogger
 import zio.{Task, ZIO, ZLayer}
-import zioslick.RepositoryException
 
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -55,7 +56,8 @@ trait SessionUtils extends Directives {
       config.live
     )) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
       SessionProvider.layer(ChutiSession(chuti.god)) ++
-      Slf4jLogger.make((_, str) => str)
+      Slf4jLogger.make((_, str) => str) ++
+      Clock.live
 
   def getChutiSession(id: Int): Task[Option[ChutiSession]] =
     memoizeF(Option(1.hour)) {

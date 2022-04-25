@@ -18,13 +18,13 @@ package api
 
 import java.math.BigInteger
 import java.security.SecureRandom
-
 import chuti.User
 import dao.{Repository, SessionProvider}
 import game.GameService
 import scalacache.Cache
 import scalacache.caffeine.CaffeineCache
 import zio.*
+import zio.clock.Clock
 import zio.logging.{Logger, Logging}
 
 import scala.concurrent.duration.*
@@ -33,21 +33,30 @@ package object token {
 
   sealed trait TokenPurpose
   object TokenPurpose {
+
     case object NewUser extends TokenPurpose {
+
       override def toString: String = "NewUser"
+
     }
     case object LostPassword extends TokenPurpose {
+
       override def toString: String = "LostPassword"
+
     }
+
   }
 
   type TokenHolder = Has[TokenHolder.Service]
 
   case class Token(tok: String) {
+
     override def toString: String = tok
+
   }
 
   object TokenHolder {
+
     trait Service {
 
       def peek(
@@ -64,14 +73,15 @@ package object token {
         token:   Token,
         purpose: TokenPurpose
       ): Task[Option[User]]
+
     }
 
     def dbLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
       ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
         new Service {
 //          SessionProvider & Logging
-          val layer: ZLayer[Any, Nothing, SessionProvider & Logging] =
-            GameService.godLayer ++ ZLayer.succeed(log)
+          val layer: ZLayer[Any, Nothing, SessionProvider & Logging & Clock] =
+            GameService.godLayer ++ ZLayer.succeed(log) ++ Clock.live
 
           zio.Runtime.default.unsafeRun {
             val freq = new zio.DurationSyntax(1).hour
@@ -93,8 +103,7 @@ package object token {
           override def validateToken(
             token:   Token,
             purpose: TokenPurpose
-          ): Task[Option[User]] =
-            repo.tokenOperations.validateToken(token, purpose).provideLayer(layer)
+          ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provideLayer(layer)
         }
       })
 
@@ -129,7 +138,9 @@ package object token {
       ): Task[Option[User]] = {
         scalacache.get(token.tok, purpose)
       }
+
     }
+
   }
 
 }
