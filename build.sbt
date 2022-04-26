@@ -148,7 +148,7 @@ lazy val server = project
   .configs(IntegrationTest)
   .dependsOn(commonJVM)
   .settings(
-    name := "chuti-server",
+    name                                                 := "chuti-server",
     libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
     libraryDependencies ++= Seq(
       // Akka
@@ -181,10 +181,12 @@ lazy val server = project
       "org.slf4j"              % "slf4j-nop"       % "1.7.36" withSources (),
       "commons-codec"          % "commons-codec"   % "1.15",
       // Testing
-      "dev.zio"       %% "zio-test"                % zioVersion % "it, test" withSources (),
-      "dev.zio"       %% "zio-test-sbt"            % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"               % "3.2.12"   % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest" % "1.17.5"   % "it, test" withSources ()
+      "dev.zio"       %% "zio-test"                       % zioVersion % "it, test" withSources (),
+      "dev.zio"       %% "zio-test-sbt"                   % zioVersion % "it, test" withSources (),
+      "org.scalatest" %% "scalatest"                      % "3.2.12"   % "it, test" withSources (),
+      "org.mockito"   %% "mockito-scala-scalatest"        % "1.17.5"   % "it, test" withSources (),
+      "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.40.5" withSources (),
+      "com.dimafeng"  %% "testcontainers-scala-mysql"     % "0.40.5" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))

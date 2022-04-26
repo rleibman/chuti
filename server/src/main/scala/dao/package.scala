@@ -41,15 +41,42 @@ package object dao {
     two: UserId
   )
 
+  object UserRow {
+
+    def fromUser(value: User): UserRow =
+      UserRow(
+        id = value.id.getOrElse(UserId(0)),
+        name = value.name,
+        email = value.email,
+        created = Timestamp.valueOf(value.created),
+        lastUpdated = Timestamp.valueOf(value.lastUpdated),
+        active = value.active
+      )
+
+  }
+
   case class UserRow(
     id:          UserId,
     name:        String,
     email:       String,
     created:     Timestamp,
+    lastUpdated: Timestamp,
     active:      Boolean = false,
     deleted:     Boolean = false,
     deletedDate: Option[Timestamp] = None
-  )
+  ) {
+
+    def toUser: User =
+      User(
+        id = Some(id),
+        email = email,
+        name = name,
+        created = created.toLocalDateTime,
+        active = active,
+        deleted = deleted
+      )
+
+  }
   case class GameRow(
     id:           GameId,
     lastSnapshot: Json,
@@ -59,23 +86,6 @@ package object dao {
     currentIndex: Int = 0
   )
 
-  def UserRow2User(row: UserRow): User =
-    User(
-      id = Some(row.id),
-      email = row.email,
-      name = row.name,
-      created = row.created.toLocalDateTime,
-      active = row.active,
-      deleted = row.deleted
-    )
-  def User2UserRow(value: User): UserRow =
-    UserRow(
-      id = value.id.getOrElse(UserId(0)),
-      name = value.name,
-      email = value.email,
-      created = Timestamp.valueOf(value.created),
-      active = value.active
-    )
   def GameRow2Game(row: GameRow): Game = {
     val decoder = implicitly(Decoder[Game])
     decoder.decodeJson(row.lastSnapshot).map {

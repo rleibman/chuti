@@ -53,4 +53,10 @@
     <logger name="slick.memory.QueryInterpreter" level="${log.interpreter:-inherited}"/>
     <logger name="slick.relational.ResultConverterCompiler" level="${log.resultConverter:-inherited}"/>
     <logger name="slick.util.AsyncExecutor" level="${log.asyncExecutor:-inherited}"/>
+
+    <logger name="com.github.dockerjava" level="INFO"/>
+    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="io.getquill" level="DEBUG" />
+    <logger name="com.mysql" level="DEBUG"/>
+    <logger name="com.mysql" level="DEBUG"/>
 </configuration>

@@ -1,8 +1,7 @@
 CREATE TABLE `user`
 (
     `id`             int(11)    NOT NULL AUTO_INCREMENT,
-    `username`       text       NOT NULL,
-    `hashedPassword` text       NOT NULL,
+    `hashedPassword` text       NULL,
     `name`           text       NOT NULL,
     `created`        timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `lastUpdated`    timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP,

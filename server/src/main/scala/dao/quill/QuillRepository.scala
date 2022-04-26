@@ -30,7 +30,7 @@ import zio.clock.Clock
 import zio.logging.Logging
 
 import java.sql.{Timestamp, Types}
-import java.time.LocalDateTime
+import java.time.*
 import scala.concurrent.duration.Duration
 
 object QuillRepository {
@@ -53,13 +53,13 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     querySchema[UserRow]("user")
   }
 
-  private val dataSourceLayer = DataSourceLayer.fromConfig(config.config)
+  private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db"))
 
-  private implicit val TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
+  implicit private val TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
     row.getTimestamp(index)
   }
 
-  private implicit val TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
+  implicit private val TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
 
   private def assertAuth(
     authCheck: ChutiSession => Boolean,
@@ -79,7 +79,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       val q = quote {
         users.filter(u => u.id === lift(pk) && !u.deleted)
       }
-      ctx.run(q).map(_.headOption.map(UserRow2User)).provideLayer(dataSourceLayer).mapError(RepositoryException.apply)
+      ctx.run(q).map(_.headOption.map(_.toUser)).provideLayer(dataSourceLayer).mapError(RepositoryException.apply)
     }
     override def delete(
       pk:         UserId,
@@ -108,18 +108,18 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
-      search.fold(ctx.run(quote(users))) { s =>
-        {
-          val ss = s"%${s.text}%"
-          ctx.run(quote {
-            users
-              .filter(u => u.email like lift(ss))
-              .drop(lift(s.pageSize * s.pageIndex))
-              .take(lift(s.pageSize))
-          })
+      search
+        .fold(ctx.run(quote(users))) { s =>
+          {
+            ctx.run(quote {
+              users
+                .filter(u => u.email like lift(s"%${s.text}%"))
+                .drop(lift(s.pageSize * s.pageIndex))
+                .take(lift(s.pageSize))
+            })
+          }
         }
-      }
-    }.map(_.map(UserRow2User)).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+    }.map(_.map(_.toUser)).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = {
       search.fold(ctx.run(quote(users.size))) { s =>
@@ -131,6 +131,28 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         }
       }
     }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+
+    override def upsert(user: User): RepositoryIO[User] =
+      (for {
+        _ <- assertAuth(
+          session => session.user != chuti.god && session.user.id != user.id,
+          session => s"${session.user} Not authorized"
+        )
+        now <- ZIO.service[Clock.Service].flatMap(_.localDateTime)
+        exists <- user.id
+          .fold(ctx.run(quote(users.filter(u => u.email === lift(user.email))))) { id =>
+            ctx.run(quote(users.filter(_.id === lift(id))))
+          }.map(_.headOption)
+        saved <- {
+          val saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = user.id.fold(now)(_ => user.created)))
+          exists.fold(
+            ctx
+              .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))).map(id =>
+                saveMe.toUser.copy(id = Some(id))
+              )
+          )(_ => ctx.run(quote(users.updateValue(lift(saveMe)))).as(saveMe.toUser))
+        }
+      } yield saved).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
 
     override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
 
@@ -157,8 +179,6 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
 
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
-
-    override def upsert(e: User): RepositoryIO[User] = ???
 
   }
 

@@ -7,8 +7,6 @@ create table userWallet
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
-show create table game
-
 alter table game
     change start_state lastSnapshot json;
 alter table game

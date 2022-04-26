@@ -21,13 +21,14 @@ import api.token.{Token, TokenPurpose}
 import chuti.*
 import dao.Repository.{GameOperations, TokenOperations, UserOperations}
 import dao.slick.gen.Tables
-import dao.{DatabaseProvider, FriendsRow, Game2GameRow, GamePlayersRow, GameRow2Game, Repository, RepositoryException, RepositoryIO, SessionProvider, TokenRow, User2UserRow, UserLogRow, UserRow, UserRow2User, UserWallet2UserWalletRow, UserWalletRow, UserWalletRow2UserWallet}
+import dao.slick.gen.Tables.*
+import dao.*
 import scalacache.Cache
 import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
-import slick.SlickException
-import slick.dbio.DBIO
-import slick.jdbc.MySQLProfile.api.*
+import _root_.slick.SlickException
+import _root_.slick.dbio.DBIO
+import _root_.slick.jdbc.MySQLProfile.api.*
 import zio.{URLayer, ZIO, ZLayer}
 
 import java.math.BigInteger
@@ -36,7 +37,6 @@ import java.sql.{SQLException, Timestamp}
 import java.time.LocalDateTime
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
-import dao.slick.gen.Tables.*
 
 object SlickRepository {
   implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
@@ -81,7 +81,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       fromDBIO {
         UserQuery
           .filter(u => u.id === pk && !u.deleted).result.headOption.map(
-          _.map(UserRow2User)
+          _.map(_.toUser)
         )
       }
 
@@ -104,7 +104,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       if (session.user != chuti.god && session.user.id != user.id)
         throw RepositoryException(s"${session.user} Not authorized")
       (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
-        .insertOrUpdate(User2UserRow(user))
+        .insertOrUpdate(UserRow.fromUser(user))
         .map(_.getOrElse(user))
     }
 
@@ -115,7 +115,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
             .filter(u => u.email.like(s"%${s.text}%"))
             .drop(s.pageSize * s.pageIndex)
             .take(s.pageSize)
-        }.result.map(_.map(UserRow2User))
+        }.result.map(_.map(_.toUser))
     }
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] =
@@ -163,7 +163,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
                   a.id === b.one || a.id === b.two
                 }.map(_._1).result
             }
-        ).map(_.flatten.map(UserRow2User))
+        ).map(_.flatten.map(_.toUser))
     }
 
     override def login(
@@ -180,7 +180,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         userOpt <-
           DBIO
             .sequence(idOpt.toSeq.map(id => UserQuery.filter(_.id === id).result)).map(
-              _.flatten.map(UserRow2User).headOption
+              _.flatten.map(_.toUser).headOption
             )
         //Log the log in.
         _ <- DBIO.sequence(
@@ -194,7 +194,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def userByEmail(email: String): RepositoryIO[Option[User]] =
       UserQuery
         .filter(u => u.email === email && !u.deleted && u.active).result.headOption.map(
-          _.map(UserRow2User)
+          _.map(_.toUser)
         )
 
     override def changePassword(
@@ -418,7 +418,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           TokenQuery
             .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
             .join(UserQuery).on(_.userId === _.id)
-            .result.map(_.headOption.map(r => UserRow2User(r._2)))
+            .result.map(_.headOption.map(_._2.toUser))
         _ <-
           TokenQuery
             .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
@@ -448,7 +448,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       TokenQuery
         .filter(t => t.tok === token.tok && t.tokenPurpose === purpose.toString)
         .join(UserQuery).on(_.userId === _.id)
-        .result.map(_.headOption.map(r => UserRow2User(r._2)))
+        .result.map(_.headOption.map(_._2.toUser))
 
     override def cleanup: RepositoryIO[Boolean] = {
       TokenQuery.filter(_.expireTime >= new Timestamp(System.currentTimeMillis())).delete.map(_ > 0)

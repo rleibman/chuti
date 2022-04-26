@@ -25,6 +25,7 @@ case class User(
   email:   String,
   name:    String,
   created: LocalDateTime = LocalDateTime.now,
+  lastUpdated: LocalDateTime = LocalDateTime.now,
   active:  Boolean = false,
   deleted: Boolean = false,
   isAdmin: Boolean = false

@@ -279,11 +279,12 @@ trait Tables {
   ): GR[UserRow] =
     GR { prs =>
       import prs.*
-      UserRow.tupled(
+      UserRow.apply.tupled(
         (
           <<[UserId],
           <<[String],
           <<[String],
+          <<[Timestamp],
           <<[Timestamp],
           <<[Boolean],
           <<[Boolean],
@@ -300,19 +301,21 @@ trait Tables {
         name,
         email,
         created,
+        lastUpdated,
         active,
         deleted,
         deletedDate
-      ) <> (UserRow.tupled, UserRow.unapply)
+      ) <> (UserRow.apply.tupled, UserRow.unapply)
 
     def ? : MappedProjection[Option[
       UserRow
-    ], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
+    ], (Option[UserId], Option[String], Option[String], Option[Timestamp], Option[Timestamp], Option[Boolean], Option[Boolean], Option[Timestamp])] =
       (
         Rep.Some(id),
         Rep.Some(name),
         Rep.Some(email),
         Rep.Some(created),
+        Rep.Some(lastUpdated),
         Rep.Some(active),
         Rep.Some(deleted),
         deletedDate
@@ -320,8 +323,8 @@ trait Tables {
         { r =>
           import r.*
           _1.map(_ =>
-            UserRow.tupled(
-              (_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7)
+            UserRow.apply.tupled(
+              (_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get, _8)
             )
           )
         },
@@ -336,6 +339,8 @@ trait Tables {
       column[String]("email", O.Length(255, varying = true))
 
     val created: Rep[Timestamp] = column[Timestamp]("created")
+
+    val lastUpdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
 
     val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
 
