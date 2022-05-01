@@ -34,7 +34,7 @@ package object dao {
   type SessionProvider = Has[SessionProvider.Session]
 
   type RepositoryIO[E] =
-    ZIO[SessionProvider & Logging & Clock, RepositoryException, E]
+    ZIO[SessionProvider & Logging & Clock, RepositoryError, E]
 
   case class FriendsRow(
     one: UserId,

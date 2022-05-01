@@ -16,18 +16,26 @@
 
 package dao
 
-object RepositoryException {
-  def apply(t: Throwable): RepositoryException = {
+object RepositoryError {
+  def apply(t: Throwable): RepositoryError = {
     t match {
-      case t: RepositoryException => t
-      case t => RepositoryException("", Some(t))
+      case t: RepositoryError => t
+      case t => RepositoryError("", Some(t))
     }
+  }
+  def apply(
+    msg:   String = "",
+    cause: Option[Throwable] = None
+  ) = {
+    new RepositoryError(msg, cause)
   }
 }
 
-case class RepositoryException(
+sealed class RepositoryError(
   msg:   String = "",
   cause: Option[Throwable] = None
 ) extends Exception(msg, cause.orNull) {
   printStackTrace()
 }
+
+case class RepositoryPermissionError(msg: String = "") extends RepositoryError(msg)

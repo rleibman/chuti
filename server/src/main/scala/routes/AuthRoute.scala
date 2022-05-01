@@ -27,7 +27,7 @@ import chuti.{BuildInfo as _, *}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.{CRUDOperations, RepositoryException, SessionProvider}
+import dao.{CRUDOperations, RepositoryError, SessionProvider}
 import io.circe.generic.auto.*
 import mail.Postman.Postman
 import mail.{CourierPostman, Postman}
@@ -76,7 +76,7 @@ trait AuthRoute
 
       override def upsertOperation(
         obj: User
-      ): ZIO[SessionProvider & Logging & Clock & OpsService, RepositoryException, User] = {
+      ): ZIO[SessionProvider & Logging & Clock & OpsService, RepositoryError, User] = {
         for {
           user <- ZIO.access[SessionProvider](_.get.session.user)
           sup  <- super.upsertOperation(obj)

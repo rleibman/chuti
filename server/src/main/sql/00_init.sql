@@ -9,10 +9,16 @@ CREATE TABLE `user`
     `email`          varchar(255)        DEFAULT NULL,
     `deleted`        tinyint(4) NOT NULL DEFAULT '0',
     `deletedDate`    timestamp  NULL     DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `email` (`email`)
+    PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
+
+ALTER TABLE `user`
+    ADD not_archived BOOLEAN
+        GENERATED ALWAYS AS (IF(deleted = false, 1, NULL)) VIRTUAL;
+
+ALTER TABLE `user`
+    ADD CONSTRAINT UNIQUE (email, not_archived);
 
 create table friends
 (

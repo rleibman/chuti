@@ -99,7 +99,7 @@ object CRUDRoute {
 
     def getOperation(id: PK): ZIO[
       SessionProvider & Logging & Clock & OpsService,
-      RepositoryException,
+      RepositoryError,
       Option[E]
     ] = {
       for {
@@ -120,7 +120,7 @@ object CRUDRoute {
 
     def upsertOperation(obj: E): ZIO[
       SessionProvider & Logging & Clock & OpsService,
-      RepositoryException,
+      RepositoryError,
       E
     ] = {
       for {
@@ -131,7 +131,7 @@ object CRUDRoute {
 
     def countOperation(search: Option[SEARCH]): ZIO[
       SessionProvider & Logging & Clock & OpsService,
-      RepositoryException,
+      RepositoryError,
       Long
     ] =
       for {
@@ -141,7 +141,7 @@ object CRUDRoute {
 
     def searchOperation(search: Option[SEARCH]): ZIO[
       SessionProvider & Logging & Clock & OpsService,
-      RepositoryException,
+      RepositoryError,
       Seq[E]
     ] =
       for {

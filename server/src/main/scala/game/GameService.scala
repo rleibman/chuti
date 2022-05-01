@@ -24,7 +24,7 @@ import chat.*
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import chuti.*
-import dao.{Repository, RepositoryException, SessionProvider}
+import dao.{Repository, RepositoryError, SessionProvider}
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Json}
@@ -541,7 +541,7 @@ object GameService {
         } yield true).mapError(GameException.apply)
       }
 
-      private def joinGame(gameOpt: Option[Game]): ZIO[GameLayer, RepositoryException, Game] = {
+      private def joinGame(gameOpt: Option[Game]): ZIO[GameLayer, RepositoryError, Game] = {
         for {
           user       <- ZIO.access[SessionProvider](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
@@ -756,7 +756,7 @@ object GameService {
 
       def updateAccounting(
         game: Game
-      ): ZIO[Repository & Logging & Clock, RepositoryException, List[UserWallet]] = {
+      ): ZIO[Repository & Logging & Clock, RepositoryError, List[UserWallet]] = {
         ZIO
           .foreach(game.cuentasCalculadas) { case (jugador, _, satoshi) =>
             for {

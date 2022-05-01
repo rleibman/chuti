@@ -62,15 +62,15 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
   implicit private val TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
 
   private def assertAuth(
-    authCheck: ChutiSession => Boolean,
-    errorFn:   ChutiSession => String
-  ): ZIO[SessionProvider, RepositoryException, Unit] = {
+    authorized: ChutiSession => Boolean,
+    errorFn:    ChutiSession => String
+  ): ZIO[SessionProvider, RepositoryError, ChutiSession] = {
     for {
       session <- ZIO.service[SessionProvider.Session].map(_.session)
       _ <- ZIO
-        .fail(RepositoryException(errorFn(session)))
-        .when(authCheck(session))
-    } yield ()
+        .fail(RepositoryPermissionError(errorFn(session)))
+        .when(!authorized(session))
+    } yield session
   }
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
@@ -79,7 +79,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       val q = quote {
         users.filter(u => u.id === lift(pk) && !u.deleted)
       }
-      ctx.run(q).map(_.headOption.map(_.toUser)).provideLayer(dataSourceLayer).mapError(RepositoryException.apply)
+      ctx.run(q).map(_.headOption.map(_.toUser)).provideLayer(dataSourceLayer).mapError(RepositoryError.apply)
     }
     override def delete(
       pk:         UserId,
@@ -87,14 +87,14 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     ): RepositoryIO[Boolean] = {
       for {
         _ <- assertAuth(
-          session => session.user != chuti.god && session.user.id.fold(false)(_ == pk),
+          session => session.user == chuti.god || session.user.id.fold(false)(_ == pk),
           session => s"${session.user} Not authorized"
         )
         now <- ZIO.service[Clock.Service].flatMap(_.instant).map(_.toEpochMilli)
         result <- {
           if (softDelete) {
             val q = quote {
-              users.filter(_.id === lift(pk)).update(_.deleted -> true, _.deletedDate -> Some(lift(new Timestamp(now))))
+              users.filter(u => u.id === lift(pk) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(new Timestamp(now))))
             }
             ctx.run(q).map(_ > 0)
           } else {
@@ -105,54 +105,70 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           }
         }
       } yield result
-    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
       search
-        .fold(ctx.run(quote(users))) { s =>
+        .fold(ctx.run(quote(users.filter(!_.deleted)))) { s =>
           {
             ctx.run(quote {
               users
-                .filter(u => u.email like lift(s"%${s.text}%"))
+                .filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted)
                 .drop(lift(s.pageSize * s.pageIndex))
                 .take(lift(s.pageSize))
             })
           }
         }
-    }.map(_.map(_.toUser)).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+    }.map(_.map(_.toUser)).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = {
-      search.fold(ctx.run(quote(users.size))) { s =>
+      search.fold(ctx.run(quote(users.filter(!_.deleted).size))) { s =>
         {
           val ss = s"%${s.text}%"
           ctx.run(quote {
-            users.filter(u => u.email like lift(ss)).size
+            users.filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted).size
           })
         }
       }
-    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def upsert(user: User): RepositoryIO[User] =
       (for {
         _ <- assertAuth(
-          session => session.user != chuti.god && session.user.id != user.id,
+          session => session.user == chuti.god || session.user.id == user.id,
           session => s"${session.user} Not authorized"
         )
         now <- ZIO.service[Clock.Service].flatMap(_.localDateTime)
         exists <- user.id
-          .fold(ctx.run(quote(users.filter(u => u.email === lift(user.email))))) { id =>
-            ctx.run(quote(users.filter(_.id === lift(id))))
+          .fold(ctx.run(quote(users.filter(u => u.email === lift(user.email) && !u.deleted)))) { id =>
+            ctx.run(quote(users.filter(u => u.id === lift(id) && !u.deleted)))
           }.map(_.headOption)
+        _ <- ZIO
+          .fail(RepositoryError("A user with that email already exists, choose a different one")).when(exists.fold(false)(_ => user.id.isEmpty))
         saved <- {
           val saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = user.id.fold(now)(_ => user.created)))
           exists.fold(
+            if (user.id.nonEmpty)
+              ZIO.fail(RepositoryError("User not found"))
+            else
+              ctx
+                .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))).map(id =>
+                  saveMe.toUser.copy(id = Some(id))
+                )
+                .mapError(RepositoryError.apply)
+          )(_ =>
             ctx
-              .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))).map(id =>
-                saveMe.toUser.copy(id = Some(id))
+              .run(quote(users.updateValue(lift(saveMe))))
+              .mapError(RepositoryError.apply)
+              .flatMap(updateCount =>
+                if (updateCount == 0)
+                  ZIO.fail(RepositoryError("User not found"))
+                else
+                  ZIO.succeed(saveMe.toUser)
               )
-          )(_ => ctx.run(quote(users.updateValue(lift(saveMe)))).as(saveMe.toUser))
+          )
         }
-      } yield saved).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryException.apply)
+      } yield saved).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
 

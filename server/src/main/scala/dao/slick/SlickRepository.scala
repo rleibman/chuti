@@ -55,10 +55,10 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       ret <- ZIO.fromFuture(implicit ec => db.run(dbio)).mapError {
         case e: SlickException =>
           e.printStackTrace()
-          RepositoryException("Slick Repository Error", Some(e))
+          RepositoryError("Slick Repository Error", Some(e))
         case e: SQLException =>
           e.printStackTrace()
-          RepositoryException("SQL Repository Error", Some(e))
+          RepositoryError("SQL Repository Error", Some(e))
       }
     } yield ret
 
@@ -69,10 +69,10 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       ret <- ZIO.fromFuture(implicit ec => db.run(fn(session))).mapError {
         case e: SlickException =>
           e.printStackTrace()
-          RepositoryException("Slick Repository Error", Some(e))
+          RepositoryError("Slick Repository Error", Some(e))
         case e: SQLException =>
           e.printStackTrace()
-          RepositoryException("SQL Repository Error", Some(e))
+          RepositoryError("SQL Repository Error", Some(e))
       }
     } yield ret
 
@@ -90,7 +90,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
                          softDelete: Boolean
                        ): RepositoryIO[Boolean] = { session: ChutiSession =>
       if (session.user != chuti.god && session.user.id.fold(false)(_ != pk))
-        throw RepositoryException(s"${session.user} Not authorized")
+        throw RepositoryError(s"${session.user} Not authorized")
       if (softDelete) {
         val q = for {
           u <- UserQuery if u.id === pk
@@ -102,7 +102,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
 
     override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
       if (session.user != chuti.god && session.user.id != user.id)
-        throw RepositoryException(s"${session.user} Not authorized")
+        throw RepositoryError(s"${session.user} Not authorized")
       (UserQuery returning UserQuery.map(_.id) into ((_, id) => user.copy(id = Some(id))))
         .insertOrUpdate(UserRow.fromUser(user))
         .map(_.getOrElse(user))
@@ -202,7 +202,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       newPassword: String
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
       if (session.user != chuti.god && session.user.id != user.id)
-        throw RepositoryException(s"${session.user} Not authorized")
+        throw RepositoryError(s"${session.user} Not authorized")
       user.id.fold(DBIO.successful(false))(id =>
         sqlu"UPDATE user SET hashedPassword=SHA2($newPassword, 512) WHERE id = ${id.value}"
           .map(_ > 0)
@@ -225,7 +225,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = {
       session: ChutiSession =>
         if (session.user != chuti.god) //Only god can get a user's wallet by user id
-          throw RepositoryException(s"${session.user} Not authorized")
+          throw RepositoryError(s"${session.user} Not authorized")
         UserWalletQuery
           .filter(_.userId === userId)
           .result.headOption.map(
@@ -241,7 +241,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = {
       session: ChutiSession =>
         if (session.user != chuti.god) //Only god can update a user's wallet.
-          throw RepositoryException(s"${session.user} Not authorized")
+          throw RepositoryError(s"${session.user} Not authorized")
 
         val row = UserWallet2UserWalletRow(userWallet)
 
@@ -265,7 +265,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
         if (session.user != chuti.god && !game.jugadores.exists(_.user.id == session.user.id))
-          throw RepositoryException(s"${session.user} Not authorized")
+          throw RepositoryError(s"${session.user} Not authorized")
         for {
           upserted <-
             (GameQuery returning GameQuery.map(_.id) into ((_, id) => game.copy(id = Some(id))))
@@ -274,12 +274,12 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         } yield upserted
       }
       for {
-        _        <- scalacache.remove(game.id).mapError(e => RepositoryException("Cache error", Some(e)))
+        _        <- scalacache.remove(game.id).mapError(e => RepositoryError("Cache error", Some(e)))
         upserted <- upserted
         _ <-
           scalacache
             .put(game.id)(Option(upserted), Option(3.hours)).mapError(e =>
-              RepositoryException("Cache error", Some(e))
+              RepositoryError("Cache error", Some(e))
             )
       } yield upserted
 
@@ -298,7 +298,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           game =>
             scalacache
               .put(pk)(Option(game), Option(3.hours)).mapError(e =>
-              RepositoryException("Cache error", Some(e))
+              RepositoryError("Cache error", Some(e))
             )
         }
       } yield gameOpt
@@ -309,7 +309,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       softDelete: Boolean
     ): RepositoryIO[Boolean] = { session: ChutiSession =>
       if (session.user != chuti.god)
-        throw RepositoryException(s"${session.user} Not authorized")
+        throw RepositoryError(s"${session.user} Not authorized")
       GameQuery.filter(_.id === pk).delete.map(_ > 0)
 
     }

@@ -64,7 +64,7 @@ trait SessionUtils extends Directives {
       val me: Task[Option[ChutiSession]] = (for {
         repository <- ZIO.service[Repository.Service]
         userOpt <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
-          case e: RepositoryException =>
+          case e: RepositoryError =>
             ZIO.succeed {
               e.printStackTrace()
               None
