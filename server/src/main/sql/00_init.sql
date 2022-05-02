@@ -13,13 +13,6 @@ CREATE TABLE `user`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
-ALTER TABLE `user`
-    ADD not_archived BOOLEAN
-        GENERATED ALWAYS AS (IF(deleted = false, 1, NULL)) VIRTUAL;
-
-ALTER TABLE `user`
-    ADD CONSTRAINT UNIQUE (email, not_archived);
-
 create table friends
 (
     one int(11) not null,

@@ -139,36 +139,33 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           session => s"${session.user} Not authorized"
         )
         now <- ZIO.service[Clock.Service].flatMap(_.localDateTime)
-        exists <- user.id
-          .fold(ctx.run(quote(users.filter(u => u.email === lift(user.email) && !u.deleted)))) { id =>
-            ctx.run(quote(users.filter(u => u.id === lift(id) && !u.deleted)))
-          }.map(_.headOption)
-        _ <- ZIO
-          .fail(RepositoryError("A user with that email already exists, choose a different one")).when(exists.fold(false)(_ => user.id.isEmpty))
-        saved <- {
-          val saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = user.id.fold(now)(_ => user.created)))
-          exists.fold(
-            if (user.id.nonEmpty)
-              ZIO.fail(RepositoryError("User not found"))
-            else
-              ctx
-                .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))).map(id =>
-                  saveMe.toUser.copy(id = Some(id))
-                )
-                .mapError(RepositoryError.apply)
-          )(_ =>
-            ctx
-              .run(quote(users.updateValue(lift(saveMe))))
-              .mapError(RepositoryError.apply)
-              .flatMap(updateCount =>
-                if (updateCount == 0)
-                  ZIO.fail(RepositoryError("User not found"))
-                else
-                  ZIO.succeed(saveMe.toUser)
-              )
-          )
+
+        upserted <- {
+          user.id.fold {
+            // It's an insert, make sure te user does not exist by email
+            for {
+              exists <- ctx.run(quote(users.filter(u => u.email === lift(user.email) && !u.deleted)).size)
+              _ <- ZIO
+                .fail(RepositoryError(s"Insert Error: A user with the email ${user.email} already exists, choose a different one"))
+                .when(exists > 0)
+              saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = now))
+              pk <- ctx
+                .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id)))
+            } yield saveMe.toUser.copy(id = Some(pk))
+          } { id =>
+            // It's an update, make sure that if the email has changed, it doesn't already exist
+            for {
+              exists <- ctx.run(quote(users.filter(u => u.id != lift(id) && u.email === lift(user.email) && !u.deleted)).size)
+              _ <- ZIO
+                .fail(RepositoryError(s"Update error: A user with the email ${user.email} already exists, choose a different one"))
+                .when(exists > 0)
+              saveMe = UserRow.fromUser(user.copy(lastUpdated = now))
+              updateCount <- ctx.run(quote(users.updateValue(lift(saveMe))))
+              _           <- ZIO.fail(RepositoryError("User not found")).when(updateCount == 0)
+            } yield saveMe.toUser
+          }
         }
-      } yield saved).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
+      } yield upserted).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
 

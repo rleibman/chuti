@@ -2,10 +2,12 @@ package db.quill
 
 import api.config.Config
 import com.dimafeng.testcontainers.MySQLContainer
+import com.mysql.cj.jdbc.MysqlDataSource
 import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
 import io.getquill.context.ZioJdbc.DataSourceLayer
-import zio.{Has, IO, Ref, UIO, ULayer, URLayer, ZIO}
+import zio.*
+import zio.logging.Logging
 
 import java.io
 import java.sql.SQLException
@@ -20,81 +22,77 @@ object ChutiContainer {
     path: String
   ) {
 
-    def migrate(): ZIO[Has[DataSource], SQLException, Unit] =
-      for {
+    def migrate(): ZIO[Has[DataSource], RepositoryError, Unit] =
+      (for {
         files <- ZIO {
           new java.io.File(path).listFiles.sortBy(_.getName)
         }.orDie
         dataSource <- ZIO.service[DataSource]
+        statements <- ZIO
+          .foreach(files) {
+            case file: io.File if file.getName.endsWith("sql") =>
+              ZIO(Source.fromFile(file))
+                .bracket(f => ZIO.succeed(f.close())) { source =>
+                  val str = source
+                    .getLines()
+                    .map(str => str.replaceAll("--.*", "").trim)
+                    .mkString("\n")
+                  ZIO(str.split(";\n"))
+                }
+            case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
+          }.map(
+            _.flatten
+              .map(_.trim)
+              .filter(_.nonEmpty)
+          ).catchSome(e => ZIO.fail(RepositoryError(e)))
         res <- {
-          val statements = files
-            .flatMap {
-              case file: io.File if file.getName.endsWith("sql") =>
-                val source = Source.fromFile(file)
-                val str = source
-                  .getLines().map(str => str.replaceAll("--.*", "").trim).mkString("\n")
-                val statements = str.split(";\n")
-                source.close
-                statements
-              case _ => throw new IllegalArgumentException("File must be of either sql or JSON type.")
+          ZIO {
+            val conn = dataSource.getConnection
+            val stmt = conn.createStatement()
+            (conn, stmt)
+          }.bracket { case (conn, stmt) =>
+            ZIO.succeed {
+              stmt.close()
+              conn.close()
             }
-            .map(_.trim)
-            .filter(_.nonEmpty)
-          val conn = dataSource.getConnection
-          val stmt = conn.createStatement()
-          try {
-            statements.foreach { statement =>
-              stmt.executeUpdate(statement)
-            }
-            ZIO.succeed(())
-          } catch {
-            case e: SQLException => ZIO.fail(e)
-          } finally {
-            stmt.close()
-            conn.close()
+          } { case (_, stmt) =>
+            ZIO
+              .foreach_(statements) { statement =>
+                ZIO(stmt.executeUpdate(statement))
+              }.catchSome { case e: SQLException =>
+                ZIO.fail(RepositoryError(e))
+              }
           }
         }
-      } yield res
+      } yield res).mapError(RepositoryError.apply)
 
   }
 
   trait Service {
 
-    def containerRef: Ref[Option[MySQLContainer]]
-    private val useContainerFromRef: IO[RepositoryError, MySQLContainer] =
-      for {
-        configOption <- containerRef.get
-        config       <- ZIO.fromOption(configOption).orElseFail(RepositoryError("The config isn't loaded"))
-      } yield config
-
-    private val startContainer: IO[RepositoryError, MySQLContainer] =
-      for {
-        c <- UIO {
-          val c = MySQLContainer()
-          c.container.start()
-          c
-        }
-        config = getConfig(c)
-        _ <-
-          (Migrator("server/src/main/sql").migrate()
-            *> Migrator("server/src/it/sql").migrate())
-            .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db")))
-            .mapError(RepositoryError.apply)
-        _ <- containerRef.update(_ => Some(c))
-      } yield c
-
-    val container: IO[RepositoryError, MySQLContainer] = useContainerFromRef.orElse(startContainer)
+    def container: MySQLContainer
 
   }
 
-  val containerLayer: ULayer[ChutiContainer] = (for {
-    ref <-
-      Ref.make[Option[MySQLContainer]](None)
+  val containerLayer: ZLayer[Logging, RepositoryError, ChutiContainer] = (for {
+    _ <- Logging.debug("Creating container")
+    c <- ZIO {
+      val c = MySQLContainer()
+      c.container.start()
+      c
+    }
+    config = getConfig(c)
+    _ <- Logging.debug("Migrating container")
+    _ <-
+      (Migrator("server/src/main/sql").migrate()
+        *> Migrator("server/src/it/sql").migrate())
+        .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db")))
+        .mapError(RepositoryError.apply)
   } yield new Service {
 
-    override def containerRef: Ref[Option[MySQLContainer]] = ref
+    override def container: MySQLContainer = c
 
-  }).toLayer
+  }).mapError(RepositoryError.apply).toLayer
 
   private def getConfig(container: MySQLContainer) =
     ConfigFactory.parseString(s"""
@@ -110,14 +108,13 @@ object ChutiContainer {
 
   val configLayer: URLayer[ChutiContainer & Config, Config] = {
     (for {
-      containerService <- ZIO.service[ChutiContainer.Service]
-      baseConfig       <- ZIO.service[Config.Service].map(_.config)
-      container        <- containerService.container
+      container  <- ZIO.service[ChutiContainer.Service].map(_.container)
+      baseConfig <- ZIO.service[Config.Service].map(_.config)
     } yield {
       new api.config.Config.Service {
         override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig)
       }
-    }).orDie.toLayer
+    }).toLayer
   }
 
 }
