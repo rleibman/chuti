@@ -13,6 +13,7 @@ import zio.logging.slf4j.Slf4jLogger
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
+import zio.magic.*
 
 import java.time.{ZoneId, ZoneOffset}
 
@@ -23,16 +24,16 @@ object QuillUserSpec extends DefaultRunnableSpec {
 
   private val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
   private val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  private val containerLayer:  ULayer[ChutiContainer] = loggingLayer >>> ChutiContainer.containerLayer.orDie
-  private val configLayer:     ULayer[Config] = (baseConfigLayer ++ containerLayer) >>> ChutiContainer.configLayer
-  private val quillLayer:      ULayer[Repository] = configLayer >>> QuillRepository.live
-  private val godSession:      ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
-  private val satanSession:    ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(satan))
+  private val containerLayer =  ChutiContainer.containerLayer.orDie
+  private val configLayer = (containerLayer ++ baseConfigLayer) >>> ChutiContainer.configLayer
+  private val quillLayer = QuillRepository.live
+  private val godSession:   ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
+  private val satanSession: ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(satan))
   private val clockLayer: ULayer[Clock] =
     ZLayer.succeed(java.time.Clock.fixed(java.time.Instant.parse("2022-03-11T00:00:00.00Z"), ZoneId.from(ZoneOffset.UTC))) >>> Clock.javaClock
 
-  val fullGodLayer: ULayer[Config & Repository & Logging & SessionProvider & Clock & Random] =
-    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
+//  val fullGodLayer: ULayer[Config & Repository & Logging & SessionProvider & Clock & Random] =
+//    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
 
   private val testUserZIO: URIO[Random, User] =
     ZIO.service[Random.Service].map(random => User(None, email = s"${random.nextString(5)}@example.com", name = "Frank Lloyd Wright"))
@@ -120,6 +121,6 @@ object QuillUserSpec extends DefaultRunnableSpec {
       // friends
       // getWallet
       // updateWallet
-    ).provideLayerShared(fullGodLayer)
+    ).injectShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
 
 }
