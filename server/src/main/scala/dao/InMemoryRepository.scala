@@ -16,12 +16,13 @@
 
 package dao
 
-import java.time.LocalDateTime
-
+import java.time.Instant
 import api.token.*
 import chuti.*
 import dao.Repository.TokenOperations
-import zio.Task
+import zio.{Task, ZIO}
+import zio.clock.Clock
+import zio.logging.Logging
 
 import scala.concurrent.duration.Duration
 
@@ -78,7 +79,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def login(
       email:    String,
       password: String
-    ): RepositoryIO[Option[User]] = ???
+    ): ZIO[Clock & Logging, RepositoryError, Option[User]] = ???
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
 
@@ -118,7 +119,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
 
-    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = ???
+    override def firstLogin: RepositoryIO[Option[Instant]] = ???
   }
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
     override def validateToken(

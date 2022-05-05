@@ -2,7 +2,6 @@ package db.quill
 
 import api.config.Config
 import com.dimafeng.testcontainers.MySQLContainer
-import com.mysql.cj.jdbc.MysqlDataSource
 import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
 import io.getquill.context.ZioJdbc.DataSourceLayer
@@ -97,7 +96,7 @@ object ChutiContainer {
   private def getConfig(container: MySQLContainer) =
     ConfigFactory.parseString(s"""
       chuti.db.dataSourceClassName=com.mysql.cj.jdbc.MysqlDataSource
-      chuti.db.dataSource.url="${container.container.getJdbcUrl}?logger=com.mysql.cj.log.Slf4JLogger&profileSQL=true"
+      chuti.db.dataSource.url="${container.container.getJdbcUrl}?logger=com.mysql.cj.log.Slf4JLogger&profileSQL=true&serverTimezone=UTC&useLegacyDatetimeCode=false"
       chuti.db.dataSource.user="${container.container.getUsername}"
       chuti.db.dataSource.password="${container.container.getPassword}"
       chuti.db.dataSource.cachePrepStmts=true

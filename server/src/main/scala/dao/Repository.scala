@@ -16,21 +16,23 @@
 
 package dao
 
-import java.time.LocalDateTime
-
+import java.time.Instant
 import api.token.{Token, TokenPurpose}
 import chuti.*
+import zio.ZIO
+import zio.clock.Clock
+import zio.logging.Logging
 
 import scala.concurrent.duration.Duration
 
 object Repository {
   trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
-    def firstLogin: RepositoryIO[Option[LocalDateTime]]
+    def firstLogin: RepositoryIO[Option[Instant]]
 
     def login(
       email:    String,
       password: String
-    ): RepositoryIO[Option[User]]
+    ): ZIO[Clock & Logging, RepositoryError, Option[User]]
 
     def userByEmail(email: String): RepositoryIO[Option[User]]
 

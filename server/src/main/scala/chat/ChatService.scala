@@ -16,7 +16,7 @@
 
 package chat
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import caliban.{CalibanError, GraphQLInterpreter}
@@ -98,7 +98,7 @@ object ChatService {
   )
 
   def dateFilter(
-    timeAgo: LocalDateTime,
+    timeAgo: Instant,
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
@@ -114,7 +114,7 @@ object ChatService {
           channelId: ChannelId
         ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
           recentMessages.get.map { seq =>
-            val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
+            val timeAgo = Instant.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
             seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
           }
         }
@@ -148,7 +148,7 @@ object ChatService {
                 .as(sendMe)
             }
             _ <- {
-              val timeAgo = LocalDateTime.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
+              val timeAgo = Instant.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
               recentMessages.update(old => old.filter(dateFilter(timeAgo, _)) :+ sent)
             }
           } yield sent

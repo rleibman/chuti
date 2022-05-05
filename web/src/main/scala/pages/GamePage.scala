@@ -32,7 +32,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
   case class State()
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     def onModeChanged(
       p: Props
@@ -86,7 +86,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   case class Props(chutiState: ChutiState)
 
   implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
-    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
+    (msg.date.getEpochSecond, msg.fromUser.id.map(_.value))
   )
   implicit val gameReuse: Reusability[Game] =
     Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))

@@ -25,7 +25,7 @@ object GameClient {
 
   type Json = io.circe.Json
 
-  type LocalDateTime = String
+  type Instant = String
 
   sealed trait UserEventType extends scala.Product with scala.Serializable { def value: String }
   object UserEventType {
@@ -63,7 +63,7 @@ object GameClient {
     def id:      SelectionBuilder[User, Option[Int]] = _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
     def email:   SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
     def name:    SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
-    def created: SelectionBuilder[User, LocalDateTime] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
+    def created: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
     def active:  SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("deleted", Scalar())
     def isAdmin: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("isAdmin", Scalar())

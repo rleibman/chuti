@@ -22,7 +22,7 @@ import caliban.client.__Value.*
 
 object ChatClient {
 
-  type LocalDateTime = String
+  type Instant = String
 
   type ChatMessage
   object ChatMessage {
@@ -33,7 +33,7 @@ object ChatClient {
     def channelId: SelectionBuilder[ChatMessage, Int] = _root_.caliban.client.SelectionBuilder.Field("channelId", Scalar())
     def toUser[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field("toUser", OptionOf(Obj(innerSelection)))
-    def date: SelectionBuilder[ChatMessage, LocalDateTime] = _root_.caliban.client.SelectionBuilder.Field("date", Scalar())
+    def date: SelectionBuilder[ChatMessage, Instant] = _root_.caliban.client.SelectionBuilder.Field("date", Scalar())
 
   }
 
@@ -43,7 +43,7 @@ object ChatClient {
     def id:      SelectionBuilder[User, Option[Int]] = _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
     def email:   SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
     def name:    SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
-    def created: SelectionBuilder[User, LocalDateTime] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
+    def created: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
     def active:  SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("active", Scalar())
     def deleted: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("deleted", Scalar())
     def isAdmin: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("isAdmin", Scalar())
@@ -54,7 +54,7 @@ object ChatClient {
     id:      Option[Int] = None,
     email:   String,
     name:    String,
-    created: LocalDateTime,
+    created: Instant,
     active:  Boolean,
     deleted: Boolean,
     isAdmin: Boolean
@@ -69,7 +69,7 @@ object ChatClient {
             "id"      -> value.id.fold(__NullValue: __Value)(value => implicitly[ArgEncoder[Int]].encode(value)),
             "email"   -> implicitly[ArgEncoder[String]].encode(value.email),
             "name"    -> implicitly[ArgEncoder[String]].encode(value.name),
-            "created" -> implicitly[ArgEncoder[LocalDateTime]].encode(value.created),
+            "created" -> implicitly[ArgEncoder[Instant]].encode(value.created),
             "active"  -> implicitly[ArgEncoder[Boolean]].encode(value.active),
             "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted),
             "isAdmin" -> implicitly[ArgEncoder[Boolean]].encode(value.isAdmin)

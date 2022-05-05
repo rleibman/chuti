@@ -16,7 +16,7 @@
 
 package pages
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 import app.{LoginControllerState, Mode}
 import chuti.{User, UserCreationRequest, UserCreationResponse}
@@ -39,7 +39,7 @@ object RegistrationPage {
 
   case class State(
     passwordPair: (String, String) = ("", ""),
-    user:         User = User(id = None, email = "", name = "", created = LocalDateTime.now)
+    user:         User = User(id = None, email = "", name = "", created = Instant.now)
   )
 
   class Backend($ : BackendScope[_, State]) {

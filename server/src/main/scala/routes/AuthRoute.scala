@@ -16,7 +16,7 @@
 
 package routes
 
-import java.time.LocalDateTime
+import java.time.Instant
 import java.util.Locale
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.*
@@ -36,14 +36,14 @@ import zio.*
 import zio.clock.Clock
 import zio.logging.{Logging, log}
 
+import java.time.temporal.TemporalAmount
 import scala.jdk.CollectionConverters.*
 
 object AuthRoute {
 //  private def postman: ULayer[Postman] = ZLayer.succeed(CourierPostman.live(config.live))
 }
 
-trait AuthRoute
-    extends CRUDRoute[User, UserId, PagedStringSearch] with SessionUtils with HasActorSystem {
+trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionUtils with HasActorSystem {
 
   lazy val allowed = Set(
     "/login.html",
@@ -64,6 +64,7 @@ trait AuthRoute
 
   override def crudRoute: CRUDRoute.Service[User, UserId, PagedStringSearch] =
     new CRUDRoute.Service[User, UserId, PagedStringSearch]() with ZIODirectives with Directives {
+
       override def deleteOperation(
         objOpt: Option[User]
       ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] = {
@@ -103,9 +104,7 @@ trait AuthRoute
             for {
               userOps <-
                 ZIO
-                  .service[CRUDOperations[User, UserId, PagedStringSearch]].map(a =>
-                    a.asInstanceOf[UserOperations]
-                  )
+                  .service[CRUDOperations[User, UserId, PagedStringSearch]].map(a => a.asInstanceOf[UserOperations])
             } yield {
               extractLog { akkaLog =>
                 path("serverVersion") {
@@ -119,38 +118,32 @@ trait AuthRoute
                 } ~
                   path("passwordReset") {
                     post {
-                      formFields(Symbol("token").as[String].?, Symbol("password").as[String].?) {
-                        (token, password) =>
-                          if (token.isEmpty || password.isEmpty)
-                            reject(ValidationRejection("You need to pass a token and password"))
-                          else {
-                            val z: ZIO[
-                              SessionProvider & Logging & Clock & TokenHolder,
-                              Throwable,
-                              StandardRoute
-                            ] = for {
-                              tokenHolder <- ZIO.service[TokenHolder.Service]
-                              userOpt <-
-                                tokenHolder
-                                  .validateToken(Token(token.get), TokenPurpose.LostPassword)
-                              passwordChanged <- ZIO.foreach(userOpt)(user =>
-                                userOps.changePassword(user, password.get)
-                              )
-                            } yield passwordChanged.fold(
+                      formFields(Symbol("token").as[String].?, Symbol("password").as[String].?) { (token, password) =>
+                        if (token.isEmpty || password.isEmpty) reject(ValidationRejection("You need to pass a token and password"))
+                        else {
+                          val z: ZIO[
+                            SessionProvider & Logging & Clock & TokenHolder,
+                            Throwable,
+                            StandardRoute
+                          ] = for {
+                            tokenHolder <- ZIO.service[TokenHolder.Service]
+                            userOpt <-
+                              tokenHolder
+                                .validateToken(Token(token.get), TokenPurpose.LostPassword)
+                            passwordChanged <- ZIO.foreach(userOpt)(user => userOps.changePassword(user, password.get))
+                          } yield passwordChanged.fold(
+                            redirect("/loginForm?passwordChangeFailed", StatusCodes.SeeOther)
+                          )(
+                            if (_)
+                              redirect("/loginForm?passwordChangeSucceeded", StatusCodes.SeeOther)
+                            else
                               redirect("/loginForm?passwordChangeFailed", StatusCodes.SeeOther)
-                            )(
-                              if (_)
-                                redirect("/loginForm?passwordChangeSucceeded", StatusCodes.SeeOther)
-                              else
-                                redirect("/loginForm?passwordChangeFailed", StatusCodes.SeeOther)
-                            )
+                          )
 
-                            z.tapError(e =>
-                              log.error("Resetting Password", Fail(e))
-                            ).provideSomeLayer[
+                          z.tapError(e => log.error("Resetting Password", Fail(e))).provideSomeLayer[
                               Logging & Clock & TokenHolder
-                              ](SessionProvider.layer(adminSession)).provide(r)
-                          }
+                            ](SessionProvider.layer(adminSession)).provide(r)
+                        }
                       }
                     }
                   } ~
@@ -163,14 +156,10 @@ trait AuthRoute
                             userOpt <- userOps.userByEmail(email)
                             _ <-
                               ZIO
-                                .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope =>
-                                  ZIO.foreach(envelope)(postman.deliver)
-                                ).forkDaemon
+                                .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope => ZIO.foreach(envelope)(postman.deliver)).forkDaemon
                           } yield ())
-                            .tapError(e =>
-                              log.error("In Password Recover Request", Fail(e))
-                            ).provideSomeLayer[
-                            Logging & Clock & TokenHolder & Postman
+                            .tapError(e => log.error("In Password Recover Request", Fail(e))).provideSomeLayer[
+                              Logging & Clock & TokenHolder & Postman
                             ](SessionProvider.layer(adminSession)).provide(r)
                         }
                       }
@@ -185,9 +174,7 @@ trait AuthRoute
                               Option("User Email cannot be empty")
                             else if (request.user.name.trim.isEmpty)
                               Option("User Name cannot be empty")
-                            else if (
-                              request.password.trim.isEmpty || request.password.trim.length < 3
-                            )
+                            else if (request.password.trim.isEmpty || request.password.trim.length < 3)
                               Option("Password is invalid")
                             else
                               None
@@ -196,12 +183,8 @@ trait AuthRoute
                           userOpt <- validate.fold(
                             tokenHolder.validateToken(Token(request.token), TokenPurpose.NewUser)
                           )(_ => ZIO.none)
-                          savedUser <- ZIO.foreach(userOpt)(u =>
-                            userOps.upsert(u.copy(name = request.user.name, active = true))
-                          )
-                          passwordChanged <- ZIO.foreach(savedUser)(user =>
-                            userOps.changePassword(user, request.password)
-                          )
+                          savedUser       <- ZIO.foreach(userOpt)(u => userOps.upsert(u.copy(name = request.user.name, active = true)))
+                          passwordChanged <- ZIO.foreach(savedUser)(user => userOps.changePassword(user, request.password))
                         } yield validate.fold(
                           passwordChanged.fold(
                             complete(UpdateInvitedUserResponse(None: Option[String]))
@@ -211,10 +194,8 @@ trait AuthRoute
                             )
                           )
                         )(error => complete(UpdateInvitedUserResponse(Option(error)))))
-                          .tapError(e =>
-                            log.error("Updating invited user", Fail(e))
-                          ).provideSomeLayer[
-                          Logging & Clock & TokenHolder & Postman
+                          .tapError(e => log.error("Updating invited user", Fail(e))).provideSomeLayer[
+                            Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -237,9 +218,7 @@ trait AuthRoute
                               Option("User Email cannot be empty")
                             else if (request.user.name.trim.isEmpty)
                               Option("User Name cannot be empty")
-                            else if (
-                              request.password.trim.isEmpty || request.password.trim.length < 3
-                            )
+                            else if (request.password.trim.isEmpty || request.password.trim.length < 3)
                               Option("Password is invalid")
                             else if (request.user.id.nonEmpty)
                               Option("You can't register an existing user")
@@ -252,9 +231,9 @@ trait AuthRoute
                             else userOps.upsert(request.user.copy(active = false)).map(Option(_))
                           _ <- ZIO.foreach_(saved)(userOps.changePassword(_, request.password))
                           _ <- (log.info("About to send") *> ZIO
-                              .foreach(saved)(postman.registrationEmail).flatMap(envelope =>
-                                ZIO.foreach(envelope)(postman.deliver)
-                              ) *> log.info("Maybe sent")).forkDaemon
+                            .foreach(saved)(postman.registrationEmail).flatMap(envelope => ZIO.foreach(envelope)(postman.deliver)) *> log.info(
+                            "Maybe sent"
+                          )).forkDaemon
                         } yield {
                           if (exists)
                             complete(
@@ -263,7 +242,7 @@ trait AuthRoute
                           else
                             complete(UserCreationResponse(validate))
                         }).tapError(e => log.error("Creating user", Fail(e))).provideSomeLayer[
-                          Logging & Clock & TokenHolder & Postman
+                            Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
@@ -279,53 +258,48 @@ trait AuthRoute
                         } yield activate.fold(
                           redirect("/loginForm?registrationFailed", StatusCodes.SeeOther)
                         )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
-                          .tapError(e =>
-                            log.error("Confirming registration", Fail(e))
-                          ).provideSomeLayer[
-                          Logging & Clock & TokenHolder & Postman
+                          .tapError(e => log.error("Confirming registration", Fail(e))).provideSomeLayer[
+                            Logging & Clock & TokenHolder & Postman
                           ](SessionProvider.layer(adminSession)).provide(r)
                       }
                     }
                   } ~
                   path("doLogin") {
                     post {
-                      formFields("email", "password", "forcedLocale".optional) {
-                        (email, password, forcedLocale) =>
-                          selectPreferredLanguage("es-MX", "es", "en-US", "en", "eo") { language =>
-                            (for {
-                              login <- userOps.login(email, password)
-                              _ <- login.fold(log.debug(s"Bad login for $email"))(_ =>
-                                log.debug(s"Good Login for $email")
-                              )
-                            } yield {
-                              login match {
-                                case Some(user) =>
-                                  val ranges = Locale.LanguageRange.parse(
-                                    forcedLocale.getOrElse(language.toString)
-                                  )
-                                  val locale = Locale.lookup(
-                                    ranges,
-                                    List(
-                                      new Locale("es", "MX"),
-                                      new Locale("es"),
-                                      new Locale("en", "US"),
-                                      new Locale("en"),
-                                      new Locale("eo")
-                                    ).asJava
-                                  )
+                      formFields("email", "password", "forcedLocale".optional) { (email, password, forcedLocale) =>
+                        selectPreferredLanguage("es-MX", "es", "en-US", "en", "eo") { language =>
+                          (for {
+                            login <- userOps.login(email, password)
+                            _     <- login.fold(log.debug(s"Bad login for $email"))(_ => log.debug(s"Good Login for $email"))
+                          } yield {
+                            login match {
+                              case Some(user) =>
+                                val ranges = Locale.LanguageRange.parse(
+                                  forcedLocale.getOrElse(language.toString)
+                                )
+                                val locale = Locale.lookup(
+                                  ranges,
+                                  List(
+                                    new Locale("es", "MX"),
+                                    new Locale("es"),
+                                    new Locale("en", "US"),
+                                    new Locale("en"),
+                                    new Locale("eo")
+                                  ).asJava
+                                )
 
-                                  mySetSession(ChutiSession(user, locale)) {
-                                    setNewCsrfToken(checkHeader) { ctx =>
-                                      ctx.redirect("/", StatusCodes.SeeOther)
-                                    }
+                                mySetSession(ChutiSession(user, locale)) {
+                                  setNewCsrfToken(checkHeader) { ctx =>
+                                    ctx.redirect("/", StatusCodes.SeeOther)
                                   }
-                                case None =>
-                                  redirect("/loginForm?bad=true", StatusCodes.SeeOther)
-                              }
-                            }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
+                                }
+                              case None =>
+                                redirect("/loginForm?bad=true", StatusCodes.SeeOther)
+                            }
+                          }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
                               Logging & Clock & TokenHolder & Postman
-                              ](SessionProvider.layer(adminSession)).provide(r)
-                          }
+                            ](SessionProvider.layer(adminSession)).provide(r)
+                        }
                       }
                     }
                   } ~
@@ -361,7 +335,7 @@ trait AuthRoute
                 (for {
                   userOps       <- ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
                   firstLoginOpt <- userOps.firstLogin
-                } yield firstLoginOpt.fold(true)(_.isAfter(LocalDateTime.now.minusDays(1))))
+                } yield firstLoginOpt.fold(true)(_.isAfter(Instant.now.minus(java.time.Duration.ofDays(1)))))
                   .provide(runtime)
               }
             }
@@ -416,6 +390,7 @@ trait AuthRoute
               }
             }
         }
+
     }
 
 }

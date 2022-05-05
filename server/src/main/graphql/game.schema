@@ -6,7 +6,7 @@ schema {
 
 scalar Json
 
-scalar LocalDateTime
+scalar Instant
 
 enum UserEventType {
   AbandonedGame
@@ -50,7 +50,7 @@ type User {
   id: Int
   email: String!
   name: String!
-  created: LocalDateTime!
+  created: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

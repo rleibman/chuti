@@ -48,8 +48,8 @@ package object dao {
         id = value.id.getOrElse(UserId(0)),
         name = value.name,
         email = value.email,
-        created = Timestamp.valueOf(value.created),
-        lastUpdated = Timestamp.valueOf(value.lastUpdated),
+        created = Timestamp.from(value.created),
+        lastUpdated = Timestamp.from(value.lastUpdated),
         active = value.active
       )
 
@@ -71,7 +71,8 @@ package object dao {
         id = Some(id),
         email = email,
         name = name,
-        created = created.toLocalDateTime,
+        created = created.toInstant,
+        lastUpdated = lastUpdated.toInstant,
         active = active,
         deleted = deleted
       )
@@ -117,8 +118,8 @@ package object dao {
   )
 
   case class UserLogRow(
-    user: UserId,
-    time: Timestamp
+    userId: UserId,
+    time:   Timestamp
   )
 
   case class TokenRow(
@@ -134,7 +135,7 @@ package object dao {
       currentIndex = value.currentEventIndex,
       lastSnapshot = value.asJson,
       gameStatus = value.gameStatus,
-      created = Timestamp.valueOf(value.created),
+      created = Timestamp.from(value.created),
       lastUpdated = new Timestamp(System.currentTimeMillis())
     )
     ret

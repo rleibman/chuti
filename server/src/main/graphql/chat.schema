@@ -4,13 +4,13 @@ schema {
   subscription: Subscriptions
 }
 
-scalar LocalDateTime
+scalar Instant
 
 input UserInput {
   id: Int
   email: String!
   name: String!
-  created: LocalDateTime!
+  created: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
@@ -21,7 +21,7 @@ type ChatMessage {
   msg: String!
   channelId: Int!
   toUser: User
-  date: LocalDateTime!
+  date: Instant!
 }
 
 type Mutations {
@@ -40,7 +40,7 @@ type User {
   id: Int
   email: String!
   name: String!
-  created: LocalDateTime!
+  created: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

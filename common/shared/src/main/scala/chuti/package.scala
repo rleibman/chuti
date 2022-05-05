@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import java.time.{LocalDateTime, ZoneOffset}
+import java.time.{Instant, ZoneOffset}
 
 import scala.util.Random
 
@@ -25,7 +25,7 @@ package object chuti {
     id = Some(godUserId),
     email = "god@chuti.fun",
     name = "Un-namable",
-    created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC),
+    created = Instant.ofEpochMilli(0),
     isAdmin = true
   )
 
@@ -247,7 +247,7 @@ package object chuti {
       id = Some(UserId(id)),
       email = s"hal${-id}@chuti.fun",
       name = s"${names(Random.nextInt(names.length))} HAL$id (bot)",
-      created = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC)
+      created = Instant.ofEpochMilli(0)
     )
   }
 }

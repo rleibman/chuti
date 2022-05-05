@@ -16,7 +16,7 @@
 
 package chuti
 
-import java.time.LocalDateTime
+import java.time.Instant
 
 case class ChannelId(value: Int) extends AnyVal
 
@@ -31,5 +31,5 @@ case class ChatMessage(
   msg:       String,
   channelId: ChannelId,
   toUser:    Option[User] = None,
-  date:      LocalDateTime = LocalDateTime.now
+  date:      Instant = Instant.now
 )

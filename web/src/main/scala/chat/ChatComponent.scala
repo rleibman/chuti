@@ -19,21 +19,21 @@ package chat
 import _root_.util.Config
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage => CalibanChatMessage, LocalDateTime => CalibanLocalDateTime, User => CalibanUser}
+import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage as CalibanChatMessage, Instant as CalibanInstant, User as CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.{Ref => ReactRef, _}
+import japgolly.scalajs.react.{Ref as ReactRef, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import org.scalajs.dom.html.Div
 import sttp.client3.*
 
 import java.net.URI
+import java.time.Instant
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDateTime, ZoneOffset}
 import java.util.UUID
 import scala.util.{Failure, Success}
 
@@ -148,7 +148,7 @@ object ChatComponent extends ScalaJSClientAdapter {
           .mapN(
             (
               fromUsername: String,
-              date:         CalibanLocalDateTime,
+              date:         CalibanInstant,
               toUsername:   Option[String],
               msg:          String
             ) =>
@@ -156,7 +156,7 @@ object ChatComponent extends ScalaJSClientAdapter {
                 fromUser = User(None, "", fromUsername),
                 msg = msg,
                 channelId = p.channel,
-                date = LocalDateTime.parse(date),
+                date = Instant.parse(date),
                 toUser = toUsername.map(name => User(None, "", name))
               )
           )
@@ -210,7 +210,7 @@ object ChatComponent extends ScalaJSClientAdapter {
   )
 
   implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
-    (msg.date.toInstant(ZoneOffset.UTC).getEpochSecond, msg.fromUser.id.map(_.value))
+    (msg.date.getEpochSecond, msg.fromUser.id.map(_.value))
   )
   implicit val propsReuse: Reusability[Props] = Reusability.by(_.channel.value)
   implicit val stateReuse: Reusability[State] = Reusability.caseClassExcept("ws")

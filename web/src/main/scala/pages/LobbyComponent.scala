@@ -38,9 +38,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   import app.GameViewMode.*
 
   case class ExtUser(
-    user:       User,
-    isFriend:   Boolean,
-    isLoggedIn: Boolean
+                      user:       User,
+                      isFriend:   Boolean,
+                      isLoggedIn: Boolean
   )
 
   object Dialog extends Enumeration {

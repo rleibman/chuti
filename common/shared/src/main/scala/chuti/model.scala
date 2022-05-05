@@ -16,11 +16,11 @@
 
 package chuti
 
-import java.time.LocalDateTime
 import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import io.circe.{Decoder, Encoder}
 
+import java.time.Instant
 import scala.annotation.tailrec
 
 object GameException {
@@ -464,7 +464,7 @@ case class Game(
   id:                Option[GameId],
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
-  created:           LocalDateTime = LocalDateTime.now,
+  created:           Instant = Instant.now,
   // Game State
   triunfo:         Option[Triunfo] = None,
   enJuego:         List[(UserId, Ficha)] = List.empty,

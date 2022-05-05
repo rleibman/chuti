@@ -8,7 +8,7 @@
     }
   },
   "currentEventIndex" : 1,
-  "created" : "2020-06-28T08:55:38.113501",
+  "created" : "2022-05-03T10:20:52.318405",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -21,14 +21,8 @@
         },
         "email" : "yoyo1@example.com",
         "name" : "yoyo1",
-        "userStatus" : {
-          "Playing" : {
-            
-          }
-        },
-        "created" : "2020-06-28T08:55:31.262082",
-        "lastUpdated" : "2020-06-28T08:55:31.262087",
-        "lastLoggedIn" : null,
+        "created" : "2022-05-03T10:20:19.575143",
+        "lastUpdated" : "2022-05-03T10:20:19.575167",
         "active" : false,
         "deleted" : false,
         "isAdmin" : false
@@ -43,6 +37,7 @@
       "mano" : false,
       "cuantasCantas" : null,
       "statusString" : "",
+      "ganadorDePartido" : false,
       "cuenta" : [
       ]
     }

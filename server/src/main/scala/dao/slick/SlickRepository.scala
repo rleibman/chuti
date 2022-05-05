@@ -29,24 +29,29 @@ import scalacache.caffeine.CaffeineCache
 import _root_.slick.SlickException
 import _root_.slick.dbio.DBIO
 import _root_.slick.jdbc.MySQLProfile.api.*
-import zio.{URLayer, ZIO, ZLayer}
+import zio.clock.Clock
+import zio.logging.Logging
+import zio.{ULayer, URLayer, ZIO, ZLayer}
 
 import java.math.BigInteger
 import java.security.SecureRandom
 import java.sql.{SQLException, Timestamp}
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*
 
 object SlickRepository {
+
   implicit val gameCache: Cache[Option[Game]] = CaffeineCache[Option[Game]]
   val live: URLayer[DatabaseProvider, Repository] =
     ZLayer.fromFunction(db => new SlickRepository(db))
+
 }
 
-final class SlickRepository(databaseProvider: DatabaseProvider)
-    extends Repository.Service {
+final class SlickRepository(databaseProvider: DatabaseProvider) extends Repository.Service {
+
   import SlickRepository.gameCache
+  private val godSession: ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
@@ -77,18 +82,19 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     } yield ret
 
   override val userOperations: Repository.UserOperations = new UserOperations {
+
     def get(pk: UserId): RepositoryIO[Option[User]] =
       fromDBIO {
         UserQuery
           .filter(u => u.id === pk && !u.deleted).result.headOption.map(
-          _.map(_.toUser)
-        )
+            _.map(_.toUser)
+          )
       }
 
     override def delete(
-                         pk:         UserId,
-                         softDelete: Boolean
-                       ): RepositoryIO[Boolean] = { session: ChutiSession =>
+      pk:         UserId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = { session: ChutiSession =>
       if (session.user != chuti.god && session.user.id.fold(false)(_ != pk))
         throw RepositoryError(s"${session.user} Not authorized")
       if (softDelete) {
@@ -96,8 +102,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           u <- UserQuery if u.id === pk
         } yield (u.deleted, u.deletedDate)
         q.update(true, Option(new Timestamp(System.currentTimeMillis()))).map(_ > 0)
-      } else
-        UserQuery.filter(_.id === pk).delete.map(_ > 0)
+      } else UserQuery.filter(_.id === pk).delete.map(_ > 0)
     }
 
     override def upsert(user: User): RepositoryIO[User] = { session: ChutiSession =>
@@ -135,9 +140,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
           rowOpt.toSeq
             .map(row =>
               FriendsQuery
-                .filter(r =>
-                  (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one)
-                ).delete
+                .filter(r => (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one)).delete
             ).map(_.map(_ > 0))
         ).map(_.headOption.getOrElse(false))
     }
@@ -169,26 +172,30 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def login(
       email:    String,
       password: String
-    ): RepositoryIO[Option[User]] = {
-      (for {
-        idOpt <- sql"""select u.id
+    ): ZIO[Clock & Logging, RepositoryError, Option[User]] = {
+      def dbio(now: Long) =
+        (for {
+          idOpt <- sql"""select u.id
                from user u
                where u.deleted = 0 and
                u.active = 1 and
                u.email = $email and
                u.hashedpassword = SHA2($password, 512)""".as[Int].map(_.headOption.map(UserId))
-        userOpt <-
-          DBIO
-            .sequence(idOpt.toSeq.map(id => UserQuery.filter(_.id === id).result)).map(
-              _.flatten.map(_.toUser).headOption
-            )
-        //Log the log in.
-        _ <- DBIO.sequence(
-          idOpt.toSeq.map(id =>
-            UserLogQuery += UserLogRow(id, new Timestamp(System.currentTimeMillis()))
+          userOpt <-
+            DBIO
+              .sequence(idOpt.toSeq.map(id => UserQuery.filter(_.id === id).result)).map(
+                _.flatten.map(_.toUser).headOption
+              )
+          // Log the log in.
+          _ <- DBIO.sequence(
+            idOpt.toSeq.map(id => UserLogQuery += UserLogRow(id, new Timestamp(now)))
           )
-        )
-      } yield userOpt).transactionally
+        } yield userOpt).transactionally
+      (for {
+        now <- ZIO.service[Clock.Service].flatMap(_.instant).map(_.toEpochMilli)
+        res <- fromDBIO(dbio(now))
+      } yield res).provideSomeLayer[Clock & Logging](godSession)
+
     }
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] =
@@ -222,46 +229,46 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         }
     }
 
-    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = {
-      session: ChutiSession =>
-        if (session.user != chuti.god) //Only god can get a user's wallet by user id
-          throw RepositoryError(s"${session.user} Not authorized")
-        UserWalletQuery
-          .filter(_.userId === userId)
-          .result.headOption.map(
-            _.map(UserWalletRow2UserWallet)
-          ).flatMap {
-            case None =>
-              val newWallet = UserWalletRow(userId, 10000)
-              (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
-            case Some(wallet) => DBIO.successful(Option(wallet))
-          }
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = { session: ChutiSession =>
+      if (session.user != chuti.god) // Only god can get a user's wallet by user id
+        throw RepositoryError(s"${session.user} Not authorized")
+      UserWalletQuery
+        .filter(_.userId === userId)
+        .result.headOption.map(
+          _.map(UserWalletRow2UserWallet)
+        ).flatMap {
+          case None =>
+            val newWallet = UserWalletRow(userId, 10000)
+            (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+          case Some(wallet) => DBIO.successful(Option(wallet))
+        }
     }
 
-    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = {
-      session: ChutiSession =>
-        if (session.user != chuti.god) //Only god can update a user's wallet.
-          throw RepositoryError(s"${session.user} Not authorized")
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = { session: ChutiSession =>
+      if (session.user != chuti.god) // Only god can update a user's wallet.
+        throw RepositoryError(s"${session.user} Not authorized")
 
-        val row = UserWallet2UserWalletRow(userWallet)
+      val row = UserWallet2UserWalletRow(userWallet)
 
-        val filtered = UserWalletQuery.filter(_.userId === userWallet.userId)
-        val dbio = for {
-          exists <- filtered.result.headOption
-          saved  <- exists.fold(UserWalletQuery.forceInsert(row))(_ => filtered.update(row))
-        } yield saved
-        dbio.map(_ => userWallet)
+      val filtered = UserWalletQuery.filter(_.userId === userWallet.userId)
+      val dbio = for {
+        exists <- filtered.result.headOption
+        saved  <- exists.fold(UserWalletQuery.forceInsert(row))(_ => filtered.update(row))
+      } yield saved
+      dbio.map(_ => userWallet)
     }
 
-    override def firstLogin: RepositoryIO[Option[LocalDateTime]] = { chutiSession: ChutiSession =>
+    override def firstLogin: RepositoryIO[Option[Instant]] = { chutiSession: ChutiSession =>
       UserLogQuery
         .filter(_.userId === chutiSession.user.id.getOrElse(UserId(-1))).map(_.time).min.result.map(
-          _.map(_.toLocalDateTime)
+          _.map(_.toInstant)
         )
     }
+
   }
 
   override val gameOperations: Repository.GameOperations = new GameOperations {
+
     override def upsert(game: Game): RepositoryIO[Game] = {
       val upserted = fromDBIO { session: ChutiSession =>
         if (session.user != chuti.god && !game.jugadores.exists(_.user.id == session.user.id))
@@ -278,9 +285,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         upserted <- upserted
         _ <-
           scalacache
-            .put(game.id)(Option(upserted), Option(3.hours)).mapError(e =>
-              RepositoryError("Cache error", Some(e))
-            )
+            .put(game.id)(Option(upserted), Option(3.hours)).mapError(e => RepositoryError("Cache error", Some(e)))
       } yield upserted
 
     }
@@ -294,12 +299,9 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       }
       for {
         gameOpt <- zio
-        _ <- ZIO.foreach_(gameOpt) {
-          game =>
-            scalacache
-              .put(pk)(Option(game), Option(3.hours)).mapError(e =>
-              RepositoryError("Cache error", Some(e))
-            )
+        _ <- ZIO.foreach_(gameOpt) { game =>
+          scalacache
+            .put(pk)(Option(game), Option(3.hours)).mapError(e => RepositoryError("Cache error", Some(e)))
         }
       } yield gameOpt
     }
@@ -318,8 +320,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       GameQuery.result
         .map(_.map(row => GameRow2Game(row)))
 
-    override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
-      GameQuery.length.result.map(_.toLong)
+    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = GameQuery.length.result.map(_.toLong)
 
     override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
       GameQuery
@@ -380,16 +381,15 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
         _ <- GamePlayersQuery.filter(_.gameId === game.id.get).delete
         _ <-
           DBIO
-            .sequence(game.jugadores.filter(!_.user.isBot).zipWithIndex.map {
-              case (player, index) =>
-                GamePlayersQuery.insertOrUpdate(
-                  GamePlayersRow(
-                    userId = player.user.id.getOrElse(UserId(0)),
-                    gameId = game.id.getOrElse(GameId(0)),
-                    order = index,
-                    invited = player.invited
-                  )
+            .sequence(game.jugadores.filter(!_.user.isBot).zipWithIndex.map { case (player, index) =>
+              GamePlayersQuery.insertOrUpdate(
+                GamePlayersRow(
+                  userId = player.user.id.getOrElse(UserId(0)),
+                  gameId = game.id.getOrElse(GameId(0)),
+                  order = index,
+                  invited = player.invited
                 )
+              )
             }).map(_.sum)
       } yield game
     }
@@ -397,17 +397,16 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def userInGame(id: GameId): RepositoryIO[Boolean] = { chutiSession: ChutiSession =>
       if (chutiSession.user.isBot) {
         DBIO.successful(false)
-      }
-      else {
+      } else {
         GamePlayersQuery
-          .filter(gp =>
-            gp.gameId === id && gp.userId === chutiSession.user.id.getOrElse(UserId(-1))
-          ).exists.result
+          .filter(gp => gp.gameId === id && gp.userId === chutiSession.user.id.getOrElse(UserId(-1))).exists.result
       }
     }
+
   }
 
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+
     private val random = SecureRandom.getInstanceStrong
     override def validateToken(
       token:   Token,
@@ -434,8 +433,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
       val row = TokenRow(
         tok = new BigInteger(12 * 5, random).toString(32),
         tokenPurpose = purpose.toString,
-        expireTime =
-          new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
+        expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
         userId = user.id.getOrElse(UserId(-1))
       )
       TokenQuery.forceInsert(row).map(_ => Token(row.tok))
@@ -453,6 +451,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider)
     override def cleanup: RepositoryIO[Boolean] = {
       TokenQuery.filter(_.expireTime >= new Timestamp(System.currentTimeMillis())).delete.map(_ > 0)
     }
+
   }
 
 }

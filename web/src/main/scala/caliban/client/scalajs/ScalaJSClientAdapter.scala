@@ -32,7 +32,7 @@ import sttp.client3.*
 import zio.duration.*
 
 import java.net.URI
-import java.time.LocalDateTime
+import java.time.Instant
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
@@ -213,7 +213,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
       //TODO, move this into some sort of Ref/state class
       case class ConnectionState(
-        lastKAOpt:       Option[LocalDateTime] = None,
+        lastKAOpt:       Option[Instant] = None,
         kaIntervalOpt:   Option[Int] = None,
         firstConnection: Boolean = true,
         reconnectCount:  Int = 0,
@@ -278,7 +278,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                       connectionState.lastKAOpt.map { lastKA =>
                         val timeFromLastKA =
                           java.time.Duration
-                            .between(lastKA, LocalDateTime.now).toMillis.milliseconds
+                            .between(lastKA, Instant.now).toMillis.milliseconds
                         if (timeFromLastKA > timeout) {
                           //Assume we've gotten disconnected, we haven't received a KA in a while
                           if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
@@ -297,7 +297,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                 )
               )
             }
-            connectionState = connectionState.copy(lastKAOpt = Option(LocalDateTime.now()))
+            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
             onKeepAlive(payload).runNow()
           case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
             if (connectionState.closed)

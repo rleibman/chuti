@@ -5,7 +5,6 @@ CREATE TABLE `user`
     `name`           text       NOT NULL,
     `created`        timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `lastUpdated`    timestamp  NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `lastLoggedIn`   timestamp  NULL     DEFAULT NULL,
     `email`          varchar(255)        DEFAULT NULL,
     `deleted`        tinyint(4) NOT NULL DEFAULT '0',
     `deletedDate`    timestamp  NULL     DEFAULT NULL,
