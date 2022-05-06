@@ -28,13 +28,17 @@ import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
 import _root_.util.LocalizedMessages
 object GameViewMode extends Enumeration {
+
   type GameViewMode = Value
   val lobby, game, none = Value
+
 }
 
 object GlobalDialog extends Enumeration {
+
   type GlobalDialog = Value
   val cuentas, none = Value
+
 }
 
 case class ChutiState(
@@ -68,6 +72,7 @@ case class ChutiState(
   toggleSound:           Callback = Callback.empty,
   playSound:             String => Callback = _ => Callback.empty
 ) {
+
   lazy val locale: Locale = Locale.forLanguageTag(languageTag)
 
   def isFlipped(ficha: Ficha): Boolean = flippedFichas.contains(ficha)
@@ -80,6 +85,7 @@ case class ChutiState(
         ).sortBy(_.user.name)
 
   object ChutiMessages extends LocalizedMessages {
+
     override def bundles: Map[String, ChutiMessages.MessageBundle] =
       Map(
         "es" -> MessageBundle(
@@ -103,11 +109,13 @@ case class ChutiState(
           )
         )
       )
-  }
 
+  }
 
 }
 
 object ChutiState {
+
   val ctx: Context[ChutiState] = React.createContext(ChutiState())
+
 }

@@ -41,12 +41,13 @@ object SessionUtils {
     println(s"updating session $session")
     sessionCache.put(session.user.id)(Option(session)).unit
   }
-  def removeFromCache(userIdOpt: Option[UserId]): Task[Any] =
-    Task.foreach(userIdOpt)(userId => sessionCache.remove(userId.value))
+  def removeFromCache(userIdOpt: Option[UserId]): Task[Any] = Task.foreach(userIdOpt)(userId => sessionCache.remove(userId.value))
+
 }
 
 trait SessionUtils extends Directives {
   this: HasActorSystem =>
+
   import SessionUtils.*
   import actorSystem.dispatcher
   import scalacache.memoization.*
@@ -63,12 +64,11 @@ trait SessionUtils extends Directives {
     memoizeF(Option(1.hour)) {
       val me: Task[Option[ChutiSession]] = (for {
         repository <- ZIO.service[Repository.Service]
-        userOpt <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome {
-          case e: RepositoryError =>
-            ZIO.succeed {
-              e.printStackTrace()
-              None
-            }
+        userOpt <- repository.userOperations.get(UserId(id)).provideLayer(godLayer).catchSome { case e: RepositoryError =>
+          ZIO.succeed {
+            e.printStackTrace()
+            None
+          }
         }
       } yield userOpt.map(u => ChutiSession(u))).provideLayer(godLayer)
       me
@@ -98,4 +98,5 @@ trait SessionUtils extends Directives {
   lazy protected val myInvalidateSession: Directive0 = {
     invalidateSession(refreshable, usingCookies)
   }
+
 }

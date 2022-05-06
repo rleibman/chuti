@@ -19,7 +19,7 @@ package chat
 import _root_.util.Config
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage as CalibanChatMessage, Instant as CalibanInstant, User as CalibanUser}
+import chat.ChatClient.{ChatMessage as CalibanChatMessage, Instant as CalibanInstant, Mutations, Queries, Subscriptions, User as CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto.*
@@ -38,6 +38,7 @@ import java.util.UUID
 import scala.util.{Failure, Success}
 
 object ChatComponent extends ScalaJSClientAdapter {
+
   private val connectionId = UUID.randomUUID().toString
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"
   private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
@@ -52,12 +53,7 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   class Backend($ : BackendScope[Props, State]) {
 
-    def close(): Callback =
-      $.state.flatMap(s =>
-        s.ws.fold(Callback.empty)(handler =>
-          Callback.log("Closing chat ws handler") >> handler.close()
-        )
-      )
+    def close(): Callback = $.state.flatMap(s => s.ws.fold(Callback.empty)(handler => Callback.log("Closing chat ws handler") >> handler.close()))
 
     private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
       $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
@@ -89,8 +85,7 @@ object ChatComponent extends ScalaJSClientAdapter {
 
     private val messagesRef = ReactRef[Div]
 
-    def scrollToBottom: Callback =
-      messagesRef.foreach(_.scrollIntoView(top = true))
+    def scrollToBottom: Callback = messagesRef.foreach(_.scrollIntoView(top = true))
 
     def render(
       p: Props,
@@ -102,19 +97,18 @@ object ChatComponent extends ScalaJSClientAdapter {
         <.h1(^.className := "title", "Chuti Chat"),
         <.div(
           ^.className := "messages",
-          s.chatMessages.zipWithIndex.toVdomArray {
-            case (msg, index) =>
-              val div = <.div(
-                ^.key       := s"msg$index",
-                ^.className := "receivedMessage",
-                <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
-                <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
-                <.div(^.className := "messageText", msg.msg)
-              )
-              if (index == s.chatMessages.size - 1)
-                div.withRef(messagesRef)
-              else
-                div
+          s.chatMessages.zipWithIndex.toVdomArray { case (msg, index) =>
+            val div = <.div(
+              ^.key       := s"msg$index",
+              ^.className := "receivedMessage",
+              <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
+              <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
+              <.div(^.className := "messageText", msg.msg)
+            )
+            if (index == s.chatMessages.size - 1)
+              div.withRef(messagesRef)
+            else
+              div
           }
         ),
         <.div(
@@ -122,20 +116,18 @@ object ChatComponent extends ScalaJSClientAdapter {
           TextArea
             .value(s.msgInFlux)
             .onChange(onMessageInFluxChange)
-            .onKeyPress({ e =>
+            .onKeyPress { e =>
               if (e.which == 13 && !e.shiftKey && e.target.value.trim.nonEmpty)
                 Callback {
                   e.preventDefault()
                 } >> onSend(p, s) >> Callback(e.target.focus())
               else Callback.empty
-            })
-            (),
+            }(),
           Button
             .compact(true)
             .basic(true)
             .disabled(s.msgInFlux.trim.isEmpty)
-            .onClick({ (_, _) => onSend(p, s) })
-            ("Send")
+            .onClick { (_, _) => onSend(p, s) }("Send")
         )
       )
 
@@ -184,9 +176,7 @@ object ChatComponent extends ScalaJSClientAdapter {
                     flatted
                       .fold(Callback.empty) { msg =>
                         msg.toUser.fold(
-                          $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
-                            s.copy(s.chatMessages :+ msg)
-                          ) >> scrollToBottom
+                          $.props.flatMap(_.onMessage(msg)) >> $.modState(s => s.copy(s.chatMessages :+ msg)) >> scrollToBottom
                         ) { _ =>
                           $.props.flatMap(_.onPrivateMessage(msg))
                         }
@@ -200,6 +190,7 @@ object ChatComponent extends ScalaJSClientAdapter {
         } >> scrollToBottom
       }).completeWith(_.get)
     }
+
   }
 
   case class Props(
@@ -209,19 +200,15 @@ object ChatComponent extends ScalaJSClientAdapter {
     onMessage:        ChatMessage => Callback
   )
 
-  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
-    (msg.date.getEpochSecond, msg.fromUser.id.map(_.value))
-  )
-  implicit val propsReuse: Reusability[Props] = Reusability.by(_.channel.value)
-  implicit val stateReuse: Reusability[State] = Reusability.caseClassExcept("ws")
+  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
+  implicit val propsReuse:   Reusability[Props] = Reusability.by(_.channel.value)
+  implicit val stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")
 
   private val component = ScalaComponent
     .builder[Props]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ =>
-      Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
-    )
+    .componentDidMount($ => Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props))
     .componentWillUnmount($ => $.backend.close())
     .configure(Reusability.shouldComponentUpdate)
     .build
@@ -235,4 +222,5 @@ object ChatComponent extends ScalaJSClientAdapter {
     component.withKey(s"chatChannel${channel.value}")(
       Props(user, channel, onPrivateMessage, onMessage)
     )
+
 }

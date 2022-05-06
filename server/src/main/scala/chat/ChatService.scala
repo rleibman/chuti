@@ -30,10 +30,12 @@ import zio.logging.{Logging, log}
 import zio.stream.ZStream
 
 object ChatService {
+
   lazy private val ttl: Duration = 15.minutes
 
   type ChatService = Has[Service]
   trait Service {
+
     def getRecentMessages(
       channelId: ChannelId
     ): ZIO[SessionProvider, GameException, Seq[ChatMessage]]
@@ -46,6 +48,7 @@ object ChatService {
       GameException,
       ChatMessage
     ]
+
   }
 
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
@@ -73,8 +76,7 @@ object ChatService {
   def say(request: SayRequest): URIO[
     ChatService & Repository & SessionProvider & Logging & Clock,
     ChatMessage
-  ] =
-    URIO.accessM(_.get.say(request))
+  ] = URIO.accessM(_.get.say(request))
 
   def chatStream(
     channelId:    ChannelId,
@@ -83,13 +85,11 @@ object ChatService {
     ChatService & Repository & SessionProvider & Logging & Clock,
     GameException,
     ChatMessage
-  ] =
-    ZStream.accessStream(_.get.chatStream(channelId, connectionId))
+  ] = ZStream.accessStream(_.get.chatStream(channelId, connectionId))
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & SessionProvider, GameException, Seq[ChatMessage]] =
-    URIO.accessM(_.get.getRecentMessages(channelId))
+  ): ZIO[ChatService & SessionProvider, GameException, Seq[ChatMessage]] = URIO.accessM(_.get.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -129,10 +129,10 @@ object ChatService {
             user             <- ZIO.access[SessionProvider](_.get.session.user)
             _                <- log.info(s"Sending ${request.msg}")
             sent <- {
-              //TODO make sure the user has rights to send messages on the channel,
+              // TODO make sure the user has rights to send messages on the channel,
               // basically if the channel is lobby, or the user is the game channel for that game,
               // or it's a direct message.
-              //TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
+              // TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
               val sendMe =
                 ChatMessage(
                   fromUser = user,
@@ -186,8 +186,8 @@ object ChatService {
               .ensuring(
                 log.info(s"Chat queue for user ${user.id} shut down") *>
                   queue.shutdown *> chatMessageQueue.update(
-                  _.filterNot(_.connectionId == connectionId)
-                )
+                    _.filterNot(_.connectionId == connectionId)
+                  )
               )
               .filter(m =>
                 m.channelId == channelId ||

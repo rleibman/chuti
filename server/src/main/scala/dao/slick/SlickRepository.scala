@@ -31,6 +31,7 @@ import _root_.slick.dbio.DBIO
 import _root_.slick.jdbc.MySQLProfile.api.*
 import zio.clock.Clock
 import zio.logging.Logging
+import zio.random.Random
 import zio.{ULayer, URLayer, ZIO, ZLayer}
 
 import java.math.BigInteger
@@ -140,7 +141,8 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
           rowOpt.toSeq
             .map(row =>
               FriendsQuery
-                .filter(r => (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one)).delete
+                .filter(r => (r.one === row.one && r.two === row.two) || (r.one === row.two && r.two === row.one))
+                .delete
             ).map(_.map(_ > 0))
         ).map(_.headOption.getOrElse(false))
     }
@@ -220,11 +222,11 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       UserWalletQuery
         .filter(_.userId === session.user.id.getOrElse(UserId(-1)))
         .result.headOption.map(
-          _.map(UserWalletRow2UserWallet)
+          _.map(_.toUserWallet)
         ).flatMap {
           case None =>
             val newWallet = UserWalletRow(session.user.id.getOrElse(UserId(-1)), 10000)
-            (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+            (UserWalletQuery += newWallet).map(_ => Option(newWallet.toUserWallet))
           case Some(wallet) => DBIO.successful(Option(wallet))
         }
     }
@@ -235,11 +237,11 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       UserWalletQuery
         .filter(_.userId === userId)
         .result.headOption.map(
-          _.map(UserWalletRow2UserWallet)
+          _.map(_.toUserWallet)
         ).flatMap {
           case None =>
             val newWallet = UserWalletRow(userId, 10000)
-            (UserWalletQuery += newWallet).map(_ => Option(UserWalletRow2UserWallet(newWallet)))
+            (UserWalletQuery += newWallet).map(_ => Option(newWallet.toUserWallet))
           case Some(wallet) => DBIO.successful(Option(wallet))
         }
     }
@@ -248,7 +250,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       if (session.user != chuti.god) // Only god can update a user's wallet.
         throw RepositoryError(s"${session.user} Not authorized")
 
-      val row = UserWallet2UserWalletRow(userWallet)
+      val row = UserWalletRow.fromUserWallet(userWallet)
 
       val filtered = UserWalletQuery.filter(_.userId === userWallet.userId)
       val dbio = for {
@@ -407,7 +409,6 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
 
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
 
-    private val random = SecureRandom.getInstanceStrong
     override def validateToken(
       token:   Token,
       purpose: TokenPurpose
@@ -429,14 +430,17 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): RepositoryIO[Token] = {
-      val row = TokenRow(
-        tok = new BigInteger(12 * 5, random).toString(32),
-        tokenPurpose = purpose.toString,
-        expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
-        userId = user.id.getOrElse(UserId(-1))
-      )
-      TokenQuery.forceInsert(row).map(_ => Token(row.tok))
+    ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token] = {
+      for {
+        tok <- ZIO.service[Random.Service].flatMap(_.nextBytes(8)).map(r => new BigInteger(r.toArray).toString(32))
+        row = TokenRow(
+          tok = tok,
+          tokenPurpose = purpose.toString,
+          expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
+          userId = user.id.getOrElse(UserId(-1))
+        )
+        inserted <- TokenQuery.forceInsert(row).map(_ => Token(row.tok))
+      } yield inserted
     }
 
     override def peek(

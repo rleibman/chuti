@@ -25,10 +25,10 @@ import zio.{Task, ZIO}
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 
-/**
-  * A special set of akka-http directives that take ZIOs, run them and marshalls them.
+/** A special set of akka-http directives that take ZIOs, run them and marshalls them.
   */
 trait ZIODirectives {
+
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   private def toFuture[T](t: Task[T]): Future[T] = {
@@ -57,38 +57,34 @@ trait ZIODirectives {
       b <- ZIO.fromFuture(_ => a)
     } yield b
 
-  implicit def zioRoute(z: ZIO[Any, Throwable, Route]): Route =
-    ctx => {
-      toFuture(z.flatMap(r => fromFunction(r)).provide(ctx))
-    }
+  implicit def zioRoute(z: ZIO[Any, Throwable, Route]): Route = ctx => toFuture(z.flatMap(r => fromFunction(r)).provide(ctx))
 
-  /**
-    * "Unwraps" a `Task[T]` and runs the inner route when the task has failed
-    * with the task's failure exception as an extraction of type `Throwable`.
-    * If the task succeeds the request is completed using the values marshaller
-    * (This directive therefore requires a marshaller for the task's type to be
-    * implicitly available.)
+  /** "Unwraps" a `Task[T]` and runs the inner route when the task has failed with the task's failure exception as an extraction of type `Throwable`.
+    * If the task succeeds the request is completed using the values marshaller (This directive therefore requires a marshaller for the task's type to
+    * be implicitly available.)
     *
     * @group task
     */
-  def zioCompleteOrRecoverWith(magnet: ZIOCompleteOrRecoverWithMagnet): Directive1[Throwable] =
-    magnet.directive
+  def zioCompleteOrRecoverWith(magnet: ZIOCompleteOrRecoverWithMagnet): Directive1[Throwable] = magnet.directive
 
 }
 
 object ZIODirectives extends ZIODirectives
 
 trait ZIOCompleteOrRecoverWithMagnet {
+
   def directive: Directive1[Throwable]
+
 }
 
 object ZIOCompleteOrRecoverWithMagnet extends ZIODirectives {
+
   implicit def apply[T](
-    task: => Task[T]
-  )(
-    implicit m: ToResponseMarshaller[T]
+    task:       => Task[T]
+  )(implicit m: ToResponseMarshaller[T]
   ): ZIOCompleteOrRecoverWithMagnet =
     new ZIOCompleteOrRecoverWithMagnet {
+
       override val directive: Directive1[Throwable] = Directive[Tuple1[Throwable]] { inner => ctx =>
         import ctx.executionContext
         val future = runtime.unsafeRunToFuture(task)
@@ -97,5 +93,7 @@ object ZIOCompleteOrRecoverWithMagnet extends ZIODirectives {
           case Failure(error) => inner(Tuple1(error))(ctx)
         }
       }
+
     }
+
 }

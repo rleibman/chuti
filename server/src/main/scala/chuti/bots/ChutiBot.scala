@@ -22,6 +22,7 @@ import game.GameService.{GameLayer, GameService}
 import zio.ZIO
 
 trait ChutiBot {
+
   def decideTurn(
     user: User,
     game: Game
@@ -36,4 +37,5 @@ trait ChutiBot {
       played         <- ZIO.foreach(decideTurn(user, game))(gameService.play(gameId, _))
     } yield played.getOrElse(game)
   }
+
 }

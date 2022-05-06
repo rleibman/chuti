@@ -14,10 +14,12 @@ import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
 
+import java.math.BigInteger
 import java.time.{Instant, ZoneId, ZoneOffset}
 
 object QuillUserSpec extends DefaultRunnableSpec {
 
+  import Assertion.*
   private val password = "testPassword123"
   private val satan = // A user with no permissions
     User(id = Some(UserId(999)), email = "Satan@hell.com", name = "Lucifer Morningstar")
@@ -46,6 +48,12 @@ object QuillUserSpec extends DefaultRunnableSpec {
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     suite("MySuite")(
+      testM("random") {
+        for {
+          tok <- ZIO.service[Random.Service].flatMap(_.nextBytes(16)).map(r => new BigInteger(r.toArray).toString(32))
+          _   <- Logging.info(tok)
+        } yield assert(tok.length)(isGreaterThan(0))
+      },
       testM("Happy CRUD") {
         for {
           testUser             <- testUserZIO
@@ -137,8 +145,8 @@ object QuillUserSpec extends DefaultRunnableSpec {
           loggedIn        <- repo.login(active.email, password)
           firstLogin      <- repo.firstLogin.provideSomeLayer[Config & Repository & Logging & Clock](userSession(active))
         } yield assertTrue(passwordChanged) &&
-          assert(loggedIn)(Assertion.equalTo(Some(active))) &&
-          assert(firstLogin)(Assertion.equalTo(Some(now)))
+          assert(loggedIn)(equalTo(Some(active))) &&
+          assert(firstLogin)(equalTo(Some(now)))
       },
       testM("user by email") {
         for {
@@ -147,9 +155,36 @@ object QuillUserSpec extends DefaultRunnableSpec {
           inserted    <- repo.upsert(testUser)
           active      <- repo.upsert(inserted.copy(active = true))
           userByEmail <- repo.userByEmail(testUser.email)
-        } yield assert(userByEmail)(Assertion.equalTo(Some(active)))
+        } yield assert(userByEmail)(equalTo(Some(active)))
 
+      },
+      testM("friend stuff") {
+        for {
+          repo       <- ZIO.service[Repository.Service].map(_.userOperations)
+          testUser1  <- testUserZIO
+          inserted1  <- repo.upsert(testUser1.copy(active = true))
+          testUser2  <- testUserZIO
+          inserted2  <- repo.upsert(testUser2.copy(active = true))
+          noFriends1 <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted1))
+          noFriends2 <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted2))
+          friended   <- repo.friend(inserted2).provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted1))
+          aFriend1   <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted1))
+          aFriend2   <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted2))
+          unfriended <- repo.unfriend(inserted1).provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted2))
+          noFriends3 <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted1))
+          noFriends4 <- repo.friends.provideSomeLayer[Config & Repository & Logging & Clock](userSession(inserted2))
+        } yield {
+          assert(noFriends1)(isEmpty) &&
+          assert(noFriends2)(isEmpty) &&
+          assertTrue(friended) &&
+          assert(aFriend1.headOption.map(_.id))(equalTo(Some(inserted2.id))) &&
+          assert(aFriend2.headOption.map(_.id))(equalTo(Some(inserted1.id))) &&
+          assertTrue(unfriended) &&
+          assert(noFriends3)(isEmpty) &&
+          assert(noFriends4)(isEmpty)
+        }
       }
+
       // Crud tests
       //
       // unfriend

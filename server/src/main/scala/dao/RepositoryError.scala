@@ -17,6 +17,7 @@
 package dao
 
 object RepositoryError {
+
   def apply(t: Throwable): RepositoryError = {
     t match {
       case t: RepositoryError => t
@@ -29,13 +30,16 @@ object RepositoryError {
   ) = {
     new RepositoryError(msg, cause)
   }
+
 }
 
 sealed class RepositoryError(
   msg:   String = "",
   cause: Option[Throwable] = None
 ) extends Exception(msg, cause.orNull) {
+
   printStackTrace()
+
 }
 
 case class RepositoryPermissionError(msg: String = "") extends RepositoryError(msg)

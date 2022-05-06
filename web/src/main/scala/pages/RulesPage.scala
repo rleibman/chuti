@@ -25,9 +25,11 @@ import japgolly.scalajs.react.{BackendScope, ScalaComponent}
 import _root_.util.LocalizedMessages
 
 object RulesPage extends ChutiPage {
+
   case class State()
 
   object RulesPageMessages extends LocalizedMessages {
+
     override def bundles: Map[String, RulesPageMessages.MessageBundle] =
       Map(
         "en" ->
@@ -242,21 +244,24 @@ object RulesPage extends ChutiPage {
             )
           )
       )
+
   }
 
   class Backend($ : BackendScope[_, State]) {
+
     import RulesPageMessages.*
 
     def render(): VdomElement = {
       ChutiState.ctx.consume { chutiState =>
         implicit val locale: Locale = chutiState.locale
         <.div(
-          ^.margin := 10.px,
+          ^.margin                  := 10.px,
           ^.dangerouslySetInnerHtml := localized("RulesPage.rules")
         )
       }
 
     }
+
   }
 
   private val component = ScalaComponent

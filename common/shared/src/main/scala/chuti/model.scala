@@ -213,7 +213,7 @@ object Fila {
 
 }
 
-case class Fila (
+case class Fila(
   fichas: Seq[Ficha],
   index:  Int = 0
 )
@@ -823,8 +823,8 @@ case class Game(
     def jugadorStr(jugador: Jugador): String =
       s"""
          |${jugador.user.name}: ${if (jugador.mano) "Me toca cantar"
-      else ""} ${jugador.cuantasCantas
-        .fold("")(c => s"canto: $c")}
+        else ""} ${jugador.cuantasCantas
+          .fold("")(c => s"canto: $c")}
          |${jugador.fichas.map(_.toString).mkString(" ")}""".stripMargin
 
     s"""

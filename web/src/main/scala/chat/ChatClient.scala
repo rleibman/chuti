@@ -85,9 +85,8 @@ object ChatClient {
     def getRecentMessages[A](
       value: Int
     )(
-      innerSelection: SelectionBuilder[ChatMessage, A]
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      innerSelection:    SelectionBuilder[ChatMessage, A]
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, Option[List[A]]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "getRecentMessages",
@@ -101,11 +100,10 @@ object ChatClient {
   object Mutations {
 
     def say(
-      msg:       String,
-      channelId: Int,
-      toUser:    Option[UserInput] = None
-    )(
-      implicit encoder0: ArgEncoder[String],
+      msg:               String,
+      channelId:         Int,
+      toUser:            Option[UserInput] = None
+    )(implicit encoder0: ArgEncoder[String],
       encoder1:          ArgEncoder[Int],
       encoder2:          ArgEncoder[Option[UserInput]]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Boolean] =
@@ -128,9 +126,8 @@ object ChatClient {
       channelId:    Int,
       connectionId: String
     )(
-      innerSelection: SelectionBuilder[ChatMessage, A]
-    )(
-      implicit encoder0: ArgEncoder[Int],
+      innerSelection:    SelectionBuilder[ChatMessage, A]
+    )(implicit encoder0: ArgEncoder[Int],
       encoder1:          ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field(

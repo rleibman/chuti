@@ -27,6 +27,7 @@ import zio.*
 import zio.duration.*
 
 class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
+
   "Printing the game" should "print it" in {
     testRuntime.unsafeRun {
       for {
@@ -52,9 +53,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
 
   "Cantando casa sin salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -133,13 +132,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 4)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando cinco sin salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -217,13 +214,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 4)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando todas" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -258,7 +253,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
               .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
                 layer ++ SessionProvider.layer(ChutiSession(quienCanta))
               )
-          //Hay que pararle aqui, ya canto todas.
+          // Hay que pararle aqui, ya canto todas.
           gameEvents <- gameEventsFiber.join
           userEvents <- userEventsFiber.join
         } yield (game2, gameEvents, userEvents)
@@ -275,13 +270,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 1)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -363,13 +356,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 4)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de chuti" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -433,13 +424,11 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 2)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de 5,6,7" should "get it done" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     val userOperations = createUserOperations
 
     val layer = fullLayer(gameOperations, userOperations)
@@ -512,7 +501,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(game.currentEventIndex === 11)
     val cantante = game.jugadores.find(_.cantante).get
     val turno = game.jugadores.find(_.turno).get
-    val salvador = game.prevPlayer(turno) //Nota esto, es el que da la vuelta
+    val salvador = game.prevPlayer(turno) // Nota esto, es el que da la vuelta
     assert(cantante === salvador)
     assert(cantante.mano)
     assert(!cantante.fichas.contains(Ficha(Numero(6), Numero(6))))
@@ -521,6 +510,7 @@ class CantandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
     assert(gameEvents.size === 4)
     assert(
       userEvents.size === 0
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
   }
+
 }

@@ -112,10 +112,20 @@ package object dao {
     order:   Int,
     invited: Boolean
   )
+
+  object UserWalletRow {
+
+    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(user = value.userId, amount = value.amount)
+
+  }
   case class UserWalletRow(
     user:   UserId,
     amount: BigDecimal
-  )
+  ) {
+
+    def toUserWallet: UserWallet = UserWallet(userId = user, amount = amount)
+
+  }
 
   case class UserLogRow(
     userId: UserId,
@@ -140,8 +150,5 @@ package object dao {
     )
     ret
   }
-
-  def UserWalletRow2UserWallet(row: UserWalletRow): UserWallet = UserWallet(userId = row.user, amount = row.amount)
-  def UserWallet2UserWalletRow(value: UserWallet):  UserWalletRow = UserWalletRow(user = value.userId, amount = value.amount)
 
 }

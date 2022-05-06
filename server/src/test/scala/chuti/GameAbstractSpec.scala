@@ -40,6 +40,7 @@ import zio.logging.slf4j.Slf4jLogger
 import scala.concurrent.duration.Duration
 
 trait GameAbstractSpec extends MockitoSugar {
+
   val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
 
   val user1: User =

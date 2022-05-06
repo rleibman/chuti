@@ -37,21 +37,23 @@ import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 trait WebSocketHandler {
+
   def id:      String
   def close(): Callback
+
 }
 
 trait ScalaJSClientAdapter extends TimerSupport {
+
   val serverUri = uri"http://${Config.chutiHost}/api/game"
   implicit val backend: SttpBackend[Future, capabilities.WebSockets] = FetchBackend()
 
   def asyncCalibanCall[Origin, A](
     selectionBuilder: SelectionBuilder[Origin, A]
-  )(
-    implicit ev: IsOperation[Origin]
+  )(implicit ev:      IsOperation[Origin]
   ): AsyncCallback[A] = {
     val request = selectionBuilder.toRequest(serverUri)
-    //TODO add headers as necessary
+    // TODO add headers as necessary
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
     AsyncCallback
       .fromFuture(request.send(backend))
@@ -63,8 +65,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
   def asyncCalibanCallThroughJsonOpt[Origin, A: Decoder](
     selectionBuilder: SelectionBuilder[Origin, Option[Json]]
-  )(
-    implicit ev: IsOperation[Origin]
+  )(implicit ev:      IsOperation[Origin]
   ): AsyncCallback[Option[A]] =
     asyncCalibanCall[Origin, Option[Json]](selectionBuilder).map { jsonOpt =>
       val decoder = implicitly[Decoder[A]]
@@ -80,11 +81,10 @@ trait ScalaJSClientAdapter extends TimerSupport {
   def calibanCall[Origin, A](
     selectionBuilder: SelectionBuilder[Origin, A],
     callback:         A => Callback
-  )(
-    implicit ev: IsOperation[Origin]
+  )(implicit ev:      IsOperation[Origin]
   ): Callback = {
     val request = selectionBuilder.toRequest(serverUri)
-    //TODO add headers as necessary
+    // TODO add headers as necessary
     import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
     AsyncCallback
@@ -95,20 +95,19 @@ trait ScalaJSClientAdapter extends TimerSupport {
             case Right(a) =>
               callback(a)
             case Left(error) =>
-              Callback.log(s"1 Error: $error") //TODO handle error responses better
+              Callback.log(s"1 Error: $error") // TODO handle error responses better
           }
         case Failure(exception) =>
-          Callback.throwException(exception) //TODO handle error responses better
+          Callback.throwException(exception) // TODO handle error responses better
         case Success(response) =>
-          Callback.log(s"2 Error: ${response.statusText}") //TODO handle error responses better
+          Callback.log(s"2 Error: ${response.statusText}") // TODO handle error responses better
       }
   }
 
   def calibanCallThroughJsonOpt[Origin, A: Decoder](
     selectionBuilder: SelectionBuilder[Origin, Option[Json]],
     callback:         Option[A] => Callback
-  )(
-    implicit ev: IsOperation[Origin]
+  )(implicit ev:      IsOperation[Origin]
   ): Callback =
     calibanCall[Origin, Option[Json]](
       selectionBuilder,
@@ -118,7 +117,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
           decoder.decodeJson(json) match {
             case Right(obj) => callback(Option(obj))
             case Left(error) =>
-              Callback.log(s"3 Error: $error") //TODO handle error responses better
+              Callback.log(s"3 Error: $error") // TODO handle error responses better
           }
         case None => callback(None)
       }
@@ -127,8 +126,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
   def calibanCallThroughJson[Origin, A: Decoder](
     selectionBuilder: SelectionBuilder[Origin, Json],
     callback:         A => Callback
-  )(
-    implicit ev: IsOperation[Origin]
+  )(implicit ev:      IsOperation[Origin]
   ): Callback =
     calibanCall[Origin, Json](
       selectionBuilder,
@@ -137,7 +135,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
         decoder.decodeJson(json) match {
           case Right(obj) => callback(obj)
           case Left(error) =>
-            Callback.log(s"4 Error: $error") //TODO handle error responses better
+            Callback.log(s"4 Error: $error") // TODO handle error responses better
         }
       }
     )
@@ -151,12 +149,13 @@ trait ScalaJSClientAdapter extends TimerSupport {
   )
 
   object GQLOperationMessage {
-    //Client messages
+
+    // Client messages
     val GQL_CONNECTION_INIT = "connection_init"
     val GQL_START = "start"
     val GQL_STOP = "stop"
     val GQL_CONNECTION_TERMINATE = "connection_terminate"
-    //Server messages
+    // Server messages
     val GQL_COMPLETE = "complete"
     val GQL_CONNECTION_ACK = "connection_ack"
     val GQL_CONNECTION_ERROR = "connection_error"
@@ -164,11 +163,12 @@ trait ScalaJSClientAdapter extends TimerSupport {
     val GQL_DATA = "data"
     val GQL_ERROR = "error"
     val GQL_UNKNOWN = "unknown"
+
   }
 
   lazy private[caliban] val graphQLDecoder = implicitly[Decoder[GraphQLResponse]]
 
-  //TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
+  // TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: Decoder](
     uriOrSocket:      Either[URI, WebSocket],
     query:            SelectionBuilder[RootSubscription, A],
@@ -176,8 +176,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
     connectionId:     String,
     onData:           (String, Option[A]) => Callback,
     connectionParams: Option[Json] = None,
-    timeout: Duration =
-      8.minutes, //how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
+    timeout: Duration = 8.minutes, // how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
     onConnected:          (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
@@ -190,19 +189,16 @@ trait ScalaJSClientAdapter extends TimerSupport {
     onClientError:        Throwable => Callback = { _ => Callback.empty }
   ): WebSocketHandler =
     new WebSocketHandler {
+
       override val id: String = connectionId
 
-      def GQLConnectionInit(): GQLOperationMessage =
-        GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
+      def GQLConnectionInit(): GQLOperationMessage = GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
 
-      def GQLStart(query: GraphQLRequest): GQLOperationMessage =
-        GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.asJson))
+      def GQLStart(query: GraphQLRequest): GQLOperationMessage = GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.asJson))
 
-      def GQLStop(): GQLOperationMessage =
-        GQLOperationMessage(GQL_STOP, Option(operationId))
+      def GQLStop(): GQLOperationMessage = GQLOperationMessage(GQL_STOP, Option(operationId))
 
-      def GQLConnectionTerminate(): GQLOperationMessage =
-        GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
+      def GQLConnectionTerminate(): GQLOperationMessage = GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
 
       private val graphql: GraphQLRequest = query.toGraphQL()
 
@@ -211,7 +207,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
         case Right(webSocket) => webSocket
       }
 
-      //TODO, move this into some sort of Ref/state class
+      // TODO, move this into some sort of Ref/state class
       case class ConnectionState(
         lastKAOpt:       Option[Instant] = None,
         kaIntervalOpt:   Option[Int] = None,
@@ -248,9 +244,9 @@ trait ScalaJSClientAdapter extends TimerSupport {
 //          } else if (connectionState.reconnectCount > reconnectionAttempts) {
 //            println("Maximum number of connection retries exceeded")
 //          }
-          //Nothing else to do, really
+          // Nothing else to do, really
           case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
-            //We should only do this the first time
+            // We should only do this the first time
             if (connectionState.firstConnection) {
               onConnected(id.getOrElse(""), payload).runNow()
               connectionState = connectionState.copy(firstConnection = false, reconnectCount = 0)
@@ -260,7 +256,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
             println(s"Sending: $sendMe")
             socket.send(sendMe.asJson.noSpaces)
           case Right(GQLOperationMessage(GQL_CONNECTION_ERROR, id, payload)) =>
-            //if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
+            // if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
             onServerError(id.getOrElse(""), payload).runNow()
             println(s"Connection Error from server $payload")
           case Right(GQLOperationMessage(GQL_CONNECTION_KEEP_ALIVE, id, payload)) =>
@@ -268,8 +264,8 @@ trait ScalaJSClientAdapter extends TimerSupport {
             connectionState = connectionState.copy(reconnectCount = 0)
 
             if (connectionState.lastKAOpt.isEmpty) {
-              //This is the first time we get a keep alive, which means the server is configured for keep-alive,
-              //If we never get this, then the server does not support it
+              // This is the first time we get a keep alive, which means the server is configured for keep-alive,
+              // If we never get this, then the server does not support it
 
               connectionState = connectionState.copy(kaIntervalOpt =
                 Option(
@@ -280,11 +276,9 @@ trait ScalaJSClientAdapter extends TimerSupport {
                           java.time.Duration
                             .between(lastKA, Instant.now).toMillis.milliseconds
                         if (timeFromLastKA > timeout) {
-                          //Assume we've gotten disconnected, we haven't received a KA in a while
+                          // Assume we've gotten disconnected, we haven't received a KA in a while
                           if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
-                            connectionState = connectionState.copy(reconnectCount =
-                              connectionState.reconnectCount + 1
-                            )
+                            connectionState = connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
                             onReconnecting(id.getOrElse("")).runNow()
                             doConnect()
                           } else if (connectionState.reconnectCount > reconnectionAttempts)
@@ -316,7 +310,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                   else Right(parsed.data)
                 objectValue <- data match {
                   case Some(o) => Right(o)
-                  case _ => Left(DecodingError(s"Result is not an object ($data)"))
+                  case _       => Left(DecodingError(s"Result is not an object ($data)"))
                 }
                 result <- query.fromGraphQL(objectValue)
               } yield result
@@ -368,6 +362,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
         } else
           Callback.log(s"Socket is already closed: $query")
       }
+
     }
 
 }

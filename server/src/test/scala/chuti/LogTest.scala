@@ -25,9 +25,11 @@ import zio.logging.slf4j.*
 import zio.{App, ExitCode, UIO, ZIO, ZLayer}
 
 case class SomethingElse(string: String) {
+
   def foo: ZIO[Logging, Nothing, Unit] = {
     log.info(s"Hello from SomethingElse $string")
   }
+
 }
 
 object LogTest extends App {
@@ -41,9 +43,8 @@ object LogTest extends App {
 
   private val logLayer: ZLayer[Any, Nothing, Logging] = Slf4jLogger.makeWithAnnotationsAsMdc(
     List(userAnnonation),
-    logFormat = {
-      case (ctx, str) =>
-        s"${ctx(LogAnnotation.CorrelationId)} ${ctx(userAnnonation)}: $str"
+    logFormat = { case (ctx, str) =>
+      s"${ctx(LogAnnotation.CorrelationId)} ${ctx(userAnnonation)}: $str"
     }
   )
   private val users = List(
@@ -68,4 +69,5 @@ object LogTest extends App {
       }
     } yield ExitCode.success).provideSomeLayer[Clock](logLayer)
   }
+
 }

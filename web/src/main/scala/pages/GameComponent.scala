@@ -155,7 +155,7 @@ object GameComponent {
                   ^.className := s"statusBar$playerPosition",
                   <.div(
                     ^.className := s"playerName ${if (canPlay) "canPlay"
-                    else ""}",
+                      else ""}",
                     jugador.user.name
                   ),
                   <.div(
@@ -164,7 +164,7 @@ object GameComponent {
                     jugador.cuantasCantas
                       .fold("")(c =>
                         s"Canto ${if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa // TODO i8n
-                        else c}"
+                          else c}"
                       ),
                     jugador.statusString
                   )
@@ -376,7 +376,7 @@ object GameComponent {
                               Callback.empty
                           },
                           ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
-                          else ""}"
+                            else ""}"
                         ),
                         <.div(
                           ^.className := "domino0FlipAction",
@@ -446,7 +446,7 @@ object GameComponent {
                             <.img(
                               ^.src := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
                               ^.className := s"dominoJugado$playerPosition${if (fichaGanadora.fold(false)(_ == ficha)) " fichaGanadora"
-                              else ""}"
+                                else ""}"
                             )
                           )
                         } else {

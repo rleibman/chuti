@@ -31,20 +31,24 @@ import zio.logging.Logging
 
 import scala.util.matching.Regex
 
-/**
-  * A crud route avoids boilerplate by definining a simple route for crud operations of an object
+/** A crud route avoids boilerplate by definining a simple route for crud operations of an object
   *
-  * @tparam E       The model object that is the base of the route
-  * @tparam PK      The type of the object's primary key (used for gets/deletes)
-  * @tparam SEARCH  A search object (extends Search)
+  * @tparam E
+  *   The model object that is the base of the route
+  * @tparam PK
+  *   The type of the object's primary key (used for gets/deletes)
+  * @tparam SEARCH
+  *   A search object (extends Search)
   */
 trait CRUDRoute[E, PK, SEARCH <: Search] {
+
   def crudRoute: CRUDRoute.Service[E, PK, SEARCH]
+
 }
 
 object CRUDRoute {
-  abstract class Service[E: Tag, PK: Tag, SEARCH <: Search: Tag]
-      extends Directives with ZIODirectives with ErrorAccumulatingCirceSupport {
+
+  abstract class Service[E: Tag, PK: Tag, SEARCH <: Search: Tag] extends Directives with ZIODirectives with ErrorAccumulatingCirceSupport {
 
     type OpsService = Has[CRUDOperations[E, PK, SEARCH]]
 
@@ -54,36 +58,30 @@ object CRUDRoute {
 
     val defaultSoftDelete: Boolean = false
 
-    /**
-      * Override this to add other authenticated (i.e. with session) routes
+    /** Override this to add other authenticated (i.e. with session) routes
       *
       * @return
       */
-    def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] =
-      ZIO.succeed(reject)
+    def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] = ZIO.succeed(reject)
 
-    /**
-      * Override this to add routes that don't require a session
+    /** Override this to add routes that don't require a session
       *
       * @return
       */
-    def unauthRoute: URIO[Postman & TokenHolder & Logging & Clock & OpsService, Route] =
-      ZIO.succeed(reject)
+    def unauthRoute: URIO[Postman & TokenHolder & Logging & Clock & OpsService, Route] = ZIO.succeed(reject)
 
-    /**
-      * Override this to support children routes (e.g. /api/student/classroom)
+    /** Override this to support children routes (e.g. /api/student/classroom)
       *
-      * @param obj A Task that will contain the "parent" object
+      * @param obj
+      *   A Task that will contain the "parent" object
       * @return
       */
     def childrenRoutes(
       pk:  PK,
       obj: Option[E]
-    ): RIO[SessionProvider & Logging & Clock & OpsService, Seq[Route]] =
-      ZIO.succeed(Seq.empty)
+    ): RIO[SessionProvider & Logging & Clock & OpsService, Seq[Route]] = ZIO.succeed(Seq.empty)
 
-    /**
-      * You need to override this method so that the architecture knows how to get a primary key from an object
+    /** You need to override this method so that the architecture knows how to get a primary key from an object
       *
       * @param obj
       * @return
@@ -113,9 +111,7 @@ object CRUDRoute {
     ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] =
       for {
         ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
-        ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj =>
-          ops.delete(getPK(obj), defaultSoftDelete)
-        )
+        ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
       } yield ret
 
     def upsertOperation(obj: E): ZIO[
@@ -149,10 +145,8 @@ object CRUDRoute {
         ret <- ops.search(search)
       } yield ret
 
-    /**
-      * The main route. Note that it takes a pair of upickle ReaderWriter implicits that we need to be able to
-      * marshall the objects in-to json.
-      * In scala3 we may move these to parameters of the trait instead.
+    /** The main route. Note that it takes a pair of upickle ReaderWriter implicits that we need to be able to marshall the objects in-to json. In
+      * scala3 we may move these to parameters of the trait instead.
       *
       * @return
       */
@@ -212,7 +206,7 @@ object CRUDRoute {
                     complete(
                       getOperation(decode[PK](id).toOption.get)
                         .provide(runtime)
-                        .map(_.toSeq) //The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
+                        .map(_.toSeq) // The #!@#!@# akka optionMarshaller gets in our way and converts an option to null/object before it ships it, so we convert it to seq
                     )
                   } ~
                     delete {
@@ -227,6 +221,7 @@ object CRUDRoute {
             }
         }
       }
+
   }
 
 }

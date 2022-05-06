@@ -31,6 +31,7 @@ import sttp.tapir.json.circe.*
 import scala.concurrent.ExecutionContextExecutor
 
 trait ChatRoute extends Directives with HasActorSystem {
+
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
   import ChatService.*
 
@@ -67,9 +68,10 @@ trait ChatRoute extends Directives with HasActorSystem {
               keepAliveTime = Option(5.minutes)
             )
           } ~ path("graphiql") {
-          getFromFile(s"$staticContentDir/graphiql.html")
-        }
+            getFromFile(s"$staticContentDir/graphiql.html")
+          }
       }
     }
   }
+
 }

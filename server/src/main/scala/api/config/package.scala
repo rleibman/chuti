@@ -20,14 +20,16 @@ import better.files.File
 import com.typesafe.config.ConfigFactory
 import zio.Has
 
-/**
-  * A trait to keep app configuration
+/** A trait to keep app configuration
   */
 package object config {
+
   type Config = Has[Config.Service]
 
   object Config {
+
     trait Service {
+
       val configKey = "chuti"
       val config: com.typesafe.config.Config = {
         val confFileName =
@@ -38,8 +40,11 @@ package object config {
           .withFallback(ConfigFactory.load())
         config
       }
+
     }
+
   }
 
   val live: Config.Service = new Config.Service {}
+
 }

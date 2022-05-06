@@ -1,6 +1,7 @@
 package util
 
 object CodeGen extends App {
+
   slick.codegen.SourceCodeGenerator.main(
     Array(
       "slick.jdbc.MySQLProfile",
@@ -12,4 +13,5 @@ object CodeGen extends App {
       "chuti"
     )
   )
+
 }

@@ -30,6 +30,7 @@ object LoginPage {
   case class State()
 
   class Backend($ : BackendScope[Props, State]) {
+
     val query: String = window.location.search.substring(1)
     val isBad: Boolean = query.contains("bad=true")
     def render(
@@ -65,19 +66,18 @@ object LoginPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick({ (_, _) =>
+            .onClick { (_, _) =>
               context.onModeChanged(Mode.registration, None)
-            }
-          )("Registrarse por primera vez"),
+            }("Registrarse por primera vez"),
           Button()
             .compact(true)
             .basic(true)
-            .onClick({ (_, _) =>
+            .onClick { (_, _) =>
               context.onModeChanged(Mode.passwordRecoveryRequest, None)
-            }
-          )("Perdí mi Contraseña")
+            }("Perdí mi Contraseña")
         )
       }
+
   }
 
   val component = ScalaComponent
@@ -88,6 +88,6 @@ object LoginPage {
 
   case class Props(messageForScreen: Option[String])
 
-  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] =
-    component(Props(messageForScreen))
+  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] = component(Props(messageForScreen))
+
 }

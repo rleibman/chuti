@@ -21,19 +21,17 @@ import akka.http.scaladsl.server.{Directives, Route}
 import api.config
 import zio.{UIO, ZIO}
 
-/**
-  * A route used to spit out static content
+/** A route used to spit out static content
   */
 trait StaticHTMLRoute extends Directives {
+
   val staticContentDir: String =
     config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
   override def getFromDirectory(
-    directoryName: String
-  )(
-    implicit resolver: ContentTypeResolver
-  ): Route =
-    extractUnmatchedPath(unmatchedPath => getFromFile(s"$staticContentDir/$unmatchedPath"))
+    directoryName:     String
+  )(implicit resolver: ContentTypeResolver
+  ): Route = extractUnmatchedPath(unmatchedPath => getFromFile(s"$staticContentDir/$unmatchedPath"))
 
   def htmlRoute: UIO[Route] =
     ZIO.succeed {
@@ -55,4 +53,5 @@ trait StaticHTMLRoute extends Directives {
           }
       }
     }
+
 }

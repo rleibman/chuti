@@ -150,7 +150,7 @@ object UserSettingsPage extends ChutiPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick { (_, _) => doUpdate(state, chutiState) }("Guardar") // TODO i8n
+            .onClick((_, _) => doUpdate(state, chutiState))("Guardar") // TODO i8n
         ),
         Divider()(),
         FormGroup()(
@@ -180,7 +180,7 @@ object UserSettingsPage extends ChutiPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick { (_, _) => doChangePassword(state) }("Cambiar Contraseña") // TODO i8n
+            .onClick((_, _) => doChangePassword(state))("Cambiar Contraseña") // TODO i8n
         ),
         Divider()(),
         <.h2("Cartera"), // TODO i8n

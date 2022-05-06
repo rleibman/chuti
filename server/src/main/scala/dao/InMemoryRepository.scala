@@ -27,6 +27,7 @@ import zio.logging.Logging
 import scala.concurrent.duration.Duration
 
 object InMemoryRepository {
+
   val user1: User =
     User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
   val user2: User =
@@ -39,6 +40,7 @@ object InMemoryRepository {
 }
 
 class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
+
   import InMemoryRepository.*
   private val games =
     scala.collection.mutable.Map[GameId, Game](loadedGames.map(game => game.id.get -> game): _*)
@@ -50,6 +52,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
   )
 
   override val gameOperations: Repository.GameOperations = new Repository.GameOperations {
+
     override def getHistoricalUserGames:   RepositoryIO[Seq[Game]] = ???
     override def gameInvites:              RepositoryIO[Seq[Game]] = ???
     override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = ???
@@ -66,16 +69,17 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
       pk:         GameId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = ???
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-      Task.succeed(games.values.toSeq)
-    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = Task.succeed(games.size.toLong)
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = Task.succeed(games.values.toSeq)
+    override def count(search: Option[EmptySearch]):  RepositoryIO[Long] = Task.succeed(games.size.toLong)
 
     override def updatePlayers(game: Game): RepositoryIO[Game] = Task.succeed(game)
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] = Task.succeed(true)
+
   }
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
+
     override def login(
       email:    String,
       password: String
@@ -120,8 +124,10 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
 
     override def firstLogin: RepositoryIO[Option[Instant]] = ???
+
   }
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+
     override def validateToken(
       token:   Token,
       purpose: TokenPurpose
@@ -139,5 +145,7 @@ class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
     ): RepositoryIO[Option[User]] = ???
 
     override def cleanup: RepositoryIO[Boolean] = ???
+
   }
+
 }

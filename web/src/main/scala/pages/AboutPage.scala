@@ -22,6 +22,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 
 object AboutPage extends ChutiPage {
+
   case class State()
 
   val agradecimientos: String =
@@ -35,6 +36,7 @@ object AboutPage extends ChutiPage {
    |""".stripMargin
 
   class Backend($ : BackendScope[_, State]) {
+
     def renderBuildInfo: VdomElement =
       <.div(
         <.h2("Versiones"),
@@ -189,6 +191,7 @@ object AboutPage extends ChutiPage {
         <.div(^.dangerouslySetInnerHtml := agradecimientos)
       )
     }
+
   }
 
   private val component = ScalaComponent

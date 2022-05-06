@@ -26,6 +26,7 @@ import scalacache.caffeine.CaffeineCache
 import zio.*
 import zio.clock.Clock
 import zio.logging.{Logger, Logging}
+import zio.random.Random
 
 import scala.concurrent.duration.*
 
@@ -80,8 +81,8 @@ package object token {
       ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
         new Service {
 //          SessionProvider & Logging
-          val layer: ZLayer[Any, Nothing, SessionProvider & Logging & Clock] =
-            GameService.godLayer ++ ZLayer.succeed(log) ++ Clock.live
+          val layer: ZLayer[Any, Nothing, SessionProvider & Logging & Clock & Random] =
+            GameService.godLayer ++ ZLayer.succeed(log) ++ Clock.live ++ Random.live
 
           zio.Runtime.default.unsafeRun {
             val freq = new zio.DurationSyntax(1).hour

@@ -22,9 +22,12 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 package object coinbase {
+
   object Currency extends Enumeration {
+
     type Currency = Value
     val BTC: Currency = Value
+
   }
 
   import Currency.*
@@ -32,6 +35,7 @@ package object coinbase {
   type Coinbase = Has[Service]
 
   trait Service {
+
     def transactionRequest(
       to:          String,
       amount:      BigDecimal,
@@ -49,12 +53,14 @@ package object coinbase {
       financial_institution_website: Option[String] = None
     ): Task[Unit]
     def walletCreateAddress(name: String): Task[String]
+
   }
 
   def akkaHttpLayer: ULayer[Coinbase] = ZLayer.succeed(akkaHttp())
 
   def akkaHttp(): Service =
     new Service {
+
       override def transactionRequest(
         to:          String,
         amount:      BigDecimal,
@@ -74,6 +80,7 @@ package object coinbase {
       ): Task[Unit] = ???
 
       override def walletCreateAddress(name: String): Task[String] = ???
+
     }
 
   def getHMACHeader(
@@ -98,4 +105,5 @@ package object coinbase {
         throw e
     }
   }
+
 }

@@ -104,9 +104,8 @@ object GameClient {
   object Mutations {
 
     def newGame(
-      satoshiPerPoint: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      satoshiPerPoint:   Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Json]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "newGame",
@@ -114,26 +113,23 @@ object GameClient {
         arguments = List(Argument("satoshiPerPoint", satoshiPerPoint, "Int!")(encoder0))
       )
     def newGameSameUsers(
-      value: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      value:             Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Json]] =
       _root_.caliban.client.SelectionBuilder
         .Field("newGameSameUsers", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def joinRandomGame: SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Json]] =
       _root_.caliban.client.SelectionBuilder.Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(
-      value: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      value:             Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field("abandonGame", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def inviteByEmail(
-      name:   String,
-      email:  String,
-      gameId: Int
-    )(
-      implicit encoder0: ArgEncoder[String],
+      name:              String,
+      email:             String,
+      gameId:            Int
+    )(implicit encoder0: ArgEncoder[String],
       encoder1:          ArgEncoder[String],
       encoder2:          ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
@@ -149,10 +145,9 @@ object GameClient {
     def startGame(value: Int)(implicit encoder0: ArgEncoder[Int]): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field("startGame", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def inviteToGame(
-      userId: Int,
-      gameId: Int
-    )(
-      implicit encoder0: ArgEncoder[Int],
+      userId:            Int,
+      gameId:            Int
+    )(implicit encoder0: ArgEncoder[Int],
       encoder1:          ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
@@ -161,23 +156,20 @@ object GameClient {
         arguments = List(Argument("userId", userId, "Int!")(encoder0), Argument("gameId", gameId, "Int!")(encoder1))
       )
     def acceptGameInvitation(
-      value: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      value:             Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Json]] =
       _root_.caliban.client.SelectionBuilder
         .Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def declineGameInvitation(
-      value: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      value:             Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder
         .Field("declineGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def cancelUnacceptedInvitations(
-      value: Int
-    )(
-      implicit encoder0: ArgEncoder[Int]
+      value:             Int
+    )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "cancelUnacceptedInvitations",
@@ -189,10 +181,9 @@ object GameClient {
     def unfriend(value: Int)(implicit encoder0: ArgEncoder[Int]): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field("unfriend", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def play(
-      gameId:    Int,
-      gameEvent: Json
-    )(
-      implicit encoder0: ArgEncoder[Int],
+      gameId:            Int,
+      gameEvent:         Json
+    )(implicit encoder0: ArgEncoder[Int],
       encoder1:          ArgEncoder[Json]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
@@ -207,10 +198,9 @@ object GameClient {
   object Subscriptions {
 
     def gameStream(
-      gameId:       Int,
-      connectionId: String
-    )(
-      implicit encoder0: ArgEncoder[Int],
+      gameId:            Int,
+      connectionId:      String
+    )(implicit encoder0: ArgEncoder[Int],
       encoder1:          ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, Option[Json]] =
       _root_.caliban.client.SelectionBuilder.Field(
@@ -224,9 +214,8 @@ object GameClient {
     def userStream[A](
       value: String
     )(
-      innerSelection: SelectionBuilder[UserEvent, A]
-    )(
-      implicit encoder0: ArgEncoder[String]
+      innerSelection:    SelectionBuilder[UserEvent, A]
+    )(implicit encoder0: ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "userStream",
@@ -237,4 +226,3 @@ object GameClient {
   }
 
 }
-

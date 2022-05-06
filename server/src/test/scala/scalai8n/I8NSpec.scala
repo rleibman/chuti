@@ -21,6 +21,7 @@ import java.util.Locale
 import org.scalatest.flatspec.AnyFlatSpec
 
 class I8NSpec extends AnyFlatSpec {
+
   val es_MX = new Locale("es", "MX")
   val en_US = new Locale("en", "US")
   val world = "mundo"

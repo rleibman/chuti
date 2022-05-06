@@ -22,7 +22,9 @@ import mail.Postman.Postman
 import zio.{Task, ZIO}
 
 class MockPostman extends Postman.Service {
+
   override def deliver(email: Envelope): Task[Unit] = Task.succeed(())
 
   override def webHostName: String = "chuti.fun"
+
 }

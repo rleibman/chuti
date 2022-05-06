@@ -25,6 +25,7 @@ import zio.*
 import zio.duration.*
 
 class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
+
   import dao.InMemoryRepository.*
 
   "primera mano" should "work" in {
@@ -59,12 +60,12 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
       }
 
     assert(game.id === Option(gameId))
-    assert(game.jugadores.count(_.fichas.size == 6) === 4) //Todos dieron una ficha.
+    assert(game.jugadores.count(_.fichas.size == 6) === 4) // Todos dieron una ficha.
     val ganador = game.jugadores.maxBy(_.filas.size)
     println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
     assert(
       gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size === 5
-    ) //Including the poison pill
+    ) // Including the poison pill
   }
   "jugando 4 manos" should "work" in {
     val gameId = GameId(1)
@@ -145,4 +146,5 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
     println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
     assert(gameEvents.nonEmpty)
   }
+
 }

@@ -26,13 +26,15 @@ import zio.{Has, RIO, Task, ZIO}
 import scala.concurrent.duration.*
 
 object Postman {
+
   type Postman = Has[Service]
 
   trait Service {
+
     def deliver(email: Envelope): Task[Unit]
     def webHostName: String
 
-    //You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
+    // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
     def inviteToPlayByEmail(
       user:    User,
       invited: User
@@ -111,15 +113,18 @@ object Postman {
                                        | <p>Nota que este enlace estará activo por un tiempo limitado, si te tardas mucho tendrás que intentar de nuevo</p>
                                        |</body></html>""".stripMargin))
       }
+
   }
+
 }
 
-/**
-  * An instatiation of the Postman that user the courier mailer
+/** An instatiation of the Postman that user the courier mailer
   */
 object CourierPostman {
+
   def live(config: Config.Service): Postman.Service =
     new Postman.Service {
+
       lazy val mailer: Mailer = {
         val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
         System.setProperty("mail.smtp.localhost", localhost)
@@ -147,4 +152,5 @@ object CourierPostman {
       override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
 
     }
+
 }

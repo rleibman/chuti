@@ -24,11 +24,12 @@ object ZioEffect {
 
   object modes {
 
-    /**
-      * A mode that wraps results of async operations in `zio.Task`.
+    /** A mode that wraps results of async operations in `zio.Task`.
       */
     implicit val task: Mode[Task] = new Mode[Task] {
+
       val M: Async[Task] = AsyncForZIOTask
+
     }
 
   }
@@ -44,8 +45,8 @@ object ZioEffect {
     def raiseError[A](t: Throwable): Task[A] = Task.fail(t)
 
     def handleNonFatal[A](fa: => Task[A])(f: Throwable => A): Task[A] =
-      fa.catchSome {
-        case NonFatal(e) => Task.succeed(f(e))
+      fa.catchSome { case NonFatal(e) =>
+        Task.succeed(f(e))
       }
 
     def delay[A](thunk: => A): Task[A] = Task.effect(thunk)
@@ -63,4 +64,5 @@ object ZioEffect {
       }
 
   }
+
 }

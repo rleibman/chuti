@@ -19,6 +19,7 @@ import java.time.{Instant, ZoneOffset}
 import scala.util.Random
 
 package object chuti {
+
   val godUserId: UserId = UserId(-666)
 
   val god: User = User(
@@ -237,10 +238,10 @@ package object chuti {
     "Victoria",
     "Violeta",
     "Ximena",
-    "Zoe",
+    "Zoe"
   )
 
-  //A bot user
+  // A bot user
   def hal9000: User = {
     val id = -(Random.nextInt(9998 - 1000) + 1001)
     User(
@@ -250,4 +251,5 @@ package object chuti {
       created = Instant.ofEpochMilli(0)
     )
   }
+
 }

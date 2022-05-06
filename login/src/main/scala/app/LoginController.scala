@@ -15,6 +15,7 @@
  */
 
 package app
+
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, React, ScalaComponent}
@@ -24,13 +25,16 @@ import react.Toast
 import org.scalajs.dom.window
 
 object Mode extends Enumeration {
+
   type Mode = Value
-  val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken,
-    newUserAcceptFriend = Value
+  val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken, newUserAcceptFriend = Value
+
 }
 import app.Mode.*
 object LoginControllerState {
+
   val ctx: Context[LoginControllerState] = React.createContext(LoginControllerState())
+
 }
 
 case class LoginControllerState(
@@ -39,6 +43,7 @@ case class LoginControllerState(
   onModeChanged:    (Mode, Option[String]) => Callback = { (_, _) => Callback.empty }
 )
 object LoginController {
+
   lazy val queryParams = new org.scalajs.dom.URLSearchParams(window.location.search)
 
   case class State(
@@ -51,10 +56,7 @@ object LoginController {
     def onModeChanged(
       mode:             Mode,
       messageForScreen: Option[String]
-    ): Callback =
-      $.modState(s =>
-        s.copy(context = s.context.copy(mode = mode, messageForScreen = messageForScreen))
-      )
+    ): Callback = $.modState(s => s.copy(context = s.context.copy(mode = mode, messageForScreen = messageForScreen)))
 
     def render(state: State) =
       LoginControllerState.ctx.provide(state.context) {
@@ -70,6 +72,7 @@ object LoginController {
           }
         )
       }
+
   }
   private val component = ScalaComponent
     .builder[Unit]("LoginController")
@@ -110,4 +113,5 @@ object LoginController {
     .build
 
   def apply() = component()
+
 }

@@ -28,6 +28,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.window
 
 object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
+
   import app.GameViewMode.*
 
   case class State()
@@ -58,7 +59,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       ChutiState.ctx.consume { chutiState =>
         val gameViewMode =
           if (chutiState.gameInProgress.isEmpty && p.chutiState.gameViewMode == game)
-            //I don't want to be in the lobby if the game is loading
+            // I don't want to be in the lobby if the game is loading
             none
           else {
             if (p.chutiState.gameViewMode != GameViewMode.none)
@@ -82,12 +83,11 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
         }
       }
     }
+
   }
   case class Props(chutiState: ChutiState)
 
-  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg =>
-    (msg.date.getEpochSecond, msg.fromUser.id.map(_.value))
-  )
+  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
   implicit val gameReuse: Reusability[Game] =
     Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
   implicit val userIdReuse:       Reusability[UserId] = Reusability.by(_.value)
@@ -106,8 +106,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
     .configure(Reusability.shouldComponentUpdate)
     .build
 
-  private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] =
-    component(Props(chutiState))
+  private def inner(chutiState: ChutiState): Unmounted[Props, State, Backend] = component(Props(chutiState))
 
   private def innerComponent =
     ScalaComponent
@@ -118,4 +117,5 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
       .build
 
   def apply(): Unmounted[Unit, Unit, Unit] = innerComponent()
+
 }

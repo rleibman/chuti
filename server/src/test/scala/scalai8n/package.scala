@@ -33,18 +33,23 @@ import java.util.Locale
  */
 
 package object scalai8n {
+
   implicit class I8NString(val s: String) extends AnyVal {
+
     def toString(implicit locale: Locale): String = {
-      s //TODO translate string here.
+      s // TODO translate string here.
     }
+
   }
 
   implicit class I8NInterpolator(val sc: StringContext) extends AnyVal {
+
     def i8n(args: Any*): I8NString = {
       println(sc.parts.map(s => s"'$s'").mkString(","))
       println(args.mkString(":"))
       sc.s(args: _*)
     }
+
   }
 
 }

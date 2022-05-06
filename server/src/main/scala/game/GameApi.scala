@@ -34,6 +34,7 @@ import zio.duration.*
 import zio.stream.ZStream
 
 object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
+
   import caliban.interop.circe.json.*
 
   case class PlayArgs(
@@ -178,8 +179,7 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
             filtered <- sanitizeGame(game)
           } yield filtered.asJson,
           abandonGame = gameId => GameService.abandonGame(gameId),
-          inviteToGame = userInviteArgs =>
-            GameService.inviteToGame(userInviteArgs.userId, userInviteArgs.gameId),
+          inviteToGame = userInviteArgs => GameService.inviteToGame(userInviteArgs.userId, userInviteArgs.gameId),
           inviteByEmail = inviteByEmailArgs =>
             GameService.inviteByEmail(
               inviteByEmailArgs.name,
@@ -213,9 +213,8 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 //  @@ // wrapper that logs slow queries
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-  "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Instant\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  startGame(value: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n  getHistoricalUserGames: [Json!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n  gameId: Int\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Instant\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  startGame(value: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n  getHistoricalUserGames: [Json!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n  gameId: Int\n}"
 
-
-  //Generate client with
+  // Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala
 }

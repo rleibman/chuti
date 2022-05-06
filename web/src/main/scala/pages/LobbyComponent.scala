@@ -35,15 +35,17 @@ import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
+
   import app.GameViewMode.*
 
   case class ExtUser(
-                      user:       User,
-                      isFriend:   Boolean,
-                      isLoggedIn: Boolean
+    user:       User,
+    isFriend:   Boolean,
+    isLoggedIn: Boolean
   )
 
   object Dialog extends Enumeration {
+
     type Dialog = Value
     val none, newGame, inviteExternal, startWithBots = Value
 
@@ -65,6 +67,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   ) {}
 
   class Backend($ : BackendScope[Props, State]) {
+
     private val gameDecoder = implicitly[Decoder[Game]]
 
     def refresh(): Callback = {
@@ -96,35 +99,33 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     ): VdomElement = {
       def renderStartWithBotsDialog =
         Modal().open(s.dlg == Dialog.startWithBots)(
-          ModalHeader()("Empezar juego (el resto de los jugadores serán bots)"), //TODO i8n
-          ModalContent()("Estas seguro que quieres empezar este juego? Los jugadores que faltan serán bots, y son muy malos jugando (pero están aprendiendo), nota que no puedes ganar satoshis jugando con bots"), //TODO i8n
-            ModalActions()(
+          ModalHeader()("Empezar juego (el resto de los jugadores serán bots)"), // TODO i8n
+          ModalContent()("Estas seguro que quieres empezar este juego? Los jugadores que faltan serán bots, y son muy malos jugando (pero están aprendiendo), nota que no puedes ganar satoshis jugando con bots"), // TODO i8n
+          ModalActions()(
             Button()
               .compact(true)
               .basic(true)
-              .onClick({ (_, _) =>
+              .onClick { (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none))
-              }
-            )("Cancelar"), //TODO i8n
+              }("Cancelar"), // TODO i8n
             Button()
               .compact(true)
               .basic(true)
-              .onClick({ (_, _) =>
+              .onClick { (_, _) =>
                 Callback.log("Starting game") >> calibanCall(
                   Mutations.startGame(p.gameInProgress.value.flatMap(_.id).fold(-1)(_.value)),
-                  callback =  (_: Option[Boolean]) => Toast.success("Juego creado!") //TODO i8n
+                  callback = (_: Option[Boolean]) => Toast.success("Juego creado!") // TODO i8n
                 )
-              }
-            )("Crear") //TODO i8n
+              }("Crear") // TODO i8n
           )
         )
 
       def renderNewGameDialog =
         Modal().open(s.dlg == Dialog.newGame)(
-          ModalHeader()("Juego Nuevo"), //TODO i8n
+          ModalHeader()("Juego Nuevo"), // TODO i8n
           ModalContent()(
             FormField()(
-              Label()("Satoshi por punto"), //TODO i8n
+              Label()("Satoshi por punto"), // TODO i8n
               Input()
                 .required(true)
                 .name("satoshiPerPoint")
@@ -133,29 +134,27 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                 .max(10000)
                 .step(100)
                 .value(s.newGameDialogState.fold(100.0)(_.satoshiPerPoint.toDouble))
-                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                .onChange { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(newGameDialogState =
                       s.newGameDialogState
                         .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
                     )
                   )
-                }
-              )()
+                }()
             )
           ),
           ModalActions()(
             Button()
               .compact(true)
               .basic(true)
-              .onClick({ (_, _) =>
+              .onClick { (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
-              }
-            )("Cancelar"), //TODO i8n
+              }("Cancelar"), // TODO i8n
             Button()
               .compact(true)
               .basic(true)
-              .onClick({ (_, _) =>
+              .onClick { (_, _) =>
                 Callback.log("Calling new Game") >> calibanCallThroughJsonOpt[Mutations, Game](
                   Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
                   callback = { gameOpt =>
@@ -168,124 +167,118 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         )
                       )
                     ) >>
-                      Toast.success("Juego empezado!") //TODO i8n
+                      Toast.success("Juego empezado!") // TODO i8n
                   }
                 )
-              }
-            )("Crear") //TODO i8n
+              }("Crear") // TODO i8n
           )
         )
 
       def renderFirstLoginWelcome(chutiState: ChutiState): VdomElement = {
         <.div(
-          <.h1(^.marginBottom := 10.px, s"Bienvenido ${chutiState.user.fold("")(_.name)}!"), //TODO i8n
+          <.h1(^.marginBottom := 10.px, s"Bienvenido ${chutiState.user.fold("")(_.name)}!"), // TODO i8n
           <.p(
             ^.marginBottom := 10.px,
-            s"Como regalo empiezas con 10,000 satoshi en tu cartera, ahorita tienes ${chutiState.wallet //TODO i8n
-              .fold("")(_.amount.toString())}, disfrutalos!" //TODO i8n
+            s"Como regalo empiezas con 10,000 satoshi en tu cartera, ahorita tienes ${chutiState.wallet // TODO i8n
+                .fold("")(_.amount.toString())}, disfrutalos!" // TODO i8n
           ),
           <.p(
             ^.marginBottom := 10.px,
-            "Si nunca as jugado chuti, o tiene muchos años que no juegas, familiarizate con las ", //TODO i8n
-            <.a(^.href := "#rules", "reglas de chuti") //TODO i8n
+            "Si nunca as jugado chuti, o tiene muchos años que no juegas, familiarizate con las ", // TODO i8n
+            <.a(^.href := "#rules", "reglas de chuti") // TODO i8n
           ),
-          <.p(^.marginBottom := 10.px, "Tienes varias opciones para empezar a jugar:"), //TODO i8n
+          <.p(^.marginBottom := 10.px, "Tienes varias opciones para empezar a jugar:"), // TODO i8n
           <.ul(
             <.li(
-              "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)" //TODO i8n
+              "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)" // TODO i8n
             ),
             <.li(
-              "Si aprietas 'Crear Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico" //TODO i8n
+              "Si aprietas 'Crear Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico" // TODO i8n
             ),
-            <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación") //TODO i8n
+            <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación") // TODO i8n
           ),
           <.p(
             ^.marginBottom := 10.px,
-            "Una vez que se junten 4 jugadores el juego empieza automáticamente, usa el menu para 'Entrar al Juego'" //TODO i8n
+            "Una vez que se junten 4 jugadores el juego empieza automáticamente, usa el menu para 'Entrar al Juego'" // TODO i8n
           ),
-          <.p(^.marginBottom := 10.px, "Nada mas puedes jugar un solo juego a la vez."), //TODO i8n
+          <.p(^.marginBottom := 10.px, "Nada mas puedes jugar un solo juego a la vez."), // TODO i8n
           <.p(
             ^.marginBottom := 10.px,
-            "Usa el menu para regresar al lobby, ver las cuentas del juego actual, ver la historia de juegos pasados, administrar tu información, etc." //TODO i8n
+            "Usa el menu para regresar al lobby, ver las cuentas del juego actual, ver la historia de juegos pasados, administrar tu información, etc." // TODO i8n
           )
         )
       }
 
       def renderWelcome(chutiState: ChutiState): VdomElement = {
         <.div(
-          <.h1(s"Bienvenido ${chutiState.user.fold("")(_.name)}!"), //TODO i8n
+          <.h1(s"Bienvenido ${chutiState.user.fold("")(_.name)}!"), // TODO i8n
           <.p(
-            s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi" //TODO i8n
+            s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi" // TODO i8n
           )
         )
       }
 
       def renderInviteExternalDialog: VdomElement =
         Modal().open(s.dlg == Dialog.inviteExternal)(
-          ModalHeader()("Invitar amigo externo"), //TODO i8n
+          ModalHeader()("Invitar amigo externo"), // TODO i8n
           ModalContent()(
             FormField()(
-              Label()("Nombre"), //TODO i8n
+              Label()("Nombre"), // TODO i8n
               Input()
                 .required(true)
-                .name("Nombre") //TODO i8n
+                .name("Nombre") // TODO i8n
                 .value(s.inviteExternalDialogState.fold("")(_.name))
-                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                .onChange { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(inviteExternalDialogState =
                       s.inviteExternalDialogState
                         .map(_.copy(name = data.value.get.asInstanceOf[String]))
                     )
                   )
-                }
-              )()
+                }()
             ),
             FormField()(
-              Label()("Correo"), //TODO i8n
+              Label()("Correo"), // TODO i8n
               Input()
                 .required(true)
-                .name("Correo") //TODO i8n
+                .name("Correo") // TODO i8n
                 .`type`("email")
                 .value(s.inviteExternalDialogState.fold("")(_.email))
-                .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                .onChange { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                   $.modState(s =>
                     s.copy(inviteExternalDialogState =
                       s.inviteExternalDialogState
                         .map(_.copy(email = data.value.get.asInstanceOf[String]))
                     )
                   )
-                }
-              )()
+                }()
             )
           ),
           ModalActions()(
             Button()
-            .  compact(true)
+              .compact(true)
               .basic(true)
-              .onClick({ (_, _) =>
+              .onClick { (_, _) =>
                 $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
-              }
-            )("Cancelar"), //TODO i8n
+              }("Cancelar"), // TODO i8n
             p.gameInProgress.value.fold(EmptyVdom) { game =>
               Button()
                 .compact(true)
                 .basic(true)
-                .onClick({
-                  (_, _) =>
-                    Callback.log(s"Inviting user by email") >>
-                      calibanCall[Mutations, Option[Boolean]](
-                        Mutations.inviteByEmail(
-                          s.inviteExternalDialogState.fold("")(_.name),
-                          s.inviteExternalDialogState.fold("")(_.email),
-                          game.id.fold(0)(_.value)
-                        ),
-                        _ =>
-                          Toast.success("Invitación mandada!") >> $.modState( //TODO i8n
-                            _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
-                          )
-                      )
-                }
-              )("Invitar") //TODO i8n
+                .onClick { (_, _) =>
+                  Callback.log(s"Inviting user by email") >>
+                    calibanCall[Mutations, Option[Boolean]](
+                      Mutations.inviteByEmail(
+                        s.inviteExternalDialogState.fold("")(_.name),
+                        s.inviteExternalDialogState.fold("")(_.email),
+                        game.id.fold(0)(_.value)
+                      ),
+                      _ =>
+                        Toast.success("Invitación mandada!") >> $.modState( // TODO i8n
+                          _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                        )
+                    )
+                }("Invitar") // TODO i8n
             }
           )
         )
@@ -294,9 +287,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
         chutiState.user
           .fold(
             <.div(
-              Loader()//key = "cargando",
+              Loader() // key = "cargando",
                 .active(true)
-              .size(SemanticSIZES.massive)("Cargando") //TODO i8n
+                .size(SemanticSIZES.massive)("Cargando") // TODO i8n
             )
           ) { user =>
             <.div(
@@ -316,11 +309,11 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           calibanCallThroughJsonOpt[Mutations, Game](
                             Mutations.joinRandomGame,
                             callback = gameOpt =>
-                              Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState( //TODO i8n
+                              Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState( // TODO i8n
                                 gameOpt
                               )
                           )
-                    )("Juega Con Quien sea"), //TODO i8n
+                      )("Juega Con Quien sea"), // TODO i8n
                     Button()
 //                      .key("empezarJuegoNuevo")
                       .compact(true)
@@ -332,9 +325,9 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             newGameDialogState = Option(NewGameDialogState())
                           )
                         )
-                    )(
-                      "Crear Juego Nuevo" //TODO i8n
-                    )
+                      )(
+                        "Crear Juego Nuevo" // TODO i8n
+                      )
                   ).when(
                     p.gameInProgress.value.fold(true)(_.gameStatus == GameStatus.partidoTerminado)
                   ),
@@ -342,7 +335,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     VdomArray(
                       game.gameStatus match {
                         case status if status.enJuego =>
-                          EmptyVdom //Put here any action that should only happen when game is active
+                          EmptyVdom // Put here any action that should only happen when game is active
                         case GameStatus.esperandoJugadoresInvitados =>
                           VdomArray(
                             if (
@@ -353,30 +346,28 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
 //                                .key("cancelarInvitaciones")
                                 .compact(true)
                                 .basic(true)
-                                .onClick({ (_, _) =>
+                                .onClick { (_, _) =>
                                   calibanCall[Mutations, Option[Boolean]](
                                     Mutations.cancelUnacceptedInvitations(game.id.get.value),
                                     _ => chutiState.onRequestGameRefresh() >> refresh()
                                   )
-                                }
-                              )("Cancelar invitaciones a aquellos que todavía no aceptan") //TODO i8n
+                                }("Cancelar invitaciones a aquellos que todavía no aceptan") // TODO i8n
                             } else
                               EmptyVdom,
                             if (game.jugadores.head.id == user.id) {
                               VdomArray(
-                              Button()
+                                Button()
 //                                .key("invitarPorCorreo")
-                                .compact(true)
-                                .basic(true)
-                                .onClick((_, _) =>
-                                  $.modState(
-                                    _.copy(
-                                      dlg = Dialog.inviteExternal,
-                                      inviteExternalDialogState =
-                                        Option(InviteExternalDialogState())
+                                  .compact(true)
+                                  .basic(true)
+                                  .onClick((_, _) =>
+                                    $.modState(
+                                      _.copy(
+                                        dlg = Dialog.inviteExternal,
+                                        inviteExternalDialogState = Option(InviteExternalDialogState())
+                                      )
                                     )
-                                  )
-                              )("Invitar por correo electrónico"), //TODO i8n
+                                  )("Invitar por correo electrónico"), // TODO i8n
                                 Button()
                                   //                                .key("invitarPorCorreo")
                                   .compact(true)
@@ -387,7 +378,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                         dlg = Dialog.startWithBots
                                       )
                                     )
-                                )("Empezar juego (el resto de los jugadores serán bots)"), //TODO i8n
+                                  )("Empezar juego (el resto de los jugadores serán bots)") // TODO i8n
                               )
                             } else
                               EmptyVdom
@@ -398,9 +389,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         val costo: Option[Double] =
                           if (game.gameStatus.enJuego)
                             game.cuentasCalculadas
-                              .find(_._1.id == user.id).map(n =>
-                                (n._2 + game.abandonedPenalty) * game.satoshiPerPoint
-                              )
+                              .find(_._1.id == user.id).map(n => (n._2 + game.abandonedPenalty) * game.satoshiPerPoint)
                           else
                             None
 
@@ -410,22 +399,21 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           .basic(true)
                           .onClick((_, _) =>
                             Confirm.confirm(
-                              header = Option("Abandonar juego"), //TODO i8n
-                              question =
-                                s"Estas seguro que quieres abandonar el juego en el que te encuentras? ${costo //TODO i8n
-                                  .fold("")(n => s"Te va a costar $n satoshi")}", //TODO i8n
-                              onConfirm = Callback.log(s"Abandoning game") >> //TODO i8n
+                              header = Option("Abandonar juego"), // TODO i8n
+                              question = s"Estas seguro que quieres abandonar el juego en el que te encuentras? ${costo // TODO i8n
+                                  .fold("")(n => s"Te va a costar $n satoshi")}", // TODO i8n
+                              onConfirm = Callback.log(s"Abandoning game") >> // TODO i8n
                                 calibanCall[Mutations, Option[Boolean]](
                                   Mutations.abandonGame(game.id.get.value),
                                   res =>
-                                    if (res.getOrElse(false)) Toast.success("Juego abandonado!") //TODO i8n
+                                    if (res.getOrElse(false)) Toast.success("Juego abandonado!") // TODO i8n
                                     else
                                       Toast.error(
-                                        "Error abandonando juego!" //TODO i8n
+                                        "Error abandonando juego!" // TODO i8n
                                       )
                                 )
                             )
-                        )("Abandona Juego") //TODO i8n
+                          )("Abandona Juego") // TODO i8n
                       } else if (s.invites.isEmpty) {
                         Button()
 //                          key("nuevoJuegoMismosJugadores")
@@ -435,12 +423,12 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                             calibanCallThroughJsonOpt[Mutations, Game](
                               Mutations.newGameSameUsers(game.id.get.value),
                               gameOpt =>
-                                Toast.success("Juego empezado!") >> p.gameInProgress //TODO i8n
+                                Toast.success("Juego empezado!") >> p.gameInProgress // TODO i8n
                                   .setState(gameOpt) >> $.modState(
                                   _.copy(dlg = Dialog.none)
                                 ) >> refresh()
                             )
-                        )("Nuevo partido con los mismos jugadores") //TODO i8n
+                          )("Nuevo partido con los mismos jugadores") // TODO i8n
                       } else
                         EmptyVdom
                     )
@@ -450,28 +438,28 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   <.div(
                     ^.key       := "gameInProgress",
                     ^.className := "gameInProgress",
-                    <.h1("Juego en Curso"), //TODO i8n
+                    <.h1("Juego en Curso"), // TODO i8n
                     <.div(
-                      <.h2(s"Juego #${game.id.fold(0)(_.value)}"), //TODO i8n
+                      <.h2(s"Juego #${game.id.fold(0)(_.value)}"), // TODO i8n
                       <.div(game.gameStatus match {
-                        case GameStatus.jugando  => <.p("Estamos a medio juego")//TODO i8n
-                        case GameStatus.cantando => <.p("Estamos a medio juego (cantando)") //TODO i8n
+                        case GameStatus.jugando  => <.p("Estamos a medio juego") // TODO i8n
+                        case GameStatus.cantando => <.p("Estamos a medio juego (cantando)") // TODO i8n
                         case GameStatus.requiereSopa =>
-                          <.p("Estamos a medio juego (esperando la sopa)") //TODO i8n
-                        case GameStatus.abandonado => <.p("Juego abandonado") //TODO i8n
-                        case GameStatus.comienzo   => <.p("Juego empezado") //TODO i8n
-                        case GameStatus.partidoTerminado => <.p("Juego terminado") //TODO i8n
+                          <.p("Estamos a medio juego (esperando la sopa)") // TODO i8n
+                        case GameStatus.abandonado       => <.p("Juego abandonado") // TODO i8n
+                        case GameStatus.comienzo         => <.p("Juego empezado") // TODO i8n
+                        case GameStatus.partidoTerminado => <.p("Juego terminado") // TODO i8n
                         case GameStatus.esperandoJugadoresAzar =>
                           <.p(
-                            "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" //TODO i8n
+                            "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" // TODO i8n
                           )
                         case GameStatus.esperandoJugadoresInvitados =>
                           <.span(
                             <.p(
-                              "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" //TODO i8n
+                              "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" // TODO i8n
                             ),
                             <.p(
-                              s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores" //TODO i8n
+                              s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores" // TODO i8n
                             ).when(
                               game.jugadores.size < 4 && game.jugadores.head.id == user.id
                             )
@@ -496,7 +484,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                 TagMod(
                   <.div(
                     ^.key := "invitaciones",
-                    <.h1("Invitaciones"), //TODO i8n
+                    <.h1("Invitaciones"), // TODO i8n
                     <.table(
                       ^.className := "playersTable",
                       <.tbody(
@@ -504,7 +492,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           <.tr(
                             ^.key := game.id.fold("")(_.toString),
                             <.td(
-                              s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" //TODO i8n
+                              s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" // TODO i8n
                             ),
                             <.td(
                               Button()
@@ -518,8 +506,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                     ),
                                     gameOpt => p.gameInProgress.setState(gameOpt)
                                   )
-                                }
-                              )("Aceptar"), //TODO i8n
+                                })("Aceptar"), // TODO i8n
                               Button()
                                 .compact(true)
                                 .basic(true)
@@ -529,11 +516,10 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                       game.id.fold(0)(_.value)
                                     ),
                                     _ =>
-                                      Toast.success("Invitación rechazada") >> //TODO i8n
+                                      Toast.success("Invitación rechazada") >> // TODO i8n
                                         p.gameInProgress.setState(None) >> refresh()
                                   )
-                                }
-                              )("Rechazar") //TODO i8n
+                                })("Rechazar") // TODO i8n
                             )
                           )
                         }
@@ -553,112 +539,111 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   renderInviteExternalDialog,
                   <.div(
                     ^.key := "jugadores",
-                    <.h1("Otros usuarios (en linea o amigos)"), //TODO i8n
+                    <.h1("Otros usuarios (en linea o amigos)"), // TODO i8n
                     <.table(
                       ^.className := "playersTable",
                       <.tbody(
-                        chutiState.usersAndFriends.filter(_.user.id != user.id).toVdomArray {
-                          player =>
-                            TableRow(
+                        chutiState.usersAndFriends.filter(_.user.id != user.id).toVdomArray { player =>
+                          TableRow(
 //                              key(player.user.id.fold("")(_.toString)
-                            )(
-                              TableCell()
-                                .width(SemanticWIDTHS.`1`)(
+                          )(
+                            TableCell()
+                              .width(SemanticWIDTHS.`1`)(
                                 if (player.isFriend)
                                   Popup()
-                                    .content("Amigo") //TODO i8n
-                                    .trigger(Icon()
-                                      .className("icon")
-                                      .name(SemanticICONS.star)
-                                      .color(SemanticCOLORS.yellow)
-                                      .circular(true)
-                                      .fitted(true
+                                    .content("Amigo") // TODO i8n
+                                    .trigger(
+                                      Icon()
+                                        .className("icon")
+                                        .name(SemanticICONS.star)
+                                        .color(SemanticCOLORS.yellow)
+                                        .circular(true)
+                                        .fitted(true)()
                                     )()
-                                  )()
                                 else
                                   EmptyVdom,
                                 if (player.isLoggedIn)
                                   Popup()
-                                    .content("En linea") //TODO i8n
-                                    .trigger(Icon()
-                                      .className("icon")
-                                      .name(SemanticICONS.`user outline`)
-                                      .circular(true)
-                                      .fitted(true
+                                    .content("En linea") // TODO i8n
+                                    .trigger(
+                                      Icon()
+                                        .className("icon")
+                                        .name(SemanticICONS.`user outline`)
+                                        .circular(true)
+                                        .fitted(true)()
                                     )()
-                                  )()
                                 else
                                   EmptyVdom
                               ),
-                              TableCell()
-                                .width(SemanticWIDTHS.`1`)
-                                  .align(center)(
+                            TableCell()
+                              .width(SemanticWIDTHS.`1`)
+                              .align(center)(
                                 Dropdown()
                                   .className("menuBurger")
-                                  .trigger(Icon()
-                                    .name(SemanticICONS.`ellipsis vertical`)
-                                    .fitted(true
-                                  )()
-                                )(
-                                  DropdownMenu()(
-                                    (for {
-                                      game     <- p.gameInProgress.value
-                                      _        <- user.id
-                                      playerId <- player.user.id
-                                      gameId   <- game.id
-                                    } yield
-                                      if (
-                                        game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
-                                        game.jugadores.head.id == user.id &&
-                                        !game.jugadores.exists(_.id == player.user.id)
-                                      )
-                                        DropdownItem()
-                                          .onClick({ (_, _) =>
-                                          calibanCall[Mutations, Option[Boolean]](
-                                            Mutations
-                                              .inviteToGame(playerId.value, gameId.value),
-                                            res =>
-                                              if (res.getOrElse(false))
-                                                Toast.success("Jugador Invitado!") //TODO i8n
-                                              else Toast.error("Error invitando jugador!") //TODO i8n
-                                          )
-                                        })("Invitar a jugar"): VdomNode //TODO i8n
-                                      else
-                                        EmptyVdom).getOrElse(EmptyVdom),
-                                    if (player.isFriend)
-                                      DropdownItem()
-                          .onClick({ (_, _) =>
-                                        calibanCall[Mutations, Option[Boolean]](
-                                          Mutations.unfriend(player.user.id.get.value),
-                                          res =>
-                                            if (res.getOrElse(false))
-                                              refresh() >> Toast.success(
-                                                s"Cortalas, ${player.user.name} ya no es tu amigo!" //TODO i8n
+                                  .trigger(
+                                    Icon()
+                                      .name(SemanticICONS.`ellipsis vertical`)
+                                      .fitted(true)()
+                                  )(
+                                    DropdownMenu()(
+                                      (for {
+                                        game     <- p.gameInProgress.value
+                                        _        <- user.id
+                                        playerId <- player.user.id
+                                        gameId   <- game.id
+                                      } yield
+                                        if (
+                                          game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
+                                          game.jugadores.head.id == user.id &&
+                                          !game.jugadores.exists(_.id == player.user.id)
+                                        )
+                                          DropdownItem()
+                                            .onClick { (_, _) =>
+                                              calibanCall[Mutations, Option[Boolean]](
+                                                Mutations
+                                                  .inviteToGame(playerId.value, gameId.value),
+                                                res =>
+                                                  if (res.getOrElse(false))
+                                                    Toast.success("Jugador Invitado!") // TODO i8n
+                                                  else Toast.error("Error invitando jugador!") // TODO i8n
                                               )
-                                            else
-                                              Toast.error("Error haciendo amigos!") //TODO i8n
-                                        )
-                                      })("Ya no quiero ser tu amigo") //TODO i8n
-                                    else
-                                      DropdownItem()
-                                        .onClick({ (_, _) =>
-                                        calibanCall[Mutations, Option[Boolean]](
-                                          Mutations.friend(player.user.id.get.value),
-                                          res =>
-                                            if (res.getOrElse(false))
-                                              chutiState
-                                                .onRequestGameRefresh() >> refresh() >> Toast
-                                                .success("Un nuevo amiguito!") //TODO i8n
-                                            else
-                                              Toast.error("Error haciendo amigos!") //TODO i8n
-                                        )
-                                      })("Agregar como amigo") //TODO i8n
+                                            }("Invitar a jugar"): VdomNode // TODO i8n
+                                        else
+                                          EmptyVdom).getOrElse(EmptyVdom),
+                                      if (player.isFriend)
+                                        DropdownItem()
+                                          .onClick { (_, _) =>
+                                            calibanCall[Mutations, Option[Boolean]](
+                                              Mutations.unfriend(player.user.id.get.value),
+                                              res =>
+                                                if (res.getOrElse(false))
+                                                  refresh() >> Toast.success(
+                                                    s"Cortalas, ${player.user.name} ya no es tu amigo!" // TODO i8n
+                                                  )
+                                                else
+                                                  Toast.error("Error haciendo amigos!") // TODO i8n
+                                            )
+                                          }("Ya no quiero ser tu amigo") // TODO i8n
+                                      else
+                                        DropdownItem()
+                                          .onClick { (_, _) =>
+                                            calibanCall[Mutations, Option[Boolean]](
+                                              Mutations.friend(player.user.id.get.value),
+                                              res =>
+                                                if (res.getOrElse(false))
+                                                  chutiState
+                                                    .onRequestGameRefresh() >> refresh() >> Toast
+                                                    .success("Un nuevo amiguito!") // TODO i8n
+                                                else
+                                                  Toast.error("Error haciendo amigos!") // TODO i8n
+                                            )
+                                          }("Agregar como amigo") // TODO i8n
+                                    )
                                   )
-                                )
                               ),
-                              TableCell()
-                                .width(SemanticWIDTHS.`14`)(player.user.name)
-                            )
+                            TableCell()
+                              .width(SemanticWIDTHS.`14`)(player.user.name)
+                          )
                         }
                       )
                     )
@@ -669,6 +654,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
           }
       }
     }
+
   }
 
   case class Props(
@@ -686,6 +672,6 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   def apply(
     gameInProgress: StateSnapshot[Option[Game]],
     mode:           StateSnapshot[GameViewMode]
-  ): Unmounted[Props, State, Backend] =
-    component(Props(gameInProgress, mode))
+  ): Unmounted[Props, State, Backend] = component(Props(gameInProgress, mode))
+
 }

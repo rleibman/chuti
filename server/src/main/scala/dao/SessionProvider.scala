@@ -20,9 +20,11 @@ import api.ChutiSession
 import zio.{Has, Layer, ZLayer}
 
 object SessionProvider {
+
   trait Session {
 
     def session: ChutiSession
+
   }
   def live(s: ChutiSession): Session = {
     new Session {
@@ -30,4 +32,5 @@ object SessionProvider {
     }
   }
   def layer(session: ChutiSession): Layer[Nothing, Has[Session]] = ZLayer.succeed(live(session))
+
 }

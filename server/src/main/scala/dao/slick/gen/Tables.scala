@@ -361,18 +361,18 @@ trait Tables {
   ): GR[UserWalletRow] =
     GR { prs =>
       import prs.*
-      UserWalletRow.tupled((<<[UserId], <<[BigDecimal]))
+      UserWalletRow.apply.tupled((<<[UserId], <<[BigDecimal]))
     }
 
   class UserWalletTable(_tableTag: Tag) extends profile.api.Table[UserWalletRow](_tableTag, Some("chuti"), "userWallet") {
 
-    def * : ProvenShape[UserWalletRow] = (userId, amount) <> (UserWalletRow.tupled, UserWalletRow.unapply)
+    def * : ProvenShape[UserWalletRow] = (userId, amount) <> (UserWalletRow.apply.tupled, UserWalletRow.unapply)
 
     def ? : MappedProjection[Option[UserWalletRow], (Option[UserId], Option[BigDecimal])] =
       (Rep.Some(userId), Rep.Some(amount)).shaped.<>(
         { r =>
           import r.*
-          _1.map(_ => UserWalletRow.tupled((_1.get, _2.get)))
+          _1.map(_ => UserWalletRow.apply.tupled((_1.get, _2.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )

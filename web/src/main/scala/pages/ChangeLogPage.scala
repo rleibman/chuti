@@ -21,6 +21,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 
 object ChangeLogPage extends ChutiPage {
+
   case class State()
 
   val changeLog: String =
@@ -220,6 +221,7 @@ object ChangeLogPage extends ChutiPage {
     def render(): VdomElement = {
       <.div(^.dangerouslySetInnerHtml := changeLog)
     }
+
   }
 
   private val component = ScalaComponent

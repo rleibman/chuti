@@ -34,22 +34,27 @@ import zio.console.Console
 import zio.logging.Logging
 import zio.*
 
-/**
-  * For convenience, this trait aggregates all of the model routes.
+/** For convenience, this trait aggregates all of the model routes.
   */
 trait ModelRoutes extends Directives {
   this: HasActorSystem =>
 
   private val gameRoute: GameRoute = new GameRoute {
+
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+
   }
 
   private val authRoute: AuthRoute = new AuthRoute {
+
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+
   }
 
   private val chatRoute: ChatRoute = new ChatRoute {
+
     implicit override val actorSystem: ActorSystem = ModelRoutes.this.actorSystem
+
   }
 
   def unauthRoute: RIO[Repository & Postman & TokenHolder & Logging & Clock, Route] =
@@ -69,7 +74,7 @@ trait ModelRoutes extends Directives {
 //        crudRoutes.map(r => r.crudRoute.unauthRoute)
 //      )(identity).map(_.reduceOption(_ ~ _).getOrElse(reject))
 
-  //it would be nice to be able to do this, but it's hard to define the readers and writers for marshalling
+  // it would be nice to be able to do this, but it's hard to define the readers and writers for marshalling
   //  def apiRoute(session: Any): Route =
   //    pathPrefix("api") {
   //    crudRoutes.map(_.crudRoute.route(session)).reduceOption(_ ~ _).getOrElse(reject)
@@ -85,8 +90,7 @@ trait ModelRoutes extends Directives {
       game <- gameRoute.route
       auth <- {
 
-        val opsLayer
-          : ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
+        val opsLayer: ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
           .provideSomeLayer[Repository & SessionProvider & Logging & Clock](
@@ -100,4 +104,5 @@ trait ModelRoutes extends Directives {
       }
     }
   }
+
 }

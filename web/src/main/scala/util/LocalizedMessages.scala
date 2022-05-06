@@ -19,6 +19,7 @@ package util
 import java.util.Locale
 
 abstract class LocalizedMessages {
+
   case class MessageBundle(
     locale: String,
     map:    Map[String, String]
@@ -26,12 +27,13 @@ abstract class LocalizedMessages {
   def bundles: Map[String, MessageBundle]
 
   def localized(
-    key:     String,
-    default: String = ""
-  )(implicit locale: Locale = new Locale("es", "MX")): String = {
+    key:             String,
+    default:         String = ""
+  )(implicit locale: Locale = new Locale("es", "MX")
+  ): String = {
     println(s"locale $locale, key = $key")
     (for {
-      //TODO, find the most specific match, first by language-country, then by language or use whatever is found.
+      // TODO, find the most specific match, first by language-country, then by language or use whatever is found.
       bundle <- bundles.get(locale.getLanguage)
       str    <- bundle.map.get(key)
     } yield str).getOrElse(default)

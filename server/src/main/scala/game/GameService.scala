@@ -260,14 +260,14 @@ object GameService {
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
                 .delete(game.id.get).provideSomeLayer[
-                Logging & Clock
+                  Logging & Clock
                 ](
                   godLayer
                 )
             case (game, _) if game.jugadores.isEmpty =>
               repository.gameOperations
                 .delete(game.id.get, softDelete = true).provideSomeLayer[
-                Logging & Clock
+                  Logging & Clock
                 ](godLayer)
             case (game, _) => ZIO.succeed(game)
           }
@@ -551,7 +551,7 @@ object GameService {
               .upsert(
                 Game(None, gameStatus = GameStatus.esperandoJugadoresAzar)
               ).provideSomeLayer[
-              Logging & Clock
+                Logging & Clock
               ](godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {

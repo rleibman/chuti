@@ -28,9 +28,11 @@ import scalacache.caffeine.CaffeineCache
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
+import zio.random.Random
 
-import java.sql.{Timestamp, Types}
+import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
+import javax.sql.DataSource
 import scala.concurrent.duration.Duration
 
 object QuillRepository {
@@ -61,7 +63,19 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     querySchema[FriendsRow]("friends")
   }
   private val userWallets = quote {
-    querySchema[FriendsRow]("userWallet")
+    querySchema[UserWalletRow]("userWallet")
+  }
+  private val games = quote {
+    querySchema[GameRow]("game")
+  }
+  private val gameEvents = quote {
+    querySchema[GameEventRow]("game_events")
+  }
+  private val gamePlayers = quote {
+    querySchema[GamePlayersRow]("game_players")
+  }
+  private val tokens = quote {
+    querySchema[TokenRow]("token")
   }
 
   private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db"))
@@ -87,11 +101,13 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
 
     override def get(pk: UserId): RepositoryIO[Option[User]] = {
-      val q = quote {
-        users.filter(u => u.id === lift(pk) && !u.deleted)
-      }
-      ctx.run(q).map(_.headOption.map(_.toUser)).provideLayer(dataSourceLayer).mapError(RepositoryError.apply)
+      ctx
+        .run(users.filter(u => u.id === lift(pk) && !u.deleted))
+        .map(_.headOption.map(_.toUser))
+        .provideLayer(dataSourceLayer)
+        .mapError(RepositoryError.apply)
     }
+
     override def delete(
       pk:         UserId,
       softDelete: Boolean
@@ -104,15 +120,12 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         now <- ZIO.service[Clock.Service].flatMap(_.instant)
         result <- {
           if (softDelete) {
-            val q = quote {
-              users.filter(u => u.id === lift(pk) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now))))
-            }
-            ctx.run(q).map(_ > 0)
+            ctx
+              .run(
+                users.filter(u => u.id === lift(pk) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now))))
+              ).map(_ > 0)
           } else {
-            val q = quote {
-              users.filter(_.id === lift(pk)).delete
-            }
-            ctx.run(q).map(_ > 0)
+            ctx.run(users.filter(_.id === lift(pk)).delete).map(_ > 0)
           }
         }
       } yield result
@@ -120,25 +133,22 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
       search
-        .fold(ctx.run(quote(users.filter(!_.deleted)))) { s =>
+        .fold(ctx.run(users.filter(!_.deleted))) { s =>
           {
-            ctx.run(quote {
+            ctx.run(
               users
                 .filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted)
                 .drop(lift(s.pageSize * s.pageIndex))
                 .take(lift(s.pageSize))
-            })
+            )
           }
         }
     }.map(_.map(_.toUser)).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = {
-      search.fold(ctx.run(quote(users.filter(!_.deleted).size))) { s =>
+      search.fold(ctx.run(users.filter(!_.deleted).size)) { s =>
         {
-          val ss = s"%${s.text}%"
-          ctx.run(quote {
-            users.filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted).size
-          })
+          ctx.run(users.filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted).size)
         }
       }
     }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
@@ -155,23 +165,23 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           user.id.fold {
             // It's an insert, make sure te user does not exist by email
             for {
-              exists <- ctx.run(quote(users.filter(u => u.email === lift(user.email) && !u.deleted)).size)
+              exists <- ctx.run(users.filter(u => u.email === lift(user.email) && !u.deleted).size)
               _ <- ZIO
                 .fail(RepositoryError(s"Insert Error: A user with the email ${user.email} already exists, choose a different one"))
                 .when(exists > 0)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = now))
               pk <- ctx
-                .run(quote(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id)))
+                .run(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))
             } yield saveMe.toUser.copy(id = Some(pk))
           } { id =>
             // It's an update, make sure that if the email has changed, it doesn't already exist
             for {
-              exists <- ctx.run(quote(users.filter(u => u.id != lift(id) && u.email === lift(user.email) && !u.deleted)).size)
+              exists <- ctx.run(users.filter(u => u.id != lift(id) && u.email === lift(user.email) && !u.deleted).size)
               _ <- ZIO
                 .fail(RepositoryError(s"Update error: A user with the email ${user.email} already exists, choose a different one"))
                 .when(exists > 0)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now))
-              updateCount <- ctx.run(quote(users.filter(u => u.id == lift(id) && !u.deleted).updateValue(lift(saveMe))))
+              updateCount <- ctx.run(users.filter(u => u.id == lift(id) && !u.deleted).updateValue(lift(saveMe)))
               _           <- ZIO.fail(RepositoryError("User not found")).when(updateCount == 0)
             } yield saveMe.toUser
           }
@@ -199,7 +209,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         userId <- ctx.run(sql).map(_.headOption.map(UserId))
         user   <- ZIO.foreach(userId)(id => get(id)).provideSomeLayer[Clock & Logging](godSession)
         saveTime = Timestamp.from(now)
-        _ <- ZIO.foreach_(userId)(id => ctx.run(quote(userLogins.insertValue(UserLogRow(lift(id), lift(saveTime))))))
+        _ <- ZIO.foreach_(userId)(id => ctx.run(userLogins.insertValue(UserLogRow(lift(id), lift(saveTime)))))
       } yield user.flatten).provideSomeLayer[Clock & Logging](dataSourceLayer).mapError(RepositoryError.apply)
     }
 
@@ -216,7 +226,6 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           .run(quote(infix"update `user` set hashedPassword=SHA2(${lift(newPassword)}, 512) where id = ${lift(user.id)}".as[Update[Int]])).map(_ > 0)
       } yield res).provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer).mapError(RepositoryError.apply)
 
-
     override def userByEmail(email: String): RepositoryIO[Option[User]] = {
       ctx
         .run(users.filter(u => u.email == lift(email) && !u.deleted && u.active))
@@ -225,17 +234,97 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         .mapError(RepositoryError.apply)
     }
 
-    override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
+    override def unfriend(enemy: User): RepositoryIO[Boolean] = {
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        rowOpt = for {
+          one <- session.user.id
+          two <- enemy.id
+        } yield FriendsRow(one, two)
+        deleted <- rowOpt.fold(ZIO.succeed(true): ZIO[Has[DataSource], SQLException, Boolean])(row =>
+          ctx
+            .run(
+              QuillRepository.this.friends
+                .filter(r => (r.one === lift(row.one) && r.two === lift(row.two)) || (r.one === lift(row.two) && r.two === lift(row.one)))
+                .delete
+            ).map(_ > 0)
+        )
+      } yield deleted)
+        .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
+        .mapError(RepositoryError.apply)
+    }
 
-    override def friend(friend: User): RepositoryIO[Boolean] = ???
+    override def friend(friend: User): RepositoryIO[Boolean] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        friends <- friends
+        res <- friends
+          .find(_.id == friend.id).fold {
+            val rowOpt = for {
+              one <- session.user.id
+              two <- friend.id
+            } yield FriendsRow(one, two)
+            rowOpt.fold(
+              ZIO.succeed(false): zio.ZIO[Has[DataSource], SQLException, Boolean]
+            ) { row =>
+              ctx.run(QuillRepository.this.friends.insertValue(lift(row))).map(_ > 0)
+            }
+          }(_ => ZIO.succeed(true))
+      } yield res)
+        .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
-    override def friends: RepositoryIO[Seq[User]] = ???
+    override def friends: RepositoryIO[Seq[User]] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        res <- session.user.id.fold(ZIO.succeed(Seq.empty): ZIO[Has[DataSource], SQLException, Seq[User]]) { id =>
+          ctx
+            .run {
+              users
+                .join(QuillRepository.this.friends).on((a, b) => a.id === b.one || a.id === b.two).filter { case (u, f) =>
+                  (f.one == lift(id) || f.two == lift(id)) && u.id != lift(id)
+                }
+            }.map(_.map(_._1.toUser))
+        }
+      } yield res)
+        .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
-    override def getWallet: RepositoryIO[Option[UserWallet]] = ???
+    override def getWallet: RepositoryIO[Option[UserWallet]] =
+      for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        wallet  <- session.user.id.fold(ZIO.none: RepositoryIO[Option[UserWallet]])(getWallet)
+      } yield wallet
 
-    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] =
+      (for {
+        _ <- assertAuth(
+          session => session.user == god || session.user.id.fold(false)(_ == userId),
+          _ => "You can't see someone else's wallet"
+        )
+        walletOpt <- ctx.run(userWallets.filter(_.user == lift(userId))).map(_.headOption)
+        wallet <- walletOpt.fold {
+          val newWallet = UserWalletRow(userId, 10000)
+          ctx.run(userWallets.insertValue(lift(newWallet))).as(Option(newWallet.toUserWallet))
+        }(w => ZIO.succeed(Option(w.toUserWallet)))
+      } yield wallet)
+        .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
-    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] =
+      (for {
+        _ <- assertAuth(
+          session => session.user == god,
+          _ => "Only god (or the Fed) can update a wallet"
+        )
+        existing <- getWallet(userWallet.userId)
+        row = UserWalletRow.fromUserWallet(userWallet)
+        _ <- existing.fold {
+          ctx.run(userWallets.insertValue(lift(row)))
+        }(_ => ctx.run(userWallets.filter(_.user == lift(userWallet.userId)).updateValue(lift(row))))
+      } yield userWallet)
+        .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
   }
 
@@ -280,7 +369,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): RepositoryIO[Token] = ???
+    ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token] = ???
 
     override def peek(
       token:   Token,

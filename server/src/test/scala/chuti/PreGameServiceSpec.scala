@@ -30,9 +30,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
   "Creating a new Game" should "create a game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
 
     val userOperations = createUserOperations
@@ -65,9 +63,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
   "Loading a new game and having 1 more random users join" should "keep the game open" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
@@ -117,16 +113,14 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 2)
     assert(
       userEvents.size === 1
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
 
     verify(userOperations, times(1)).upsert(*[User])
   }
 
   "Loading a new game and having 3 more random users join" should "start the game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
@@ -195,16 +189,14 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 6)
     assert(
       userEvents.size === 3
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
 
     verify(userOperations, times(3)).upsert(*[User])
   }
 
   "Abandoning an unstarted game" should "result in no penalty, and not close the game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
@@ -269,15 +261,13 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 1)
     assert(
       userEvents.size === 1
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
     verify(userOperations, times(0)).updateWallet(any[UserWallet])
   }
 
   "Abandoning a started game" should "result in a penalty, and close the game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.upsert(*[User])).thenAnswer { u: User =>
@@ -344,15 +334,13 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 1)
     assert(
       userEvents.size === 1
-    ) //Though 2 happen (log in and log out, only log in should be registering)
+    ) // Though 2 happen (log in and log out, only log in should be registering)
     verify(userOperations, times(1)).updateWallet(any[UserWallet])
   }
 
   "Invite to game 1 person" should "add to the game" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     when(userOperations.get(UserId(2))).thenReturn(ZIO.succeed(Option(user2)))
@@ -411,9 +399,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
   "Invite to game 3 people, and them accepting" should "add to the game, and start it" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
 //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
@@ -525,9 +511,7 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
 
   "Invite to game 3 people, and one of them declining" should "add two to the game, and then remove one" in {
     val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) =>
-      ZIO.succeed(game.copy(Some(GameId(1))))
-    )
+    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
     when(gameOperations.updatePlayers(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game))
     val userOperations = createUserOperations
     //        when(userOperations.get(UserId(1))).thenReturn(ZIO.succeed(Option(user1)))
@@ -639,4 +623,5 @@ class PreGameServiceSpec extends AnyFlatSpec with MockitoSugar with GameAbstract
     assert(gameEvents.size === 8)
     assert(userEvents.size === 2)
   }
+
 }

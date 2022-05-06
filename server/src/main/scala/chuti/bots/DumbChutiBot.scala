@@ -20,25 +20,25 @@ import chuti.Triunfo.*
 import chuti.*
 
 case object DumbChutiBot extends ChutiBot {
+
   private def calculaCasa(
     jugador: Jugador,
     game:    Game
   ): (Int, Triunfo) = {
-    //Si el jugador le toca cantar, no le queda de otra, tiene que arriesgarse, asi es que usa otra heuristica... el numero de fichas
+    // Si el jugador le toca cantar, no le queda de otra, tiene que arriesgarse, asi es que usa otra heuristica... el numero de fichas
     val (deCaidaCount, deCaidaTriunfo) = calculaDeCaida(jugador, game)
 
     val numTriunfos =
       jugador.fichas
         .flatMap(f => if (f.esMula) Seq(f.arriba) else Seq(f.arriba, f.abajo))
         .groupBy(identity)
-        .map {
-          case (n, l) =>
-            (n, l.size)
+        .map { case (n, l) =>
+          (n, l.size)
         }
         .maxBy(_._2)
 
     if (numTriunfos._2 > deCaidaCount)
-      //Tenemos algunos triunfos, pero no suficientes para ser de caida, asi es que cantamos uno menos de lo que tenemos
+      // Tenemos algunos triunfos, pero no suficientes para ser de caida, asi es que cantamos uno menos de lo que tenemos
       (numTriunfos._2 - 1, TriunfoNumero(numTriunfos._1))
     else
       (deCaidaCount, deCaidaTriunfo)
@@ -48,14 +48,14 @@ case object DumbChutiBot extends ChutiBot {
     jugador: Jugador,
     game:    Game
   ): (Int, Triunfo) = {
-    //Este jugador es muy conservador, no se fija en el numero de fichas de un numero que tiene, solo en cuantas son de caida
-    //En el futuro podemos inventar jugadores que se fijen en ambas partes y que sean mas o menos conservadores
-    //Esta bien que las mulas cuenten por dos.
+    // Este jugador es muy conservador, no se fija en el numero de fichas de un numero que tiene, solo en cuantas son de caida
+    // En el futuro podemos inventar jugadores que se fijen en ambas partes y que sean mas o menos conservadores
+    // Esta bien que las mulas cuenten por dos.
     val numerosQueTengo = jugador.fichas
       .flatMap(f => Seq(f.arriba, f.abajo))
       .distinct
     val fichasDeOtros = Game.todaLaFicha.diff(jugador.fichas)
-    //Calcula todas las posibilidades de caida
+    // Calcula todas las posibilidades de caida
     val posiblesGanancias = numerosQueTengo
       .map(num =>
         (
@@ -119,9 +119,7 @@ case object DumbChutiBot extends ChutiBot {
       case Some(TriunfoNumero(triunfo)) =>
         Pide(
           jugador.fichas
-            .maxByOption(ficha =>
-              (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value
-            ).get,
+            .maxByOption(ficha => (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value).get,
           triunfo = None,
           estrictaDerecha = false
         )
@@ -203,9 +201,7 @@ case object DumbChutiBot extends ChutiBot {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
       case GameStatus.jugando =>
-        if (
-          game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty
-        )
+        if (game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty)
           Option(pideInicial(jugador, game))
         else if (jugador.mano && game.puedesCaerte(jugador))
           Option(caite())
@@ -216,13 +212,13 @@ case object DumbChutiBot extends ChutiBot {
             _.cuantasCantas == Option(CuantasCantas.CantoTodas)
           )
         )
-          None //Skipping this,
+          None // Skipping this,
         else
           Option(da(jugador, game))
       case GameStatus.cantando =>
         Option(canta(jugador, game))
       case GameStatus.partidoTerminado | GameStatus.`requiereSopa` =>
-        //Ya pa' que?
+        // Ya pa' que?
         None
       case other =>
         println(s"I'm too dumb to know what to do when $other")

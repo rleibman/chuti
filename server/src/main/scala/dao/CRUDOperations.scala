@@ -18,13 +18,13 @@ package dao
 
 import chuti.Search
 
-/**
-  * Collects the basic CRUD operations of a single object (or object graph) against a data source.
+/** Collects the basic CRUD operations of a single object (or object graph) against a data source.
   * @tparam E
   * @tparam PK
   * @tparam SEARCH
   */
 trait CRUDOperations[E, PK, SEARCH <: Search] {
+
   def upsert(e: E):  RepositoryIO[E]
   def get(pk:   PK): RepositoryIO[Option[E]]
   def delete(
@@ -33,4 +33,5 @@ trait CRUDOperations[E, PK, SEARCH <: Search] {
   ): RepositoryIO[Boolean]
   def search(search: Option[SEARCH] = None): RepositoryIO[Seq[E]]
   def count(search:  Option[SEARCH] = None): RepositoryIO[Long]
+
 }

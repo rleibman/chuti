@@ -29,12 +29,14 @@ import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 import scala.util.{Failure, Success}
 
 object PasswordRecoveryPage {
+
   case class State(
     submitted: Boolean = false,
     email:     String = ""
   )
 
   class Backend($ : BackendScope[_, State]) {
+
     def onSubmitEmailAddress(email: String) =
       Ajax("POST", s"/passwordRecoveryRequest")
         .and(_.withCredentials = true)
@@ -70,10 +72,9 @@ object PasswordRecoveryPage {
                 Button()
                   .compact(true)
                   .basic(true)
-                  .onClick({ (_, _) =>
+                  .onClick { (_, _) =>
                     $.modState(_.copy(submitted = false))
-                  }
-                )("Intenta de nuevo")
+                  }("Intenta de nuevo")
               )
             )
           else {
@@ -87,23 +88,22 @@ object PasswordRecoveryPage {
                     .name("email")
                     .`type`("email")
                     .value(state.email)
-                    .onChange({ (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
+                    .onChange { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
                       $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
-                    }
-                  )()
+                    }()
                 ),
                 Button()
                   .compact(true)
                   .basic(true)
-                  .onClick({ (_, _) =>
+                  .onClick { (_, _) =>
                     onSubmitEmailAddress(state.email)
-                  }
-                )("Aceptar")
+                  }("Aceptar")
               )
             )
           }
         )
       }
+
   }
 
   val component = ScalaComponent
@@ -113,4 +113,5 @@ object PasswordRecoveryPage {
     .build
 
   def apply() = component()
+
 }

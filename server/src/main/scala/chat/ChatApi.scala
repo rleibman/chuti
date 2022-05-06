@@ -36,8 +36,7 @@ case class SayRequest(
   toUser:    Option[User] = None
 )
 
-object ChatApi
-    extends GenericSchema[ChatService & Repository & SessionProvider & Logging & Clock] {
+object ChatApi extends GenericSchema[ChatService & Repository & SessionProvider & Logging & Clock] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -59,7 +58,7 @@ object ChatApi
     ]
   )
 
-  implicit val userSchema: Schema[Any, User] = gen[Any, User]
+  implicit val userSchema:        Schema[Any, User] = gen[Any, User]
   implicit val chatMessageSchema: Schema[Any, ChatMessage] = gen[Any, ChatMessage]
 
   lazy val api: GraphQL[Console & Clock & ChatService & Repository & SessionProvider & Logging] =
@@ -70,8 +69,7 @@ object ChatApi
           say = sayRequest => ChatService.say(sayRequest).as(true)
         ),
         Subscriptions(
-          chatStream = chatStreamArgs =>
-            ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
+          chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
         )
       )
     ) @@
@@ -83,6 +81,7 @@ object ChatApi
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
     "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Instant\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: Insant!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"
-  //Generate client with
+  // Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/chat.schema /Volumes/Personal/projects/chuti/web/src/main/scala/chat/ChatClient.scala
+
 }

@@ -26,6 +26,7 @@ import org.scalajs.dom.XMLHttpRequest
 import org.scalajs.dom.ext.AjaxException
 
 trait RESTOperations {
+
   def processErrors[A](fn: XMLHttpRequest => Either[Error, A])(xhr: XMLHttpRequest): A =
     try {
       if (xhr.status >= 400)
@@ -62,16 +63,19 @@ trait RESTOperations {
         processErrors(xhr => decode[Response](xhr.responseText))
       }
   }
+
 }
 
 trait RESTClient[E, PK, SEARCH <: Search] {
+
   def remoteSystem: RESTClient.Service[E, PK, SEARCH]
+
 }
 
 object RESTClient {
 
-  abstract class Service[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder]
-      extends RESTOperations {
+  abstract class Service[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder] extends RESTOperations {
+
     def get(id: PK): AsyncCallback[Option[E]]
 
     def delete(id: PK): AsyncCallback[Boolean]
@@ -83,29 +87,27 @@ object RESTClient {
     def count(searchObj: Option[SEARCH]): AsyncCallback[Int]
 
   }
+
 }
 
-abstract class LiveRESTClient[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder]
-    extends RESTClient[E, PK, SEARCH] {
+abstract class LiveRESTClient[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder] extends RESTClient[E, PK, SEARCH] {
+
   val baseUrl: String
 
   override def remoteSystem: RESTClient.Service[E, PK, SEARCH] = new LiveClientService
 
   class LiveClientService extends RESTClient.Service[E, PK, SEARCH] {
 
-    override def get(id: PK): AsyncCallback[Option[E]] =
-      RESTOperation[String, Option[E]]("GET", s"$baseUrl/${id.toString}", None)
+    override def get(id: PK): AsyncCallback[Option[E]] = RESTOperation[String, Option[E]]("GET", s"$baseUrl/${id.toString}", None)
 
-    override def delete(id: PK): AsyncCallback[Boolean] =
-      RESTOperation[String, Boolean]("DELETE", s"$baseUrl/${id.toString}", None)
+    override def delete(id: PK): AsyncCallback[Boolean] = RESTOperation[String, Boolean]("DELETE", s"$baseUrl/${id.toString}", None)
 
-    override def upsert(obj: E): AsyncCallback[E] =
-      RESTOperation[E, E]("POST", s"$baseUrl", Option(obj))
+    override def upsert(obj: E): AsyncCallback[E] = RESTOperation[E, E]("POST", s"$baseUrl", Option(obj))
 
-    override def search(searchObj: Option[SEARCH]): AsyncCallback[Seq[E]] =
-      RESTOperation[SEARCH, Seq[E]]("POST", s"$baseUrl/search", searchObj)
+    override def search(searchObj: Option[SEARCH]): AsyncCallback[Seq[E]] = RESTOperation[SEARCH, Seq[E]]("POST", s"$baseUrl/search", searchObj)
 
-    override def count(searchObj: Option[SEARCH]): AsyncCallback[Int] =
-      RESTOperation[SEARCH, Int]("POST", s"$baseUrl/count", searchObj)
+    override def count(searchObj: Option[SEARCH]): AsyncCallback[Int] = RESTOperation[SEARCH, Int]("POST", s"$baseUrl/count", searchObj)
+
   }
+
 }

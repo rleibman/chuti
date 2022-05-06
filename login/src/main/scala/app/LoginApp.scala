@@ -22,6 +22,7 @@ import org.scalajs.dom
 import scala.scalajs.js.annotation.JSExport
 
 object LoginApp {
+
   @JSExport
   def main(args: Array[String]): Unit = {
 
@@ -31,4 +32,5 @@ object LoginApp {
     ()
 
   }
+
 }

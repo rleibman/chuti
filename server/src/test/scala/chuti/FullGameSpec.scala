@@ -46,6 +46,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
   }
 
   object GameTester {
+
     def apply(
       description:   String,
       hands:         Seq[String],
@@ -54,33 +55,33 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       testEndState:  Game => Assertion
     ): GameTester = {
       val parsedHands = hands.map(str => str.split(",").toList.map(Ficha.fromString)).toList
-      assert(!parsedHands.exists(_.length != 7)) //For now we only support starting games
+      assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
       val allHands = parsedHands ++ otherHands
       assert(allHands.size == 4)
       val users = Seq(user1, user2, user3, user4)
-      val jugadores = allHands.zip(users).map {
-        case (hand, user) =>
-          if (user == user1) {
-            Jugador(
-              user,
-              fichas = hand,
-              turno = true,
-              cantante = true,
-              mano = true,
-              cuantasCantas = Option(cuantasCantas)
-            )
-          } else {
-            Jugador(
-              user,
-              fichas = hand
-            )
-          }
+      val jugadores = allHands.zip(users).map { case (hand, user) =>
+        if (user == user1) {
+          Jugador(
+            user,
+            fichas = hand,
+            turno = true,
+            cantante = true,
+            mano = true,
+            cuantasCantas = Option(cuantasCantas)
+          )
+        } else {
+          Jugador(
+            user,
+            fichas = hand
+          )
+        }
       }
       val game = Game(None, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
 
       new GameTester(description, game, testEndState)
     }
+
   }
   case class GameTester(
     description:  String,
@@ -165,4 +166,5 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       }.future
     }
   }
+
 }
