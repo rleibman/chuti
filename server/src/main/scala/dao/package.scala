@@ -115,15 +115,15 @@ package object dao {
 
   object UserWalletRow {
 
-    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(user = value.userId, amount = value.amount)
+    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(userId = value.userId, amount = value.amount)
 
   }
   case class UserWalletRow(
-    user:   UserId,
+    userId: UserId,
     amount: BigDecimal
   ) {
 
-    def toUserWallet: UserWallet = UserWallet(userId = user, amount = amount)
+    def toUserWallet: UserWallet = UserWallet(userId = userId, amount = amount)
 
   }
 

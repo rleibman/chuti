@@ -183,6 +183,20 @@ object QuillUserSpec extends DefaultRunnableSpec {
           assert(noFriends3)(isEmpty) &&
           assert(noFriends4)(isEmpty)
         }
+      },
+      testM("wallet") {
+        for {
+          repo          <- ZIO.service[Repository.Service].map(_.userOperations)
+          testUser1     <- testUserZIO
+          inserted1     <- repo.upsert(testUser1.copy(active = true))
+          wallet        <- repo.getWallet(inserted1.id.get)
+          updated       <- repo.updateWallet(wallet.get.copy(amount = 12345))
+          walletUpdated <- repo.getWallet(inserted1.id.get)
+        } yield assertTrue(wallet.nonEmpty) &&
+          assert(wallet.get.amount)(equalTo(BigDecimal(10000))) &&
+          assertTrue(updated == walletUpdated.get) &&
+          assert(walletUpdated.get.amount)(equalTo(BigDecimal(12345)))
+
       }
 
       // Crud tests

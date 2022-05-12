@@ -34,7 +34,7 @@ val scalaCacheVersion = "0.28.0"
 val zioVersion = "1.0.14"
 val monocleVersion = "2.1.0"
 val tapirVersion = "0.20.1"
-val quillVersion = "3.16.3"
+val quillVersion = "3.16.4"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
@@ -186,8 +186,8 @@ lazy val server = project
       "dev.zio"       %% "zio-test-sbt"                   % zioVersion % "it, test" withSources (),
       "org.scalatest" %% "scalatest"                      % "3.2.12"   % "it, test" withSources (),
       "org.mockito"   %% "mockito-scala-scalatest"        % "1.17.5"   % "it, test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.40.5" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-mysql"     % "0.40.5" withSources ()
+      "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.40.7" withSources (),
+      "com.dimafeng"  %% "testcontainers-scala-mysql"     % "0.40.7" withSources ()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -271,7 +271,7 @@ lazy val debianSettings =
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Web
-val scalajsReactVersion = "2.1.0"
+val scalajsReactVersion = "2.1.1"
 val reactVersion = "17.0.0"
 
 lazy val reactNpmDeps: Project => Project =
@@ -408,8 +408,8 @@ lazy val commonWeb: Project => Project =
       "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.3.0" withSources (),
       "org.scala-js" %%% "scalajs-dom"                % "2.1.0" withSources (),
       "com.olvind" %%% "scalablytyped-runtime"        % "2.4.2",
-      "com.github.japgolly.scalajs-react" %%% "core"  % "2.1.0" withSources (),
-      "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.0" withSources (),
+      "com.github.japgolly.scalajs-react" %%% "core"  % "2.1.1" withSources (),
+      "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.1" withSources (),
       "com.lihaoyi" %%% "scalatags"                   % "0.11.1" withSources (),
       "com.github.japgolly.scalacss" %%% "core"       % "1.0.0" withSources (),
       "com.github.japgolly.scalacss" %%% "ext-react"  % "1.0.0" withSources (),

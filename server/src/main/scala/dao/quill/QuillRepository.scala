@@ -302,7 +302,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           session => session.user == god || session.user.id.fold(false)(_ == userId),
           _ => "You can't see someone else's wallet"
         )
-        walletOpt <- ctx.run(userWallets.filter(_.user == lift(userId))).map(_.headOption)
+        walletOpt <- ctx.run(userWallets.filter(_.userId == lift(userId))).map(_.headOption)
         wallet <- walletOpt.fold {
           val newWallet = UserWalletRow(userId, 10000)
           ctx.run(userWallets.insertValue(lift(newWallet))).as(Option(newWallet.toUserWallet))
@@ -321,7 +321,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         row = UserWalletRow.fromUserWallet(userWallet)
         _ <- existing.fold {
           ctx.run(userWallets.insertValue(lift(row)))
-        }(_ => ctx.run(userWallets.filter(_.user == lift(userWallet.userId)).updateValue(lift(row))))
+        }(_ => ctx.run(userWallets.filter(_.userId == lift(userWallet.userId)).updateValue(lift(row))))
       } yield userWallet)
         .provideSomeLayer[SessionProvider & Clock & Logging](dataSourceLayer)
         .mapError(RepositoryError.apply)
