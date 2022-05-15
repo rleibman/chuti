@@ -109,18 +109,20 @@ trait Tables {
     e5:          GR[Int],
     e1:          GR[Json],
     e6:          GR[GameStatus],
-    e2:          GR[Timestamp]
+    e2:          GR[Timestamp],
+    e7:          GR[Boolean]
   ): GR[GameRow] =
     GR { prs =>
       import prs.*
-      GameRow.tupled(
+      GameRow.apply.tupled(
         (
           <<[GameId],
           <<[Json],
           <<[GameStatus],
           <<[Timestamp],
           <<[Timestamp],
-          <<[Int]
+          <<[Int],
+          <<[Boolean]
         )
       )
     }
@@ -134,23 +136,25 @@ trait Tables {
         gameStatus,
         created,
         lastupdated,
-        currentIndex
-      ) <> (GameRow.tupled, GameRow.unapply)
+        currentIndex,
+        deleted
+      ) <> (GameRow.apply.tupled, GameRow.unapply)
 
     def ? : MappedProjection[Option[
       GameRow
-    ], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int])] =
+    ], (Option[GameId], Option[Json], Option[GameStatus], Option[Timestamp], Option[Timestamp], Option[Int], Option[Boolean])] =
       (
         Rep.Some(id),
         Rep.Some(lastSnapshot),
         Rep.Some(gameStatus),
         Rep.Some(created),
         Rep.Some(lastupdated),
-        Rep.Some(currentIndex)
+        Rep.Some(currentIndex),
+        Rep.Some(deleted)
       ).shaped.<>(
         { r =>
           import r.*
-          _1.map(_ => GameRow.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get)))
+          _1.map(_ => GameRow.apply.tupled((_1.get, _2.get, _3.get, _4.get, _5.get, _6.get, _7.get)))
         },
         (_: Any) => throw new Exception("Inserting into ? projection not supported.")
       )
@@ -172,6 +176,11 @@ trait Tables {
     val created: Rep[Timestamp] = column[Timestamp]("created")
 
     val lastupdated: Rep[Timestamp] = column[Timestamp]("lastUpdated")
+
+    val deleted: Rep[Boolean] = column[Boolean]("deleted", O.Default(false))
+
+    val deletedDate: Rep[Option[Timestamp]] =
+      column[Option[Timestamp]]("deletedDate", O.Default(None))
 
   }
 

@@ -1,53 +1,24 @@
 package db.quill
 
-import api.ChutiSession
 import api.config.Config
 import chuti.*
-import dao.quill.QuillRepository
-import dao.{Repository, RepositoryError, RepositoryPermissionError, SessionProvider}
+import dao.{Repository, RepositoryError, RepositoryPermissionError}
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
-import zio.logging.slf4j.Slf4jLogger
 import zio.magic.*
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
 
 import java.math.BigInteger
-import java.time.{Instant, ZoneId, ZoneOffset}
 
-object QuillUserSpec extends DefaultRunnableSpec {
+object QuillUserSpec extends QuillSpec {
 
   import Assertion.*
-  private val password = "testPassword123"
-  private val satan = // A user with no permissions
-    User(id = Some(UserId(999)), email = "Satan@hell.com", name = "Lucifer Morningstar")
-
-  private val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
-  private val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  private val containerLayer = ChutiContainer.containerLayer.orDie
-  private val configLayer = (containerLayer ++ baseConfigLayer) >>> ChutiContainer.configLayer
-  private val quillLayer = QuillRepository.live
-  private val godSession:              ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
-  private val satanSession:            ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(satan))
-  private def userSession(user: User): ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(user))
-  val now:                             Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z")
-  private val clockLayer: ULayer[Clock] =
-    ZLayer.succeed(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC))) >>> Clock.javaClock
-
-//  val fullGodLayer: ULayer[Config & Repository & Logging & SessionProvider & Clock & Random] =
-//    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
-
-  private val testUserZIO: URIO[Random, User] = {
-    for {
-      random <- ZIO.service[Random.Service]
-      str    <- random.nextString(5)
-    } yield User(None, email = s"$str@example.com", name = "Frank Lloyd Wright")
-  }
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
-    suite("MySuite")(
+    suite("Quill User Suite")(
       testM("random") {
         for {
           tok <- ZIO.service[Random.Service].flatMap(_.nextBytes(16)).map(r => new BigInteger(r.toArray).toString(32))

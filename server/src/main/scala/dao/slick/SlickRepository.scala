@@ -278,7 +278,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
         for {
           upserted <-
             (GameQuery returning GameQuery.map(_.id) into ((_, id) => game.copy(id = Some(id))))
-              .insertOrUpdate(Game2GameRow(game))
+              .insertOrUpdate(GameRow.fromGame(game))
               .map(_.getOrElse(game))
         } yield upserted
       }
@@ -297,7 +297,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
         GameQuery
           .filter(_.id === pk)
           .result
-          .map(_.headOption.map(row => GameRow2Game(row)))
+          .map(_.headOption.map(_.toGame))
       }
       for {
         gameOpt <- zio
@@ -320,7 +320,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
       GameQuery.result
-        .map(_.map(row => GameRow2Game(row)))
+        .map(_.map(_.toGame))
 
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] = GameQuery.length.result.map(_.toLong)
 
@@ -328,7 +328,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       GameQuery
         .filter(g => g.gameStatus === (GameStatus.esperandoJugadoresAzar: GameStatus))
         .result
-        .map(_.map(row => GameRow2Game(row)))
+        .map(_.map(_.toGame))
 
     override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = { session: ChutiSession =>
       GamePlayersQuery
@@ -344,7 +344,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
         ).on(_.gameId === _.id)
         .sortBy(_._2.lastupdated.desc)
         .result
-        .map(_.map(row => GameRow2Game(row._2)))
+        .map(_.map(_._2.toGame))
     }
 
     override def getGameForUser: RepositoryIO[Option[Game]] = { session: ChutiSession =>
@@ -367,7 +367,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
         ).on(_.gameId === _.id)
         .sortBy(_._2.lastupdated.desc)
         .result
-        .map(_.headOption.map(row => GameRow2Game(row._2)))
+        .map(_.headOption.map(_._2.toGame))
     }
 
     override def gameInvites: RepositoryIO[Seq[Game]] = { session: ChutiSession =>
@@ -375,7 +375,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
         .filter(player => player.userId === session.user.id.getOrElse(UserId(-1)) && player.invited)
         .join(GameQuery).on(_.gameId === _.id)
         .result
-        .map(_.map(row => GameRow2Game(row._2)))
+        .map(_.map(_._2.toGame))
     }
 
     override def updatePlayers(game: Game): RepositoryIO[Game] = {

@@ -24,16 +24,19 @@ import dao.*
 import io.getquill.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
 import scalacache.Cache
+import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
+import io.circe.parser.*
 
 import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
 import scala.concurrent.duration.Duration
+import scala.concurrent.duration.*
 
 object QuillRepository {
 
@@ -48,6 +51,8 @@ object QuillRepository {
 case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   private val godSession: ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
+
+  import QuillRepository.gameCache
 
   private object ctx extends MysqlZioJdbcContext(MysqlEscape)
   import ctx.*
@@ -84,7 +89,18 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     row.getTimestamp(index)
   }
 
+  implicit private val JsonEncoder: ctx.Encoder[io.circe.Json] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.noSpaces))
+
   implicit private val TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
+
+  implicit private val JsonDecoder: ctx.Decoder[io.circe.Json] = JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
+    parse(row.getString(index)).fold(e => throw RepositoryError(e), json => json)
+  }
+
+  implicit private val GameStatusDecoder: ctx.Decoder[GameStatus] = JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
+    GameStatus.withName(row.getString(index))
+  }
+  implicit private val GameStatusEncoder: ctx.Encoder[GameStatus] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.value))
 
   private def assertAuth(
     authorized: ChutiSession => Boolean,
@@ -100,13 +116,12 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
 
-    override def get(pk: UserId): RepositoryIO[Option[User]] = {
+    override def get(pk: UserId): RepositoryIO[Option[User]] =
       ctx
         .run(users.filter(u => u.id === lift(pk) && !u.deleted))
         .map(_.headOption.map(_.toUser))
         .provideLayer(dataSourceLayer)
         .mapError(RepositoryError.apply)
-    }
 
     override def delete(
       pk:         UserId,
@@ -330,30 +345,182 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   override val gameOperations: Repository.GameOperations = new Repository.GameOperations {
 
-    override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = ???
+    override def getHistoricalUserGames: RepositoryIO[Seq[Game]] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        players <- ctx
+          .run(
+            gamePlayers
+              .filter(p => p.userId == lift(session.user.id.getOrElse(UserId(-1))) && !p.invited)
+              .join(games.filter(g => !g.deleted && g.status == lift(GameStatus.partidoTerminado: GameStatus))).on((players, game) =>
+                players.gameId == game.id
+              )
+              .sortBy(_._2.lastUpdated)(Ord.descNullsLast)
+          ).map(_.map(_._2.toGame))
+      } yield players).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def userInGame(id: GameId): RepositoryIO[Boolean] = ???
+    override def userInGame(id: GameId): RepositoryIO[Boolean] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        ret <-
+          if (session.user.isBot)
+            ZIO.succeed(true)
+          else {
+            ctx.run(gamePlayers.filter(gp => gp.gameId == lift(id) && gp.userId == lift(session.user.id.getOrElse(UserId(-1)))).size).map(_ > 0)
+          }
+      } yield ret).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def updatePlayers(game: Game): RepositoryIO[Game] = ???
+    override def updatePlayers(game: Game): RepositoryIO[Game] = {
+      def insertValues(gamePlayers: List[GamePlayersRow]) =
+        quote {
+          liftQuery(gamePlayers).foreach(c => query[GamePlayersRow].insertValue(c))
+        }
 
-    override def gameInvites: RepositoryIO[Seq[Game]] = ???
+      for {
+        _ <- assertAuth(
+          session => session.user == chuti.god || game.jugadores.exists(_.user.id == session.user.id),
+          session => s"${session.user} Not authorized"
+        )
+        _ <- game.id.fold(ZIO.fail(RepositoryError("can't update players of unsaved game")): ZIO[Has[DataSource], RepositoryError, Long]) { id =>
+          ctx.run(gamePlayers.filter(_.gameId == lift(id)).delete).mapError(RepositoryError.apply)
+        }
+        _ <- ctx.run(
+          insertValues(
+            game.jugadores.filter(!_.user.isBot).zipWithIndex.map { case (player, index) =>
+              GamePlayersRow(
+                userId = player.user.id.getOrElse(UserId(0)),
+                gameId = game.id.getOrElse(GameId(0)),
+                order = index,
+                invited = player.invited
+              )
+            }
+          )
+        )
+      } yield game
+    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = ???
+    override def gameInvites: RepositoryIO[Seq[Game]] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        ret <- ctx
+          .run(
+            gamePlayers
+              .filter(player => player.userId == lift(session.user.id.getOrElse(UserId(-1))) && player.invited)
+              .join(games).on((player, game) => player.gameId == game.id).map(_._2)
+          ).map(_.map(_.toGame))
+      } yield ret).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def getGameForUser: RepositoryIO[Option[Game]] = ???
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
+      ctx
+        .run(
+          games
+            .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
+        )
+        .map(_.map(_.toGame))
+        .provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def upsert(e: Game): RepositoryIO[Game] = ???
+    private val runningGames: Set[GameStatus] = Set(
+      GameStatus.comienzo,
+      GameStatus.requiereSopa,
+      GameStatus.cantando,
+      GameStatus.jugando,
+      GameStatus.partidoTerminado,
+      GameStatus.esperandoJugadoresAzar,
+      GameStatus.esperandoJugadoresInvitados
+    )
 
-    override def get(pk: GameId): RepositoryIO[Option[Game]] = ???
+    override def getGameForUser: RepositoryIO[Option[Game]] =
+      (for {
+        session <- ZIO.service[SessionProvider.Session].map(_.session)
+        ret <-
+          ctx
+            .run(
+              gamePlayers
+                .filter(gp => gp.userId == lift(session.user.id.getOrElse(UserId(-1))) && !gp.invited)
+                .join(games.filter(g => liftQuery(runningGames).contains(g.status)))
+                .on(_.gameId == _.id)
+                .map(_._2)
+            ).map(_.headOption.map(_.toGame))
+      } yield ret).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
+
+    override def upsert(game: Game): RepositoryIO[Game] =
+      (for {
+        _ <- assertAuth(
+          session => session.user == chuti.god || game.jugadores.exists(_.user.id == session.user.id),
+          session => s"${session.user} Not authorized"
+        )
+        now <- ZIO.service[Clock.Service].flatMap(_.instant)
+        _   <- scalacache.remove(game.id).mapError(e => RepositoryError("Cache error", Some(e)))
+        upsertMe = GameRow.fromGame(game.copy(created = game.id.fold(now)(_ => game.created))).copy(lastUpdated = Timestamp.from(now))
+
+        upserted <- game.id.fold {
+          // It's an insert
+          ctx
+            .run(
+              games
+                .insertValue(lift(upsertMe))
+                .returningGenerated(_.id)
+            )
+            .map(newId => upsertMe.copy(id = newId))
+            .mapError(RepositoryError.apply)
+        } { id =>
+          for {
+            updateCount <- ctx
+              .run(
+                games
+                  .filter(g => g.id == lift(id) && !g.deleted)
+                  .updateValue(lift(upsertMe))
+              )
+              .mapError(RepositoryError.apply)
+            _ <- ZIO.fail(RepositoryError("Game not found")).when(updateCount == 0): ZIO[Has[DataSource], RepositoryError, Unit]
+          } yield upsertMe
+        }
+        res = upserted.toGame
+        _ <-
+          scalacache
+            .put(game.id)(Option(res), Option(3.hours)).mapError(e => RepositoryError("Cache error", Some(e)))
+      } yield res).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
+
+    override def get(pk: GameId): RepositoryIO[Option[Game]] =
+      ctx
+        .run(games.filter(g => g.id === lift(pk) && !g.deleted))
+        .map(_.headOption.map(_.toGame))
+        .provideLayer(dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
     override def delete(
       pk:         GameId,
       softDelete: Boolean
-    ): RepositoryIO[Boolean] = ???
+    ): RepositoryIO[Boolean] = {
+      for {
+        _ <- assertAuth(
+          session => session.user == chuti.god,
+          session => s"${session.user} Not authorized"
+        )
+        result <- {
+          if (softDelete) {
+            ctx
+              .run(games.filter(u => u.id === lift(pk) && !u.deleted).update(_.deleted -> true))
+              .map(_ > 0)
+          } else {
+            ctx.run(games.filter(_.id === lift(pk)).delete).map(_ > 0)
+          }
+        }
+      } yield result
+    }.provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = ???
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
+      ctx
+        .run(games.filter(!_.deleted))
+        .map(_.map(_.toGame))
+        .provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
-    override def count(search: Option[EmptySearch]): RepositoryIO[Long] = ???
+    override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
+      ctx
+        .run(games.filter(!_.deleted).size)
+        .provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
   }
   override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {

@@ -78,28 +78,49 @@ package object dao {
       )
 
   }
-  case class GameRow(
-    id:           GameId,
-    lastSnapshot: Json,
-    gameStatus:   GameStatus,
-    created:      Timestamp,
-    lastUpdated:  Timestamp,
-    currentIndex: Int = 0
-  )
 
-  def GameRow2Game(row: GameRow): Game = {
-    val decoder = implicitly(Decoder[Game])
-    decoder.decodeJson(row.lastSnapshot).map {
-      _.copy(
-        id = Option(row.id),
-        currentEventIndex = row.currentIndex,
-        gameStatus = row.gameStatus
+  object GameRow {
+
+    def fromGame(value: Game): GameRow = {
+      val ret = GameRow(
+        id = value.id.getOrElse(GameId(0)),
+        current_index = value.currentEventIndex,
+        lastSnapshot = value.asJson,
+        status = value.gameStatus,
+        created = Timestamp.from(value.created),
+        lastUpdated = new Timestamp(System.currentTimeMillis())
       )
-    } match {
-      case Right(state) => state
-      case Left(error)  => throw GameException(error)
+      ret
     }
+
   }
+
+  case class GameRow(
+    id:            GameId,
+    lastSnapshot:  Json,
+    status:        GameStatus,
+    created:       Timestamp,
+    lastUpdated:   Timestamp,
+    current_index: Int = 0,
+    deleted:       Boolean = false
+  ) {
+
+    def toGame: Game = {
+      val decoder = implicitly(Decoder[Game])
+      decoder.decodeJson(lastSnapshot).map {
+        _.copy(
+          id = Option(id),
+          currentEventIndex = current_index,
+          gameStatus = status
+        )
+      } match {
+        case Right(state) => state
+        case Left(error)  => throw GameException(error)
+      }
+    }
+
+  }
+
   case class GameEventRow(
     gameId:       GameId,
     currentIndex: Int = 0,
@@ -138,17 +159,5 @@ package object dao {
     expireTime:   Timestamp,
     userId:       UserId
   )
-
-  def Game2GameRow(value: Game): GameRow = {
-    val ret = GameRow(
-      id = value.id.getOrElse(GameId(0)),
-      currentIndex = value.currentEventIndex,
-      lastSnapshot = value.asJson,
-      gameStatus = value.gameStatus,
-      created = Timestamp.from(value.created),
-      lastUpdated = new Timestamp(System.currentTimeMillis())
-    )
-    ret
-  }
 
 }

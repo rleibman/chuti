@@ -10,10 +10,6 @@ create table userWallet
 alter table game
     change start_state lastSnapshot json;
 alter table game
-    drop column deleted;
-alter table game
-    drop column deletedDate;
-alter table game
     change game_state status text;
 
 create table userLog
