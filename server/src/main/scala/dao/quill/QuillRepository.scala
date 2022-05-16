@@ -32,6 +32,7 @@ import zio.logging.Logging
 import zio.random.Random
 import io.circe.parser.*
 
+import java.math.BigInteger
 import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
@@ -72,9 +73,6 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
   }
   private val games = quote {
     querySchema[GameRow]("game")
-  }
-  private val gameEvents = quote {
-    querySchema[GameEventRow]("game_events")
   }
   private val gamePlayers = quote {
     querySchema[GamePlayersRow]("game_players")
@@ -528,20 +526,42 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     override def cleanup: RepositoryIO[Boolean] = ???
 
     override def validateToken(
-      token:   Token,
-      purpose: TokenPurpose
-    ): RepositoryIO[Option[User]] = ???
+                                token: Token,
+                                purpose: TokenPurpose
+                              ): RepositoryIO[Option[User]] =
+      (for {
+        user <- peek(token, purpose)
+        _ <- ctx.run(tokens.filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString)).delete)
+      } yield user).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
     override def createToken(
-      user:    User,
-      purpose: TokenPurpose,
-      ttl:     Option[Duration]
-    ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token] = ???
+                              user: User,
+                              purpose: TokenPurpose,
+                              ttl: Option[Duration]
+                            ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token] = (
+      for {
+        tok <- ZIO.service[Random.Service].flatMap(_.nextBytes(8)).map(r => new BigInteger(r.toArray).toString(32))
+        row = TokenRow(
+          tok = tok,
+          tokenPurpose = purpose.toString,
+          expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + System.currentTimeMillis())),
+          userId = user.id.getOrElse(UserId(-1))
+        )
+        inserted <- ctx.run(tokens.insertValue(lift(row))).as(Token(row.tok))
+      } yield inserted
+      ).provideSomeLayer[SessionProvider & Logging & Clock & Random](dataSourceLayer)
+      .mapError(RepositoryError.apply)
 
     override def peek(
-      token:   Token,
-      purpose: TokenPurpose
-    ): RepositoryIO[Option[User]] = ???
+                       token: Token,
+                       purpose: TokenPurpose
+                     ): RepositoryIO[Option[User]] = ctx.run(tokens
+      .filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString))
+      .join(users).on(_.userId == _.id).map(_._2)
+    ).map(_.headOption.map(_.toUser))
+      .provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer)
+      .mapError(RepositoryError.apply)
 
   }
 
