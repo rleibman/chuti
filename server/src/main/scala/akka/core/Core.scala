@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package core
+package akka.core
 
 import akka.actor.ActorSystem
 

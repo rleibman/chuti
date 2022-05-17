@@ -14,52 +14,45 @@
  * limitations under the License.
  */
 
-package chat
+package akka.routes
 
+import akka.HasActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
-import api.HasActorSystem
-import api.config.Config
+import api.config
 import caliban.AkkaHttpAdapter
-import dao.{Repository, SessionProvider}
+import chat.ChatService.ChatService
+import game.{GameApi, GameService}
+import sttp.tapir.json.circe.*
+import zio.*
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
-import zio.logging.Logging
-import zio.{RIO, ZIO}
-import sttp.tapir.json.circe.*
 
 import scala.concurrent.ExecutionContextExecutor
 
-trait ChatRoute extends Directives with HasActorSystem {
+case class GameArgs()
+
+trait GameRoute extends Directives with HasActorSystem {
 
   implicit lazy val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-  import ChatService.*
+  import GameService.*
+  val staticContentDir: String =
+    config.live.config.getString(s"${config.live.configKey}.staticContentDir")
 
-  def route: RIO[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging & Config,
-    Route
-  ] = {
+  def route: URIO[Console & Clock & GameService & GameLayer & ChatService, Route] =
     for {
-      config <- ZIO.service[Config.Service]
-      runtime <-
-        ZIO
-          .runtime[
-            Console & Clock & ChatService & Repository & SessionProvider & Logging & Config
-          ]
+      runtime <- ZIO.runtime[Console & Clock & GameService & GameLayer & ChatService]
     } yield {
-      val staticContentDir =
-        config.config.getString(s"${config.configKey}.staticContentDir")
+      implicit val r: Runtime[Console & Clock & GameService & GameLayer & ChatService] = runtime
 
-      implicit val r: zio.Runtime[Console & Clock & ChatService & Repository & SessionProvider & Logging & Config] = runtime
-
-      pathPrefix("chat") {
+      pathPrefix("game") {
         pathEndOrSingleSlash {
           AkkaHttpAdapter.makeHttpService(
             interpreter
           )
         } ~
           path("schema") {
-            get(complete(ChatApi.api.render))
+            get(complete(GameApi.api.render))
           } ~
           path("ws") {
             AkkaHttpAdapter.makeWebSocketService(
@@ -72,6 +65,5 @@ trait ChatRoute extends Directives with HasActorSystem {
           }
       }
     }
-  }
 
 }

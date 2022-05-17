@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package api
+package akka
 
 import akka.http.scaladsl.marshalling.{Marshaller, ToResponseMarshaller}
 import akka.http.scaladsl.model.HttpResponse

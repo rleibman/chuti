@@ -28,20 +28,22 @@ enablePlugins(
 val akkaVersion = "2.6.19"
 val akkaHttpVersion = "10.2.9"
 val slickVersion = "3.3.3"
+
 val circeVersion = "0.14.1"
 val calibanVersion = "1.4.0"
 val scalaCacheVersion = "0.28.0"
 val zioVersion = "1.0.14"
 val monocleVersion = "2.1.0"
 val tapirVersion = "0.20.1"
-val quillVersion = "3.16.4"
+val quillVersion = "3.16.5"
+val zioHttpVersion = "1.0.0.0-RC27"
 
 lazy val commonSettings = Seq(
-  organization     := "net.leibman",
-  scalaVersion     := "2.13.8",
-  startYear        := Some(2020),
+  organization := "net.leibman",
+  scalaVersion := "2.13.8",
+  startYear := Some(2020),
   organizationName := "Roberto Leibman",
-  headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
+  headerLicense := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
 )
 
 //lazy val scala3CompatOpts = Seq(
@@ -165,29 +167,31 @@ lazy val server = project
       "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
       "io.getquill"               %% "quill-jasync-mysql"     % quillVersion withSources (),
       // Scala Cache
-      "com.github.cb372" %% "scalacache-core"     % scalaCacheVersion withSources (),
-      "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources (),
+      "com.github.cb372" %% "scalacache-core" % scalaCacheVersion withSources(),
+      "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources(),
       // ZIO
-      "dev.zio"                     %% "zio"               % zioVersion withSources (),
-      "dev.zio"                     %% "zio-logging-slf4j" % "0.5.14" withSources (),
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"  % tapirVersion withSources (),
-      "com.github.ghostdogpr"       %% "caliban"           % calibanVersion withSources (),
-      "com.github.ghostdogpr"       %% "caliban-tapir"     % calibanVersion withSources (),
-      "com.github.ghostdogpr"       %% "caliban-akka-http" % calibanVersion withSources (),
-      "io.github.kitlangton"        %% "zio-magic"         % "0.3.12" withSources (),
+      "dev.zio" %% "zio" % zioVersion withSources(),
+      "dev.zio" %% "zio-logging-slf4j" % "0.5.14" withSources(),
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion withSources(),
+      "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
+      "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
+      "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources(),
+      "io.github.kitlangton" %% "zio-magic" % "0.3.12" withSources(),
+      "io.d11" %% "zhttp" % zioHttpVersion withSources(),
       // Other random utilities
-      "com.github.pathikrit"  %% "better-files"    % "3.9.1" withSources (),
-      "com.github.daddykotex" %% "courier"         % "3.1.0" withSources (),
-      "ch.qos.logback"         % "logback-classic" % "1.2.11" withSources (),
-      "org.slf4j"              % "slf4j-nop"       % "1.7.36" withSources (),
-      "commons-codec"          % "commons-codec"   % "1.15",
+      "com.github.pathikrit" %% "better-files" % "3.9.1" withSources(),
+      "com.github.daddykotex" %% "courier" % "3.1.0" withSources(),
+      "ch.qos.logback" % "logback-classic" % "1.2.11" withSources(),
+      "org.slf4j" % "slf4j-nop" % "1.7.36" withSources(),
+      "commons-codec" % "commons-codec" % "1.15",
       // Testing
-      "dev.zio"       %% "zio-test"                       % zioVersion % "it, test" withSources (),
-      "dev.zio"       %% "zio-test-sbt"                   % zioVersion % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"                      % "3.2.12"   % "it, test" withSources (),
-      "org.mockito"   %% "mockito-scala-scalatest"        % "1.17.5"   % "it, test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-scalatest" % "0.40.7" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-mysql"     % "0.40.7" withSources ()
+      "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
+      "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
+      "org.mockito" %% "mockito-scala-scalatest" % "1.17.5" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.7" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.7" withSources(),
+      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -398,21 +402,21 @@ lazy val commonWeb: Project => Project =
       "io.circe" %%% "circe-literal"
     ).map(_ % circeVersion),
     libraryDependencies ++= Seq(
-      "commons-io"                                    % "commons-io"                    % "2.11.0" withSources (),
-      "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
-      "dev.zio" %%% "zio"                             % zioVersion withSources (),
-      "com.softwaremill.sttp.client" %%% "core"       % "2.3.0" withSources (),
-      "com.softwaremill.sttp.client"                 %% "async-http-client-backend-zio" % "2.3.0",
-      "ru.pavkin" %%% "scala-js-momentjs"             % "0.10.5" withSources (),
-      "io.github.cquiroz" %%% "scala-java-time"       % "2.3.0" withSources (),
-      "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.3.0" withSources (),
-      "org.scala-js" %%% "scalajs-dom"                % "2.1.0" withSources (),
-      "com.olvind" %%% "scalablytyped-runtime"        % "2.4.2",
-      "com.github.japgolly.scalajs-react" %%% "core"  % "2.1.1" withSources (),
-      "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.1" withSources (),
-      "com.lihaoyi" %%% "scalatags"                   % "0.11.1" withSources (),
-      "com.github.japgolly.scalacss" %%% "core"       % "1.0.0" withSources (),
-      "com.github.japgolly.scalacss" %%% "ext-react"  % "1.0.0" withSources (),
+      "commons-io" % "commons-io" % "2.11.0" withSources(),
+      "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
+      "dev.zio" %%% "zio" % zioVersion withSources(),
+      "com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources(),
+      "com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0",
+      "ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources(),
+      "io.github.cquiroz" %%% "scala-java-time" % "2.3.0" withSources(),
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0" withSources(),
+      "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),
+      "com.olvind" %%% "scalablytyped-runtime" % "2.4.2",
+      "com.github.japgolly.scalajs-react" %%% "core" % "2.1.1" withSources(),
+      "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.1" withSources(),
+      "com.lihaoyi" %%% "scalatags" % "0.11.1" withSources(),
+      "com.github.japgolly.scalacss" %%% "core" % "1.0.0" withSources(),
+      "com.github.japgolly.scalacss" %%% "ext-react" % "1.0.0" withSources(),
       ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
     ),
     organizationName := "Roberto Leibman",

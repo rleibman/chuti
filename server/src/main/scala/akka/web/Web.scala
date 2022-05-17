@@ -14,16 +14,16 @@
  * limitations under the License.
  */
 
-package web
+package akka.web
 
+import akka.Api
+import akka.core.{Core, CoreActors}
 import akka.event.LoggingAdapter
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl.*
-import api.Api
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
-import core.{Core, CoreActors}
 import dao.slick.{MySQLDatabaseProvider, SlickRepository}
 import dao.Repository
 import game.GameService

@@ -1,38 +1,22 @@
-/*
- * Copyright 2020 Roberto Leibman
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package api
+package akka
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.directives.DebuggingDirectives
 import akka.http.scaladsl.server.{Directives, Route, RouteConcatenation}
+import akka.routes.{ModelRoutes, StaticHTMLRoute}
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService.ChatService
-import core.{Core, CoreActors}
 import dao.{Repository, SessionProvider}
 import game.GameService.GameService
 import mail.Postman.Postman
-import routes.{ModelRoutes, StaticHTMLRoute}
 import zio.ZIO
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.{Logging, log}
 
 /** This class puts all of the live services together with all of the routes
+  *
   * @author
   *   rleibman
   */
@@ -67,17 +51,10 @@ trait Api extends RouteConcatenation with Directives with StaticHTMLRoute with M
                     extractRequestContext { requestContext =>
                       sessionResult.toOption match {
                         case Some(session) =>
-                          val me: ZIO[
-                            Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder,
-                            Throwable,
-                            Route
-                          ] = apiRoute
+                          apiRoute
                             .provideSomeLayer[
                               Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
-                            ](SessionProvider.layer(session))
-                          val meme = me.provide(r)
-
-                          meme
+                            ](SessionProvider.layer(session)).provide(r)
                         case None =>
                           log.info(
                             s"Unauthorized ${requestContext.request.method.value} request of ${requestContext.unmatchedPath}, redirecting to login"

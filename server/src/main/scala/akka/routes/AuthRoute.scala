@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package routes
+package akka.routes
 
-import java.time.Instant
-import java.util.Locale
+import akka.{HasActorSystem, SessionUtils, ZIODirectives}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.*
 import api.*
@@ -29,14 +28,15 @@ import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
 import dao.{CRUDOperations, RepositoryError, SessionProvider}
 import io.circe.generic.auto.*
+import mail.Postman
 import mail.Postman.Postman
-import mail.{CourierPostman, Postman}
-import zio.Cause.Fail
 import zio.*
+import zio.Cause.Fail
 import zio.clock.Clock
 import zio.logging.{Logging, log}
 
-import java.time.temporal.TemporalAmount
+import java.time.Instant
+import java.util.Locale
 import scala.jdk.CollectionConverters.*
 
 object AuthRoute {

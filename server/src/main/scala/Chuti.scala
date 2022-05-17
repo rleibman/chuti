@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-import api.Api
-import core.{BootedCore, CoreActors}
-import web.Web
+import akka.Api
+import akka.core.{BootedCore, CoreActors}
+import akka.web.Web
 
 /** This is the actual application you run that contains everything it needs, the core, the actors, the api, the web, the environment.
   */

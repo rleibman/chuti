@@ -1,38 +1,19 @@
-/*
- * Copyright 2020 Roberto Leibman
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+package akka.routes
 
-package routes
-
+import akka.HasActorSystem
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.{Directives, Route}
-import api.HasActorSystem
 import api.config.Config
 import api.token.TokenHolder
-import chat.ChatRoute
 import chat.ChatService.ChatService
 import chuti.{PagedStringSearch, User, UserId}
 import dao.{CRUDOperations, Repository, SessionProvider}
-import game.GameRoute
 import game.GameService.{GameLayer, GameService}
-import io.circe.generic.auto.*
 import mail.Postman.Postman
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
-import zio.*
+import zio.{Has, RIO, ULayer, ZIO, ZLayer}
 
 /** For convenience, this trait aggregates all of the model routes.
   */

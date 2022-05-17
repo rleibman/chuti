@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package api
+package akka
 
 import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
+import api.{ChutiSession, config}
 import chuti.UserId
+import com.softwaremill.session.*
 import com.softwaremill.session.SessionDirectives.*
 import com.softwaremill.session.SessionOptions.*
-import com.softwaremill.session.*
 import dao.*
 import dao.slick.{MySQLDatabaseProvider, SlickRepository}
 import scalacache.Cache
 import scalacache.ZioEffect.modes.*
 import scalacache.caffeine.CaffeineCache
 import zio.clock.Clock
-import zio.logging.{Logging, log}
 import zio.logging.slf4j.Slf4jLogger
+import zio.logging.{Logging, log}
 import zio.{Task, ZIO, ZLayer}
 
 import scala.concurrent.duration.*

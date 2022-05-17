@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-package routes
+package akka.routes
 
+import akka.ZIODirectives
 import akka.http.scaladsl.server.{Directives, Route}
-import api.{SessionUtils, ZIODirectives}
 import api.token.TokenHolder
 import chuti.Search
 import dao.*
