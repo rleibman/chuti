@@ -176,6 +176,7 @@ lazy val server = project
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources(),
+      "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
       "io.github.kitlangton" %% "zio-magic" % "0.3.12" withSources(),
       "io.d11" %% "zhttp" % zioHttpVersion withSources(),
       // Other random utilities

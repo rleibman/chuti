@@ -77,7 +77,28 @@ package object token {
 
     }
 
-    def dbLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
+    def mockLayer: ULayer[TokenHolder] =
+      ZLayer.succeed(new Service {
+
+        override def peek(
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = Task.none
+
+        override def createToken(
+          user:    User,
+          purpose: TokenPurpose,
+          ttl:     Option[Duration]
+        ): Task[Token] = Task.succeed(Token(""))
+
+        override def validateToken(
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = Task.none
+
+      })
+
+    def liveLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
       ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
         new Service {
 //          SessionProvider & Logging

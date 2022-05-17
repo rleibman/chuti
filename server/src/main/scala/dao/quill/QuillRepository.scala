@@ -195,10 +195,10 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           user.id.fold {
             // It's an insert, make sure te user does not exist by email
             for {
-              exists <- ctx.run(users.filter(u => u.email === lift(user.email) && !u.deleted).size)
+              exists <- ctx.run(users.filter(u => u.email === lift(user.email) && !u.deleted).nonEmpty)
               _ <- ZIO
                 .fail(RepositoryError(s"Insert Error: A user with the email ${user.email} already exists, choose a different one"))
-                .when(exists > 0)
+                .when(exists)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now, created = now))
               pk <- ctx
                 .run(users.insertValue(lift(saveMe.copy(active = false, deleted = false))).returningGenerated(_.id))
@@ -206,10 +206,10 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           } { id =>
             // It's an update, make sure that if the email has changed, it doesn't already exist
             for {
-              exists <- ctx.run(users.filter(u => u.id != lift(id) && u.email === lift(user.email) && !u.deleted).size)
+              exists <- ctx.run(users.filter(u => u.id != lift(id) && u.email === lift(user.email) && !u.deleted).nonEmpty)
               _ <- ZIO
                 .fail(RepositoryError(s"Update error: A user with the email ${user.email} already exists, choose a different one"))
-                .when(exists > 0)
+                .when(exists)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now))
               updateCount <- ctx.run(users.filter(u => u.id == lift(id) && !u.deleted).updateValue(lift(saveMe)))
               _           <- ZIO.fail(RepositoryError("User not found")).when(updateCount == 0)
@@ -381,7 +381,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           if (session.user.isBot)
             ZIO.succeed(true)
           else {
-            ctx.run(gamePlayers.filter(gp => gp.gameId == lift(id) && gp.userId == lift(session.user.id.getOrElse(UserId(-1)))).size).map(_ > 0)
+            ctx.run(gamePlayers.filter(gp => gp.gameId == lift(id) && gp.userId == lift(session.user.id.getOrElse(UserId(-1)))).nonEmpty)
           }
       } yield ret).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 

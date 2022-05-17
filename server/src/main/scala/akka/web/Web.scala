@@ -72,7 +72,7 @@ trait Web {
     val loggingLayer: ULayer[Logging] = Slf4jLogger.make((_, b) => b)
     val repositoryLayer: ULayer[Repository] =
       (configLayer ++ loggingLayer) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live
-    val tokenLayer: ULayer[TokenHolder] = (repositoryLayer ++ loggingLayer) >>> TokenHolder.dbLayer
+    val tokenLayer: ULayer[TokenHolder] = (repositoryLayer ++ loggingLayer) >>> TokenHolder.liveLayer
 
     GameService.make().memoize.use { gameServiceLayer =>
       ChatService.make().memoize.use { chatServiceLayer =>
