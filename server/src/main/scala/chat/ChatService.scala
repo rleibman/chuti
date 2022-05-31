@@ -54,7 +54,7 @@ object ChatService {
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   lazy val interpreter: GraphQLInterpreter[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging & Clock,
+    Console & Clock & ChatService & Repository & SessionProvider & Logging,
     CalibanError
   ] =
     runtime.unsafeRun(ChatApi.api.interpreter)

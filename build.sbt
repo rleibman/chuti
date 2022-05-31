@@ -29,12 +29,12 @@ val akkaVersion = "2.6.19"
 val akkaHttpVersion = "10.2.9"
 val slickVersion = "3.3.3"
 
-val circeVersion = "0.14.1"
-val calibanVersion = "1.4.0"
+val circeVersion = "0.14.2"
+val calibanVersion = "1.4.1"
 val scalaCacheVersion = "0.28.0"
 val zioVersion = "1.0.14"
 val monocleVersion = "2.1.0"
-val tapirVersion = "0.20.1"
+val tapirVersion = "0.20.2"
 val quillVersion = "3.16.5"
 val zioHttpVersion = "1.0.0.0-RC27"
 
@@ -179,6 +179,7 @@ lazy val server = project
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
       "io.github.kitlangton" %% "zio-magic" % "0.3.12" withSources(),
       "io.d11" %% "zhttp" % zioHttpVersion withSources(),
+      "com.github.jwt-scala" %% "jwt-circe" % "9.0.5" withSources(),
       // Other random utilities
       "com.github.pathikrit" %% "better-files" % "3.9.1" withSources(),
       "com.github.daddykotex" %% "courier" % "3.1.0" withSources(),

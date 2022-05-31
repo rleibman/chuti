@@ -20,12 +20,24 @@ import scala.util.Random
 
 package object chuti {
 
+  val godlessUserId: UserId = UserId(-999)
+
   val godUserId: UserId = UserId(-666)
 
+  //A user who can do anything
   val god: User = User(
     id = Some(godUserId),
     email = "god@chuti.fun",
     name = "Un-namable",
+    created = Instant.ofEpochMilli(0),
+    isAdmin = true
+  )
+
+  //A user who can do some stuff, but not much
+  val godless: User = User(
+    id = Some(godlessUserId),
+    email = "godless@chuti.fun",
+    name = "Nothing",
     created = Instant.ofEpochMilli(0),
     isAdmin = true
   )

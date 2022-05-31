@@ -30,7 +30,7 @@ import scalacache.caffeine.CaffeineCache
 import zio.clock.Clock
 import zio.logging.slf4j.Slf4jLogger
 import zio.logging.{Logging, log}
-import zio.{Task, ZIO, ZLayer}
+import zio.{Has, Task, ZIO, ZLayer}
 
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -53,7 +53,7 @@ trait SessionUtils extends Directives {
   import actorSystem.dispatcher
   import scalacache.memoization.*
 
-  lazy private val godLayer =
+  lazy private val godLayer: ZLayer[Any, Nothing, Repository & Has[SessionProvider.Session] & Logging & Clock] =
     ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(
       config.live
     )) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++

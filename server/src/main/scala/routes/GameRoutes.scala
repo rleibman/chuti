@@ -1,34 +1,41 @@
 package routes
 
+import api.Auth.RequestWithSession
 import api.Chuti.Environment
+import api.ChutiSession
 import api.config.Config
 import caliban.ZHttpAdapter
-import game.{GameApi, GameService}
 import dao.SessionProvider
+import game.{GameApi, GameService}
 import zhttp.http.*
 import zio.ZIO
-import zio.stream.ZStream
 import zio.duration.*
 
 object GameRoutes {
 
   import GameService.*
 
-  val route: ZIO[Environment & SessionProvider, Throwable, Http[Environment & SessionProvider, Throwable, Request, Response]] = for {
-    config <- ZIO.service[Config.Service]
-  } yield {
-    val staticContentDir =
-      config.config.getString(s"${config.configKey}.staticContentDir")
-
-    Http.route[Request] {
+  val authRoute: Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] = {
+    Http.route[RequestWithSession[ChutiSession]] {
       case _ -> !! / "api" / "game" =>
-        ZHttpAdapter.makeHttpService(interpreter)
+        Http.collectHttp { req =>
+          ZHttpAdapter.makeHttpService(interpreter)
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+        }
       case _ -> !! / "api" / "game" / "ws" =>
-        ZHttpAdapter.makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
+        Http.collectHttp { req =>
+          ZHttpAdapter.makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+        }
       case _ -> !! / "api" / "game" / "schema" =>
         Http.fromData(HttpData.fromString(GameApi.api.render))
       case _ -> !! / "api" / "game" / "graphiql" =>
-        Http.fromStream(ZStream.fromResource(s"$staticContentDir/graphiql.html"))
+        Http.fromFileZIO(
+          for {
+            config <- ZIO.service[Config.Service]
+            staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          } yield new java.io.File(s"$staticContentDir/graphiql.html")
+        )
     }
   }
 

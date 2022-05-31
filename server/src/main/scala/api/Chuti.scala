@@ -1,5 +1,6 @@
 package api
 
+import api.Auth.SecretKey
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
@@ -8,10 +9,13 @@ import dao.Repository
 import dao.quill.QuillRepository
 import game.GameService
 import game.GameService.GameService
+import io.circe.Decoder
+import io.circe.generic.auto.*
 import mail.CourierPostman
 import mail.Postman.Postman
 import routes.*
 import zhttp.http.*
+import zhttp.http.middleware.HttpMiddleware
 import zhttp.service.*
 import zhttp.service.server.ServerChannelFactory
 import zio.*
@@ -22,7 +26,17 @@ import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 import zio.magic.*
 
+import java.util.Locale
+
+
 object Chuti extends zio.App {
+  import Auth.*
+  implicit val localeDecoder: Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
+
+  private val secretKey: URIO[Config, SecretKey] = for {
+    config <- ZIO.service[Config.Service]
+  } yield SecretKey(config.config.getString(s"${config.configKey}.sessionServerSecret"))
+
 
   type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
   private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
@@ -30,33 +44,53 @@ object Chuti extends zio.App {
     config <- ZIO.service[Config.Service]
   } yield CourierPostman.live(config)).toLayer
   private val loggingLayer: ULayer[Logging] = Slf4jLogger.make((_, b) => b)
+  private val repositoryLayer = QuillRepository.live
 
-//  val logRequest: Http[Environment, Throwable, Request, Response] = Http.collectZIO[Request](req => Logging.info(s"${req.method.toString()} request to ${req.url.encode}").ignore)
-//
-//
-  private val appZIO: ZIO[Environment, Throwable, Http[Environment, Throwable, Request, Response]] = for {
-    allRoutes <- ZIO.collectAll(
-      Seq(
-        //      AuthRoutes.route,
-        //      ChatRoutes.route,
-        //      CRUDRoutes.route,
-        //      GameRoutes.route,
-        //      ModelRoutes.route,
-        StaticHTMLRoutes.route
-      )
+  final def logRequest: HttpMiddleware[Logging & Clock, Nothing] = Middleware.interceptZIOPatch(req => zio.clock.nanoTime.map(start => (req.method, req.url, start))) {
+    case (response, (method, url, start)) =>
+      for {
+        end <- clock.nanoTime
+        _ <- Logging.info(s"${response.status.asJava.code()} ${method} ${url.encode} ${(end - start) / 1000000}ms")
+      } yield Patch.empty
+  }
+
+  val unauthRoute: RHttpApp[Environment] =
+    Seq(
+      AuthRoutes.unauthRoute,
+      StaticHTMLRoutes.route
+    ).reduce(_ ++ _)
+
+  def authRoutes(key: SecretKey): HttpApp[Environment, Nothing] =
+    (Seq(
+      AuthRoutes.authRoute,
+      GameRoutes.authRoute,
+      ChatRoutes.authRoute
     )
-  } yield allRoutes
-    .reduce(_ ++ _)
-    .contramapZIO { request: Request => Logging.info(request.toString()).as(request) }
-    .tapErrorZIO(Logging.throwable(s"Error", _))
-    .catchSome { case e: HttpError => Http.succeed(Response.fromHttpError(e)) }
+      .reduce(_ ++ _)
+      .catchAll {
+        case e: HttpError => Http.succeed(Response.fromHttpError(e))
+        case e: Throwable => Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+      }) @@ Auth.auth[ChutiSession](key)
+
+  private val appZIO: URIO[Environment, RHttpApp[Environment]] = for {
+    key <- secretKey
+  } yield {
+    ((authRoutes(key) ++ unauthRoute) @@ logRequest)
+      .tapErrorZIO {
+        e: Throwable => Logging.throwable(s"Error", e)
+      }
+      .catchSome {
+        case e: HttpError => Http.succeed(Response.fromHttpError(e))
+        case e: Throwable => Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+      }
+  }
 
   override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = {
     GameService.make().memoize.use { gameServiceLayer =>
       ChatService.make().memoize.use { chatServiceLayer =>
         (for {
           config <- ZIO.service[Config.Service]
-          app    <- appZIO
+          app <- appZIO
           server = Server.bind(
             config.config.getString(s"${config.configKey}.host"),
             config.config.getInt(s"${config.configKey}.port")
@@ -73,7 +107,7 @@ object Chuti extends zio.App {
             )
         } yield started).exitCode
           .injectCustom(
-            QuillRepository.live,
+            repositoryLayer,
             TokenHolder.mockLayer,
             loggingLayer,
             postmanLayer,

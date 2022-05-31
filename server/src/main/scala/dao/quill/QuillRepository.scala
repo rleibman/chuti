@@ -102,18 +102,18 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   implicit class TimestampQuotes(left: Timestamp) {
 
-    def >(right: Timestamp) = quote(infix"$left > $right".as[Boolean])
+    def >(right: Timestamp) = quote(infix"$left > $right".pure.as[Boolean])
 
-    def <(right: Timestamp) = quote(infix"$left < $right".as[Boolean])
+    def <(right: Timestamp) = quote(infix"$left < $right".pure.as[Boolean])
 
-    def >=(right: Timestamp) = quote(infix"$left >= $right".as[Boolean])
+    def >=(right: Timestamp) = quote(infix"$left >= $right".pure.as[Boolean])
 
-    def <=(right: Timestamp) = quote(infix"$left <= $right".as[Boolean])
+    def <=(right: Timestamp) = quote(infix"$left <= $right".pure.as[Boolean])
 
     def between(
-      first: Timestamp,
-      last:  Timestamp
-    ) = quote(infix"$left between $first and $last".as[Boolean])
+                 first: Timestamp,
+                 last: Timestamp
+               ) = quote(infix"$left between $first and $last".pure.as[Boolean])
 
   }
 
@@ -131,17 +131,22 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
 
-    override def get(pk: UserId): RepositoryIO[Option[User]] =
-      ctx
+    override def get(pk: UserId): RepositoryIO[Option[User]] = for {
+      _ <- assertAuth(
+        session => session.user == chuti.god || session.user == chuti.godless || session.user.id.fold(false)(_ == pk),
+        session => s"${session.user} Not authorized"
+      )
+      res <- ctx
         .run(users.filter(u => u.id === lift(pk) && !u.deleted))
         .map(_.headOption.map(_.toUser))
         .provideLayer(dataSourceLayer)
         .mapError(RepositoryError.apply)
+    } yield res
 
     override def delete(
-      pk:         UserId,
-      softDelete: Boolean
-    ): RepositoryIO[Boolean] = {
+                         pk: UserId,
+                         softDelete: Boolean
+                       ): RepositoryIO[Boolean] = {
       for {
         _ <- assertAuth(
           session => session.user == chuti.god || session.user.id.fold(false)(_ == pk),

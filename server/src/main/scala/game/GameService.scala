@@ -41,6 +41,9 @@ object GameService {
   lazy val godLayer: ULayer[SessionProvider] =
     SessionProvider.layer(ChutiSession(chuti.god))
 
+  lazy val godlessLayer: ULayer[SessionProvider] =
+    SessionProvider.layer(ChutiSession(chuti.godless))
+
   implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   type GameService = Has[GameService.Service]
