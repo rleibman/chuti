@@ -32,11 +32,11 @@ val slickVersion = "3.3.3"
 val circeVersion = "0.14.2"
 val calibanVersion = "1.4.1"
 val scalaCacheVersion = "0.28.0"
-val zioVersion = "1.0.14"
+val zioVersion = "1.0.15"
 val monocleVersion = "2.1.0"
 val tapirVersion = "0.20.2"
-val quillVersion = "3.16.5"
-val zioHttpVersion = "1.0.0.0-RC27"
+val quillVersion = "3.18.0"
+val zioHttpVersion = "1.0.0.0-RC29"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
@@ -190,9 +190,9 @@ lazy val server = project
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
-      "org.mockito" %% "mockito-scala-scalatest" % "1.17.5" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.7" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.7" withSources(),
+      "org.mockito" %% "mockito-scala-scalatest" % "1.17.7" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" withSources(),
       "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
@@ -410,8 +410,8 @@ lazy val commonWeb: Project => Project =
       "com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources(),
       "com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0",
       "ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources(),
-      "io.github.cquiroz" %%% "scala-java-time" % "2.3.0" withSources(),
-      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.3.0" withSources(),
+      "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
+      "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),
       "com.olvind" %%% "scalablytyped-runtime" % "2.4.2",
       "com.github.japgolly.scalajs-react" %%% "core" % "2.1.1" withSources(),

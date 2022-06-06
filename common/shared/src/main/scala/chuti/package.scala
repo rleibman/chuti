@@ -24,7 +24,7 @@ package object chuti {
 
   val godUserId: UserId = UserId(-666)
 
-  //A user who can do anything
+  // A user who can do anything
   val god: User = User(
     id = Some(godUserId),
     email = "god@chuti.fun",
@@ -33,7 +33,7 @@ package object chuti {
     isAdmin = true
   )
 
-  //A user who can do some stuff, but not much
+  // A user who can do some stuff, but not much
   val godless: User = User(
     id = Some(godlessUserId),
     email = "godless@chuti.fun",

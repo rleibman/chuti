@@ -1,19 +1,35 @@
+/*
+ * Copyright 2020 Roberto Leibman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package api
 
-import api.Auth.SecretKey
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
 import chat.ChatService.ChatService
-import dao.Repository
+import chuti.{PagedStringSearch, User, UserId}
 import dao.quill.QuillRepository
+import dao.{CRUDOperations, Repository}
 import game.GameService
 import game.GameService.GameService
 import io.circe.Decoder
 import io.circe.generic.auto.*
 import mail.CourierPostman
 import mail.Postman.Postman
-import routes.*
+import routes.{StaticHTMLRoutes, *}
 import zhttp.http.*
 import zhttp.http.middleware.HttpMiddleware
 import zhttp.service.*
@@ -28,15 +44,14 @@ import zio.magic.*
 
 import java.util.Locale
 
-
 object Chuti extends zio.App {
+
   import Auth.*
   implicit val localeDecoder: Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
 
-  private val secretKey: URIO[Config, SecretKey] = for {
+  val secretKey: URIO[Config, SecretKey] = for {
     config <- ZIO.service[Config.Service]
   } yield SecretKey(config.config.getString(s"${config.configKey}.sessionServerSecret"))
-
 
   type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
   private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
@@ -45,39 +60,44 @@ object Chuti extends zio.App {
   } yield CourierPostman.live(config)).toLayer
   private val loggingLayer: ULayer[Logging] = Slf4jLogger.make((_, b) => b)
   private val repositoryLayer = QuillRepository.live
+  private val authOpsLayer: ZLayer[Repository, Nothing, Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
+    ZIO.service[Repository.Service].map(_.userOperations).toLayer
 
-  final def logRequest: HttpMiddleware[Logging & Clock, Nothing] = Middleware.interceptZIOPatch(req => zio.clock.nanoTime.map(start => (req.method, req.url, start))) {
-    case (response, (method, url, start)) =>
+  final def logRequest: HttpMiddleware[Logging & Clock, Nothing] =
+    Middleware.interceptZIOPatch(req => zio.clock.nanoTime.map(start => (req.method, req.url, start))) { case (response, (method, url, start)) =>
       for {
         end <- clock.nanoTime
-        _ <- Logging.info(s"${response.status.asJava.code()} ${method} ${url.encode} ${(end - start) / 1000000}ms")
+        _   <- Logging.info(s"${response.status.asJava.code()} $method ${url.encode} ${(end - start) / 1000000}ms")
       } yield Patch.empty
-  }
+    }
 
-  val unauthRoute: RHttpApp[Environment] =
+  val unauthRoute: RHttpApp[Environment & AuthRoutes.OpsService] =
     Seq(
       AuthRoutes.unauthRoute,
-      StaticHTMLRoutes.route
+      StaticHTMLRoutes.unauthRoute
     ).reduce(_ ++ _)
 
-  def authRoutes(key: SecretKey): HttpApp[Environment, Nothing] =
-    (Seq(
+  def authRoutes(key: SecretKey): HttpApp[Environment & AuthRoutes.OpsService, Nothing] =
+    Seq(
       AuthRoutes.authRoute,
       GameRoutes.authRoute,
-      ChatRoutes.authRoute
+      ChatRoutes.authRoute,
+      StaticHTMLRoutes.authRoute
     )
       .reduce(_ ++ _)
       .catchAll {
         case e: HttpError => Http.succeed(Response.fromHttpError(e))
         case e: Throwable => Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
-      }) @@ Auth.auth[ChutiSession](key)
+      } @@ Auth.auth[ChutiSession](key)
 
-  private val appZIO: URIO[Environment, RHttpApp[Environment]] = for {
+  private val appZIO: URIO[Environment & AuthRoutes.OpsService, RHttpApp[Environment & AuthRoutes.OpsService]] = for {
     key <- secretKey
   } yield {
-    ((authRoutes(key) ++ unauthRoute) @@ logRequest)
-      .tapErrorZIO {
-        e: Throwable => Logging.throwable(s"Error", e)
+    ((
+      unauthRoute ++ authRoutes(key)
+    ) @@ logRequest)
+      .tapErrorZIO { e: Throwable =>
+        Logging.throwable(s"Error", e)
       }
       .catchSome {
         case e: HttpError => Http.succeed(Response.fromHttpError(e))
@@ -90,7 +110,7 @@ object Chuti extends zio.App {
       ChatService.make().memoize.use { chatServiceLayer =>
         (for {
           config <- ZIO.service[Config.Service]
-          app <- appZIO
+          app    <- appZIO
           server = Server.bind(
             config.config.getString(s"${config.configKey}.host"),
             config.config.getInt(s"${config.configKey}.port")
@@ -115,7 +135,8 @@ object Chuti extends zio.App {
             gameServiceLayer,
             chatServiceLayer,
             ServerChannelFactory.auto,
-            EventLoopGroup.auto()
+            EventLoopGroup.auto(),
+            authOpsLayer
           )
       }
     }

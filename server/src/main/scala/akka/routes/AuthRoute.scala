@@ -45,7 +45,7 @@ object AuthRoute {
 
 trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionUtils with HasActorSystem {
 
-  lazy val allowed = Set(
+  lazy val allowed: Set[String] = Set(
     "/login.html",
     "/css/chuti.css",
     "/css/app-sui-theme.css",
@@ -213,7 +213,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                       entity(as[UserCreationRequest]) { request =>
                         (for {
                           postman <- ZIO.service[Postman.Service]
-                          validate <- ZIO.succeed(
+                          validate <- ZIO.succeed( // TODO Use cats validate instead of option
                             if (request.user.email.trim.isEmpty)
                               Option("User Email cannot be empty")
                             else if (request.user.name.trim.isEmpty)

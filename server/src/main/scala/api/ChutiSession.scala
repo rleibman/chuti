@@ -20,7 +20,13 @@ import java.util.Locale
 
 import chuti.User
 
+object ChutiSession {
+
+  val adminSession: ChutiSession = ChutiSession(chuti.god)
+
+}
+
 case class ChutiSession(
-                         user: User,
-                         locale: Locale = new Locale("es", "MX")
-                       )
+  user:   User,
+  locale: Locale = new Locale("es", "MX")
+)
