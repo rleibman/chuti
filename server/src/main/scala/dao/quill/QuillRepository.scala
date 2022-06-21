@@ -21,6 +21,7 @@ import api.config.*
 import api.token.*
 import chuti.*
 import dao.*
+import io.circe.parser.*
 import io.getquill.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
 import scalacache.Cache
@@ -30,14 +31,12 @@ import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
-import io.circe.parser.*
 
 import java.math.BigInteger
 import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.*
+import scala.concurrent.duration.{Duration, *}
 
 object QuillRepository {
 
@@ -74,8 +73,9 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
   private val games = quote {
     querySchema[GameRow]("game")
   }
+
   private val gamePlayers = quote {
-    querySchema[GamePlayersRow]("game_players")
+    querySchema[GamePlayersRow]("game_players", _.gameId -> "game_id", _.userId -> "user_id", _.order -> "sort_order")
   }
   private val tokens = quote {
     querySchema[TokenRow]("token")
@@ -389,12 +389,13 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           else {
             ctx.run(gamePlayers.filter(gp => gp.gameId == lift(id) && gp.userId == lift(session.user.id.getOrElse(UserId(-1)))).nonEmpty)
           }
+
       } yield ret).provideSomeLayer[SessionProvider & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def updatePlayers(game: Game): RepositoryIO[Game] = {
-      def insertValues(gamePlayers: List[GamePlayersRow]) =
+      def insertValues(players: List[GamePlayersRow]) =
         quote {
-          liftQuery(gamePlayers).foreach(c => query[GamePlayersRow].insertValue(c))
+          liftQuery(players).foreach(c => gamePlayers.insertValue(c))
         }
 
       for {

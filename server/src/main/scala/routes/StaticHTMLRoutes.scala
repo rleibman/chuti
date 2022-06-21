@@ -16,11 +16,10 @@
 
 package routes
 
-import api.Auth.RequestWithSession
 import api.Chuti.Environment
 import api.ChutiSession
+import api.auth.Auth.RequestWithSession
 import api.config.Config
-import util.ResponseExt
 import zhttp.http.*
 import zio.*
 import zio.blocking.Blocking
@@ -54,52 +53,46 @@ object StaticHTMLRoutes {
     }
   }
 
-  val unauthRoute: Http[Environment & Blocking, Throwable, Request, Response] = Http.collectZIO[Request] { request =>
-    for {
-      config <- ZIO.service[Config.Service]
-      staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
-      res <- {
-        request match {
-          case Method.GET -> !! / "loginForm" =>
-            for {
-              data <- file(s"$staticContentDir/login.html", request)
-            } yield Response(data = data)
-          case (Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse =>
-            if (authNotRequired(somethingElse.toString())) {
-              for {
-                data <- file(s"$staticContentDir/${somethingElse.toString()}", request)
-              } yield Response(data = data)
-            } else {
-              ZIO.succeed(Response(Status.Unauthorized))
-            }
-          case r if r.bearerToken.isEmpty =>
-            // If there's no bearer token, everything else you might request should redirect to the loginForm
-            ZIO.succeed(ResponseExt.seeOther("/loginForm"))
-        }
-      }
-    } yield res
-  }
-
-  val authRoute: Http[Environment & Blocking, Throwable, RequestWithSession[ChutiSession], Response] =
-    Http.collectZIO[RequestWithSession[ChutiSession]] { request =>
+  val unauthRoute: Http[Environment & Blocking, Throwable, Request, Response] = Http.collectZIO[Request] {
+    case request @ (Method.GET -> !! / "loginForm") =>
       for {
         config <- ZIO.service[Config.Service]
         staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
-        res <- {
-          request match {
-            case Method.GET -> !! | Method.GET -> !! / "index.html" =>
-              for {
-                data <- file(s"$staticContentDir/index.html", request)
-              } yield Response(data = data)
-            case Method.GET -> somethingElse =>
-              for {
-                data <- file(s"$staticContentDir/$somethingElse", request)
-              } yield Response(data = data)
-            case _ => ZIO.fail(HttpError.NotFound(request.path))
-          }
+        data <- file(s"$staticContentDir/login.html", request)
+      } yield Response(data = data)
+    case request @ ((Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse) =>
+      if (authNotRequired(somethingElse.toString())) {
+        for {
+          config <- ZIO.service[Config.Service]
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          data <- file(s"$staticContentDir/${somethingElse.toString()}", request)
+        } yield Response(data = data)
+      } else {
+        ZIO.succeed(Response(Status.Unauthorized))
+      }
+  }
 
-        }
-      } yield res
+  val authRoute: Http[Environment & Blocking, Throwable, RequestWithSession[ChutiSession], Response] =
+    Http.collectZIO[RequestWithSession[ChutiSession]] {
+      case request @ Method.GET -> somethingElse if somethingElse == Path("/") =>
+        for {
+          config <- ZIO.service[Config.Service]
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          data <- file(s"$staticContentDir/index.html", request)
+        } yield Response(data = data)
+      case request @ Method.GET -> !! / "index.html" =>
+        for {
+          config <- ZIO.service[Config.Service]
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          data <- file(s"$staticContentDir/index.html", request)
+        } yield Response(data = data)
+      case request @ Method.GET -> somethingElse =>
+        for {
+          config <- ZIO.service[Config.Service]
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          data <- file(s"$staticContentDir/$somethingElse", request)
+        } yield Response(data = data)
+      case request => ZIO.fail(HttpError.NotFound(request.path))
     }
 
 }

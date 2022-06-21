@@ -19,7 +19,6 @@ package chuti
 import api.ChutiSession
 import dao.{Repository, SessionProvider}
 import game.GameService
-import game.GameService.GameService
 import org.mockito.captor.ArgCaptor
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec

@@ -1,27 +1,20 @@
 package db.quill
 
-import api.config.Config
 import better.files.File
 import chuti.*
-import dao.{Repository, RepositoryError, RepositoryPermissionError}
-import db.quill.QuillUserSpec.{clockLayer, configLayer, containerLayer, godSession, loggingLayer, quillLayer, suite, testUserZIO}
+import dao.Repository
 import io.circe
-import io.circe.{Decoder, Printer}
-import zio.clock.Clock
-import zio.logging.Logging
+import io.circe.Decoder
+import io.circe.generic.auto.*
+import io.circe.parser.decode
+import zio.*
 import zio.magic.*
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
-import io.circe.Printer
-import io.circe.generic.auto.*
-import io.circe.parser.decode
-import io.circe.syntax.*
-import zio.*
-import zio.test.Assertion.*
 
-import java.time.{Instant, LocalDateTime, ZoneOffset}
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object QuillGameSpec extends QuillSpec {
 

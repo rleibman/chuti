@@ -18,15 +18,58 @@ package api
 
 import better.files.File
 import com.typesafe.config.ConfigFactory
-import zio.Has
+import zio.config.magnolia.DeriveConfigDescriptor.descriptor
+import zio.config.typesafe.TypesafeConfigSource
+import zio.config.{PropertyTreePath, ReadError, read}
+import zio.{Has, IO}
 
 /** A trait to keep app configuration
   */
+//TODO use zio config instead
 package object config {
+
+  case class DataSourceConfig(
+    url:                   String,
+    user:                  String,
+    password:              String,
+    cachePrepStmts:        Boolean = true,
+    prepStmtCacheSize:     Int = 250,
+    prepStmtCacheSqlLimit: Int = 2048
+  )
+
+  case class DbConfig(
+    dataSourceName:   String = "com.mysql.cj.jdbc.MysqlDataSource",
+    maximumPoolSize:  Int = 10,
+    dataSourceConfig: DataSourceConfig
+  )
+
+  case class SmtpConfig(
+    localhost: String,
+    host:      String,
+    auth:      Boolean = false,
+    port:      Int = 25
+  )
+
+  case class HttpConfig(
+    hostName:         String,
+    port:             Int = 8079,
+    staticContentDir: String = "/Volumes/Personal/projects/chuti/debugDist"
+  )
+
+  case class ChutiConfig(
+    db:         DbConfig,
+    smtpConfig: SmtpConfig,
+    httpConfig: HttpConfig
+  )
 
   type Config = Has[Config.Service]
 
   object Config {
+
+    private val chutiConfigDescriptor = descriptor[ChutiConfig]
+    val chutiConfig: IO[ReadError[String], ChutiConfig] = read(
+      chutiConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("chuti"))
+    )
 
     trait Service {
 

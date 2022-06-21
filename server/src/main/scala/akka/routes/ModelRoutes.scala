@@ -27,10 +27,10 @@ import dao.{CRUDOperations, Repository, SessionProvider}
 import game.GameService.{GameLayer, GameService}
 import io.circe.generic.auto.*
 import mail.Postman.Postman
+import zio.*
 import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
-import zio.*
 
 /** For convenience, this trait aggregates all of the model routes.
   */

@@ -16,9 +16,6 @@
 
 package chat
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.*
 import dao.{Repository, SessionProvider}
@@ -28,6 +25,9 @@ import zio.console.Console
 import zio.duration.*
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
+
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 object ChatService {
 

@@ -16,20 +16,20 @@
 
 package routes
 
-import api.Auth.RequestWithSession
 import api.Chuti.Environment
 import api.ChutiSession
+import api.auth.Auth.RequestWithSession
 import chuti.Search
 import dao.{CRUDOperations, RepositoryError, RepositoryIO, SessionProvider}
+import io.circe.parser.*
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
+import util.*
 import zhttp.http.*
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
-import io.circe.syntax.*
-import io.circe.parser.*
 import zio.magic.*
-import util.*
 
 import scala.util.matching.Regex
 
@@ -123,38 +123,50 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
       ret <- ops.search(search)
     } yield ret
 
-  val authRoute: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
-    Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
-      (req match {
-        case (Method.POST | Method.PUT) -> !! / "api" / self.url =>
-          for {
+  private val authCRUD: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+    Http.collectHttp[RequestWithSession[ChutiSession]] {
+      case req @ (Method.POST | Method.PUT) -> !! / "api" / self.url if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
             obj <- req.bodyAs[E]
             _   <- Logging.info(s"Upserting $url with $obj")
             ret <- upsertOperation(obj)
-          } yield Response.json(ret.asJson.noSpaces)
-        case (Method.POST) -> !! / "api" / self.url / "search" =>
-          for {
+          } yield Response.json(ret.asJson.noSpaces))
+            .injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+        )
+      case req @ (Method.POST) -> !! / "api" / self.url / "search" if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
             search <- req.bodyAs[SEARCH]
             res    <- searchOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)
-        case Method.POST -> !! / s"api" / self.url / "count" =>
-          for {
+          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+        )
+      case req @ Method.POST -> !! / s"api" / self.url / "count" if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
             search <- req.bodyAs[SEARCH]
             res    <- countOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)
-        case Method.GET -> !! / "api" / self.url / pk =>
-          for {
+          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+        )
+      case req @ Method.GET -> !! / "api" / self.url / pk if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
             pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage))
             res <- getOperation(pk)
-          } yield Response.json(res.asJson.noSpaces)
-        case Method.DELETE -> !! / "api" / self.url / pk =>
-          for {
+          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+        )
+      case req @ Method.DELETE -> !! / "api" / self.url / pk if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
             pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage))
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
             _      <- Logging.info(s"Deleted ${pk.toString}")
-          } yield Response.json(res.asJson.noSpaces)
-      }).injectSome[Environment & OpsService](SessionProvider.layer(req.session))
+          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+        )
     }
+
+  val authRoute: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+    authOther ++ authCRUD
 
 }

@@ -16,6 +16,7 @@
 
 package api
 
+import api.auth.Auth
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
@@ -29,7 +30,7 @@ import io.circe.Decoder
 import io.circe.generic.auto.*
 import mail.CourierPostman
 import mail.Postman.Postman
-import routes.{StaticHTMLRoutes, *}
+import routes.*
 import zhttp.http.*
 import zhttp.http.middleware.HttpMiddleware
 import zhttp.service.*
@@ -46,7 +47,7 @@ import java.util.Locale
 
 object Chuti extends zio.App {
 
-  import Auth.*
+  import api.auth.Auth.*
   implicit val localeDecoder: Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
 
   val secretKey: URIO[Config, SecretKey] = for {
@@ -86,9 +87,13 @@ object Chuti extends zio.App {
     )
       .reduce(_ ++ _)
       .catchAll {
-        case e: HttpError => Http.succeed(Response.fromHttpError(e))
-        case e: Throwable => Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
-      } @@ Auth.auth[ChutiSession](key)
+        case e: HttpError =>
+          e.printStackTrace()
+          Http.succeed(Response.fromHttpError(e))
+        case e: Throwable =>
+          e.printStackTrace()
+          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+      } @@ Auth.authCookie[ChutiSession](key)
 
   private val appZIO: URIO[Environment & AuthRoutes.OpsService, RHttpApp[Environment & AuthRoutes.OpsService]] = for {
     key <- secretKey
@@ -100,8 +105,12 @@ object Chuti extends zio.App {
         Logging.throwable(s"Error", e)
       }
       .catchSome {
-        case e: HttpError => Http.succeed(Response.fromHttpError(e))
-        case e: Throwable => Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+        case e: HttpError =>
+          e.printStackTrace()
+          Http.succeed(Response.fromHttpError(e))
+        case e: Throwable =>
+          e.printStackTrace()
+          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
       }
   }
 

@@ -16,9 +16,9 @@
 
 package routes
 
-import api.Auth.RequestWithSession
 import api.Chuti.Environment
 import api.ChutiSession
+import api.auth.Auth.RequestWithSession
 import api.config.Config
 import caliban.ZHttpAdapter
 import chat.{ChatApi, ChatService}
@@ -37,13 +37,13 @@ object ChatRoutes {
         Http.collectHttp[RequestWithSession[ChutiSession]] { req =>
           ZHttpAdapter
             .makeHttpService(interpreter)
-            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session.get))
         }
       case _ -> !! / "api" / "chat" / "ws" =>
         Http.collectHttp[RequestWithSession[ChutiSession]] { req =>
           ZHttpAdapter
             .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session.get))
         }
       case _ -> !! / "api" / "chat" / "schema" =>
         Http.fromData(HttpData.fromString(ChatApi.api.render))

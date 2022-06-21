@@ -16,13 +16,13 @@
 
 package chuti
 
-import java.util.UUID
-
 import zio.clock.Clock
 import zio.duration.*
 import zio.logging.*
 import zio.logging.slf4j.*
 import zio.{App, ExitCode, UIO, ZIO, ZLayer}
+
+import java.util.UUID
 
 case class SomethingElse(string: String) {
 

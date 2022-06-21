@@ -16,8 +16,8 @@
 
 package chuti.bots
 
-import chuti.Triunfo.*
 import chuti.*
+import chuti.Triunfo.*
 
 case object DumbChutiBot extends ChutiBot {
 

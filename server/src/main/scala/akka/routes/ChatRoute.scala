@@ -22,12 +22,12 @@ import api.config.Config
 import caliban.AkkaHttpAdapter
 import chat.*
 import dao.{Repository, SessionProvider}
+import sttp.tapir.json.circe.*
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
 import zio.logging.Logging
 import zio.{RIO, ZIO}
-import sttp.tapir.json.circe.*
 
 import scala.concurrent.ExecutionContextExecutor
 

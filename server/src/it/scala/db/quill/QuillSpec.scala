@@ -7,10 +7,10 @@ import dao.SessionProvider
 import dao.quill.QuillRepository
 import zio.clock.Clock
 import zio.logging.Logging
-import zio.{ULayer, URIO, ZIO, ZLayer}
 import zio.logging.slf4j.Slf4jLogger
 import zio.random.Random
 import zio.test.DefaultRunnableSpec
+import zio.{ULayer, URIO, ZIO, ZLayer}
 
 import java.time.{Instant, ZoneId, ZoneOffset}
 

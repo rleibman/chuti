@@ -127,7 +127,7 @@ object ChatComponent extends ScalaJSClientAdapter {
             .compact(true)
             .basic(true)
             .disabled(s.msgInFlux.trim.isEmpty)
-            .onClick { (_, _) => onSend(p, s) }("Send")
+            .onClick((_, _) => onSend(p, s))("Send")
         )
       )
 

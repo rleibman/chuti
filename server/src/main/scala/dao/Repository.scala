@@ -16,7 +16,6 @@
 
 package dao
 
-import java.time.Instant
 import api.token.{Token, TokenPurpose}
 import chuti.*
 import zio.ZIO
@@ -24,6 +23,7 @@ import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
 
+import java.time.Instant
 import scala.concurrent.duration.Duration
 
 object Repository {

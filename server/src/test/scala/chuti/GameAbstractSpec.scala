@@ -16,13 +16,10 @@
 
 package chuti
 
-import java.util.UUID
-
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
-import courier.Envelope
 import dao.Repository.GameOperations
 import dao.slick.DatabaseProvider
 import dao.{Repository, RepositoryIO}
@@ -37,6 +34,7 @@ import zio.*
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 
+import java.util.UUID
 import scala.concurrent.duration.Duration
 
 trait GameAbstractSpec extends MockitoSugar {

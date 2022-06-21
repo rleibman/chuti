@@ -24,8 +24,8 @@ import akka.stream.scaladsl.*
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService
-import dao.slick.{MySQLDatabaseProvider, SlickRepository}
 import dao.Repository
+import dao.slick.{MySQLDatabaseProvider, SlickRepository}
 import game.GameService
 import mail.CourierPostman
 import mail.Postman.Postman

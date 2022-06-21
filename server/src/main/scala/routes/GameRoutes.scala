@@ -16,9 +16,9 @@
 
 package routes
 
-import api.Auth.RequestWithSession
 import api.Chuti.Environment
 import api.ChutiSession
+import api.auth.Auth.RequestWithSession
 import api.config.Config
 import caliban.ZHttpAdapter
 import dao.SessionProvider
@@ -37,13 +37,13 @@ object GameRoutes {
         Http.collectHttp { req =>
           ZHttpAdapter
             .makeHttpService(interpreter)
-            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session.get))
         }
       case _ -> !! / "api" / "game" / "ws" =>
         Http.collectHttp { req =>
           ZHttpAdapter
             .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session))
+            .provideSomeLayer[Environment, SessionProvider, Throwable](SessionProvider.layer(req.session.get))
         }
       case _ -> !! / "api" / "game" / "schema" =>
         Http.fromData(HttpData.fromString(GameApi.api.render))

@@ -16,7 +16,6 @@
 
 package chuti
 
-import java.util.UUID
 import api.ChutiSession
 import api.token.TokenHolder
 import better.files.File
@@ -27,8 +26,8 @@ import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.slick.DatabaseProvider
 import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
-import game.GameService.GameService
 import game.GameService
+import game.GameService.GameService
 import io.circe.Printer
 import io.circe.generic.auto.*
 import io.circe.parser.decode
@@ -43,6 +42,8 @@ import zio.console.Console
 import zio.duration.*
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
+
+import java.util.UUID
 
 trait GameAbstractSpec2 extends MockitoSugar {
 

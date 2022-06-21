@@ -16,9 +16,9 @@
 
 package scalai8n
 
-import java.util.Locale
-
 import org.scalatest.flatspec.AnyFlatSpec
+
+import java.util.Locale
 
 class I8NSpec extends AnyFlatSpec {
 

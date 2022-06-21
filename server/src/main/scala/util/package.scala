@@ -19,12 +19,12 @@ import io.circe.Decoder
 import io.circe.parser.parse
 import io.circe.syntax.*
 import io.netty.handler.codec.http.QueryStringDecoder
-import zhttp.http.{HeaderNames, HeaderValues, Headers, HttpError, Request, Response, Status}
-import zio.{Cause, ZIO}
+import zhttp.http.*
+import zio.ZIO
 import zio.logging.Logging
 
-import scala.jdk.CollectionConverters.*
 import java.util.Locale
+import scala.jdk.CollectionConverters.*
 
 package object util {
 

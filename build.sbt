@@ -34,9 +34,8 @@ val calibanVersion = "1.4.1"
 val scalaCacheVersion = "0.28.0"
 val zioVersion = "1.0.15"
 val monocleVersion = "2.1.0"
-val tapirVersion = "0.20.2"
 val quillVersion = "3.18.0"
-val zioHttpVersion = "1.0.0.0-RC29"
+val zioHttpVersion = "1.0.0.0-RC27"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
@@ -161,18 +160,19 @@ lazy val server = project
       // DB
       "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
       "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
-      "com.typesafe.slick"        %% "slick-hikaricp"         % slickVersion withSources (),
       "mysql"                      % "mysql-connector-java"   % "8.0.29" withSources (),
       "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
       "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
-      "io.getquill"               %% "quill-jasync-mysql"     % quillVersion withSources (),
       // Scala Cache
       "com.github.cb372" %% "scalacache-core" % scalaCacheVersion withSources(),
       "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources(),
       // ZIO
       "dev.zio" %% "zio" % zioVersion withSources(),
+      "dev.zio" %% "zio-config" % "2.0.4" withSources(),
+      "dev.zio" %% "zio-config-magnolia" % "2.0.4" withSources(),
+      "dev.zio" %% "zio-config-typesafe" % "2.0.4" withSources(),
       "dev.zio" %% "zio-logging-slf4j" % "0.5.14" withSources(),
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe" % tapirVersion withSources(),
+      "dev.zio" %% "izumi-reflect" % "2.1.0" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources(),
@@ -184,15 +184,14 @@ lazy val server = project
       "com.github.pathikrit" %% "better-files" % "3.9.1" withSources(),
       "com.github.daddykotex" %% "courier" % "3.1.0" withSources(),
       "ch.qos.logback" % "logback-classic" % "1.2.11" withSources(),
-      "org.slf4j" % "slf4j-nop" % "1.7.36" withSources(),
       "commons-codec" % "commons-codec" % "1.15",
       // Testing
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
       "org.mockito" %% "mockito-scala-scalatest" % "1.17.7" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" % "it, test" withSources(),
       "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),

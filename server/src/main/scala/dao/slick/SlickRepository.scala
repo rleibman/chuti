@@ -16,26 +16,25 @@
 
 package dao.slick
 
-import api.ChutiSession
-import api.token.{Token, TokenPurpose}
-import chuti.*
-import dao.Repository.{GameOperations, TokenOperations, UserOperations}
-import dao.slick.gen.Tables
-import dao.slick.gen.Tables.*
-import dao.*
-import scalacache.Cache
-import scalacache.ZioEffect.modes.*
-import scalacache.caffeine.CaffeineCache
 import _root_.slick.SlickException
 import _root_.slick.dbio.DBIO
 import _root_.slick.jdbc.MySQLProfile.api.*
+import api.ChutiSession
+import api.token.{Token, TokenPurpose}
+import chuti.*
+import dao.*
+import dao.Repository.{GameOperations, TokenOperations, UserOperations}
+import dao.slick.gen.Tables
+import dao.slick.gen.Tables.*
+import scalacache.Cache
+import scalacache.ZioEffect.modes.*
+import scalacache.caffeine.CaffeineCache
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
 import zio.{ULayer, URLayer, ZIO, ZLayer}
 
 import java.math.BigInteger
-import java.security.SecureRandom
 import java.sql.{SQLException, Timestamp}
 import java.time.Instant
 import scala.concurrent.ExecutionContext

@@ -16,9 +16,9 @@
 
 package akka.routes
 
-import akka.{HasActorSystem, SessionUtils, ZIODirectives}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.*
+import akka.{HasActorSystem, SessionUtils, ZIODirectives}
 import api.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
@@ -86,7 +86,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
       }
 
       private val staticContentDir: String =
-        config.live.config.getString(s"${config.live.configKey}.staticContentDir")
+        api.config.live.config.getString(s"${api.config.live.configKey}.staticContentDir")
 
       override val url: String = "auth"
 

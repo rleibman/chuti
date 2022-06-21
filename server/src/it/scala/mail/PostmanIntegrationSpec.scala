@@ -4,15 +4,12 @@ import api.config
 import api.token.TokenHolder
 import chuti.User
 import courier.{Envelope, Text}
-
-import javax.mail.internet.InternetAddress
 import zio.*
-import zio.console.*
 import zio.test.Assertion.*
 import zio.test.environment.*
-import zio.test.{DefaultRunnableSpec, _}
+import zio.test.{DefaultRunnableSpec, *}
 
-import java.io.IOException
+import javax.mail.internet.InternetAddress
 
 object PostmanIntegrationSpec extends DefaultRunnableSpec {
 

@@ -16,8 +16,6 @@
 
 package api
 
-import java.math.BigInteger
-import java.security.SecureRandom
 import chuti.User
 import dao.{Repository, SessionProvider}
 import game.GameService
@@ -28,6 +26,8 @@ import zio.clock.Clock
 import zio.logging.{Logger, Logging}
 import zio.random.Random
 
+import java.math.BigInteger
+import java.security.SecureRandom
 import scala.concurrent.duration.*
 
 package object token {

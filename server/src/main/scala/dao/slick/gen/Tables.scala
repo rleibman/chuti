@@ -16,14 +16,15 @@
 
 package dao.slick.gen
 
-import java.sql.Timestamp
+import _root_.slick.ast.BaseTypedType
+import _root_.slick.jdbc.JdbcType
+import _root_.slick.lifted.{MappedProjection, ProvenShape}
 import chuti.{GameId, GameStatus, UserId}
 import com.foerstertechnologies.slickmysql.{ExMySQLProfile, MySQLCirceJsonSupport}
 import dao.*
 import io.circe.Json
-import _root_.slick.ast.BaseTypedType
-import _root_.slick.jdbc.JdbcType
-import _root_.slick.lifted.{MappedProjection, ProvenShape}
+
+import java.sql.Timestamp
 // AUTO-GENERATED Slick data model
 /** Stand-alone Slick data model for immediate use */
 object ChutiProfile extends ExMySQLProfile with MySQLCirceJsonSupport
@@ -38,7 +39,7 @@ trait Tables {
 
   val profile: ExMySQLProfile & MySQLCirceJsonSupport
 
-  import _root_.slick.jdbc.{GetResult => GR}
+  import _root_.slick.jdbc.GetResult as GR
   import _root_.slick.model.ForeignKeyAction
 
   object MyApi extends profile.API with profile.CirceJsonImplicits

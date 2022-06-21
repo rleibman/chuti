@@ -21,7 +21,7 @@ import caliban.schema.{GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chat.ChatService.ChatService
-import chuti.{ConnectionId, GameId, UserId, _}
+import chuti.*
 import dao.SessionProvider
 import game.GameService.{GameLayer, GameService}
 import io.circe.Json

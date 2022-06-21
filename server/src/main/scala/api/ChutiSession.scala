@@ -16,9 +16,9 @@
 
 package api
 
-import java.util.Locale
-
 import chuti.User
+
+import java.util.Locale
 
 object ChutiSession {
 

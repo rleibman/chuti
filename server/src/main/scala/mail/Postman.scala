@@ -20,9 +20,9 @@ import api.config.Config
 import api.token.{TokenHolder, TokenPurpose}
 import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
-import javax.mail.internet.InternetAddress
 import zio.{Has, RIO, Task, ZIO}
 
+import javax.mail.internet.InternetAddress
 import scala.concurrent.duration.*
 
 object Postman {
