@@ -26,8 +26,8 @@ import dao.quill.QuillRepository
 import dao.{CRUDOperations, Repository}
 import game.GameService
 import game.GameService.GameService
-import io.circe.Decoder
 import io.circe.generic.auto.*
+import io.circe.{Decoder, Encoder}
 import mail.CourierPostman
 import mail.Postman.Postman
 import routes.*
@@ -48,13 +48,14 @@ import java.util.Locale
 object Chuti extends zio.App {
 
   import api.auth.Auth.*
+
   implicit val localeDecoder: Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
+  implicit val localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
-  val secretKey: URIO[Config, SecretKey] = for {
-    config <- ZIO.service[Config.Service]
-  } yield SecretKey(config.config.getString(s"${config.configKey}.sessionServerSecret"))
-
-  type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
+  type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder & SessionStorage[
+    ChutiSession,
+    String
+  ] & SessionTransport[ChutiSession]
   private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
   private val postmanLayer: URLayer[Config, Postman] = (for {
     config <- ZIO.service[Config.Service]
@@ -78,7 +79,7 @@ object Chuti extends zio.App {
       StaticHTMLRoutes.unauthRoute
     ).reduce(_ ++ _)
 
-  def authRoutes(key: SecretKey): HttpApp[Environment & AuthRoutes.OpsService, Nothing] =
+  def authRoutes(sessionTransport: SessionTransport.Service[ChutiSession]): HttpApp[Environment & AuthRoutes.OpsService, Nothing] =
     Seq(
       AuthRoutes.authRoute,
       GameRoutes.authRoute,
@@ -93,13 +94,13 @@ object Chuti extends zio.App {
         case e: Throwable =>
           e.printStackTrace()
           Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
-      } @@ Auth.authCookie[ChutiSession](key)
+      } @@ sessionTransport.auth
 
   private val appZIO: URIO[Environment & AuthRoutes.OpsService, RHttpApp[Environment & AuthRoutes.OpsService]] = for {
-    key <- secretKey
+    sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
   } yield {
     ((
-      unauthRoute ++ authRoutes(key)
+      unauthRoute ++ authRoutes(sessionTransport)
     ) @@ logRequest)
       .tapErrorZIO { e: Throwable =>
         Logging.throwable(s"Error", e)
@@ -145,7 +146,9 @@ object Chuti extends zio.App {
             chatServiceLayer,
             ServerChannelFactory.auto,
             EventLoopGroup.auto(),
-            authOpsLayer
+            authOpsLayer,
+            Auth.SessionStorage.tokenEncripted[ChutiSession],
+            Auth.SessionTransport.cookieSessionTransport[ChutiSession]
           )
       }
     }

@@ -27,14 +27,17 @@ import japgolly.scalajs.react.extra.router.*
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.*
-import pages.{RulesPage, _}
+import pages.{RulesPage, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
 import net.leibman.chuti.semanticUiReact.menuMenuMod.MenuProps
 
+import java.time.ZoneId
+import scala.annotation.unused
+
 object AppRouter extends ChutiComponent {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
 
   sealed trait AppPage
 
@@ -52,7 +55,7 @@ object AppRouter extends ChutiComponent {
 
   object DialogRenderer {
 
-    class Backend($ : BackendScope[_, _]) {
+    class Backend(@unused $ : BackendScope[?, ?]) {
 
       def render(): VdomElement =
         ChutiState.ctx.consume { chutiState =>

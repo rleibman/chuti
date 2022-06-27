@@ -61,22 +61,18 @@ object ChatClient {
   )
   object UserInput {
 
-    implicit val encoder: ArgEncoder[UserInput] = new ArgEncoder[UserInput] {
-
-      override def encode(value: UserInput): __Value =
-        __ObjectValue(
-          List(
-            "id"      -> value.id.fold(__NullValue: __Value)(value => implicitly[ArgEncoder[Int]].encode(value)),
-            "email"   -> implicitly[ArgEncoder[String]].encode(value.email),
-            "name"    -> implicitly[ArgEncoder[String]].encode(value.name),
-            "created" -> implicitly[ArgEncoder[Instant]].encode(value.created),
-            "active"  -> implicitly[ArgEncoder[Boolean]].encode(value.active),
-            "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted),
-            "isAdmin" -> implicitly[ArgEncoder[Boolean]].encode(value.isAdmin)
-          )
+    implicit val encoder: ArgEncoder[UserInput] = (value: UserInput) =>
+      __ObjectValue(
+        List(
+          "id"      -> value.id.fold(__NullValue: __Value)(value => implicitly[ArgEncoder[Int]].encode(value)),
+          "email"   -> implicitly[ArgEncoder[String]].encode(value.email),
+          "name"    -> implicitly[ArgEncoder[String]].encode(value.name),
+          "created" -> implicitly[ArgEncoder[Instant]].encode(value.created),
+          "active"  -> implicitly[ArgEncoder[Boolean]].encode(value.active),
+          "deleted" -> implicitly[ArgEncoder[Boolean]].encode(value.deleted),
+          "isAdmin" -> implicitly[ArgEncoder[Boolean]].encode(value.isAdmin)
         )
-
-    }
+      )
 
   }
   type Queries = _root_.caliban.client.Operations.RootQuery

@@ -54,7 +54,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
   case class State(chutiState: ChutiState)
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     private val gameEventDecoder: Decoder[GameEvent] = implicitly[Decoder[GameEvent]]
 

@@ -44,7 +44,7 @@ object LoginPage {
           ),
           <.span(
             Message().color(SemanticCOLORS.red)(
-              "Contraseña errónea! Tu correo electrónico y contraseña no están en el sistema, intentalo de nuevo!"
+              "Contraseña errónea! Tu correo electrónico y contraseña no están en el sistema (o no han sido activados), intentalo de nuevo!"
             )
           ).when(isBad),
           P.messageForScreen.fold(EmptyVdom: VdomNode)(str => <.span(Message()(str))),

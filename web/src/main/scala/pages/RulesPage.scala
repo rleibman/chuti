@@ -247,7 +247,7 @@ object RulesPage extends ChutiPage {
 
   }
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     import RulesPageMessages.*
 

@@ -35,7 +35,7 @@ object AboutPage extends ChutiPage {
    |</div>
    |""".stripMargin
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     def renderBuildInfo: VdomElement =
       <.div(

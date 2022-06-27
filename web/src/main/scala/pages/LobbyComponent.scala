@@ -26,10 +26,10 @@ import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{<, _}
+import japgolly.scalajs.react.vdom.html_<^.{<, *}
 import org.scalajs.dom.HTMLInputElement
 import net.leibman.chuti.react.reactStrings.center
-import net.leibman.chuti.semanticUiReact.components.{ModalActions, _}
+import net.leibman.chuti.semanticUiReact.components.{ModalActions, *}
 import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
 

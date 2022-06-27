@@ -21,9 +21,9 @@ import io.circe.parser.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Error}
 import japgolly.scalajs.react.extra.Ajax
+import japgolly.scalajs.react.extra.internal.AjaxException
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.XMLHttpRequest
-import org.scalajs.dom.ext.AjaxException
 
 trait RESTOperations {
 

@@ -17,10 +17,9 @@
 package routes
 
 import api.Chuti.Environment
-import api.auth.Auth
 import api.auth.Auth.*
 import api.token.{Token, TokenHolder, TokenPurpose}
-import api.{Chuti, ChutiSession, token}
+import api.{ChutiSession, token}
 import cats.data.NonEmptyList
 import chuti.*
 import dao.{CRUDOperations, Repository, SessionProvider}
@@ -38,7 +37,7 @@ import java.util.Locale
 
 object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
-  implicit val localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(l => l.toString)
+  implicit val localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
   // TODO get from config
   val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(Locale.forLanguageTag)
@@ -64,10 +63,10 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
       case req @ Method.PUT -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
-            locale    <- req.bodyAsString
-            secretKey <- Chuti.secretKey
-            jwtString <- jwtEncode(req.session.get.copy(locale = Locale.forLanguageTag(locale)), secretKey)
-          } yield ResponseExt.json(jwtString)
+            locale           <- req.bodyAsString
+            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            response         <- sessionTransport.refreshSession(req.session.get.copy(locale = Locale.forLanguageTag(locale)), ResponseExt.json(true))
+          } yield response
         )
       case req @ Method.GET -> !! / "api" / "auth" / "whoami" if req.session.nonEmpty =>
         Http.collect { r =>
@@ -92,16 +91,16 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
       case req @ Method.GET -> !! / "api" / "auth" / "refreshToken" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
-            secretKey <- Chuti.secretKey
-            jwtString <- jwtEncode(req.session, secretKey)
-          } yield ResponseExt.json(jwtString)
+            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            response         <- sessionTransport.refreshSession(req.session.get, ResponseExt.json(true))
+          } yield response
         )
       case req @ Method.GET -> !! / "api" / "auth" / "doLogout" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
-            secretKey <- Chuti.secretKey
-            jwtString <- jwtExpire(req.session, secretKey)
-          } yield ResponseExt.json(jwtString)
+            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            response         <- sessionTransport.invalidateSession(req.session.get, Response(Status.SeeOther, Headers.location("/loginForm")))
+          } yield response
         )
     }
 
@@ -243,25 +242,17 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ZIO.fromOption(formData.get("email")).orElseFail(HttpError.BadRequest("Missing email"))
             password <- ZIO.fromOption(formData.get("password")).orElseFail(HttpError.BadRequest("Missing Password"))
 
-            userOps   <- ZIO.service[Repository.Service].map(_.userOperations)
-            login     <- userOps.login(email, password)
-            _         <- login.fold(Logging.debug(s"Bad login for $email"))(_ => Logging.debug(s"Good Login for $email"))
-            secretKey <- Chuti.secretKey
-            jwtString <- ZIO.foreach(login) { user =>
-              jwtEncode(ChutiSession(user, req.preferredLocale(availableLocales, formData.get("forcedLocale"))), secretKey)
-            }
-            res <- {
-              jwtString.fold(
-                ZIO(Response(Status.SeeOther, Headers.location("/loginForm?bad=true")))
-              )(tok =>
-                Auth.setSession(
-                  Response(
-                    Status.SeeOther,
-                    Headers.location("/").addHeader(HeaderNames.contentType, HeaderValues.textPlain),
-                    HttpData.fromCharSequence(tok)
-                  ),
-                  tok
-                ) // .mapError(e => Logging.error("", zio.Cause.die(e)) *> Http.error(HttpError.InternalServerError(e.getMessage)))
+            userOps          <- ZIO.service[Repository.Service].map(_.userOperations)
+            login            <- userOps.login(email, password)
+            _                <- login.fold(Logging.debug(s"Bad login for $email"))(_ => Logging.debug(s"Good Login for $email"))
+            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            res <- login.fold(ZIO(Response(Status.SeeOther, Headers.location("/loginForm?bad=true")))) { user =>
+              sessionTransport.refreshSession(
+                ChutiSession(user, req.preferredLocale(availableLocales, formData.get("forcedLocale"))),
+                Response(
+                  Status.SeeOther,
+                  Headers.location("/").addHeader(HeaderNames.contentType, HeaderValues.textPlain)
+                )
               )
             }
           } yield res

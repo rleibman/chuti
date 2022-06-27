@@ -216,7 +216,7 @@ object ChangeLogPage extends ChutiPage {
        |</ul>
        |""".stripMargin
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[?, State]) {
 
     def render(): VdomElement = {
       <.div(^.dangerouslySetInnerHtml := changeLog)

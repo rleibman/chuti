@@ -14,7 +14,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Web client
-addSbtPlugin("org.scala-js"          % "sbt-scalajs"         % "1.10.0")
+addSbtPlugin("org.scala-js"          % "sbt-scalajs"         % "1.10.1")
 addSbtPlugin("ch.epfl.scala"         % "sbt-scalajs-bundler" % "0.20.0")
 addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "1.4.1")
 libraryDependencies += "org.slf4j"   % "slf4j-nop"           % "1.7.36" // Needed by sbt-git
@@ -25,5 +25,5 @@ addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta38")
 ////////////////////////////////////////////////////////////////////////////////////
 // Testing
 addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "0.14.3")
-addSbtPlugin("org.scoverage"      % "sbt-scoverage" % "1.9.3")
+addSbtPlugin("org.scoverage"      % "sbt-scoverage" % "2.0.0")
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.3.2")

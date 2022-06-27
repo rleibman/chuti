@@ -17,7 +17,6 @@
 package pages
 
 import java.time.format.DateTimeFormatter
-
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
@@ -29,9 +28,12 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow}
 
+import java.time.ZoneId
+import java.util.Locale
+
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm")
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
   case class State(games: Seq[Game] = Seq.empty)
 
   class Backend($ : BackendScope[?, State]) {

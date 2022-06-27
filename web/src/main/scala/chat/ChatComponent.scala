@@ -32,16 +32,16 @@ import org.scalajs.dom.html.Div
 import sttp.client3.*
 
 import java.net.URI
-import java.time.Instant
+import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
-import java.util.UUID
+import java.util.{Locale, UUID}
 import scala.util.{Failure, Success}
 
 object ChatComponent extends ScalaJSClientAdapter {
 
   private val connectionId = UUID.randomUUID().toString
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"
-  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm")
+  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
 
   case class State(
     chatMessages: List[ChatMessage] = Nil,

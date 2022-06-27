@@ -21,7 +21,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, Ref, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
 import net.leibman.chuti.semanticUiReact.components.Icon
 
-import scala.concurrent.duration.{Duration, _}
+import scala.concurrent.duration.{Duration, *}
 import scala.language.postfixOps
 import scala.scalajs.js
 import scala.scalajs.js.UndefOr
