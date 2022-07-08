@@ -34,7 +34,7 @@ package object service {
       def setLocale(languageTag: String): AsyncCallback[Boolean] = RESTOperation[String, Boolean]("put", s"$baseUrl/locale", Option(languageTag))
 
     }
-    override def remoteSystem = UserClientService
+    override def remoteSystem: UserClientService.type = UserClientService
 
   }
 

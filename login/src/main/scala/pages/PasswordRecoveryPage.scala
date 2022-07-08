@@ -21,7 +21,7 @@ import io.circe.syntax.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
-import org.scalajs.dom.raw.HTMLInputElement
+import org.scalajs.dom.HTMLInputElement
 import react.Toast
 import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, Input, Label}
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
@@ -35,7 +35,7 @@ object PasswordRecoveryPage {
     email:     String = ""
   )
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
     def onSubmitEmailAddress(email: String) =
       Ajax("POST", s"/passwordRecoveryRequest")

@@ -51,7 +51,7 @@ object SlickRepository {
 final class SlickRepository(databaseProvider: DatabaseProvider) extends Repository.Service {
 
   import SlickRepository.gameCache
-  private val godSession: ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
+  private val godSession: ULayer[SessionContext] = SessionContext.layer(ChutiSession(chuti.god))
 
   implicit val dbExecutionContext: ExecutionContext = zio.Runtime.default.platform.executor.asEC
   implicit def fromDBIO[A](dbio: DBIO[A]): RepositoryIO[A] =
@@ -69,7 +69,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
 
   implicit def fromDBIO[A](fn: ChutiSession => DBIO[A]): RepositoryIO[A] =
     for {
-      session <- ZIO.access[SessionProvider](_.get.session)
+      session <- ZIO.access[SessionContext](_.get.session)
       db      <- databaseProvider.get.db
       ret <- ZIO.fromFuture(implicit ec => db.run(fn(session))).mapError {
         case e: SlickException =>
@@ -429,7 +429,7 @@ final class SlickRepository(databaseProvider: DatabaseProvider) extends Reposito
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token] = {
+    ): ZIO[SessionContext & Logging & Clock & Random, RepositoryError, Token] = {
       for {
         tok <- ZIO.service[Random.Service].flatMap(_.nextBytes(8)).map(r => new BigInteger(r.toArray).toString(32))
         row = TokenRow(

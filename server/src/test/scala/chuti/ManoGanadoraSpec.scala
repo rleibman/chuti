@@ -18,10 +18,9 @@ package chuti
 
 import chuti.Numero.Numero0
 import chuti.Triunfo.*
-import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 
-class ManoGanadoraSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec {
+class ManoGanadoraSpec extends AnyFlatSpec with GameAbstractSpec {
 
   val manosTests = Seq(
     // (fichas, pidiendo, triunfo) debe ganar (x)

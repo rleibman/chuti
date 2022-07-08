@@ -28,11 +28,11 @@ class I8NSpec extends AnyFlatSpec {
 
   "printing" should "print" in {
     {
-      implicit val locale = es_MX
+      given locale = es_MX
       assert(i8n"hola $world" === "hola mundo")
     }
     {
-      implicit val locale = en_US
+      given locale = en_US
       assert(i8n"hola $world" === "hello world")
     }
   }

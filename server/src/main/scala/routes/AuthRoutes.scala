@@ -22,14 +22,13 @@ import api.token.{Token, TokenHolder, TokenPurpose}
 import api.{ChutiSession, token}
 import cats.data.NonEmptyList
 import chuti.*
-import dao.{CRUDOperations, Repository, SessionProvider}
+import dao.{CRUDOperations, Repository, SessionContext}
 import io.circe.Encoder
 import io.circe.generic.auto.*
 import mail.Postman
 import util.*
 import zhttp.http.*
 import zio.logging.Logging
-import zio.magic.*
 import zio.{Has, ZIO}
 
 import java.time.Instant
@@ -37,7 +36,7 @@ import java.util.Locale
 
 object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
-  implicit val localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
+  given localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
   // TODO get from config
   val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(Locale.forLanguageTag)
@@ -56,7 +55,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             userOps       <- ZIO.service[Repository.Service].map(_.userOperations)
             firstLoginOpt <- userOps.firstLogin
           } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(Instant.now.minus(java.time.Duration.ofDays(1))))))
-            .injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+            .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
         Http.collect(_ => ResponseExt.json(req.session.get.locale.toLanguageTag))
@@ -78,7 +77,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           (for {
             userOps <- ZIO.service[Repository.Service].map(_.userOperations)
             wallet  <- userOps.getWallet
-          } yield ResponseExt.json(wallet)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield ResponseExt.json(wallet)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / "api" / "auth" / "changePassword" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -86,7 +85,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             userOps <- ZIO.service[Repository.Service].map(_.userOperations)
             body    <- req.bodyAsString
             ret     <- userOps.changePassword(req.session.get.user, body)
-          } yield ResponseExt.json(ret)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield ResponseExt.json(ret)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "refreshToken" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -128,7 +127,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ResponseExt.seeOther("/loginForm?passwordChangeSucceeded")
             else
               ResponseExt.seeOther("/loginForm?passwordChangeFailed")
-          )).injectSome[Environment & OpsService](SessionProvider.layer(ChutiSession.adminSession))
+          )).provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "passwordRecoveryRequest" =>
         Http.collectZIO[Request] { req =>
@@ -141,7 +140,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ZIO
                 .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope => ZIO.foreach(envelope)(postman.deliver)).forkDaemon
           } yield Response.ok)
-            .injectSome[Environment & OpsService](SessionProvider.layer(ChutiSession.adminSession))
+            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "updateInvitedUser" =>
         Http.collectZIO[Request] { req =>
@@ -171,7 +170,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               )(p => ResponseExt.json(UpdateInvitedUserResponse(Option.when(!p)("Error setting password"))))
             )(error => ResponseExt.json(UpdateInvitedUserResponse(Option(error))))
           })
-            .injectSome[Environment & OpsService](SessionProvider.layer(ChutiSession.adminSession))
+            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.GET -> !! / "getInvitedUserByToken" =>
         Http.collectZIO[Request] { req =>
@@ -219,7 +218,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ResponseExt.json(UserCreationResponse(Option("A user with that email already exists")))
             else
               ResponseExt.json(UserCreationResponse(validate))
-          }).injectSome[Environment & OpsService](SessionProvider.layer(ChutiSession.adminSession))
+          }).provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.GET -> !! / "confirmRegistration" =>
         Http.collectZIO[Request] { req =>
@@ -232,7 +231,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             activate <-
               ZIO.foreach(user)(user => userOps.upsert(user.copy(active = true)))
           } yield activate.fold(ResponseExt.seeOther("/loginForm?registrationFailed"))(_ => ResponseExt.seeOther("/loginForm?registrationSucceeded")))
-            .injectSome[Environment & OpsService](SessionProvider.layer(ChutiSession.adminSession))
+            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "doLogin" =>
         Http.collectZIO[Request] { req =>

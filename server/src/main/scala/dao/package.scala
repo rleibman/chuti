@@ -15,13 +15,13 @@
  */
 
 import chuti.*
-import dao.slick.DatabaseProvider
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.{Has, ZIO}
+import chuti.GameId
 
 import java.sql.Timestamp
 
@@ -29,23 +29,21 @@ package object dao {
 
   type Repository = Has[Repository.Service]
 
-  type DatabaseProvider = Has[DatabaseProvider.Service]
-
-  type SessionProvider = Has[SessionProvider.Session]
+  type SessionContext = Has[SessionContext.Session]
 
   type RepositoryIO[E] =
-    ZIO[SessionProvider & Logging & Clock, RepositoryError, E]
+    ZIO[SessionContext & Logging & Clock, RepositoryError, E]
 
   case class FriendsRow(
-    one: UserId,
-    two: UserId
+    one: Int,
+    two: Int
   )
 
   object UserRow {
 
     def fromUser(value: User): UserRow =
       UserRow(
-        id = value.id.getOrElse(UserId(0)),
+        id = value.id.fold(0)(_.userId),
         name = value.name,
         email = value.email,
         created = Timestamp.from(value.created),
@@ -56,7 +54,7 @@ package object dao {
   }
 
   case class UserRow(
-    id:          UserId,
+    id:          Int,
     name:        String,
     email:       String,
     created:     Timestamp,
@@ -68,7 +66,7 @@ package object dao {
 
     def toUser: User =
       User(
-        id = Some(id),
+        id = Some(UserId(id)),
         email = email,
         name = name,
         created = created.toInstant,
@@ -83,7 +81,7 @@ package object dao {
 
     def fromGame(value: Game): GameRow = {
       val ret = GameRow(
-        id = value.id.getOrElse(GameId(0)),
+        id = value.id.fold(0)(_.gameId),
         current_index = value.currentEventIndex,
         lastSnapshot = value.asJson,
         status = value.gameStatus,
@@ -96,7 +94,7 @@ package object dao {
   }
 
   case class GameRow(
-    id:            GameId,
+    id:            Int,
     lastSnapshot:  Json,
     status:        GameStatus,
     created:       Timestamp,
@@ -106,10 +104,10 @@ package object dao {
   ) {
 
     def toGame: Game = {
-      val decoder = implicitly(Decoder[Game])
+      val decoder = summon[Decoder[Game]]
       decoder.decodeJson(lastSnapshot).map {
         _.copy(
-          id = Option(id),
+          id = Option(GameId(id)),
           currentEventIndex = current_index,
           gameStatus = status
         )
@@ -122,42 +120,42 @@ package object dao {
   }
 
   case class GameEventRow(
-    gameId:       GameId,
+    gameId:       Int,
     currentIndex: Int = 0,
     eventData:    String
   )
 
   case class GamePlayersRow(
-    userId:  UserId,
-    gameId:  GameId,
+    userId:  Int,
+    gameId:  Int,
     order:   Int,
     invited: Boolean
   )
 
   object UserWalletRow {
 
-    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(userId = value.userId, amount = value.amount)
+    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(userId = value.userId.userId, amount = value.amount)
 
   }
   case class UserWalletRow(
-    userId: UserId,
+    userId: Int,
     amount: BigDecimal
   ) {
 
-    def toUserWallet: UserWallet = UserWallet(userId = userId, amount = amount)
+    def toUserWallet: UserWallet = UserWallet(userId = UserId(userId), amount = amount)
 
   }
 
   case class UserLogRow(
-    userId: UserId,
+    userId: Int,
     time:   Timestamp
   )
 
   case class TokenRow(
     tok:          String,
     tokenPurpose: String,
-    expireTime:   Timestamp,
-    userId:       UserId
+    expireTime:   Long,
+    userId:       Int
   )
 
 }

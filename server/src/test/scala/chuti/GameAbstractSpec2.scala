@@ -17,15 +17,14 @@
 package chuti
 
 import api.ChutiSession
-import api.token.TokenHolder
+import api.token.{Token, TokenHolder}
 import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
-import dao.slick.DatabaseProvider
-import dao.{DatabaseProvider, InMemoryRepository, Repository, SessionProvider}
+import dao.{InMemoryRepository, Repository, SessionContext}
 import game.GameService
 import game.GameService.GameService
 import io.circe.Printer
@@ -34,9 +33,9 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
 import mail.Postman.Postman
-import org.mockito.scalatest.MockitoSugar
 import org.scalatest.{Assertion, Succeeded}
 import zio.*
+import zio.cache.{Cache, Lookup}
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
@@ -45,11 +44,10 @@ import zio.logging.slf4j.Slf4jLogger
 
 import java.util.UUID
 
-trait GameAbstractSpec2 extends MockitoSugar {
+trait GameAbstractSpec2 {
 
-  val connectionId:                    ConnectionId = ConnectionId(UUID.randomUUID().toString)
-  lazy protected val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  lazy protected val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
+  val connectionId:               ConnectionId = ConnectionId(UUID.randomUUID().toString)
+  lazy protected val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, (Assertion, Game)] = {
     for {
@@ -57,7 +55,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(chuti.god))
+            SessionContext.live(ChutiSession(chuti.god))
           )
       looped <-
         ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
@@ -96,7 +94,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(chuti.god))
+            SessionContext.live(ChutiSession(chuti.god))
           )
       mano = game.mano.get
       sigiuente1 = game.nextPlayer(mano)
@@ -105,22 +103,22 @@ trait GameAbstractSpec2 extends MockitoSugar {
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(mano.user))
+            SessionContext.live(ChutiSession(mano.user))
           )
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente1.user))
+            SessionContext.live(ChutiSession(sigiuente1.user))
           )
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente2.user))
+            SessionContext.live(ChutiSession(sigiuente2.user))
           )
       afterPlayer4 <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(sigiuente3.user))
+            SessionContext.live(ChutiSession(sigiuente3.user))
           )
     } yield afterPlayer4
   }
@@ -132,17 +130,17 @@ trait GameAbstractSpec2 extends MockitoSugar {
     zz
   }.toLayer
 
-  type TestLayer = DatabaseProvider
-  & Repository & Postman & Logging & TokenHolder & GameService & ChatService & Clock
+  type TestLayer = Repository & Postman & Logging & TokenHolder & GameService & ChatService & Clock
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
     val postman: Postman.Service = new MockPostman
     val loggingLayer = Slf4jLogger.make((_, b) => b)
-    ZLayer.succeed(databaseProvider) ++
-      repositoryLayer(gameFiles: _*) ++
+    repositoryLayer(gameFiles: _*) ++
       ZLayer.succeed(postman) ++
       loggingLayer ++
-      ZLayer.succeed(TokenHolder.tempCache) ++
+      (for {
+        cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
+      } yield TokenHolder.tempCache(cache)).toLayer ++
       GameService.make() ++
       (loggingLayer >>> ChatService.make()) ++
       Clock.live // Change for a fixed clock
@@ -175,11 +173,11 @@ trait GameAbstractSpec2 extends MockitoSugar {
     s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${System
         .currentTimeMillis() / 1000}.json"
 
-  protected def userLayer(user: User): ULayer[SessionProvider] = {
-    SessionProvider.layer(ChutiSession(user))
+  protected def userLayer(user: User): ULayer[SessionContext] = {
+    SessionContext.live(ChutiSession(user))
   }
-  protected def godLayer: ULayer[SessionProvider] = {
-    SessionProvider.layer(ChutiSession(chuti.god))
+  protected def godLayer: ULayer[SessionContext] = {
+    SessionContext.live(ChutiSession(chuti.god))
   }
 
   def assertSoloUnoCanta(game: Game): Assertion = {
@@ -247,7 +245,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       g1 <-
         bot
           .takeTurn(gameId).provideSomeLayer[TestLayer](
-            SessionProvider.layer(ChutiSession(quienCanta))
+            SessionContext.live(ChutiSession(quienCanta))
           )
       g2 <-
         if (g1.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
@@ -255,7 +253,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(sigiuente1))
+              SessionContext.live(ChutiSession(sigiuente1))
             )
         }
       g3 <-
@@ -264,7 +262,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(sigiuente2))
+              SessionContext.live(ChutiSession(sigiuente2))
             )
         }
       g4 <-
@@ -273,7 +271,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[TestLayer](
-              SessionProvider.layer(ChutiSession(sigiuente3))
+              SessionContext.live(ChutiSession(sigiuente3))
             )
         }
     } yield g4
@@ -296,7 +294,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       gameStream =
         gameService
           .gameStream(start.id.get, connectionId)
-          .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+          .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -323,7 +321,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
           .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
             TestLayer
           ](
-            SessionProvider.layer(ChutiSession(chuti.god))
+            SessionContext.live(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {
@@ -380,7 +378,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
       gameStream =
         gameService
           .gameStream(game.id.get, connectionId)
-          .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+          .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -394,7 +392,7 @@ trait GameAbstractSpec2 extends MockitoSugar {
           .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
             TestLayer
           ](
-            SessionProvider.layer(ChutiSession(chuti.god))
+            SessionContext.live(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
       finalAssert <- ZIO.succeed {

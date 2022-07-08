@@ -20,7 +20,7 @@ import api.Chuti.Environment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
 import chuti.Search
-import dao.{CRUDOperations, RepositoryError, RepositoryIO, SessionProvider}
+import dao.{CRUDOperations, RepositoryError, RepositoryIO, SessionContext}
 import io.circe.parser.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
@@ -29,7 +29,6 @@ import zhttp.http.*
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
-import zio.magic.*
 
 import scala.util.matching.Regex
 
@@ -75,7 +74,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
   def getPK(obj: E): PK
 
   def getOperation(id: PK): ZIO[
-    SessionProvider & Logging & Clock & OpsService,
+    SessionContext & Logging & Clock & OpsService,
     RepositoryError,
     Option[E]
   ] =
@@ -86,14 +85,14 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
 
   def deleteOperation(
     objOpt: Option[E]
-  ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] =
+  ): ZIO[SessionContext & Logging & Clock & OpsService, Throwable, Boolean] =
     for {
       ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
       ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
     } yield ret
 
   def upsertOperation(obj: E): ZIO[
-    SessionProvider & Logging & Clock & OpsService,
+    SessionContext & Logging & Clock & OpsService,
     RepositoryError,
     E
   ] = {
@@ -104,7 +103,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
   }
 
   def countOperation(search: Option[SEARCH]): ZIO[
-    SessionProvider & Logging & Clock & OpsService,
+    SessionContext & Logging & Clock & OpsService,
     RepositoryError,
     Long
   ] =
@@ -114,7 +113,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
     } yield ret
 
   def searchOperation(search: Option[SEARCH]): ZIO[
-    SessionProvider & Logging & Clock & OpsService,
+    SessionContext & Logging & Clock & OpsService,
     RepositoryError,
     Seq[E]
   ] =
@@ -132,28 +131,28 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
             _   <- Logging.info(s"Upserting $url with $obj")
             ret <- upsertOperation(obj)
           } yield Response.json(ret.asJson.noSpaces))
-            .injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+            .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ (Method.POST) -> !! / "api" / self.url / "search" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             search <- req.bodyAs[SEARCH]
             res    <- searchOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / s"api" / self.url / "count" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             search <- req.bodyAs[SEARCH]
             res    <- countOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage))
             res <- getOperation(pk)
-          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.DELETE -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -162,7 +161,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
             _      <- Logging.info(s"Deleted ${pk.toString}")
-          } yield Response.json(res.asJson.noSpaces)).injectSome[Environment & OpsService](SessionProvider.layer(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
     }
 

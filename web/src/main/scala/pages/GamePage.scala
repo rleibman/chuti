@@ -33,7 +33,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
   case class State()
 
-  class Backend($ : BackendScope[?, State]) {
+  class Backend($ : BackendScope[Props, State]) {
 
     def onModeChanged(
       p: Props
@@ -87,17 +87,15 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   }
   case class Props(chutiState: ChutiState)
 
-  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
-  implicit val gameReuse: Reusability[Game] =
-    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
-  implicit val userIdReuse:       Reusability[UserId] = Reusability.by(_.value)
-  implicit val userReuse:         Reusability[User] = Reusability.by(_.id)
-  implicit val bigDecimalReuse:   Reusability[BigDecimal] = Reusability.by(_.toLong)
-  implicit val walletReuse:       Reusability[UserWallet] = Reusability.derive[UserWallet]
-  implicit val gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)
-  implicit private val propsReuse: Reusability[Props] =
-    Reusability.by(_.chutiState.gameViewMode.toString)
-  implicit private val stateReuse: Reusability[State] = Reusability.derive[State]
+  given messageReuse:      Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
+  given gameReuse:         Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given userIdReuse:       Reusability[UserId] = Reusability.by(_.userId)
+  given userReuse:         Reusability[User] = Reusability.by(_.id)
+  given bigDecimalReuse:   Reusability[BigDecimal] = Reusability.by(_.toLong)
+  given walletReuse:       Reusability[UserWallet] = Reusability.derive[UserWallet]
+  given gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)
+  given propsReuse:        Reusability[Props] = Reusability.by(_.chutiState.gameViewMode.toString)
+  given stateReuse:        Reusability[State] = Reusability.derive[State]
 
   private val component = ScalaComponent
     .builder[Props]("GamePageInner")

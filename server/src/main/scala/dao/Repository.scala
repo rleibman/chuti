@@ -22,9 +22,9 @@ import zio.ZIO
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
+import zio.duration.*
 
 import java.time.Instant
-import scala.concurrent.duration.Duration
 
 object Repository {
 
@@ -76,7 +76,7 @@ object Repository {
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): ZIO[SessionProvider & Logging & Clock & Random, RepositoryError, Token]
+    ): ZIO[SessionContext & Logging & Clock & Random, RepositoryError, Token]
     def peek(
       token:   Token,
       purpose: TokenPurpose
@@ -86,11 +86,11 @@ object Repository {
 
   trait Service {
 
-    val gameOperations: GameOperations
+    def gameOperations: GameOperations
 
-    val userOperations: UserOperations
+    def userOperations: UserOperations
 
-    val tokenOperations: TokenOperations
+    def tokenOperations: TokenOperations
 
   }
 

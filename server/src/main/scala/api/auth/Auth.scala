@@ -25,12 +25,10 @@ import util.ResponseExt
 import zhttp.http.*
 import zhttp.http.Cookie.SameSite
 import zio.clock.Clock
-import zio.config.*
-import zio.config.magnolia.DeriveConfigDescriptor.descriptor
-import zio.config.magnolia.Descriptor
+import zio.config.magnolia.*
+import zio.config.*, ConfigDescriptor.*
 import zio.config.typesafe.*
 import zio.duration.*
-import zio.magic.*
 import zio.{Has, IO, Ref, Schedule, Tag, UIO, ZIO, ZLayer}
 
 import java.net.InetAddress
@@ -55,8 +53,19 @@ object Auth {
     cause:   Option[Throwable] = None
   ) extends Exception(message, cause.orNull)
 
-  // scala3 opaque type
-  case class SecretKey(key: String) extends AnyVal
+  opaque type SecretKey = String
+
+  object SecretKey {
+
+    def apply(key: String): SecretKey = key
+
+  }
+
+  extension (s: SecretKey) {
+
+    def key: String = s
+
+  }
 
   case class SessionConfig(
     secretKey:         SecretKey,
@@ -69,12 +78,15 @@ object Auth {
     sessionTTL:        Duration = 12.hours
   )
 
-  implicit private val secretKeyConfigDescriptor: Descriptor[SecretKey] =
-    zio.config.magnolia.Descriptor.implicitStringDesc.transform[SecretKey](SecretKey.apply, _.key)
-  implicit private val durationDescriptor: Descriptor[Duration] =
-    zio.config.magnolia.Descriptor.implicitLongDesc.transform[Duration](_.minutes, _.toMinutes)
-  implicit private val pathDescriptor: Descriptor[Path] = zio.config.magnolia.Descriptor.implicitStringDesc.transform[Path](s => Path(s), _.toString)
-  implicit private val sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
+  //  given secretKeyConfigDescriptor: ConfigDescriptor[SecretKey] = zio.config.magnolia.Descriptor.from[SecretKey]
+  //  given durationDescriptor: Descriptor[Duration] = zio.config.magnolia.Descriptor.from[Long].
+  //    zio.config.magnolia.Descriptor.implicitLongDesc.transform[Duration](_.minutes, _.toMinutes)
+  //  given pathConfigDescriptor: ConfigDescriptor[Path] = string("PATH")(Path.apply, a => Some(a.encode))  //zio.config.magnolia.Descriptor.from[java.nio.file.Path]
+  given Descriptor[Path] = Descriptor.from[Path](ConfigDescriptor.string.transform(Path(_), _.toString))
+
+  //  given Descriptor[Option[Path]] = string("OPATH").transform[Option[Path]](p => Some(Path.apply(p)), _.fold("")(_.encode))
+  given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
+
   private val sessionConfig: IO[ReadError[String], SessionConfig] = read(
     sessionConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("sessionConfig"))
   )
@@ -88,9 +100,25 @@ object Auth {
 
   }
 
-  case class RequestWithSession[SessionType](
-    session: Option[SessionType],
-    request: Request
+  object RequestWithSession {
+
+    def apply[SessionType](
+      session: Option[SessionType],
+      request: Request
+    ): RequestWithSession[SessionType] = {
+      new RequestWithSession(session, request)
+    }
+
+    def unapply[SessionType](requestWithSession: RequestWithSession[SessionType]): Option[(Option[SessionType], Request)] = {
+      Some((requestWithSession.session, requestWithSession.request))
+    }
+
+  }
+
+  // Request defines it's own copy method, which breaks the usage of copy in the RequestWithSession, so we can't use case classes
+  class RequestWithSession[SessionType](
+    val session: Option[SessionType],
+    val request: Request
   ) extends Request {
 
     override def data: HttpData = request.data
@@ -211,7 +239,7 @@ object Auth {
         clock <- ZIO.service[Clock.Service]
       } yield new SessionStorage.Service[SessionType, String] {
 
-        override def storeSession(session: SessionType): IO[SessionError, String] = jwtEncode(session).inject(ZLayer.succeed(clock))
+        override def storeSession(session: SessionType): IO[SessionError, String] = jwtEncode(session).provideLayer(ZLayer.succeed(clock))
 
         override def getSession(sessionId: String): IO[SessionError, Option[SessionType]] =
           for {

@@ -33,10 +33,9 @@ sealed trait EventInfo[T <: GameEvent] {
 
 }
 
-object ReapplyMode extends Enumeration {
+enum ReapplyMode {
 
-  type ReapplyMode = Value
-  val none, fullRefresh, reapply = Value
+  case none, fullRefresh, reapply
 
 }
 
@@ -595,8 +594,10 @@ case class Canta(
         s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
       )
     } else
-      Option(s"${cantanteActual.user.name} canto ${if (cuantasCantas == CuantasCantas.Buenas) CuantasCantas.Casa
-        else cuantasCantas} ")
+      Option(s"${cantanteActual.user.name} canto ${
+          if (cuantasCantas == CuantasCantas.Buenas) CuantasCantas.Casa
+          else cuantasCantas
+        } ")
 
     val newGameStatus =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas)
@@ -683,8 +684,10 @@ case class Pide(
           if (modified.puedesCaerte(jugador)) Option("Podías haberte caído, no lo hiciste")
           else None,
         gameStatusString = Option(
-          s"${jugador.user.name} salio con $ficha ${if (estrictaDerecha) ". Estricta derecha!"
-            else ""}"
+          s"${jugador.user.name} salio con $ficha ${
+              if (estrictaDerecha) ". Estricta derecha!"
+              else ""
+            }"
         )
       )
     )
@@ -987,8 +990,7 @@ case class Caete(
       regalos:   Seq[Ficha],
       jugadores: Map[Jugador, Seq[Fila]]
     ): Map[Jugador, Seq[Fila]] = {
-      if (regalos.isEmpty)
-        jugadores
+      if (regalos.isEmpty) jugadores
       else {
 
         val yaHayGanador = jugadores.exists(_._1.ganadorDePartido)
@@ -1037,10 +1039,12 @@ case class Caete(
       index = Option(game.currentEventIndex),
       gameId = game.id,
       userId = jugador.id,
-      gameStatusString = Option(s"${jugador.user.name} acabo. ${if (regalosRegalados.nonEmpty)
-          s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}."
-        else
-          ""}"),
+      gameStatusString = Option(s"${jugador.user.name} acabo. ${
+          if (regalosRegalados.nonEmpty)
+            s"Hubieron regalos para ${regalosRegalados.map(_._1.user.name).mkString(",")}."
+          else
+            ""
+        }"),
       ganadorDePartido = regalosRegalados.find(_._1.ganadorDePartido).flatMap(_._1.id)
     )
 
@@ -1218,14 +1222,18 @@ case class TerminaJuego(
       if (j.yaSeHizo) {
         (
           false,
-          s"${j.user.name} se hizo con ${j.filas.size} filas. ${if (regalados.nonEmpty) s"Regalos para $regalados."
-            else ""}"
+          s"${j.user.name} se hizo con ${j.filas.size} filas. ${
+              if (regalados.nonEmpty) s"Regalos para $regalados."
+              else ""
+            }"
         )
       } else {
         (
           true,
-          s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${if (regalados.nonEmpty) s"Ayudaron $regalados."
-            else ""}"
+          s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${
+              if (regalados.nonEmpty) s"Ayudaron $regalados."
+              else ""
+            }"
         )
       }
     }

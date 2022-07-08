@@ -3,7 +3,7 @@ package db.quill
 import api.ChutiSession
 import api.config.Config
 import chuti.{User, UserId}
-import dao.SessionProvider
+import dao.SessionContext
 import dao.quill.QuillRepository
 import zio.clock.Clock
 import zio.logging.Logging
@@ -24,15 +24,15 @@ abstract class QuillSpec extends DefaultRunnableSpec {
   protected val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
   protected val containerLayer = ChutiContainer.containerLayer.orDie
   protected val configLayer = (containerLayer ++ baseConfigLayer) >>> ChutiContainer.configLayer
-  protected val quillLayer = QuillRepository.live
-  protected val godSession:              ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(chuti.god))
-  protected val satanSession:            ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(satan))
-  protected def userSession(user: User): ULayer[SessionProvider] = SessionProvider.layer(ChutiSession(user))
+  protected val quillLayer = QuillRepository.cached
+  protected val godSession:              ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
+  protected val satanSession:            ULayer[SessionContext] = SessionContext.live(ChutiSession(satan))
+  protected def userSession(user: User): ULayer[SessionContext] = SessionContext.live(ChutiSession(user))
   protected val now:                     Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z")
   protected val clockLayer: ULayer[Clock] =
     ZLayer.succeed(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC))) >>> Clock.javaClock
 
-  //  val fullGodLayer: ULayer[Config & Repository & Logging & SessionProvider & Clock & Random] =
+  //  val fullGodLayer: ULayer[Config & Repository & Logging & SessionContext & Clock & Random] =
   //    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
 
   protected val testUserZIO: URIO[Random, User] = {

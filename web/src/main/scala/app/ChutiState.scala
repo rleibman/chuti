@@ -18,8 +18,6 @@ package app
 
 import java.util.Locale
 
-import app.GameViewMode.GameViewMode
-import app.GlobalDialog.GlobalDialog
 import caliban.client.scalajs.WebSocketHandler
 import chuti.*
 import japgolly.scalajs.react.React.Context
@@ -27,17 +25,16 @@ import japgolly.scalajs.react.{Callback, React}
 import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
 import _root_.util.LocalizedMessages
-object GameViewMode extends Enumeration {
 
-  type GameViewMode = Value
-  val lobby, game, none = Value
+enum GameViewMode {
+
+  case lobby, game, none
 
 }
 
-object GlobalDialog extends Enumeration {
+enum GlobalDialog {
 
-  type GlobalDialog = Value
-  val cuentas, none = Value
+  case cuentas, none
 
 }
 

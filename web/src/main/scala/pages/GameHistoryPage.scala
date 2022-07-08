@@ -36,9 +36,9 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
   case class State(games: Seq[Game] = Seq.empty)
 
-  class Backend($ : BackendScope[?, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
-    private val gameDecoder = implicitly[Decoder[Game]]
+    private val gameDecoder = summon[Decoder[Game]]
 
     def init: Callback = {
       calibanCall[Queries, Option[List[Json]]](

@@ -21,8 +21,7 @@ import java.util.Locale
 import app.{ChutiState, GameViewMode, GlobalDialog}
 import chat.ChatComponent
 import chuti.{ChannelId, GameStatus}
-import components.Toast
-import components.components.ChutiComponent
+import components.*
 import japgolly.scalajs.react.extra.router.*
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
@@ -55,16 +54,17 @@ object AppRouter extends ChutiComponent {
 
   object DialogRenderer {
 
-    class Backend(@unused $ : BackendScope[?, ?]) {
+    class Backend(@unused $ : BackendScope[Unit, Unit]) {
 
       def render(): VdomElement =
         ChutiState.ctx.consume { chutiState =>
           import chutiState.ChutiMessages.*
-          implicit val locale: Locale = chutiState.locale
+          given locale: Locale = chutiState.locale
+
           def renderCuentasDialog: VdomArray = {
             chutiState.gameInProgress.toVdomArray { game =>
               Modal()
-//                key = "cuentasDialog",
+                //                key = "cuentasDialog",
                 .open(chutiState.currentDialog == GlobalDialog.cuentas)(
                   ModalHeader()(
                     s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO I8n
@@ -173,7 +173,7 @@ object AppRouter extends ChutiComponent {
     assert(page != null)
     ChutiState.ctx.consume { chutiState =>
       import chutiState.ChutiMessages.*
-      implicit val locale: Locale = chutiState.locale
+      given locale: Locale = chutiState.locale
       def renderMenu = {
         VdomArray(
           <.div(

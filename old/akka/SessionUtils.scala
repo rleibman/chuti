@@ -16,21 +16,9 @@
 
 package akka
 
-import akka.http.scaladsl.server.{Directive0, Directive1, Directives}
-import api.{ChutiSession, config}
-import chuti.UserId
 import com.softwaremill.session.*
 import com.softwaremill.session.SessionDirectives.*
 import com.softwaremill.session.SessionOptions.*
-import dao.*
-import dao.slick.{MySQLDatabaseProvider, SlickRepository}
-import scalacache.Cache
-import scalacache.ZioEffect.modes.*
-import scalacache.caffeine.CaffeineCache
-import zio.clock.Clock
-import zio.logging.slf4j.Slf4jLogger
-import zio.logging.{Logging, log}
-import zio.{Has, Task, ZIO, ZLayer}
 
 import scala.concurrent.duration.*
 import scala.util.Try
@@ -53,11 +41,11 @@ trait SessionUtils extends Directives {
   import actorSystem.dispatcher
   import scalacache.memoization.*
 
-  lazy private val godLayer: ZLayer[Any, Nothing, Repository & Has[SessionProvider.Session] & Logging & Clock] =
+  lazy private val godLayer: ZLayer[Any, Nothing, Repository & SessionContext & Logging & Clock] =
     ((Slf4jLogger.make((_, b) => b) ++ ZLayer.succeed(
       config.live
     )) >>> MySQLDatabaseProvider.liveLayer >>> SlickRepository.live) ++
-      SessionProvider.layer(ChutiSession(chuti.god)) ++
+      SessionContext.layer(ChutiSession(chuti.god)) ++
       Slf4jLogger.make((_, str) => str) ++
       Clock.live
 

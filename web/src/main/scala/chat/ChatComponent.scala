@@ -36,6 +36,9 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import java.util.{Locale, UUID}
 import scala.util.{Failure, Success}
+import chuti.*
+import chuti.ChannelId.*
+import chuti.UserId.*
 
 object ChatComponent extends ScalaJSClientAdapter {
 
@@ -63,7 +66,7 @@ object ChatComponent extends ScalaJSClientAdapter {
       p: Props,
       s: State
     ): Callback = {
-      val mutation = Mutations.say(s.msgInFlux, p.channel.value)
+      val mutation = Mutations.say(s.msgInFlux, p.channel.channelId)
       val serverUri = uri"http://${Config.chutiHost}/api/chat"
       val request = mutation.toRequest(serverUri)
 
@@ -154,7 +157,7 @@ object ChatComponent extends ScalaJSClientAdapter {
           )
       (for {
         recentMessages <- asyncCalibanCall(
-          Queries.getRecentMessages(p.channel.value)(chatSelectionBuilder)
+          Queries.getRecentMessages(p.channel.channelId)(chatSelectionBuilder)
         ).handleError { error =>
           error.printStackTrace()
           AsyncCallback.pure(None)
@@ -167,7 +170,7 @@ object ChatComponent extends ScalaJSClientAdapter {
               makeWebSocketClient[Option[ChatMessage]](
                 uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/chat/ws")),
                 query = Subscriptions
-                  .chatStream(p.channel.value, connectionId)(
+                  .chatStream(p.channel.channelId, connectionId)(
                     chatSelectionBuilder
                   ),
                 onData = { (_, data) =>
@@ -183,7 +186,7 @@ object ChatComponent extends ScalaJSClientAdapter {
                       }
                 },
                 operationId = s"chat$chatId",
-                connectionId = s"$chatId-${p.channel.value}"
+                connectionId = s"$chatId-${p.channel.channelId}"
               )
             )
           )
@@ -200,9 +203,9 @@ object ChatComponent extends ScalaJSClientAdapter {
     onMessage:        ChatMessage => Callback
   )
 
-  implicit val messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
-  implicit val propsReuse:   Reusability[Props] = Reusability.by(_.channel.value)
-  implicit val stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")
+  given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
+  given propsReuse:   Reusability[Props] = Reusability.by(_.channel.channelId)
+  given stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")
 
   private val component = ScalaComponent
     .builder[Props]("content")
@@ -219,7 +222,7 @@ object ChatComponent extends ScalaJSClientAdapter {
     onPrivateMessage: ChatMessage => Callback = _ => Callback.empty,
     onMessage:        ChatMessage => Callback = _ => Callback.empty
   ): Unmounted[Props, State, Backend] =
-    component.withKey(s"chatChannel${channel.value}")(
+    component.withKey(s"chatChannel${channel.channelId}")(
       Props(user, channel, onPrivateMessage, onMessage)
     )
 

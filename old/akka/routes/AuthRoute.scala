@@ -26,7 +26,7 @@ import chuti.{BuildInfo as _, *}
 import com.softwaremill.session.CsrfDirectives.setNewCsrfToken
 import com.softwaremill.session.CsrfOptions.checkHeader
 import dao.Repository.UserOperations
-import dao.{CRUDOperations, RepositoryError, SessionProvider}
+import dao.{CRUDOperations, RepositoryError, SessionContext}
 import io.circe.generic.auto.*
 import mail.Postman
 import mail.Postman.Postman
@@ -67,9 +67,9 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
 
       override def deleteOperation(
         objOpt: Option[User]
-      ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] = {
+      ): ZIO[SessionContext & Logging & Clock & OpsService, Throwable, Boolean] = {
         for {
-          user <- ZIO.access[SessionProvider](_.get.session.user)
+          user <- ZIO.access[SessionContext](_.get.session.user)
           sup  <- super.deleteOperation(objOpt)
           _    <- SessionUtils.removeFromCache(user.id).ignore
         } yield sup
@@ -77,9 +77,9 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
 
       override def upsertOperation(
         obj: User
-      ): ZIO[SessionProvider & Logging & Clock & OpsService, RepositoryError, User] = {
+      ): ZIO[SessionContext & Logging & Clock & OpsService, RepositoryError, User] = {
         for {
-          user <- ZIO.access[SessionProvider](_.get.session.user)
+          user <- ZIO.access[SessionContext](_.get.session.user)
           sup  <- super.upsertOperation(obj)
           _    <- SessionUtils.removeFromCache(user.id).ignore
         } yield sup
@@ -122,7 +122,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                         if (token.isEmpty || password.isEmpty) reject(ValidationRejection("You need to pass a token and password"))
                         else {
                           val z: ZIO[
-                            SessionProvider & Logging & Clock & TokenHolder,
+                            SessionContext & Logging & Clock & TokenHolder,
                             Throwable,
                             StandardRoute
                           ] = for {
@@ -142,7 +142,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
 
                           z.tapError(e => log.error("Resetting Password", Fail(e))).provideSomeLayer[
                               Logging & Clock & TokenHolder
-                            ](SessionProvider.layer(adminSession)).provide(r)
+                            ](SessionContext.layer(adminSession)).provide(r)
                         }
                       }
                     }
@@ -160,7 +160,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                           } yield ())
                             .tapError(e => log.error("In Password Recover Request", Fail(e))).provideSomeLayer[
                               Logging & Clock & TokenHolder & Postman
-                            ](SessionProvider.layer(adminSession)).provide(r)
+                            ](SessionContext.layer(adminSession)).provide(r)
                         }
                       }
                     }
@@ -196,7 +196,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                         )(error => complete(UpdateInvitedUserResponse(Option(error)))))
                           .tapError(e => log.error("Updating invited user", Fail(e))).provideSomeLayer[
                             Logging & Clock & TokenHolder & Postman
-                          ](SessionProvider.layer(adminSession)).provide(r)
+                          ](SessionContext.layer(adminSession)).provide(r)
                       }
                     }
                   } ~
@@ -243,7 +243,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                             complete(UserCreationResponse(validate))
                         }).tapError(e => log.error("Creating user", Fail(e))).provideSomeLayer[
                             Logging & Clock & TokenHolder & Postman
-                          ](SessionProvider.layer(adminSession)).provide(r)
+                          ](SessionContext.layer(adminSession)).provide(r)
                       }
                     }
                   } ~
@@ -260,7 +260,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                         )(_ => redirect("/loginForm?registrationSucceeded", StatusCodes.SeeOther)))
                           .tapError(e => log.error("Confirming registration", Fail(e))).provideSomeLayer[
                             Logging & Clock & TokenHolder & Postman
-                          ](SessionProvider.layer(adminSession)).provide(r)
+                          ](SessionContext.layer(adminSession)).provide(r)
                       }
                     }
                   } ~
@@ -298,7 +298,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
                             }
                           }).tapError(e => log.error("In Login", Fail(e))).provideSomeLayer[
                               Logging & Clock & TokenHolder & Postman
-                            ](SessionProvider.layer(adminSession)).provide(r)
+                            ](SessionContext.layer(adminSession)).provide(r)
                         }
                       }
                     }
@@ -323,10 +323,10 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
             }
           }
 
-      override def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] =
+      override def other: RIO[SessionContext & Logging & Clock & OpsService, Route] =
         for {
-          session <- ZIO.service[SessionProvider.Session].map(_.session)
-          runtime <- ZIO.environment[SessionProvider & Logging & Clock & OpsService]
+          session <- ZIO.service[SessionContext.Session].map(_.session)
+          runtime <- ZIO.environment[SessionContext & Logging & Clock & OpsService]
         } yield {
           // These should be protected and accessible only when logged in
           path("isFirstLoginToday") {
@@ -370,7 +370,7 @@ trait AuthRoute extends CRUDRoute[User, UserId, PagedStringSearch] with SessionU
               post {
                 entity(as[String]) { newPassword =>
                   complete((for {
-                    user <- ZIO.access[SessionProvider](_.get.session.user)
+                    user <- ZIO.access[SessionContext](_.get.session.user)
                     userOps <-
                       ZIO.access[OpsService](_.get).map(a => a.asInstanceOf[UserOperations])
                     changedPassword <- userOps.changePassword(user, newPassword)

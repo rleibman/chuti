@@ -17,12 +17,13 @@
 package game
 
 import caliban.GraphQL.graphQL
-import caliban.schema.{GenericSchema, Schema}
+import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
+import chat.ChatApi.{Mutations, Queries, Subscriptions}
 import chat.ChatService.ChatService
 import chuti.*
-import dao.SessionProvider
+import dao.{Repository, SessionContext}
 import game.GameService.{GameLayer, GameService}
 import io.circe.Json
 import io.circe.generic.auto.*
@@ -31,6 +32,7 @@ import zio.ZIO
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
+import zio.logging.Logging
 import zio.stream.ZStream
 
 object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
@@ -107,15 +109,17 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
     userStream: ConnectionId => ZStream[GameService & GameLayer, GameException, UserEvent]
   )
 
-  implicit private val userSchema: Schema[Any, User] = gen[Any, User]
-//  implicit private val numeroTypeSchema: GameApi.Typeclass[Numero] = gen[Numero]
-//  implicit private val estadoSchema:     GameApi.Typeclass[Estado] = gen[Estado]
-//  implicit private val triunfoSchema:    GameApi.Typeclass[Triunfo] = gen[Triunfo]
-//  implicit private val fichaSchema:      GameApi.Typeclass[Ficha] = gen[Ficha]
-//  implicit private val filaSchema:       GameApi.Typeclass[Fila] = gen[Fila]
-//  implicit private val jugadorSchema:    GameApi.Typeclass[Jugador] = gen[Jugador]
-//  implicit private val gameStateSchema:  GameApi.Typeclass[GameState] = gen[GameState]
-  //  implicit private val jugadaSchema:     GameApi.Typeclass[GameEvent] = gen[GameEvent]
+  private given Schema[Any, GameId] = Schema.intSchema.contramap(_.gameId)
+  private given Schema[Any, UserId] = Schema.intSchema.contramap(_.userId)
+  private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
+  private given Schema[Any, User] = gen[Any, User]
+  private given Schema[Any, Game] = gen[Any, Game]
+  private given Schema[GameService & GameLayer, Queries] = Schema.gen[GameService & GameLayer, Queries]
+  private given Schema[GameService & GameLayer & ChatService, Mutations] = Schema.gen[GameService & GameLayer & ChatService, Mutations]
+  private given Schema[GameService & GameLayer & ChatService, Subscriptions] = Schema.gen[GameService & GameLayer & ChatService, Subscriptions]
+  private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
+  private given ArgBuilder[GameId] = ArgBuilder.int.map(GameId.apply)
+  private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
   def sanitizeGame(
     game: Game,
@@ -134,9 +138,9 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       )
     )
 
-  def sanitizeGame(game: Game): ZIO[SessionProvider, Nothing, Game] =
+  def sanitizeGame(game: Game): ZIO[SessionContext, Nothing, Game] =
     for {
-      user <- ZIO.access[SessionProvider](_.get.session.user)
+      user <- ZIO.access[SessionContext](_.get.session.user)
     } yield sanitizeGame(game, user)
 
   val api: GraphQL[Console & Clock & GameService & GameLayer & ChatService] =

@@ -41,7 +41,6 @@ import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
-import zio.magic.*
 
 import java.util.Locale
 
@@ -49,19 +48,20 @@ object Chuti extends zio.App {
 
   import api.auth.Auth.*
 
-  implicit val localeDecoder: Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
-  implicit val localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
+  given Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
+  given Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
-  type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder & SessionStorage[
-    ChutiSession,
-    String
-  ] & SessionTransport[ChutiSession]
+  type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder &
+    SessionStorage[
+      ChutiSession,
+      String
+    ] & SessionTransport[ChutiSession]
   private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
   private val postmanLayer: URLayer[Config, Postman] = (for {
     config <- ZIO.service[Config.Service]
   } yield CourierPostman.live(config)).toLayer
   private val loggingLayer: ULayer[Logging] = Slf4jLogger.make((_, b) => b)
-  private val repositoryLayer = QuillRepository.live
+  private val repositoryLayer = QuillRepository.cached
   private val authOpsLayer: ZLayer[Repository, Nothing, Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
     ZIO.service[Repository.Service].map(_.userOperations).toLayer
 
@@ -102,8 +102,8 @@ object Chuti extends zio.App {
     ((
       unauthRoute ++ authRoutes(sessionTransport)
     ) @@ logRequest)
-      .tapErrorZIO { e: Throwable =>
-        Logging.throwable(s"Error", e)
+      .tapErrorZIO {
+        Logging.throwable(s"Error", _)
       }
       .catchSome {
         case e: HttpError =>
@@ -115,9 +115,13 @@ object Chuti extends zio.App {
       }
   }
 
+  val clockLayer = Clock.live
+  val sessionStorageLayer = Auth.SessionStorage.tokenEncripted[ChutiSession]
+
   override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] = {
     GameService.make().memoize.use { gameServiceLayer =>
       ChatService.make().memoize.use { chatServiceLayer =>
+        val fullLayer: ULayer[Environment & AuthRoutes.OpsService & EventLoopGroup & ServerChannelFactory] = ???
         (for {
           config <- ZIO.service[Config.Service]
           app    <- appZIO
@@ -130,26 +134,23 @@ object Chuti extends zio.App {
           started <- server.make
             .use(start =>
               // Waiting for the server to start
-              console.putStrLn(s"Server started on port ${start.port}")
-
+              console.putStrLn(s"Server started on port ${start.port}") *> ZIO.never
               // Ensures the server doesn't die after printing
-                *> ZIO.never
             )
         } yield started).exitCode
-          .injectCustom(
-            repositoryLayer,
-            TokenHolder.mockLayer,
-            loggingLayer,
-            postmanLayer,
-            configLayer,
-            gameServiceLayer,
-            chatServiceLayer,
-            ServerChannelFactory.auto,
-            EventLoopGroup.auto(),
-            authOpsLayer,
-            Auth.SessionStorage.tokenEncripted[ChutiSession],
-            Auth.SessionTransport.cookieSessionTransport[ChutiSession]
-          )
+          .provideCustomLayer(fullLayer)
+//            (configLayer >>> repositoryLayer) ++
+//              TokenHolder.mockLayer ++
+//              loggingLayer ++
+//              (configLayer >>> postmanLayer) ++
+//              configLayer ++
+//              gameServiceLayer ++
+//              (loggingLayer >>> chatServiceLayer) ++
+//              ServerChannelFactory.auto ++
+//              EventLoopGroup.auto() ++
+//              ((configLayer >>> repositoryLayer) >>> authOpsLayer) ++
+//              (clockLayer >>> sessionStorageLayer) ++
+//              ((clockLayer >>> sessionStorageLayer) >>> Auth.SessionTransport.cookieSessionTransport[ChutiSession])
       }
     }
   }

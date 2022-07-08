@@ -23,10 +23,9 @@ import javax.crypto.spec.SecretKeySpec
 
 package object coinbase {
 
-  object Currency extends Enumeration {
+  enum Currency {
 
-    type Currency = Value
-    val BTC: Currency = Value
+    case BTC
 
   }
 

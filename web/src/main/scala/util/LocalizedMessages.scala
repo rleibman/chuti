@@ -27,9 +27,9 @@ abstract class LocalizedMessages {
   def bundles: Map[String, MessageBundle]
 
   def localized(
-    key:             String,
-    default:         String = ""
-  )(implicit locale: Locale = new Locale("es", "MX")
+    key:          String,
+    default:      String = ""
+  )(using locale: Locale = new Locale("es", "MX")
   ): String = {
     println(s"locale $locale, key = $key")
     (for {

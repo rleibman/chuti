@@ -19,18 +19,18 @@ package dao
 import api.ChutiSession
 import zio.{Has, Layer, ZLayer}
 
-object SessionProvider {
+object SessionContext {
 
   trait Session {
 
     def session: ChutiSession
 
   }
-  def live(s: ChutiSession): Session = {
-    new Session {
-      val session: ChutiSession = s
-    }
-  }
-  def layer(session: ChutiSession): Layer[Nothing, Has[Session]] = ZLayer.succeed(live(session))
+  def live(session: ChutiSession): Layer[Nothing, Has[Session]] =
+    ZLayer.succeed(new Session {
+
+      val session: ChutiSession = session
+
+    })
 
 }

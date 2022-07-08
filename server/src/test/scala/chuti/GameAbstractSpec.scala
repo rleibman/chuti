@@ -21,7 +21,6 @@ import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
 import dao.Repository.GameOperations
-import dao.slick.DatabaseProvider
 import dao.{Repository, RepositoryIO}
 import io.circe.Printer
 import io.circe.generic.auto.*
@@ -29,15 +28,15 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
 import mail.Postman.Postman
-import org.mockito.scalatest.MockitoSugar
 import zio.*
+import zio.cache.{Cache, Lookup}
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 
 import java.util.UUID
-import scala.concurrent.duration.Duration
+import zio.duration.*
 
-trait GameAbstractSpec extends MockitoSugar {
+trait GameAbstractSpec {
 
   val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
 
@@ -50,8 +49,7 @@ trait GameAbstractSpec extends MockitoSugar {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
 
-  val testRuntime:      zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  val databaseProvider: DatabaseProvider.Service = mock[DatabaseProvider.Service]
+  val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
   def createUserOperations: Repository.UserOperations = {
     val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
     userOperations
@@ -65,32 +63,33 @@ trait GameAbstractSpec extends MockitoSugar {
     Repository & Postman & Logging & TokenHolder & ChatService
   ] = {
     val loggingLayer = Slf4jLogger.make((_, b) => b)
-    ZLayer.succeed(databaseProvider) ++
-      ZLayer.succeed(new Repository.Service {
-        override val gameOperations: GameOperations = gameOps
-        override val userOperations: Repository.UserOperations = userOps
-        override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
-          override def cleanup: RepositoryIO[Boolean] = ???
+    ZLayer.succeed(new Repository.Service {
+      override val gameOperations: GameOperations = gameOps
+      override val userOperations: Repository.UserOperations = userOps
+      override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
+        override def cleanup: RepositoryIO[Boolean] = ???
 
-          override def validateToken(
-            token:   Token,
-            purpose: TokenPurpose
-          ): RepositoryIO[Option[User]] = ???
+        override def validateToken(
+          token:   Token,
+          purpose: TokenPurpose
+        ): RepositoryIO[Option[User]] = ???
 
-          override def createToken(
-            user:    User,
-            purpose: TokenPurpose,
-            ttl:     Option[Duration]
-          ): RepositoryIO[Token] = ???
+        override def createToken(
+          user:    User,
+          purpose: TokenPurpose,
+          ttl:     Option[Duration]
+        ): RepositoryIO[Token] = ???
 
-          override def peek(
-            token:   Token,
-            purpose: TokenPurpose
-          ): RepositoryIO[Option[User]] = ???
-        }
-      }) ++
+        override def peek(
+          token:   Token,
+          purpose: TokenPurpose
+        ): RepositoryIO[Option[User]] = ???
+      }
+    }) ++
       loggingLayer ++
-      ZLayer.succeed(TokenHolder.tempCache) ++
+      (for {
+        cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
+      } yield TokenHolder.tempCache(cache)).toLayer ++
       ZLayer.succeed(postman) ++
       (loggingLayer >>> ChatService.make())
   }

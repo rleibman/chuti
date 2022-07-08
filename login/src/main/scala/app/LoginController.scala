@@ -24,10 +24,9 @@ import react.Toast
 //import react.Toast
 import org.scalajs.dom.window
 
-object Mode extends Enumeration {
+enum Mode {
 
-  type Mode = Value
-  val login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken, newUserAcceptFriend = Value
+  case login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken, newUserAcceptFriend
 
 }
 import app.Mode.*
@@ -51,7 +50,7 @@ object LoginController {
     token:   Option[String] = None
   )
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
     def onModeChanged(
       mode:             Mode,

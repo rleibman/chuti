@@ -20,70 +20,44 @@ lazy val start = TaskKey[Unit]("start")
 lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
 
+lazy val scala3Opts = Seq(
+  "-no-indent", // scala3
+  "-old-syntax", // scala3
+  "-encoding",
+  "utf-8", // Specify character encoding used by source files.
+  "-feature", // Emit warning and location for usages of features that should be imported explicitly.
+  "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
+  "-language:implicitConversions",
+  "-language:higherKinds", // Allow higher-kinded types
+  "-unchecked", // Enable additional warnings where generated code depends on assumptions.
+  //  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
+  "-deprecation", // Emit warning and location for usages of deprecated APIs.
+  "-explain-types", // Explain type errors in more detail.
+  //  "-Yexplicit-nulls" // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
+  "-Xmax-inlines", "64"
+)
+
 enablePlugins(
   GitVersioning,
   CalibanPlugin
 )
 
-val akkaVersion = "2.6.19"
-val akkaHttpVersion = "10.2.9"
-val slickVersion = "3.3.3"
-
 val circeVersion = "0.14.2"
 val calibanVersion = "1.4.1"
-val scalaCacheVersion = "0.28.0"
-val zioVersion = "1.0.15"
-val monocleVersion = "2.1.0"
-val quillVersion = "3.18.0"
+val zioVersion = "1.0.14"
+val quillVersion = "3.19.0"
 val zioHttpVersion = "1.0.0.0-RC27"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
-  scalaVersion := "2.13.8",
+  scalaVersion := "3.1.3",
   startYear := Some(2020),
   organizationName := "Roberto Leibman",
   headerLicense := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
 )
 
-//lazy val scala3CompatOpts = Seq(
-//  // Scala 2.13 in scala 3 compatibility mode
-//  "-Xsource:3",
-//  "-explaintypes", // Explain type errors in more detail.
-//  "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-//  "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
-//  "-language:experimental.macros", // Allow macro definition (besides implementation and application)
-//  "-language:higherKinds", // Allow higher-kinded types
-//  "-language:implicitConversions", // Allow definition of implicit functions called views
-//  "-Xlint:nonlocal-return", // A return statement used an exception for flow control.
-//  "-Xlint:implicit-not-found", // Check @implicitNotFound and @implicitAmbiguous messages.
-//  "-Xlint:serial", // @SerialVersionUID on traits and non-serializable classes.
-//  "-Xlint:valpattern", // Enable pattern checks in val definitions.
-//  "-Xlint:eta-zero", // Warn on eta-expansion (rather than auto-application) of zero-ary method.
-//  "-Xlint:eta-sam", // Warn on eta-expansion to meet a Java-defined functional interface that is not explicitly annotated with @FunctionalInterface.
-//  "-Xlint:implicit-recursion", // Warn when an implicit resolves to an enclosing self-definition.
-//  "-Wextra-implicit", // Warn when more than one implicit parameter section is defined.
-//  "-Wmacros:both", // Lints code before and after applying a macro
-//  "-Wnumeric-widen", // Warn when numerics are widened.
-//  "-Woctal-literal", // Warn on obsolete octal syntax.
-//  // weird interaction with Zio... "-Wdead-code",                       // Warn when dead code is identified.
-//  "-Wunused:imports", // Warn if an import selector is not referenced.
-//  "-Wunused:patvars", // Warn if a variable bound in a pattern is unused.
-//  "-Wunused:privates", // Warn if a private member is unused.
-//  "-Wunused:locals", // Warn if a local definition is unused.
-//  "-Wunused:explicits", // Warn if an explicit parameter is unused.
-//  "-Wunused:implicits", // Warn if an implicit parameter is unused.
-//  "-Wunused:params", // Enable -Wunused:explicits,implicits.
-//  "-Wunused:linted",
-//  "-Wvalue-discard", // Warn when non-Unit expression results are unused.
-//  "-Ymacro-annotations", // required to enable @ConfiguredJsonCodec annotation from circe
-//  "-Ywarn-macros:after" // this is to avoid `unused local variable warning` for implicits; https://github.com/scala/bug/issues/10599,
-//)
-
 lazy val commonVmSettings = commonSettings ++ Seq(
-  scalacOptions ++= Seq(
-    "-Xsource:3",
-    "-deprecation" // Emit warning and location for usages of deprecated APIs.
-  ),
+  scalacOptions := scala3Opts,
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
     "io.circe" %% "circe-generic",
@@ -98,14 +72,14 @@ lazy val commonJVM = common.jvm
 lazy val commonJS = common.js
 
 lazy val common = crossProject(JSPlatform, JVMPlatform)
-  .settings(commonVmSettings)
   .enablePlugins(
     AutomateHeaderPlugin,
     GitVersioning,
     BuildInfoPlugin
   )
   .settings(
-    name             := "chuti-common",
+    scalaVersion := "3.1.3",
+    name := "chuti-common",
     buildInfoPackage := "chuti"
   )
   .jvmSettings(
@@ -118,15 +92,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
         "io.circe" %%% "circe-generic",
         "io.circe" %%% "circe-parser",
         "io.circe" %%% "circe-literal"
-      ).map(_ % circeVersion),
-      libraryDependencies ++= Seq(
-        "com.github.julien-truffaut" %%% "monocle-core"    % monocleVersion,
-        "com.github.julien-truffaut" %%% "monocle-generic" % monocleVersion,
-        "com.github.julien-truffaut" %%% "monocle-macro"   % monocleVersion,
-        "com.github.julien-truffaut" %%% "monocle-state"   % monocleVersion,
-        "com.github.julien-truffaut" %%% "monocle-refined" % monocleVersion,
-        "com.github.julien-truffaut" %%% "monocle-unsafe"  % monocleVersion
-      )
+      ).map(_ % circeVersion)
     )
   )
 
@@ -152,44 +118,32 @@ lazy val server = project
     name                                                 := "chuti-server",
     libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
     libraryDependencies ++= Seq(
-      // Akka
-      "com.typesafe.akka"                  %% "akka-stream"     % akkaVersion withSources (),
-      "com.typesafe.akka"                  %% "akka-http"       % akkaHttpVersion withSources (),
-      "de.heikoseeberger"                  %% "akka-http-circe" % "1.39.2" withSources (),
-      "com.softwaremill.akka-http-session" %% "core"            % "0.7.0" withSources (),
       // DB
-      "com.typesafe.slick"        %% "slick"                  % slickVersion withSources (),
-      "com.typesafe.slick"        %% "slick-codegen"          % slickVersion withSources (),
-      "mysql"                      % "mysql-connector-java"   % "8.0.29" withSources (),
-      "com.foerster-technologies" %% "slick-mysql_circe-json" % "1.1.0" withSources (),
-      "io.getquill"               %% "quill-jdbc-zio"         % quillVersion withSources (),
-      // Scala Cache
-      "com.github.cb372" %% "scalacache-core" % scalaCacheVersion withSources(),
-      "com.github.cb372" %% "scalacache-caffeine" % scalaCacheVersion withSources(),
+      "mysql" % "mysql-connector-java" % "8.0.29" withSources(),
+      "io.getquill" %% "quill-jdbc-zio" % quillVersion withSources(),
       // ZIO
       "dev.zio" %% "zio" % zioVersion withSources(),
+      "dev.zio" %% "zio-cache" % "0.1.2" withSources(),
       "dev.zio" %% "zio-config" % "2.0.4" withSources(),
+      "dev.zio" %% "zio-config-derivation" % "2.0.4" withSources(),
       "dev.zio" %% "zio-config-magnolia" % "2.0.4" withSources(),
       "dev.zio" %% "zio-config-typesafe" % "2.0.4" withSources(),
       "dev.zio" %% "zio-logging-slf4j" % "0.5.14" withSources(),
       "dev.zio" %% "izumi-reflect" % "2.1.0" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
-      "com.github.ghostdogpr" %% "caliban-akka-http" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
-      "io.github.kitlangton" %% "zio-magic" % "0.3.12" withSources(),
       "io.d11" %% "zhttp" % zioHttpVersion withSources(),
       "com.github.jwt-scala" %% "jwt-circe" % "9.0.5" withSources(),
       // Other random utilities
-      "com.github.pathikrit" %% "better-files" % "3.9.1" withSources(),
-      "com.github.daddykotex" %% "courier" % "3.1.0" withSources(),
+      ("com.github.pathikrit" %% "better-files" % "3.9.1" withSources()).cross(CrossVersion.for3Use2_13),
+      "com.github.daddykotex" %% "courier" % "3.2.0" withSources(),
       "ch.qos.logback" % "logback-classic" % "1.2.11" withSources(),
       "commons-codec" % "commons-codec" % "1.15",
       // Testing
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
-      "org.mockito" %% "mockito-scala-scalatest" % "1.17.7" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" % "it, test" withSources(),
       "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
@@ -212,6 +166,7 @@ lazy val login: Project = project
   )
   .settings(
     name := "chuti-login",
+    scalacOptions ++= Seq("-scalajs"),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "login" / "src" / "main" / "web"
@@ -300,16 +255,17 @@ lazy val bundlerSettings: Project => Project =
       Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
       Compile / fastOptJS / artifactPath := ((Compile / fastOptJS / crossTarget).value /
         ((fastOptJS / moduleName).value + "-opt.js")),
-//      Compile / fullOptJS / webpackExtraArgs += "--mode=production",
+      //      Compile / fullOptJS / webpackExtraArgs += "--mode=production",
       Compile / fullOptJS / webpackDevServerExtraArgs += "--mode=production",
       Compile / fullOptJS / artifactPath := ((Compile / fullOptJS / crossTarget).value /
         ((fullOptJS / moduleName).value + "-opt.js")),
-      useYarn                                   := true,
-      run / fork                                := true,
-      Global / scalaJSStage                     := FastOptStage,
+      useYarn := true,
+      run / fork := true,
+      Global / scalaJSStage := FastOptStage,
       Compile / scalaJSUseMainModuleInitializer := true,
-      Test / scalaJSUseMainModuleInitializer    := false,
-      webpackEmitSourceMaps                     := true
+      Test / scalaJSUseMainModuleInitializer := false,
+      webpackEmitSourceMaps := false,
+      scalaJSLinkerConfig ~= (_.withSourceMap(false)),
     )
 
 lazy val stLib = project
@@ -317,11 +273,11 @@ lazy val stLib = project
   .enablePlugins(ScalablyTypedConverterGenSourcePlugin)
   .configure(reactNpmDeps)
   .settings(
-    name                     := "chuti-stLib",
-    scalaVersion             := "2.13.8",
-    useYarn                  := true,
-    stOutputPackage          := "net.leibman.chuti",
-    stFlavour                := Flavour.ScalajsReact,
+    name := "chuti-stLib",
+    scalaVersion := "3.1.3",
+    useYarn := true,
+    stOutputPackage := "net.leibman.chuti",
+    stFlavour := Flavour.ScalajsReact,
     stReactEnableTreeShaking := Selection.All,
     Compile / npmDependencies ++= Seq(
       "semantic-ui-react" -> "2.0.3"
@@ -330,8 +286,8 @@ lazy val stLib = project
     /* disabled because it somehow triggers many warnings */
     scalaJSLinkerConfig ~= (_.withSourceMap(false)),
     libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion withSources (),
-      "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion withSources ()
+      "com.github.japgolly.scalajs-react" %%% "core" % scalajsReactVersion withSources(),
+      "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion withSources()
     )
   )
 
@@ -349,6 +305,7 @@ lazy val web: Project = project
   )
   .settings(
     name := "chuti-web",
+    scalacOptions ++= Seq("-scalajs"),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
@@ -406,9 +363,11 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources(),
-      "com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0",
-      "ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.6.2" withSources(),
+      //      ("com.softwaremill.sttp.model" %%% "core" % "1.4.27" withSources()).cross(CrossVersion.for3Use2_13),
+      //      ("com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources()).cross(CrossVersion.for3Use2_13),
+      //      ("com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0").cross(CrossVersion.for3Use2_13),
+      //      ("ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources()).cross(CrossVersion.for3Use2_13),
       "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),
@@ -418,62 +377,15 @@ lazy val commonWeb: Project => Project =
       "com.lihaoyi" %%% "scalatags" % "0.11.1" withSources(),
       "com.github.japgolly.scalacss" %%% "core" % "1.0.0" withSources(),
       "com.github.japgolly.scalacss" %%% "ext-react" % "1.0.0" withSources(),
-      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
+      //      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
     ),
     organizationName := "Roberto Leibman",
-    startYear        := Some(2020),
+    startYear := Some(2020),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    scalacOptions ++= Seq(
-      "-Xsource:3",
-      // Feature options
-      "-explaintypes", // Explain type errors in more detail.
-      "-feature", // Emit warning and location for usages of features that should be imported explicitly.
-      "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
-      "-language:experimental.macros", // Allow macro definition (besides implementation and application)
-      "-language:higherKinds", // Allow higher-kinded types
-      "-language:implicitConversions", // Allow definition of implicit functions called views
-      "-Ymacro-annotations",
-      "-encoding",
-      "utf-8",
-      // Warnings as errors!
-//        "-Xfatal-warnings",
-
-      // Linting options
-      "-unchecked", // Enable additional warnings where generated code depends on assumptions.
-      "-Xcheckinit", // Wrap field accessors to throw an exception on uninitialized access.
-      "-Xlint:adapted-args", // Warn if an argument list is modified to match the receiver.
-      "-Xlint:constant", // Evaluation of a constant arithmetic expression results in an error.
-      "-Xlint:delayedinit-select", // Selecting member of DelayedInit.
-      "-Xlint:deprecation", // Emit warning and location for usages of deprecated APIs.
-      "-Xlint:doc-detached", // A Scaladoc comment appears to be detached from its element.
-      "-Xlint:inaccessible", // Warn about inaccessible types in method signatures.
-      "-Xlint:infer-any", // Warn when a type argument is inferred to be `Any`.
-      "-Xlint:missing-interpolator", // A string literal appears to be missing an interpolator id.
-      "-Xlint:nullary-unit", // Warn when nullary methods return Unit.
-      "-Xlint:option-implicit", // Option.apply used implicit view.
-      "-Xlint:package-object-classes", // Class or object defined in package object.
-      "-Xlint:poly-implicit-overload", // Parameterized overloaded implicit methods are not visible as view bounds.
-      "-Xlint:private-shadow", // A private field (or class parameter) shadows a superclass field.
-      "-Xlint:stars-align", // Pattern sequence wildcard must align with sequence component.
-      "-Xlint:type-parameter-shadow", // A local type parameter shadows a type already in scope.
-      "-Wdead-code", // Warn when dead code is identified.
-      "-Wextra-implicit", // Warn when more than one implicit parameter section is defined.
-      "-Wnumeric-widen", // Warn when numerics are widened.
-      "-Wunused:implicits", // Warn if an implicit parameter is unused.
-      "-Wunused:imports", // Warn if an import selector is not referenced.
-      "-Wunused:locals", // Warn if a local definition is unused.
-      "-Wunused:params", // Warn if a value parameter is unused.
-      "-Wunused:patvars", // Warn if a variable bound in a pattern is unused.
-      "-Wunused:privates", // Warn if a private member is unused.
-      "-Wvalue-discard", // Warn when non-Unit expression results are unused.
-      "-Ybackend-parallelism",
-      "8", // Enable paralellisation — change to desired number!
-      "-Ycache-plugin-class-loader:last-modified", // Enables caching of classloaders for compiler plugins
-      "-Ycache-macro-class-loader:last-modified" // and macro definitions. This can lead to performance improvements.
-    ),
+    scalacOptions := scala3Opts,
     Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
-    Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value),
-    webpackDevServerPort                 := 8009
+    Test / unmanagedSourceDirectories := Seq((Test / scalaSource).value),
+    webpackDevServerPort := 8009
   )
 
 lazy val withCssLoading: Project => Project =

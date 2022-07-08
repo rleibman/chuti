@@ -21,8 +21,10 @@ import org.scalajs.dom.window
 object Config {
 
   val chutiHost =
-    s"${window.location.hostname}${if (window.location.port != "" && window.location.port != "80")
-        s":${window.location.port}"
-      else ""}"
+    s"${window.location.hostname}${
+        if (window.location.port != "" && window.location.port != "80")
+          s":${window.location.port}"
+        else ""
+      }"
 
 }

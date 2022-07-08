@@ -8,7 +8,6 @@ import io.circe.Decoder
 import io.circe.generic.auto.*
 import io.circe.parser.decode
 import zio.*
-import zio.magic.*
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
@@ -18,9 +17,8 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object QuillGameSpec extends QuillSpec {
 
-  implicit val localDateTimeDecoder: Decoder[LocalDateTime] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME)
-  implicit val instantDecoder: Decoder[Instant] =
-    Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME).map(_.toInstant(ZoneOffset.UTC))
+  given localDateTimeDecoder: Decoder[LocalDateTime] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME)
+  given instantDecoder: Decoder[Instant] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME).map(_.toInstant(ZoneOffset.UTC))
 
   def readGame(filename: String): IO[circe.Error, Game] =
     ZIO.fromEither {
@@ -61,7 +59,7 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(deleted) &&
           assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)
       }
-    ).injectShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
+    ).provideLayerShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]
   //  def userInGame(id:      GameId): RepositoryIO[Boolean]
   //  def updatePlayers(game: Game):   RepositoryIO[Game]

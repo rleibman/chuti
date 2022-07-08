@@ -42,7 +42,7 @@ object RegistrationPage {
     user:         User = User(id = None, email = "", name = "", created = Instant.now)
   )
 
-  class Backend($ : BackendScope[_, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
     private def onUserInputChange(fn: (User, String) => User) = {
       (

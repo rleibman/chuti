@@ -14,15 +14,92 @@
  * limitations under the License.
  */
 
-import java.time.{Instant, ZoneOffset}
+import io.circe.{Decoder, Encoder}
 
+import java.time.{Instant, ZoneOffset}
 import scala.util.Random
 
 package object chuti {
 
-  val godlessUserId: UserId = UserId(-999)
+  opaque type UserId = Int
 
-  val godUserId: UserId = UserId(-666)
+  object UserId {
+
+    def apply(userId: Int): UserId = userId
+
+    given Decoder[UserId] = Decoder.decodeInt
+
+    given Encoder[UserId] = Encoder.encodeInt
+
+  }
+
+  extension (id: UserId) {
+
+    def userId: Int = id
+
+  }
+
+  val godlessUserId: UserId = -999
+
+  val godUserId: UserId = -666
+
+  opaque type ConnectionId = Int
+
+  extension (id: ConnectionId) {
+
+    def connectionId: Int = id
+
+  }
+
+  object ConnectionId {
+
+    def apply(connectionId: Int): ConnectionId = connectionId
+
+    given Decoder[ConnectionId] = Decoder.decodeInt
+
+    given Encoder[ConnectionId] = Encoder.encodeInt
+
+  }
+
+  opaque type GameId = Int
+
+  extension (id: GameId) {
+
+    def gameId: Int = id
+
+  }
+
+  object GameId {
+
+    def apply(gameId: Int): GameId = gameId
+
+    given Decoder[GameId] = Decoder.decodeInt
+
+    given Encoder[GameId] = Encoder.encodeInt
+
+  }
+
+  opaque type ChannelId = Int
+
+  extension (id: ChannelId) {
+
+    def channelId: Int = id
+
+  }
+
+  object ChannelId {
+
+    def apply(channelId: Int): ChannelId = channelId
+
+    given Decoder[ChannelId] = Decoder.decodeInt
+
+    given Encoder[ChannelId] = Encoder.encodeInt
+
+    // some special channels
+    val lobbyChannel:  ChannelId = -1
+    val directChannel: ChannelId = -2
+
+  }
 
   // A user who can do anything
   val god: User = User(

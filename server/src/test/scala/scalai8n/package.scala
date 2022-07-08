@@ -34,15 +34,9 @@ import java.util.Locale
 
 package object scalai8n {
 
-  implicit class I8NString(val s: String) extends AnyVal {
+  opaque type I8NString = String
 
-    def toString(implicit locale: Locale): String = {
-      s // TODO translate string here.
-    }
-
-  }
-
-  implicit class I8NInterpolator(val sc: StringContext) extends AnyVal {
+  extension (sc: StringContext) {
 
     def i8n(args: Any*): I8NString = {
       println(sc.parts.map(s => s"'$s'").mkString(","))

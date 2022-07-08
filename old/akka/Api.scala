@@ -23,7 +23,7 @@ import akka.routes.{ModelRoutes, StaticHTMLRoute}
 import api.config.Config
 import api.token.TokenHolder
 import chat.ChatService.ChatService
-import dao.{Repository, SessionProvider}
+import dao.{Repository, SessionContext}
 import game.GameService.GameService
 import mail.Postman.Postman
 import zio.ZIO
@@ -70,7 +70,7 @@ trait Api extends RouteConcatenation with Directives with StaticHTMLRoute with M
                           apiRoute
                             .provideSomeLayer[
                               Console & Clock & GameService & ChatService & Logging & Config & Repository & Postman & TokenHolder
-                            ](SessionProvider.layer(session)).provide(r)
+                            ](SessionContext.layer(session)).provide(r)
                         case None =>
                           log.info(
                             s"Unauthorized ${requestContext.request.method.value} request of ${requestContext.unmatchedPath}, redirecting to login"

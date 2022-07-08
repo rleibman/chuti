@@ -16,35 +16,25 @@
 
 package api
 
-import chuti.User
-import dao.{Repository, SessionProvider}
+import chuti.{User, UserId}
+import dao.{Repository, SessionContext}
 import game.GameService
-import scalacache.Cache
-import scalacache.caffeine.CaffeineCache
 import zio.*
+import zio.duration.*
+import zio.cache.Cache
 import zio.clock.Clock
 import zio.logging.{Logger, Logging}
 import zio.random.Random
 
 import java.math.BigInteger
 import java.security.SecureRandom
-import scala.concurrent.duration.*
 
 package object token {
 
-  sealed trait TokenPurpose
-  object TokenPurpose {
+  enum TokenPurpose(override val toString: String) {
 
-    case object NewUser extends TokenPurpose {
-
-      override def toString: String = "NewUser"
-
-    }
-    case object LostPassword extends TokenPurpose {
-
-      override def toString: String = "LostPassword"
-
-    }
+    case NewUser extends TokenPurpose(toString = "NewUser")
+    case LostPassword extends TokenPurpose(toString = "LostPassword")
 
   }
 
@@ -101,8 +91,8 @@ package object token {
     def liveLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
       ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
         new Service {
-//          SessionProvider & Logging
-          val layer: ZLayer[Any, Nothing, SessionProvider & Logging & Clock & Random] =
+          //          SessionContext & Logging
+          val layer: ZLayer[Any, Nothing, SessionContext & Logging & Clock & Random] =
             GameService.godLayer ++ ZLayer.succeed(log) ++ Clock.live ++ Random.live
 
           zio.Runtime.default.unsafeRun {
@@ -129,39 +119,48 @@ package object token {
         }
       })
 
-    val tempCache: Service = new Service {
+    def tempCache(cache: Cache[(String, TokenPurpose), Nothing, User]): Service =
+      new Service {
 
-      private val random = SecureRandom.getInstanceStrong
-      import scalacache.ZioEffect.modes.*
-      implicit val userTokenCache: Cache[User] = CaffeineCache[User]
+        private val random = SecureRandom.getInstanceStrong
 
-      override def createToken(
-        user:    User,
-        purpose: TokenPurpose,
-        ttl:     Option[Duration] = Option(3.hours)
-      ): Task[Token] = {
-        val t = new BigInteger(12 * 5, random).toString(32)
-        scalacache.put(t, purpose)(user, ttl).as(Token(t))
+        override def createToken(
+          user:    User,
+          purpose: TokenPurpose,
+          ttl:     Option[Duration] = Option(3.hours)
+        ): Task[Token] = {
+          val t = new BigInteger(12 * 5, random).toString(32)
+          cache.get((t, purpose)).as(Token(t))
+        }
+
+        override def validateToken(
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = {
+          for {
+            contains <- cache.contains((token.tok, purpose))
+            u <-
+              if (contains) {
+                cache.get((token.tok, purpose)).map(Some.apply)
+              } else ZIO.none
+            _ <- cache.invalidate(token.tok, purpose)
+          } yield u
+        }
+
+        override def peek(
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = {
+          for {
+            contains <- cache.contains((token.tok, purpose))
+            u <-
+              if (contains) {
+                cache.get((token.tok, purpose)).map(Some.apply)
+              } else ZIO.none
+          } yield u
+        }
+
       }
-
-      override def validateToken(
-        token:   Token,
-        purpose: TokenPurpose
-      ): Task[Option[User]] = {
-        for {
-          u <- scalacache.get(token.tok, purpose)
-          _ <- scalacache.remove(token.tok, purpose)
-        } yield u
-      }
-
-      override def peek(
-        token:   Token,
-        purpose: TokenPurpose
-      ): Task[Option[User]] = {
-        scalacache.get(token.tok, purpose)
-      }
-
-    }
 
   }
 

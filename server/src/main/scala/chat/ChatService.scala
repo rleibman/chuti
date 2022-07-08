@@ -18,18 +18,21 @@ package chat
 
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.*
-import dao.{Repository, SessionProvider}
+import dao.{Repository, SessionContext}
 import zio.*
 import zio.clock.Clock
 import zio.console.Console
 import zio.duration.*
 import zio.logging.{Logging, log}
 import zio.stream.ZStream
+import chuti.ChannelId.*
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 object ChatService {
+
+  import GameId.*
 
   lazy private val ttl: Duration = 15.minutes
 
@@ -38,23 +41,23 @@ object ChatService {
 
     def getRecentMessages(
       channelId: ChannelId
-    ): ZIO[SessionProvider, GameException, Seq[ChatMessage]]
-    def say(msg: SayRequest): URIO[Repository & SessionProvider & Logging & Clock, ChatMessage]
+    ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
+    def say(msg: SayRequest): URIO[Repository & SessionContext & Logging & Clock, ChatMessage]
     def chatStream(
       channelId:    ChannelId,
       connectionId: ConnectionId
     ): ZStream[
-      Repository & SessionProvider & Logging & Clock,
+      Repository & SessionContext & Logging & Clock,
       GameException,
       ChatMessage
     ]
 
   }
 
-  implicit val runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  given runtime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
   lazy val interpreter: GraphQLInterpreter[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging,
+    Console & Clock & ChatService & Repository & SessionContext & Logging,
     CalibanError
   ] =
     runtime.unsafeRun(ChatApi.api.interpreter)
@@ -64,7 +67,7 @@ object ChatService {
     channelId: ChannelId,
     toUser:    Option[User]
   ): ZIO[
-    ChatService & Repository & SessionProvider & Logging & Clock,
+    ChatService & Repository & SessionContext & Logging & Clock,
     Nothing,
     ChatMessage
   ] =
@@ -74,7 +77,7 @@ object ChatService {
     } yield sent
 
   def say(request: SayRequest): URIO[
-    ChatService & Repository & SessionProvider & Logging & Clock,
+    ChatService & Repository & SessionContext & Logging & Clock,
     ChatMessage
   ] = URIO.accessM(_.get.say(request))
 
@@ -82,14 +85,14 @@ object ChatService {
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    ChatService & Repository & SessionProvider & Logging & Clock,
+    ChatService & Repository & SessionContext & Logging & Clock,
     GameException,
     ChatMessage
   ] = ZStream.accessStream(_.get.chatStream(channelId, connectionId))
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & SessionProvider, GameException, Seq[ChatMessage]] = URIO.accessM(_.get.getRecentMessages(channelId))
+  ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = URIO.accessM(_.get.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -112,7 +115,7 @@ object ChatService {
 
         def getRecentMessages(
           channelId: ChannelId
-        ): ZIO[SessionProvider, GameException, Seq[ChatMessage]] = {
+        ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
           recentMessages.get.map { seq =>
             val timeAgo = Instant.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
             seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
@@ -120,13 +123,13 @@ object ChatService {
         }
 
         override def say(request: SayRequest): ZIO[
-          Repository & SessionProvider & Logging & Clock,
+          Repository & SessionContext & Logging & Clock,
           Nothing,
           ChatMessage
         ] =
           for {
             allSubscriptions <- chatMessageQueue.get
-            user             <- ZIO.access[SessionProvider](_.get.session.user)
+            user             <- ZIO.access[SessionContext](_.get.session.user)
             _                <- log.info(s"Sending ${request.msg}")
             sent <- {
               // TODO make sure the user has rights to send messages on the channel,
@@ -157,19 +160,19 @@ object ChatService {
           channelId:    ChannelId,
           connectionId: ConnectionId
         ): ZStream[
-          Repository & SessionProvider & Logging & Clock,
+          Repository & SessionContext & Logging & Clock,
           GameException,
           ChatMessage
         ] =
           ZStream.unwrap {
             for {
-              user    <- ZIO.access[SessionProvider & Logging](_.get.session.user)
+              user    <- ZIO.access[SessionContext & Logging](_.get.session.user)
               gameOps <- ZIO.access[Repository](_.get.gameOperations)
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
               // admins can listen in on games.
               userInGame <-
-                gameOps.userInGame(GameId(channelId.value)).mapError(GameException.apply)
+                gameOps.userInGame(GameId(channelId.channelId)).mapError(GameException.apply)
               _ <-
                 if (channelId == ChannelId.directChannel)
                   throw GameException("No te puedes subscribir a un canal directo!")

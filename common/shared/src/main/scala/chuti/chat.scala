@@ -18,16 +18,6 @@ package chuti
 
 import java.time.Instant
 
-case class ChannelId(value: Int) extends AnyVal
-
-object ChannelId {
-
-  // some special channels
-  val lobbyChannel:  ChannelId = ChannelId(-1)
-  val directChannel: ChannelId = ChannelId(-2)
-
-}
-
 case class ChatMessage(
   fromUser:  User,
   msg:       String,

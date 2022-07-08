@@ -38,7 +38,15 @@ case class GameException(
 
 }
 
-sealed class Numero(val value: Int) {
+enum Numero(val value: Int) {
+
+  case Numero0 extends Numero(0)
+  case Numero1 extends Numero(1)
+  case Numero2 extends Numero(2)
+  case Numero3 extends Numero(3)
+  case Numero4 extends Numero(4)
+  case Numero5 extends Numero(5)
+  case Numero6 extends Numero(6)
 
   override def toString: String = value.toString
 
@@ -55,29 +63,11 @@ object Numero {
     abajo:  Numero
   ): Numero = Numero(Math.min(arriba.value, abajo.value))
 
-  case object Numero0 extends Numero(0)
-
-  case object Numero1 extends Numero(1)
-
-  case object Numero2 extends Numero(2)
-
-  case object Numero3 extends Numero(3)
-
-  case object Numero4 extends Numero(4)
-
-  case object Numero5 extends Numero(5)
-
-  case object Numero6 extends Numero(6)
-
-  def values: Seq[Numero] = Seq(Numero0, Numero1, Numero2, Numero3, Numero4, Numero5, Numero6)
-
   def apply(num: Int): Numero = values(num)
 
-  implicit val decodeNumero: Decoder[Numero] =
-    Decoder.forProduct1("value")(apply)
+  given Decoder[Numero] = Decoder.forProduct1("value")(apply)
 
-  implicit val encodeNumero: Encoder[Numero] =
-    Encoder.forProduct1("value")(_.value)
+  given Encoder[Numero] = Encoder.forProduct1("value")(_.value)
 
 }
 
@@ -154,13 +144,13 @@ object Ficha {
     Ficha(splitted(0), splitted(1))
   }
 
-  implicit val decodeFicha: Decoder[Ficha] =
+  given Decoder[Ficha] =
     Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
       case ("tapada", _, _)                   => FichaTapada
       case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
     }
 
-  implicit val encodeFicha: Encoder[Ficha] =
+  given Encoder[Ficha] =
     Encoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
       case FichaTapada                  => ("tapada", Numero0, Numero0)
       case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
@@ -220,12 +210,14 @@ case class Fila(
 
 import chuti.CuantasCantas.*
 
-object JugadorState extends Enumeration {
+enum JugadorState {
 
-  type JugadorState = Value
+  case dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado, invitedNotAnswered,
+    waitingOthersAcceptance
 
-  val dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado, invitedNotAnswered,
-    waitingOthersAcceptance = Value
+}
+
+object JugadorState {
 
   def description(state: JugadorState): String =
     state match {
@@ -301,7 +293,7 @@ object Triunfo {
 
   }
 
-  lazy val posibilidades: Seq[Triunfo] = Seq(SinTriunfos) ++ Numero.values.map(TriunfoNumero)
+  lazy val posibilidades: Seq[Triunfo] = Seq(SinTriunfos) ++ Numero.values.map(TriunfoNumero.apply)
 
   def apply(str: String): Triunfo =
     str match {
@@ -311,121 +303,48 @@ object Triunfo {
 
 }
 
-sealed trait GameStatus extends Product with Serializable {
+enum GameStatus(
+  val value:   String,
+  val enJuego: Boolean = false,
+  val acabado: Boolean = false
+) {
 
-  def value: String
-  def enJuego: Boolean = false
-  def acabado: Boolean = false
-
-}
-
-object GameStatus {
-
-  case object esperandoJugadoresInvitados extends GameStatus {
-
-    override def value: String = "esperandoJugadoresInvitados"
-
-  }
-  case object esperandoJugadoresAzar extends GameStatus {
-
-    override def value: String = "esperandoJugadoresAzar"
-
-  }
-  case object comienzo extends GameStatus {
-
-    override def value:   String = "comienzo"
-    override def enJuego: Boolean = true
-
-  }
-  case object cantando extends GameStatus {
-
-    override def value:   String = "cantando"
-    override def enJuego: Boolean = true
-
-  }
-  case object jugando extends GameStatus {
-
-    override def value:   String = "jugando"
-    override def enJuego: Boolean = true
-
-  }
-  case object requiereSopa extends GameStatus {
-
-    override def value:   String = "requiereSopa"
-    override def enJuego: Boolean = true
-
-  }
-  case object abandonado extends GameStatus {
-
-    override def value:   String = "abandonado"
-    override def acabado: Boolean = true
-
-  }
-  case object partidoTerminado extends GameStatus {
-
-    override def value:   String = "partidoTerminado"
-    override def acabado: Boolean = true
-
-  }
-  def withName(str: String): GameStatus =
-    str match {
-      case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
-      case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
-      case "comienzo"                    => comienzo
-      case "cantando"                    => cantando
-      case "jugando"                     => jugando
-      case "requiereSopa"                => requiereSopa
-      case "partidoTerminado"            => partidoTerminado
-      case "abandonado"                  => abandonado
-      case other                         => throw GameException(s"Estado de juego desconocido: $other")
-    }
+  case esperandoJugadoresInvitados extends GameStatus(value = "esperandoJugadoresInvitados")
+  case esperandoJugadoresAzar extends GameStatus(value = "esperandoJugadoresAzar")
+  case comienzo extends GameStatus(value = "comienzo", enJuego = true)
+  case cantando extends GameStatus(value = "cantando", enJuego = true)
+  case jugando extends GameStatus(value = "jugando", enJuego = true)
+  case requiereSopa extends GameStatus(value = "requiereSopa", enJuego = true)
+  case abandonado extends GameStatus(value = "abandonado", acabado = true)
+  case partidoTerminado extends GameStatus(value = "partidoTerminado", acabado = true)
 
 }
+//  def withName(str: String): GameStatus =
+//    str match {
+//      case "esperandoJugadoresInvitados" => esperandoJugadoresInvitados
+//      case "esperandoJugadoresAzar"      => esperandoJugadoresAzar
+//      case "comienzo"                    => comienzo
+//      case "cantando"                    => cantando
+//      case "jugando"                     => jugando
+//      case "requiereSopa"                => requiereSopa
+//      case "partidoTerminado"            => partidoTerminado
+//      case "abandonado"                  => abandonado
+//      case other                         => throw GameException(s"Estado de juego desconocido: $other")
+//    }
 
 import chuti.GameStatus.*
 
-sealed trait Borlote extends Product with Serializable
-object Borlote {
+enum Borlote(override val toString: String) {
 
-  case object Hoyo extends Borlote {
-
-    override def toString: String = "Hoyo!"
-
-  }
-  case object HoyoTecnico extends Borlote {
-
-    override def toString: String = "Hoyo Tecnico!"
-
-  }
-  case object ElNiñoDelCumpleaños extends Borlote {
-
-    override def toString: String = "El Niño del Cumpleaños!"
-
-  }
-  case object SantaClaus extends Borlote {
-
-    override def toString: String = "Santa Claus!"
-
-  }
-  case object Campanita extends Borlote {
-
-    override def toString: String = "Campanita!"
-
-  }
-  case object Helecho extends Borlote {
-
-    override def toString: String = "Helecho!"
-
-  }
-  case object TodoConDos extends Borlote {
-
-    override def toString: String = "Todo con dos!!!!"
-
-  }
+  case Hoyo extends Borlote(toString = "Hoyo!")
+  case HoyoTecnico extends Borlote(toString = "Hoyo Tecnico!")
+  case ElNiñoDelCumpleaños extends Borlote(toString = "El Niño del Cumpleaños!")
+  case SantaClaus extends Borlote(toString = "Santa Claus!")
+  case Campanita extends Borlote(toString = "Campanita!")
+  case Helecho extends Borlote(toString = "Helecho!")
+  case TodoConDos extends Borlote(toString = "Todo con dos!!!!")
 
 }
-
-case class GameId(value: Int) extends AnyVal
 
 object Game {
 
@@ -515,7 +434,7 @@ case class Game(
   @transient
   lazy val ganadorDePartido: Option[Jugador] = jugadores.find(_.ganadorDePartido)
   @transient
-  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
+  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.gameId))
   @transient
   lazy val mano: Option[Jugador] = jugadores.find(_.mano)
   @transient
@@ -822,8 +741,10 @@ case class Game(
   override def toString: String = {
     def jugadorStr(jugador: Jugador): String =
       s"""
-         |${jugador.user.name}: ${if (jugador.mano) "Me toca cantar"
-        else ""} ${jugador.cuantasCantas
+         |${jugador.user.name}: ${
+          if (jugador.mano) "Me toca cantar"
+          else ""
+        } ${jugador.cuantasCantas
           .fold("")(c => s"canto: $c")}
          |${jugador.fichas.map(_.toString).mkString(" ")}""".stripMargin
 

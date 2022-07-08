@@ -183,8 +183,7 @@ case object DumbChutiBot extends ChutiBot {
         Buenas
       else CuantasCantas.byNum(cuantas)
 
-    if (jugador.turno)
-      Canta(cuantasCantas)
+    if (jugador.turno) Canta(cuantasCantas)
     else {
       val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
       if (cuantasCantas.prioridad > prev.prioridad)

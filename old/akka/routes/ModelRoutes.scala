@@ -16,21 +16,7 @@
 
 package akka.routes
 
-import akka.HasActorSystem
-import akka.actor.ActorSystem
-import akka.http.scaladsl.server.{Directives, Route}
-import api.config.Config
-import api.token.TokenHolder
-import chat.ChatService.ChatService
-import chuti.{PagedStringSearch, User, UserId}
-import dao.{CRUDOperations, Repository, SessionProvider}
-import game.GameService.{GameLayer, GameService}
 import io.circe.generic.auto.*
-import mail.Postman.Postman
-import zio.*
-import zio.clock.Clock
-import zio.console.Console
-import zio.logging.Logging
 
 /** For convenience, this trait aggregates all of the model routes.
   */
@@ -79,7 +65,7 @@ trait ModelRoutes extends Directives {
   //  }
 
   def apiRoute: ZIO[
-    Console & Clock & ChatService & Repository & SessionProvider & Logging & Config & GameService & GameLayer,
+    Console & Clock & ChatService & Repository & SessionContext & Logging & Config & GameService & GameLayer,
     Throwable,
     Route
   ] = {
@@ -91,7 +77,7 @@ trait ModelRoutes extends Directives {
         val opsLayer: ULayer[Has[CRUDOperations[chuti.User, chuti.UserId, chuti.PagedStringSearch]]] =
           ZLayer.succeed(repo.userOperations)
         authRoute.crudRoute.route
-          .provideSomeLayer[Repository & SessionProvider & Logging & Clock](
+          .provideSomeLayer[Repository & SessionContext & Logging & Clock](
             opsLayer
           )
       }

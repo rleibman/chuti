@@ -17,10 +17,8 @@
 package pages
 
 import _root_.util.LocalizedMessages
-import app.GameViewMode.GameViewMode
 import app.{ChutiState, GameViewMode}
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
-import chuti.JugadorState.JugadorState
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.*
 import components.{Confirm, Toast}
@@ -80,7 +78,7 @@ object GameComponent {
       event:  PlayEvent
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.value, event.asJson),
+        Mutations.play(gameId.gameId, event.asJson),
         _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
       )
     }
@@ -154,8 +152,10 @@ object GameComponent {
                 <.div(
                   ^.className := s"statusBar$playerPosition",
                   <.div(
-                    ^.className := s"playerName ${if (canPlay) "canPlay"
-                      else ""}",
+                    ^.className := s"playerName ${
+                        if (canPlay) "canPlay"
+                        else ""
+                      }",
                     jugador.user.name
                   ),
                   <.div(
@@ -163,8 +163,10 @@ object GameComponent {
                     if (jugador.turno) "Le toco cantar. " else "", // TODO i8n
                     jugador.cuantasCantas
                       .fold("")(c =>
-                        s"Canto ${if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa // TODO i8n
-                          else c}"
+                        s"Canto ${
+                            if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa // TODO i8n
+                            else c
+                          }"
                       ),
                     jugador.statusString
                   )
@@ -375,8 +377,10 @@ object GameComponent {
                             } else
                               Callback.empty
                           },
-                          ^.className := s"domino$playerPosition ${if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
-                            else ""}"
+                          ^.className := s"domino$playerPosition ${
+                              if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
+                              else ""
+                            }"
                         ),
                         <.div(
                           ^.className := "domino0FlipAction",
@@ -445,8 +449,10 @@ object GameComponent {
                             ^.className := s"dominoJugado${playerPosition}Container",
                             <.img(
                               ^.src := s"images/${ficha.abajo}_${ficha.arriba}x75.png",
-                              ^.className := s"dominoJugado$playerPosition${if (fichaGanadora.fold(false)(_ == ficha)) " fichaGanadora"
-                                else ""}"
+                              ^.className := s"dominoJugado$playerPosition${
+                                  if (fichaGanadora.fold(false)(_ == ficha)) " fichaGanadora"
+                                  else ""
+                                }"
                             )
                           )
                         } else {
@@ -545,13 +551,12 @@ object GameComponent {
 
   }
 
-  implicit val triunfoReuse: Reusability[Triunfo] = Reusability.by(_.toString)
-  implicit val gameReuse: Reusability[Game] =
-    Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
-  implicit val cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)
-  implicit val fichasReuse:        Reusability[Ficha] = Reusability.by(_.toString)
-  implicit private val stateReuse: Reusability[State] = Reusability.derive[State]
-  implicit private val propsReuse: Reusability[Props] = Reusability.derive[Props]
+  given triunfoReuse:       Reusability[Triunfo] = Reusability.by(_.toString)
+  given gameReuse:          Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)
+  given fichasReuse:        Reusability[Ficha] = Reusability.by(_.toString)
+  given stateReuse:         Reusability[State] = Reusability.derive[State]
+  given propsReuse:         Reusability[Props] = Reusability.derive[Props]
 
   private val component = ScalaComponent
     .builder[Props]

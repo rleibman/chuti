@@ -17,14 +17,13 @@
 package chuti
 
 import api.ChutiSession
-import dao.SessionProvider
+import dao.SessionContext
 import game.GameService
-import org.mockito.scalatest.MockitoSugar
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
 import zio.duration.*
 
-class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
+class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
 
   import dao.InMemoryRepository.*
 
@@ -41,7 +40,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
           gameEventsFiber <-
             gameStream
               .takeUntil {
@@ -53,7 +52,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(chuti.god))
+                SessionContext.live(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (mano1, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
@@ -80,7 +79,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
           gameEventsFiber <-
             gameStream
               .takeUntil {
@@ -95,7 +94,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(chuti.god))
+                SessionContext.live(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (mano4, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
@@ -122,7 +121,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionProvider.layer(ChutiSession(user1)))
+              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
           gameEventsFiber <-
             gameStream
               .takeWhile {
@@ -134,7 +133,7 @@ class JugandoSpec extends AnyFlatSpec with MockitoSugar with GameAbstractSpec2 {
           _ <-
             gameService
               .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionProvider.layer(ChutiSession(chuti.god))
+                SessionContext.live(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
         } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))

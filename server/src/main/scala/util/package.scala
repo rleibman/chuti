@@ -28,9 +28,9 @@ import scala.jdk.CollectionConverters.*
 
 package object util {
 
-  implicit class RequestExt(request: Request) {
+  extension (request: Request) {
 
-    val formData: ZIO[Any, Throwable, Map[String, String]] = {
+    def formData: ZIO[Any, Throwable, Map[String, String]] = {
       for {
         str <- request.bodyAsString
         _ <- ZIO

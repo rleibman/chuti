@@ -1,15 +1,17 @@
 package mail
 
 import api.config
-import api.token.TokenHolder
+import api.token.*
 import chuti.User
 import courier.{Envelope, Text}
 import zio.*
+import zio.cache.{Cache, Lookup}
 import zio.test.Assertion.*
 import zio.test.environment.*
 import zio.test.{DefaultRunnableSpec, *}
 
 import javax.mail.internet.InternetAddress
+import zio.duration.*
 
 object PostmanIntegrationSpec extends DefaultRunnableSpec {
 
@@ -45,7 +47,9 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
       }
     ).provideCustomLayer(
       ZLayer.succeed(CourierPostman.live(config.live)) ++
-        ZLayer.succeed(TokenHolder.tempCache)
+        (for {
+          cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
+        } yield TokenHolder.tempCache(cache)).toLayer
     )
 
 }

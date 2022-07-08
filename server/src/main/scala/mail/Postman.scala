@@ -23,7 +23,7 @@ import courier.{Envelope, Mailer, Multipart}
 import zio.{Has, RIO, Task, ZIO}
 
 import javax.mail.internet.InternetAddress
-import scala.concurrent.duration.*
+import zio.duration.*
 
 object Postman {
 

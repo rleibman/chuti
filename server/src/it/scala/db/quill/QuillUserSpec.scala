@@ -6,7 +6,6 @@ import dao.{Repository, RepositoryError, RepositoryPermissionError}
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
-import zio.magic.*
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.TestEnvironment
@@ -177,6 +176,6 @@ object QuillUserSpec extends QuillSpec {
       // friends
       // getWallet
       // updateWallet
-    ).injectShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
+    ).provideLayerShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
 
 }

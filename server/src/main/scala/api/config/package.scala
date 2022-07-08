@@ -17,11 +17,13 @@
 package api
 
 import better.files.File
-import com.typesafe.config.ConfigFactory
-import zio.config.magnolia.DeriveConfigDescriptor.descriptor
+import com.typesafe.config.*
+import zio.config.magnolia.*
+import zio.config.*, ConfigDescriptor.*
 import zio.config.typesafe.TypesafeConfigSource
 import zio.config.{PropertyTreePath, ReadError, read}
 import zio.{Has, IO}
+import zio.config.magnolia.*
 
 /** A trait to keep app configuration
   */
@@ -66,7 +68,7 @@ package object config {
 
   object Config {
 
-    private val chutiConfigDescriptor = descriptor[ChutiConfig]
+    private val chutiConfigDescriptor: ConfigDescriptor[ChutiConfig] = descriptor[ChutiConfig]
     val chutiConfig: IO[ReadError[String], ChutiConfig] = read(
       chutiConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("chuti"))
     )

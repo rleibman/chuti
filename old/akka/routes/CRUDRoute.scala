@@ -62,7 +62,7 @@ object CRUDRoute {
       *
       * @return
       */
-    def other: RIO[SessionProvider & Logging & Clock & OpsService, Route] = ZIO.succeed(reject)
+    def other: RIO[SessionContext & Logging & Clock & OpsService, Route] = ZIO.succeed(reject)
 
     /** Override this to add routes that don't require a session
       *
@@ -79,7 +79,7 @@ object CRUDRoute {
     def childrenRoutes(
       pk:  PK,
       obj: Option[E]
-    ): RIO[SessionProvider & Logging & Clock & OpsService, Seq[Route]] = ZIO.succeed(Seq.empty)
+    ): RIO[SessionContext & Logging & Clock & OpsService, Seq[Route]] = ZIO.succeed(Seq.empty)
 
     /** You need to override this method so that the architecture knows how to get a primary key from an object
       *
@@ -90,13 +90,13 @@ object CRUDRoute {
 
 //    def fullLayer(
 //      session: ChutiSession
-//    ): ULayer[SessionProvider  & Logging & Clock with TokenHolder] =
-//      SessionProvider.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
+//    ): ULayer[SessionContext  & Logging & Clock with TokenHolder] =
+//      SessionContext.layer(session) ++ ZLayer.succeed(databaseProvider) ++ Slf4jLogger.make(
 //        (_, b) => b
 //      ) ++ ZLayer.succeed(TokenHolder.live)
 
     def getOperation(id: PK): ZIO[
-      SessionProvider & Logging & Clock & OpsService,
+      SessionContext & Logging & Clock & OpsService,
       RepositoryError,
       Option[E]
     ] = {
@@ -108,14 +108,14 @@ object CRUDRoute {
 
     def deleteOperation(
       objOpt: Option[E]
-    ): ZIO[SessionProvider & Logging & Clock & OpsService, Throwable, Boolean] =
+    ): ZIO[SessionContext & Logging & Clock & OpsService, Throwable, Boolean] =
       for {
         ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
         ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
       } yield ret
 
     def upsertOperation(obj: E): ZIO[
-      SessionProvider & Logging & Clock & OpsService,
+      SessionContext & Logging & Clock & OpsService,
       RepositoryError,
       E
     ] = {
@@ -126,7 +126,7 @@ object CRUDRoute {
     }
 
     def countOperation(search: Option[SEARCH]): ZIO[
-      SessionProvider & Logging & Clock & OpsService,
+      SessionContext & Logging & Clock & OpsService,
       RepositoryError,
       Long
     ] =
@@ -136,7 +136,7 @@ object CRUDRoute {
       } yield ret
 
     def searchOperation(search: Option[SEARCH]): ZIO[
-      SessionProvider & Logging & Clock & OpsService,
+      SessionContext & Logging & Clock & OpsService,
       RepositoryError,
       Seq[E]
     ] =
@@ -159,7 +159,7 @@ object CRUDRoute {
       searchEncoder: Encoder[SEARCH],
       pkEncoder:     Encoder[PK]
     ): ZIO[
-      Repository & SessionProvider & Logging & Clock & OpsService,
+      Repository & SessionContext & Logging & Clock & OpsService,
       Throwable,
       Route
     ] =
@@ -168,7 +168,7 @@ object CRUDRoute {
         runtime <-
           ZIO
             .environment[
-              Repository & SessionProvider & Logging & Clock & OpsService
+              Repository & SessionContext & Logging & Clock & OpsService
             ]
       } yield {
         pathPrefix(url) {

@@ -18,12 +18,10 @@ package app
 
 import java.net.URI
 import java.util.UUID
-import app.GameViewMode.GameViewMode
-import app.GlobalDialog.GlobalDialog
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
-import components.components.ChutiComponent
+import components.ChutiComponent
 import components.{Confirm, Toast}
 import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
 import io.circe.*, io.circe.generic.auto.*
@@ -54,9 +52,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
   case class State(chutiState: ChutiState)
 
-  class Backend($ : BackendScope[?, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
-    private val gameEventDecoder: Decoder[GameEvent] = implicitly[Decoder[GameEvent]]
+    private val gameEventDecoder: Decoder[GameEvent] = summon[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
       $.modState(s => {
@@ -107,7 +105,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
     private def reapplyEvent(gameEvent: GameEvent): Callback =
       $.modState(s => {
-        val moddedGame = s.chutiState.gameInProgress.flatMap { currentGame: Game =>
+        val moddedGame = s.chutiState.gameInProgress.flatMap { (currentGame: Game) =>
           gameEvent.index match {
             case None =>
               throw GameException(
@@ -201,24 +199,22 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       }
     }
 
-    val fn: OnErrorEventHandlerNonNull = {
-      (
-        /* event */ _:     org.scalajs.dom.Event | java.lang.String,
-        /* source */ _:    js.UndefOr[java.lang.String],
-        /* lineno */ _:    js.UndefOr[scala.Double],
-        /* colno */ _:     js.UndefOr[scala.Double],
-        /* error */ error: js.UndefOr[js.Error]
-      ) =>
-        js.Any.fromUnit {
-          println(s"Error playing ${audio.src} ${error.map(_.message)}")
-          if (audioQueue.nonEmpty) {
-            audioQueue.dequeue()
-            audio.src = audioQueue.head
-            audio.play()
-            ()
-          }
+    def fn(
+      event:  Any,
+      source: js.UndefOr[java.lang.String],
+      lineno: js.UndefOr[scala.Double],
+      colno:  js.UndefOr[scala.Double],
+      error:  js.UndefOr[js.Error]
+    ) =
+      js.Any.fromUnit {
+        println(s"Error playing ${audio.src} ${error.map(_.message)}")
+        if (audioQueue.nonEmpty) {
+          audioQueue.dequeue()
+          audio.src = audioQueue.head
+          audio.play()
+          ()
         }
-    }
+      }
 
     audio.onerror = fn
 
@@ -334,9 +330,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
       t.map { case (idOpt, name, email, eventType, gameIdOpt) =>
         (
-          User(id = idOpt.map(UserId), name = name, email = email),
+          User(id = idOpt.map(UserId.apply), name = name, email = email),
           eventType,
-          gameIdOpt.map(GameId)
+          gameIdOpt.map(GameId.apply)
         )
       }
     }
@@ -390,7 +386,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                     whoami.fold(Callback.empty)(currentUser => onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten))
                   },
                   operationId = "-",
-                  connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.value)}"
+                  connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.userId)}"
                 )
               )
             )
@@ -410,7 +406,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                 gameInProgressOpt.map(game =>
                   makeWebSocketClient[Option[Json]](
                     uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
-                    query = Subscriptions.gameStream(game.id.get.value, connectionId),
+                    query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
                     onData = { (_, data) =>
                       data.flatten.fold(Callback.empty)(json =>
                         gameEventDecoder
@@ -419,7 +415,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                       )
                     },
                     operationId = "-",
-                    connectionId = s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.value)}"
+                    connectionId = s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.gameId)}"
                   )
                 )
           )
@@ -442,7 +438,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       val modeStr = window.sessionStorage.getItem("gamePageMode")
       val gameViewMode = {
         val ret =
-          try GameViewMode.withName(modeStr)
+          try GameViewMode.valueOf(modeStr)
           catch {
             case _: Throwable =>
               GameViewMode.lobby

@@ -247,13 +247,13 @@ object RulesPage extends ChutiPage {
 
   }
 
-  class Backend($ : BackendScope[?, State]) {
+  class Backend($ : BackendScope[Unit, State]) {
 
     import RulesPageMessages.*
 
     def render(): VdomElement = {
       ChutiState.ctx.consume { chutiState =>
-        implicit val locale: Locale = chutiState.locale
+        given locale: Locale = chutiState.locale
         <.div(
           ^.margin                  := 10.px,
           ^.dangerouslySetInnerHtml := localized("RulesPage.rules")

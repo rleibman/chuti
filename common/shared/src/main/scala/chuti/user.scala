@@ -16,9 +16,9 @@
 
 package chuti
 
-import java.time.Instant
+import io.circe.{Decoder, Encoder}
 
-case class UserId(value: Int) extends AnyVal
+import java.time.Instant
 
 case class User(
   id:          Option[UserId],
@@ -31,7 +31,7 @@ case class User(
   isAdmin:     Boolean = false
 ) {
 
-  def isBot: Boolean = id.fold(false)(i => i.value < -1 && i != godUserId)
+  def isBot: Boolean = id.fold(false)(i => i.userId < -1 && i != godUserId)
 
 }
 
@@ -40,14 +40,9 @@ case class UserWallet(
   amount: BigDecimal = 0.0
 )
 
-sealed trait UserEventType
-object UserEventType {
+enum UserEventType {
 
-  case object Disconnected extends UserEventType
-  case object Connected extends UserEventType
-  case object Modified extends UserEventType
-  case object JoinedGame extends UserEventType
-  case object AbandonedGame extends UserEventType
+  case Disconnected, Connected, Modified, JoinedGame, AbandonedGame
 
 }
 
@@ -56,5 +51,3 @@ case class UserEvent(
   userEventType: UserEventType,
   gameId:        Option[GameId]
 )
-
-case class ConnectionId(value: String) extends AnyVal

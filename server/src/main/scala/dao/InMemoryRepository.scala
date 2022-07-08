@@ -24,7 +24,7 @@ import zio.logging.Logging
 import zio.{Task, ZIO}
 
 import java.time.Instant
-import scala.concurrent.duration.Duration
+import zio.duration.*
 
 object InMemoryRepository {
 

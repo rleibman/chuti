@@ -27,17 +27,14 @@ import scala.scalajs.js
 import scala.scalajs.js.UndefOr
 import scala.scalajs.js.timers.*
 
-object HorizontalPosition extends Enumeration {
+enum HorizontalPosition {
 
-  type HorizontalPosition = Value
-  val right, left = Value
+  case right, left
 
 }
+enum VerticalPosition {
 
-object VerticalPosition extends Enumeration {
-
-  type VerticalPosition = Value
-  val top, bottom = Value
+  case top, bottom
 
 }
 
@@ -54,7 +51,7 @@ object Toast {
     onClose:   () => Callback = { () => Callback.empty }
   )
 
-  private case class ToastState(toasts: Seq[Toast] = Seq.empty)
+  private[Toast] case class ToastState(toasts: Seq[Toast] = Seq.empty)
 
   class Backend($ : BackendScope[Unit, ToastState]) {
 
