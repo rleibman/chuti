@@ -52,30 +52,32 @@ object NewUserAcceptFriendPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía")
+        (if (state.passwordPair._1.trim.nn.isEmpty) Seq("La contraseña no puede estar vacía")
          else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
            Seq("Las dos contraseñas tienen que ser iguales")
          else Nil) ++
-        (if (state.user.fold(true)(_.name.trim.isEmpty)) Seq("El nombre no puede estar vacío")
+        (if (state.user.fold(true)(_.name.trim.nn.isEmpty)) Seq("El nombre no puede estar vacío")
          else Nil) ++
-        (if (state.user.fold(true)(_.email.trim.isEmpty))
+        (if (state.user.fold(true)(_.email.trim.nn.isEmpty))
            Seq("La dirección de correo electrónico no puede estar vacía")
          else Nil)
 
-    private[NewUserAcceptFriendPage] def init(props: Props): Callback =
+    private[NewUserAcceptFriendPage] def init(props: Props): Callback = {
+      import scala.language.unsafeNulls
       Ajax("GET", s"/getInvitedUserByToken?token=${props.token.get}").send.asAsyncCallback
         .map { xhr =>
           if (xhr.status < 300) {
             decode[Option[User]](xhr.responseText)
               .fold(
-                e => Toast.error(e.getLocalizedMessage),
+                e => Toast.error(e.getLocalizedMessage.nn),
                 response => $.modState(_.copy(user = response))
               )
           } else
             Toast.error(s"Error creando la cuenta: ${xhr.statusText}")
         }
         .completeWith(_.get)
+    }
 
     private def doCreate(
       state:   State,
@@ -100,6 +102,7 @@ object NewUserAcceptFriendPage {
                 .asAsyncCallback
                 .map { xhr =>
                   if (xhr.status < 300) {
+                    import scala.language.unsafeNulls
                     decode[UpdateInvitedUserResponse](xhr.responseText)
                       .fold(
                         e => Toast.error(e.getLocalizedMessage),
@@ -110,8 +113,7 @@ object NewUserAcceptFriendPage {
                             )
                           )(errorMsg => Toast.error(errorMsg))
                       )
-                  } else
-                    Toast.error(s"Error creando cuenta: ${xhr.statusText}")
+                  } else Toast.error(s"Error creando cuenta: ${xhr.statusText}")
                 }
           } yield saved
           val valid: Seq[String] = validate(state)

@@ -96,7 +96,7 @@ object Auth {
   implicit class JwtClaimExt(claim: JwtClaim) {
 
     def session[SessionType: Decoder]: ZIO[Any, SessionError, SessionType] =
-      ZIO.fromEither(decode[SessionType](claim.content)).mapError(e => SessionError(e.getMessage, Some(e)))
+      ZIO.fromEither(decode[SessionType](claim.content)).mapError(e => SessionError(e.getMessage.nn, Some(e)))
 
   }
 
@@ -193,7 +193,7 @@ object Auth {
       def invalidateSession(
         session:  SessionType,
         response: Response
-      ): IO[SessionError, Response]
+      ): ZIO[Clock, SessionError, Response]
 
       def cleanUp: UIO[Unit]
 
@@ -262,10 +262,11 @@ object Auth {
     override def invalidateSession(
       session:  SessionType,
       response: Response
-    ): IO[SessionError, Response] =
+    ): ZIO[Clock, SessionError, Response] =
       (for {
+        now    <- ZIO.service[Clock.Service].flatMap(_.instant)
         config <- sessionConfig
-        _      <- invalidSessions.update(_ + (session -> Instant.now.plusSeconds(config.sessionTTL.toSeconds + 60)))
+        _      <- invalidSessions.update(_ + (session -> now.plusSeconds(config.sessionTTL.toSeconds + 60).nn))
       } yield {
         val deleteCookie = Cookie(
           name = config.sessionName,
@@ -310,7 +311,7 @@ object Auth {
 
     override def getSession(request: Request): IO[SessionError, Option[SessionType]] =
       for {
-        config <- sessionConfig.mapError(e => SessionError(e.getMessage, Some(e)))
+        config <- sessionConfig.mapError(e => SessionError(e.getMessage.nn, Some(e)))
         str <- ZIO
           .fromOption(request.cookiesDecoded.find(_.name == config.sessionName).map(_.content)).orElseFail(SessionError("No session cookie found"))
         session <- sessionStorage.getSession(str)
@@ -322,7 +323,7 @@ object Auth {
           Http
             .fromFunctionZIO[Request] { request =>
               (for {
-                config  <- sessionConfig.mapError(e => SessionError(e.getMessage, Some(e)))
+                config  <- sessionConfig.mapError(e => SessionError(e.getMessage.nn, Some(e)))
                 session <- getSession(request)
               } yield {
                 session match {

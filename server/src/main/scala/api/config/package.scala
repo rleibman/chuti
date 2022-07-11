@@ -78,11 +78,11 @@ package object config {
       val configKey = "chuti"
       val config: com.typesafe.config.Config = {
         val confFileName =
-          System.getProperty("application.conf", "./src/main/resources/application.conf")
+          System.getProperty("application.conf", "./src/main/resources/application.conf").nn
         val confFile = File(confFileName)
         val config = ConfigFactory
-          .parseFile(confFile.toJava)
-          .withFallback(ConfigFactory.load())
+          .parseFile(confFile.toJava).nn
+          .withFallback(ConfigFactory.load()).nn
         config
       }
 

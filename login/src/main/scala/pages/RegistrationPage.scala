@@ -39,7 +39,7 @@ object RegistrationPage {
 
   case class State(
     passwordPair: (String, String) = ("", ""),
-    user:         User = User(id = None, email = "", name = "", created = Instant.now)
+    user:         User = User(id = None, email = "", name = "", created = Instant.now.nn, lastUpdated = Instant.now.nn)
   )
 
   class Backend($ : BackendScope[Unit, State]) {
@@ -54,13 +54,13 @@ object RegistrationPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía")
+        (if (state.passwordPair._1.trim.nn.isEmpty) Seq("La contraseña no puede estar vacía")
          else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
            Seq("Las dos contraseñas tienen que ser iguales")
          else Nil) ++
-        (if (state.user.name.trim.isEmpty) Seq("El nombre no puede estar vacío") else Nil) ++
-        (if (state.user.email.trim.isEmpty)
+        (if (state.user.name.trim.nn.isEmpty) Seq("El nombre no puede estar vacío") else Nil) ++
+        (if (state.user.email.trim.nn.isEmpty)
            Seq("La dirección de correo electrónico no puede estar vacía")
          else Nil)
 
@@ -80,6 +80,7 @@ object RegistrationPage {
                 .asAsyncCallback
                 .map { xhr =>
                   if (xhr.status < 300) {
+                    import scala.language.unsafeNulls
                     decode[UserCreationResponse](xhr.responseText)
                       .fold(
                         e => Toast.error(e.getLocalizedMessage),
@@ -90,8 +91,7 @@ object RegistrationPage {
                             )
                           )(errorMsg => Toast.error(errorMsg))
                       )
-                  } else
-                    Toast.error(s"Error creando cuenta: ${xhr.statusText}")
+                  } else Toast.error(s"Error creando cuenta: ${xhr.statusText}")
                 }
           } yield saved
           val valid: Seq[String] = validate(state)

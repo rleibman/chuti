@@ -20,6 +20,7 @@ import japgolly.scalajs.react.AsyncCallback
 
 package object service {
 
+  import scala.language.unsafeNulls
   object UserRESTClient extends LiveRESTClient[User, UserId, PagedStringSearch] {
 
     override val baseUrl: String = s"/api/auth"

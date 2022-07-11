@@ -41,7 +41,7 @@ object ChatService {
 
     def getRecentMessages(
       channelId: ChannelId
-    ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
+    ): ZIO[SessionContext & Clock, GameException, Seq[ChatMessage]]
     def say(msg: SayRequest): URIO[Repository & SessionContext & Logging & Clock, ChatMessage]
     def chatStream(
       channelId:    ChannelId,
@@ -92,7 +92,7 @@ object ChatService {
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = URIO.accessM(_.get.getRecentMessages(channelId))
+  ): ZIO[ChatService & SessionContext & Clock, GameException, Seq[ChatMessage]] = URIO.accessM(_.get.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -115,11 +115,14 @@ object ChatService {
 
         def getRecentMessages(
           channelId: ChannelId
-        ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
-          recentMessages.get.map { seq =>
-            val timeAgo = Instant.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
-            seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
-          }
+        ): ZIO[SessionContext & Clock, GameException, Seq[ChatMessage]] = {
+          for {
+            now <- ZIO.service[Clock.Service].flatMap(_.instant)
+            res <- recentMessages.get.map { seq =>
+              val timeAgo = now.minus(ttl.toMillis, ChronoUnit.MILLIS).nn
+              seq.filter(msg => msg.channelId == channelId && dateFilter(timeAgo, msg))
+            }
+          } yield res
         }
 
         override def say(request: SayRequest): ZIO[
@@ -129,6 +132,7 @@ object ChatService {
         ] =
           for {
             allSubscriptions <- chatMessageQueue.get
+            now              <- ZIO.service[Clock.Service].flatMap(_.instant)
             user             <- ZIO.access[SessionContext](_.get.session.user)
             _                <- log.info(s"Sending ${request.msg}")
             sent <- {
@@ -141,7 +145,8 @@ object ChatService {
                   fromUser = user,
                   msg = request.msg,
                   channelId = request.channelId,
-                  toUser = request.toUser
+                  toUser = request.toUser,
+                  date = now
                 )
 
               UIO
@@ -151,7 +156,7 @@ object ChatService {
                 .as(sendMe)
             }
             _ <- {
-              val timeAgo = Instant.now.minus(ttl.toMillis, ChronoUnit.MILLIS)
+              val timeAgo = now.minus(ttl.toMillis, ChronoUnit.MILLIS).nn
               recentMessages.update(old => old.filter(dateFilter(timeAgo, _)) :+ sent)
             }
           } yield sent

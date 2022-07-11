@@ -41,6 +41,7 @@ import _root_.util.Config
 import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
+import java.time.Instant
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the router should be the main
   * content of the app, but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and presenting
@@ -54,6 +55,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
   class Backend($ : BackendScope[Unit, State]) {
 
+    import scala.language.unsafeNulls
     private val gameEventDecoder: Decoder[GameEvent] = summon[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
@@ -315,7 +317,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
           User(
             id = id.map(UserId.apply),
             email = "",
-            name = name
+            name = name,
+            created = Instant.now.nn,
+            lastUpdated = Instant.now.nn
           )
         }
       )
@@ -330,7 +334,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
       t.map { case (idOpt, name, email, eventType, gameIdOpt) =>
         (
-          User(id = idOpt.map(UserId.apply), name = name, email = email),
+          User(id = idOpt.map(UserId.apply), name = name, email = email, created = Instant.now.nn, lastUpdated = Instant.now.nn),
           eventType,
           gameIdOpt.map(GameId.apply)
         )
@@ -362,6 +366,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
            else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
 
       } yield $.modState { s =>
+        import scala.language.unsafeNulls
         val copy = if (initial) {
           s.copy(
             chutiState = s.chutiState.copy(
@@ -394,6 +399,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         } else
           s
 
+        import scala.language.unsafeNulls
         copy.copy(chutiState =
           copy.chutiState.copy(
             wallet = wallet,

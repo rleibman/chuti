@@ -126,30 +126,30 @@ object CourierPostman {
     new Postman.Service {
 
       lazy val mailer: Mailer = {
-        val localhost = config.config.getString(s"${config.configKey}.smtp.localhost")
+        val localhost = config.config.getString(s"${config.configKey}.smtp.localhost").nn
         System.setProperty("mail.smtp.localhost", localhost)
         System.setProperty("mail.smtp.localaddress", localhost)
-        val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth")
+        val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth").nn
         if (auth)
           Mailer(
-            config.config.getString(s"${config.configKey}.smtp.host"),
-            config.config.getInt(s"${config.configKey}.smtp.port")
+            config.config.getString(s"${config.configKey}.smtp.host").nn,
+            config.config.getInt(s"${config.configKey}.smtp.port").nn
           ).auth(auth)
             .as(
-              config.config.getString(s"${config.configKey}.smtp.user"),
-              config.config.getString(s"${config.configKey}.smtp.password")
+              config.config.getString(s"${config.configKey}.smtp.user").nn,
+              config.config.getString(s"${config.configKey}.smtp.password").nn
             )
-            .startTls(config.config.getBoolean(s"${config.configKey}.smtp.startTTLS"))()
+            .startTls(config.config.getBoolean(s"${config.configKey}.smtp.startTTLS").nn)()
         else
           Mailer(
-            config.config.getString(s"${config.configKey}.smtp.host"),
-            config.config.getInt(s"${config.configKey}.smtp.port")
+            config.config.getString(s"${config.configKey}.smtp.host").nn,
+            config.config.getInt(s"${config.configKey}.smtp.port").nn
           ).auth(auth)()
       }
 
       override def deliver(email: Envelope): Task[Unit] = Task.fromFuture(implicit ec => mailer(email))
 
-      override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname")
+      override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname").nn
 
     }
 

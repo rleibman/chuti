@@ -5,6 +5,7 @@ import api.token.*
 import chuti.User
 import courier.{Envelope, Text}
 import zio.*
+import zio.clock.*
 import zio.cache.{Cache, Lookup}
 import zio.test.Assertion.*
 import zio.test.environment.*
@@ -41,7 +42,8 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
         //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
           postman   <- ZIO.service[Postman.Service]
-          envelope  <- postman.registrationEmail(User(id = None, email = "roberto@leibman.net", name = "Roberto"))
+          now       <- ZIO.service[Clock.Service].flatMap(_.instant)
+          envelope  <- postman.registrationEmail(User(id = None, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now))
           delivered <- postman.deliver(envelope).fork
         } yield delivered
 

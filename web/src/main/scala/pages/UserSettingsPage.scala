@@ -34,7 +34,7 @@ object UserSettingsPage extends ChutiPage {
   case class State(
     user: Option[User] = None,
     locale: String = {
-      val loc = window.sessionStorage.getItem("languageTag")
+      val loc: String | Null = window.sessionStorage.getItem("languageTag")
       println(s"languageTag = $loc")
       if (loc == null || loc.isEmpty)
         "es-MX"
@@ -61,9 +61,9 @@ object UserSettingsPage extends ChutiPage {
 
     private def validate(state: State): Seq[String] =
       Seq.empty[String] ++
-        (if (state.user.get.name.trim.isEmpty) Seq("El nombre no puede estar vacío") // TODO i8n
+        (if (state.user.get.name.trim.nn.isEmpty) Seq("El nombre no puede estar vacío") // TODO i8n
          else Nil) ++
-        (if (state.user.get.email.trim.isEmpty)
+        (if (state.user.get.email.trim.nn.isEmpty)
            Seq("La dirección de correo electrónico no puede estar vacía") // TODO i8n
          else Nil)
 
@@ -71,7 +71,7 @@ object UserSettingsPage extends ChutiPage {
       state: State
     ): Seq[String] =
       Seq.empty[String] ++
-        (if (state.passwordPair._1.trim.isEmpty) Seq("La contraseña no puede estar vacía") // TODO i8n
+        (if (state.passwordPair._1.trim.nn.isEmpty) Seq("La contraseña no puede estar vacía") // TODO i8n
          else Nil) ++
         (if (state.passwordPair._1 != state.passwordPair._2)
            Seq("Las dos contraseñas tienen que ser iguales") // TODO i8n

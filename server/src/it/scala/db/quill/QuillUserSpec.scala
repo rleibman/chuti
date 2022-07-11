@@ -56,7 +56,7 @@ object QuillUserSpec extends QuillSpec {
           _        <- repo.upsert(testUser)
           _        <- repo.upsert(testUser)
         } yield assertTrue(false))
-          .tapError(e => Logging.info(e.getMessage))
+          .tapError(e => Logging.info(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
       testM("changing a user's email should only succeed if that user doesn't exist already") {
@@ -68,7 +68,7 @@ object QuillUserSpec extends QuillSpec {
           secondUser <- repo.upsert(testUser2)
           _          <- repo.upsert(firstUser.copy(email = secondUser.email))
         } yield assertTrue(false))
-          .tapError(e => Logging.info(e.getMessage))
+          .tapError(e => Logging.info(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
       testM("Deleting a non-existent user") {
@@ -84,7 +84,7 @@ object QuillUserSpec extends QuillSpec {
           testUser <- testUserZIO
           _        <- repo.upsert(testUser.copy(id = Some(UserId(123)), name = "ChangedName"))
         } yield assertTrue(false))
-          .tapError(e => Logging.info(e.getMessage))
+          .tapError(e => Logging.info(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
       testM("Deleting a user with no permissions") {
@@ -92,7 +92,7 @@ object QuillUserSpec extends QuillSpec {
           repo <- ZIO.service[Repository.Service].map(_.userOperations)
           _    <- repo.delete(UserId(123)).provideSomeLayer[Config & Repository & Logging & Clock](satanSession)
         } yield assertTrue(false))
-          .tapError(e => Logging.info(e.getMessage))
+          .tapError(e => Logging.info(e.getMessage.nn))
           .catchSome { case _: RepositoryPermissionError =>
             ZIO.succeed(assertTrue(true))
           }
@@ -104,7 +104,7 @@ object QuillUserSpec extends QuillSpec {
           inserted <- repo.upsert(testUser)
           _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[Config & Repository & Logging & Clock](satanSession)
         } yield assertTrue(false))
-          .tapError(e => Logging.info(e.getMessage))
+          .tapError(e => Logging.info(e.getMessage.nn))
           .catchSome { case _: RepositoryPermissionError =>
             ZIO.succeed(assertTrue(true))
           }

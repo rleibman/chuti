@@ -551,6 +551,7 @@ object GameComponent {
 
   }
 
+  import scala.language.unsafeNulls
   given triunfoReuse:       Reusability[Triunfo] = Reusability.by(_.toString)
   given gameReuse:          Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
   given cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)

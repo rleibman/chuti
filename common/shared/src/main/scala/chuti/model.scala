@@ -140,7 +140,10 @@ object Ficha {
   }
 
   def fromString(str: String): Ficha = {
-    val splitted = str.split(":").map(s => Numero(s.toInt))
+    val splitted = str.split(":").nn.map {
+      case s: String => Numero(s.toInt)
+      case null => throw GameException(s"Invalid ficha string: $str")
+    }
     Ficha(splitted(0), splitted(1))
   }
 
@@ -381,9 +384,9 @@ object Game {
 
 case class Game(
   id:                Option[GameId],
+  created:           Instant,
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
-  created:           Instant = Instant.now,
   // Game State
   triunfo:         Option[Triunfo] = None,
   enJuego:         List[(UserId, Ficha)] = List.empty,

@@ -28,18 +28,21 @@ import io.circe.generic.auto.*
 import mail.Postman
 import util.*
 import zhttp.http.*
+import zio.clock.Clock
 import zio.logging.Logging
 import zio.{Has, ZIO}
 
 import java.time.Instant
 import java.util.Locale
 
+import scala.language.unsafeNulls
+
 object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
   given localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
   // TODO get from config
-  val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(Locale.forLanguageTag)
+  val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
 
   override type OpsService = Has[CRUDOperations[User, UserId, PagedStringSearch]]
 
@@ -53,18 +56,19 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         Http.collectZIO(_ =>
           (for {
             userOps       <- ZIO.service[Repository.Service].map(_.userOperations)
+            now           <- ZIO.service[Clock.Service].flatMap(_.instant)
             firstLoginOpt <- userOps.firstLogin
-          } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(Instant.now.minus(java.time.Duration.ofDays(1))))))
+          } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(now.minus(java.time.Duration.ofDays(1)).nn))))
             .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
-        Http.collect(_ => ResponseExt.json(req.session.get.locale.toLanguageTag))
+        Http.collect(_ => ResponseExt.json(req.session.get.locale.toLanguageTag.nn))
       case req @ Method.PUT -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
             locale           <- req.bodyAsString
             sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
-            response         <- sessionTransport.refreshSession(req.session.get.copy(locale = Locale.forLanguageTag(locale)), ResponseExt.json(true))
+            response <- sessionTransport.refreshSession(req.session.get.copy(locale = Locale.forLanguageTag(locale).nn), ResponseExt.json(true))
           } yield response
         )
       case req @ Method.GET -> !! / "api" / "auth" / "whoami" if req.session.nonEmpty =>
@@ -148,11 +152,11 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             request <- req.bodyAs[UpdateInvitedUserRequest]
             userOps <- ZIO.service[Repository.Service].map(_.userOperations)
             validate <- ZIO.succeed(
-              if (request.user.email.trim.isEmpty)
+              if (request.user.email.trim.nn.isEmpty)
                 Option("User Email cannot be empty")
-              else if (request.user.name.trim.isEmpty)
+              else if (request.user.name.trim.nn.isEmpty)
                 Option("User Name cannot be empty")
-              else if (request.password.trim.isEmpty || request.password.trim.length < 3)
+              else if (request.password.trim.nn.isEmpty || request.password.trim.nn.length < 3)
                 Option("Password is invalid")
               else
                 None
@@ -189,11 +193,11 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             userOps             <- ZIO.service[Repository.Service].map(_.userOperations)
             userCreationRequest <- req.bodyAs[UserCreationRequest]
             validate <- ZIO.succeed( // TODO Use cats validate instead of option
-              if (userCreationRequest.user.email.trim.isEmpty)
+              if (userCreationRequest.user.email.trim.nn.isEmpty)
                 Option("User Email cannot be empty")
-              else if (userCreationRequest.user.name.trim.isEmpty)
+              else if (userCreationRequest.user.name.trim.nn.isEmpty)
                 Option("User Name cannot be empty")
-              else if (userCreationRequest.password.trim.isEmpty || userCreationRequest.password.trim.length < 3)
+              else if (userCreationRequest.password.trim.nn.isEmpty || userCreationRequest.password.trim.nn.length < 3)
                 Option("Password is invalid")
               else if (userCreationRequest.user.id.nonEmpty)
                 Option("You can't register an existing user")

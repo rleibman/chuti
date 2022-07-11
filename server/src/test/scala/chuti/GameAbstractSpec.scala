@@ -20,6 +20,7 @@ import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
+import dao.InMemoryRepository.now
 import dao.Repository.GameOperations
 import dao.{InMemoryRepository, Repository, RepositoryIO}
 import io.circe.Printer
@@ -37,18 +38,22 @@ import java.util.UUID
 import zio.duration.*
 import org.scalatest.Assertions.*
 
+import java.time.Instant
+
 trait GameAbstractSpec {
 
   val connectionId: ConnectionId = ConnectionId(5)
 
+  val now = Instant.now.nn
+
   val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
+    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
   val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2")
+    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
   val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3")
+    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", created = now, lastUpdated = now)
   val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
+    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
   val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
@@ -102,8 +107,9 @@ trait GameAbstractSpec {
 
   def readGame(filename: String): Task[Game] =
     ZIO.effect {
+      import scala.language.unsafeNulls
       val file = File(filename)
-      decode[Game](file.contentAsString)
+      decode[Game](file.contentAsString.nn)
     }.absolve
 
   val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"

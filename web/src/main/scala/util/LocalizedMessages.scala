@@ -34,7 +34,7 @@ abstract class LocalizedMessages {
     println(s"locale $locale, key = $key")
     (for {
       // TODO, find the most specific match, first by language-country, then by language or use whatever is found.
-      bundle <- bundles.get(locale.getLanguage)
+      bundle <- bundles.get(locale.getLanguage.nn)
       str    <- bundle.map.get(key)
     } yield str).getOrElse(default)
   }

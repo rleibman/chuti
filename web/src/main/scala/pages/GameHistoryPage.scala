@@ -33,11 +33,12 @@ import java.util.Locale
 
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
   case class State(games: Seq[Game] = Seq.empty)
 
   class Backend($ : BackendScope[Unit, State]) {
 
+    import scala.language.unsafeNulls
     private val gameDecoder = summon[Decoder[Game]]
 
     def init: Callback = {

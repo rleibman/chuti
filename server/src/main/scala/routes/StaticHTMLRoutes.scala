@@ -49,7 +49,8 @@ object StaticHTMLRoutes {
   ): ZIO[Blocking, HttpError, HttpData] = {
     JPaths.get(fileName) match {
       case path: java.nio.file.Path if !Files.exists(path) => ZIO.fail(HttpError.NotFound(request.path))
-      case path: java.nio.file.Path                        => ZIO.succeed(HttpData.fromFile(path.toFile))
+      case path: java.nio.file.Path                        => ZIO.succeed(HttpData.fromFile(path.toFile.nn))
+      case null => ZIO.fail(HttpError.InternalServerError(s"Could not find file $fileName"))
     }
   }
 
@@ -57,14 +58,14 @@ object StaticHTMLRoutes {
     case request @ (Method.GET -> !! / "loginForm") =>
       for {
         config <- ZIO.service[Config.Service]
-        staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+        staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
         data <- file(s"$staticContentDir/login.html", request)
       } yield Response(data = data)
     case request @ ((Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse) =>
       if (authNotRequired(somethingElse.toString())) {
         for {
           config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           data <- file(s"$staticContentDir/${somethingElse.toString()}", request)
         } yield Response(data = data)
       } else {
@@ -77,19 +78,19 @@ object StaticHTMLRoutes {
       case request @ Method.GET -> somethingElse if somethingElse == Path("/") =>
         for {
           config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           data <- file(s"$staticContentDir/index.html", request)
         } yield Response(data = data)
       case request @ Method.GET -> !! / "index.html" =>
         for {
           config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           data <- file(s"$staticContentDir/index.html", request)
         } yield Response(data = data)
       case request @ Method.GET -> somethingElse =>
         for {
           config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           data <- file(s"$staticContentDir/$somethingElse", request)
         } yield Response(data = data)
       case request => ZIO.fail(HttpError.NotFound(request.path))

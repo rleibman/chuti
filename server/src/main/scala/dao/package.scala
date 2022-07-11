@@ -46,8 +46,8 @@ package object dao {
         id = value.id.fold(0)(_.userId),
         name = value.name,
         email = value.email,
-        created = Timestamp.from(value.created),
-        lastUpdated = Timestamp.from(value.lastUpdated),
+        created = Timestamp.from(value.created).nn,
+        lastUpdated = Timestamp.from(value.lastUpdated).nn,
         active = value.active
       )
 
@@ -69,8 +69,8 @@ package object dao {
         id = Some(UserId(id)),
         email = email,
         name = name,
-        created = created.toInstant,
-        lastUpdated = lastUpdated.toInstant,
+        created = created.toInstant.nn,
+        lastUpdated = lastUpdated.toInstant.nn,
         active = active,
         deleted = deleted
       )
@@ -85,7 +85,7 @@ package object dao {
         current_index = value.currentEventIndex,
         lastSnapshot = value.asJson,
         status = value.gameStatus,
-        created = Timestamp.from(value.created),
+        created = Timestamp.from(value.created).nn,
         lastUpdated = new Timestamp(System.currentTimeMillis())
       )
       ret
@@ -104,6 +104,7 @@ package object dao {
   ) {
 
     def toGame: Game = {
+      import scala.language.unsafeNulls
       val decoder = summon[Decoder[Game]]
       decoder.decodeJson(lastSnapshot).map {
         _.copy(

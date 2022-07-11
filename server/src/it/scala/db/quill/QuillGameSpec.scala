@@ -18,8 +18,10 @@ import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object QuillGameSpec extends QuillSpec {
 
+  import scala.language.unsafeNulls
   given localDateTimeDecoder: Decoder[LocalDateTime] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME)
-  given instantDecoder: Decoder[Instant] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME).map(_.toInstant(ZoneOffset.UTC))
+  given instantDecoder: Decoder[Instant] =
+    Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME).map(_.toInstant(ZoneOffset.UTC).nn)
 
   def readGame(filename: String): IO[circe.Error, Game] =
     ZIO.fromEither {

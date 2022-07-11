@@ -24,8 +24,8 @@ case class User(
   id:          Option[UserId],
   email:       String,
   name:        String,
-  created:     Instant = Instant.now,
-  lastUpdated: Instant = Instant.now,
+  created:     Instant,
+  lastUpdated: Instant,
   active:      Boolean = false,
   deleted:     Boolean = false,
   isAdmin:     Boolean = false

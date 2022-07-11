@@ -44,7 +44,7 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   private val connectionId = UUID.randomUUID().toString
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"
-  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
+  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
 
   case class State(
     chatMessages: List[ChatMessage] = Nil,
@@ -120,7 +120,7 @@ object ChatComponent extends ScalaJSClientAdapter {
             .value(s.msgInFlux)
             .onChange(onMessageInFluxChange)
             .onKeyPress { e =>
-              if (e.which == 13 && !e.shiftKey && e.target.value.trim.nonEmpty)
+              if (e.which == 13 && !e.shiftKey && e.target.value.trim.nn.nonEmpty)
                 Callback {
                   e.preventDefault()
                 } >> onSend(p, s) >> Callback(e.target.focus())
@@ -129,7 +129,7 @@ object ChatComponent extends ScalaJSClientAdapter {
           Button
             .compact(true)
             .basic(true)
-            .disabled(s.msgInFlux.trim.isEmpty)
+            .disabled(s.msgInFlux.trim.nn.isEmpty)
             .onClick((_, _) => onSend(p, s))("Send")
         )
       )
@@ -148,11 +148,11 @@ object ChatComponent extends ScalaJSClientAdapter {
               msg:          String
             ) =>
               ChatMessage(
-                fromUser = User(None, "", fromUsername),
+                fromUser = User(None, "", fromUsername, created = Instant.now().nn, lastUpdated = Instant.now().nn),
                 msg = msg,
                 channelId = p.channel,
-                date = Instant.parse(date),
-                toUser = toUsername.map(name => User(None, "", name))
+                date = Instant.parse(date).nn,
+                toUser = toUsername.map(name => User(None, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn))
               )
           )
       (for {
@@ -164,6 +164,7 @@ object ChatComponent extends ScalaJSClientAdapter {
         }
       } yield {
         $.modState { s =>
+          import scala.language.unsafeNulls
           s.copy(
             chatMessages = recentMessages.toList.flatten,
             ws = Option(
@@ -203,6 +204,7 @@ object ChatComponent extends ScalaJSClientAdapter {
     onMessage:        ChatMessage => Callback
   )
 
+  import scala.language.unsafeNulls
   given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
   given propsReuse:   Reusability[Props] = Reusability.by(_.channel.channelId)
   given stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")

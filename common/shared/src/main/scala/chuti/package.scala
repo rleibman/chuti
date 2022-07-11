@@ -106,7 +106,8 @@ package object chuti {
     id = Some(godUserId),
     email = "god@chuti.fun",
     name = "Un-namable",
-    created = Instant.ofEpochMilli(0),
+    created = Instant.ofEpochMilli(0).nn,
+    lastUpdated = Instant.ofEpochMilli(0).nn,
     isAdmin = true
   )
 
@@ -115,7 +116,8 @@ package object chuti {
     id = Some(godlessUserId),
     email = "godless@chuti.fun",
     name = "Nothing",
-    created = Instant.ofEpochMilli(0),
+    created = Instant.ofEpochMilli(0).nn,
+    lastUpdated = Instant.ofEpochMilli(0).nn,
     isAdmin = true
   )
 
@@ -337,7 +339,8 @@ package object chuti {
       id = Some(UserId(id)),
       email = s"hal${-id}@chuti.fun",
       name = s"${names(Random.nextInt(names.length))} HAL$id (bot)",
-      created = Instant.ofEpochMilli(0)
+      created = Instant.ofEpochMilli(0).nn,
+      lastUpdated = Instant.ofEpochMilli(0).nn
     )
   }
 

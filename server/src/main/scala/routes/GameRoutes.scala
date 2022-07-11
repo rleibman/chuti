@@ -51,7 +51,7 @@ object GameRoutes {
         Http.fromFileZIO(
           for {
             config <- ZIO.service[Config.Service]
-            staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir")
+            staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           } yield new java.io.File(s"$staticContentDir/graphiql.html")
         )
     }

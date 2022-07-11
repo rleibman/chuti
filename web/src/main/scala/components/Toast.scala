@@ -105,7 +105,7 @@ object Toast {
                   <.div(
                     Icon()
                       .className("icon")
-                      .name(toast.icon.getOrElse(null))()
+                      .name(toast.icon.getOrElse(SemanticICONS.asterisk))()
                   )
                 ),
                 <.div(^.className := "textRegion", toast.message),

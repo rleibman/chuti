@@ -67,6 +67,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
 
   class Backend($ : BackendScope[Props, State]) {
 
+    import scala.language.unsafeNulls
     private val gameDecoder = summon[Decoder[Game]]
 
     def refresh(): Callback = {

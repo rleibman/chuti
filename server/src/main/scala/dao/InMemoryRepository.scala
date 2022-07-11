@@ -28,14 +28,16 @@ import zio.duration.*
 
 object InMemoryRepository {
 
+  private val now = Instant.now().nn
+
   val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
+    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
   val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2")
+    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
   val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3")
+    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", created = now, lastUpdated = now)
   val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
+    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
 }
 

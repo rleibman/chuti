@@ -158,6 +158,7 @@ trait GameAbstractSpec2 {
 
   def readGame(filename: String): Task[Game] =
     ZIO.effect {
+      import scala.language.unsafeNulls
       val file = File(filename)
       decode[Game](file.contentAsString)
     }.absolve

@@ -68,6 +68,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
   )(using ev:         IsOperation[Origin]
   ): AsyncCallback[Option[A]] =
     asyncCalibanCall[Origin, Option[Json]](selectionBuilder).map { jsonOpt =>
+      import scala.language.unsafeNulls
       val decoder = summon[Decoder[A]]
       jsonOpt.map(decoder.decodeJson) match {
         case Some(Right(value)) => Some(value)
@@ -113,6 +114,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
       selectionBuilder,
       {
         case Some(json) =>
+          import scala.language.unsafeNulls
           val decoder = summon[Decoder[A]]
           decoder.decodeJson(json) match {
             case Right(obj) => callback(Option(obj))
@@ -131,6 +133,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
     calibanCall[Origin, Json](
       selectionBuilder,
       { json =>
+        import scala.language.unsafeNulls
         val decoder = summon[Decoder[A]]
         decoder.decodeJson(json) match {
           case Right(obj) => callback(obj)
@@ -166,6 +169,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
   }
 
+  import scala.language.unsafeNulls
   lazy private[caliban] val graphQLDecoder = summon[Decoder[GraphQLResponse]]
 
   // TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
@@ -272,7 +276,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                       connectionState.lastKAOpt.map { lastKA =>
                         val timeFromLastKA =
                           java.time.Duration
-                            .between(lastKA, Instant.now).toMillis.milliseconds
+                            .between(lastKA, Instant.now.nn).nn.toMillis.milliseconds
                         if (timeFromLastKA > timeout) {
                           // Assume we've gotten disconnected, we haven't received a KA in a while
                           if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
@@ -289,7 +293,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                 )
               )
             }
-            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
+            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now().nn))
             onKeepAlive(payload).runNow()
           case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
             if (connectionState.closed) println("Connection is already closed")

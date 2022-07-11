@@ -46,7 +46,7 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext &
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameException, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext & Clock, GameException, Seq[
       ChatMessage
     ]]
   )
@@ -68,7 +68,7 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext &
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
-  private given Schema[ChatService & SessionContext, Queries] = Schema.gen[ChatService & SessionContext, Queries]
+  private given Schema[ChatService & SessionContext & Clock, Queries] = Schema.gen[ChatService & SessionContext & Clock, Queries]
   private given Schema[ChatService & Repository & SessionContext & Logging & Clock, Mutations] =
     Schema.gen[ChatService & Repository & SessionContext & Logging & Clock, Mutations]
   private given Schema[ChatService & Repository & SessionContext & Logging & Clock, Subscriptions] =

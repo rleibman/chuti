@@ -32,8 +32,8 @@ lazy val scala3Opts = Seq(
   "-unchecked", // Enable additional warnings where generated code depends on assumptions.
   //  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
-//  "-explain-types", // Explain type errors in more detail.
-  //  "-Yexplicit-nulls" // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
+  //  "-explain-types", // Explain type errors in more detail.
+  "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines", "64"
 )
 

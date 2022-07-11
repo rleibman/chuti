@@ -150,14 +150,14 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
       case req @ Method.GET -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage))
+            pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
             res <- getOperation(pk)
           } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.DELETE -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage))
+            pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
             _      <- Logging.info(s"Deleted ${pk.toString}")

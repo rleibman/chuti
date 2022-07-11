@@ -96,7 +96,7 @@ package object coinbase {
     try {
       val sha256 = Mac.getInstance("HmacSHA256").asInstanceOf[Mac]
       sha256.init(keyspec)
-      val hash = Hex.encodeHexString(sha256.doFinal(prehash.getBytes))
+      val hash = Hex.encodeHexString(sha256.doFinal(prehash.getBytes)).nn
       hash
     } catch {
       case e @ (_: NoSuchAlgorithmException | _: InvalidKeyException) =>

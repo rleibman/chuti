@@ -31,6 +31,8 @@ package object util {
   extension (request: Request) {
 
     def formData: ZIO[Any, Throwable, Map[String, String]] = {
+      import scala.language.unsafeNulls
+
       for {
         str <- request.bodyAsString
         _ <- ZIO
@@ -41,8 +43,7 @@ package object util {
           )
           .when(!request.headerValue(HeaderNames.contentType).contains(HeaderValues.applicationXWWWFormUrlencoded.toString))
       } yield str
-        .split("&")
-        .map(_.split("="))
+        .split("&").map(_.split("="))
         .collect { case Array(k: String, v: String) =>
           QueryStringDecoder.decodeComponent(k) -> QueryStringDecoder.decodeComponent(v)
         }
@@ -61,7 +62,7 @@ package object util {
         forceLanguage.getOrElse(request.headerValue(HeaderNames.acceptLanguage).getOrElse(availableLocales.head.toLanguageTag))
       )
 
-      Locale.lookup(range, availableLocales.toList.asJava)
+      Locale.lookup(range, availableLocales.toList.asJava).nn
     }
 
     def bodyAs[E: Decoder]: ZIO[Logging, Throwable, E] =
@@ -72,7 +73,7 @@ package object util {
           .tapError { e =>
             Logging.throwable(s"Error parsing body.\n$body", e)
           }
-          .mapError(e => HttpError.BadRequest(e.getMessage))
+          .mapError(e => HttpError.BadRequest(e.getMessage.nn))
       } yield obj
 
   }

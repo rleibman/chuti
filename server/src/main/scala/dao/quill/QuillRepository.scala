@@ -132,7 +132,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   given MappedEncoding[Int, GameId] = MappedEncoding[Int, GameId](GameId.apply)
 
-  private given TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder((index: Index, row: ResultRow, _: Session) => row.getTimestamp(index))
+  private given TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder((index: Index, row: ResultRow, _: Session) => row.getTimestamp(index).nn)
 
   private given TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
 
@@ -140,7 +140,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   private given JsonDecoder: ctx.Decoder[io.circe.Json] =
     JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
-      parse(row.getString(index)).fold(e => throw RepositoryError(e), json => json)
+      parse(row.getString(index).nn).fold(e => throw RepositoryError(e), json => json)
     }
 
   private val godSession: ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
@@ -180,11 +180,11 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       querySchema[TokenRow]("token")
     }
 
-  private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db"))
+  private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db").nn)
 
   private given GameStatusDecoder: ctx.Decoder[GameStatus] =
     JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
-      GameStatus.valueOf(row.getString(index))
+      GameStatus.valueOf(row.getString(index).nn)
     }
 
   private given GameStatusEncoder: ctx.Encoder[GameStatus] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.value))
@@ -239,7 +239,8 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           if (softDelete) {
             ctx
               .run(
-                users.filter(u => u.id === lift(pk.userId) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now))))
+                users
+                  .filter(u => u.id === lift(pk.userId) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now).nn)))
               ).map(_ > 0)
           } else {
             ctx.run(users.filter(_.id === lift(pk.userId)).delete).map(_ > 0)
@@ -312,7 +313,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
     override def firstLogin: RepositoryIO[Option[Instant]] =
       (for {
         chutiSession <- ZIO.service[SessionContext.Session].map(_.session)
-        res          <- ctx.run(userLogins.filter(_.userId === lift(chutiSession.user.id.fold(-1)(_.userId))).map(_.time).min).map(_.map(_.toInstant))
+        res <- ctx.run(userLogins.filter(_.userId === lift(chutiSession.user.id.fold(-1)(_.userId))).map(_.time).min).map(_.map(_.toInstant.nn))
       } yield res).provideSomeLayer[SessionContext & Logging & Clock](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def login(
@@ -330,7 +331,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         now    <- ZIO.service[Clock.Service].flatMap(_.instant)
         userId <- ctx.run(sql).map(_.headOption.map(UserId.apply))
         user   <- ZIO.foreach(userId)(id => get(id)).provideSomeLayer[Clock & Logging](godSession)
-        saveTime = Timestamp.from(now)
+        saveTime = Timestamp.from(now).nn
         _ <- ZIO.foreach_(userId)(id => ctx.run(userLogins.insertValue(UserLogRow(lift(id.userId), lift(saveTime)))))
       } yield user.flatten).provideSomeLayer[Clock & Logging](dataSourceLayer).mapError(RepositoryError.apply)
     }
@@ -565,7 +566,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           session => s"${session.user} Not authorized"
         )
         now <- ZIO.service[Clock.Service].flatMap(_.instant)
-        upsertMe = GameRow.fromGame(game.copy(created = game.id.fold(now)(_ => game.created))).copy(lastUpdated = Timestamp.from(now))
+        upsertMe = GameRow.fromGame(game.copy(created = game.id.fold(now)(_ => game.created))).copy(lastUpdated = Timestamp.from(now).nn)
 
         upserted <- game.id.fold {
           // It's an insert
@@ -638,7 +639,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
     override def cleanup: RepositoryIO[Boolean] =
       (for {
-        now <- ZIO.service[Clock.Service].flatMap(_.instant).map(Timestamp.from)
+        now <- ZIO.service[Clock.Service].flatMap(_.instant).map(a => Timestamp.from(a).nn)
         b   <- ctx.run(quote(tokens.filter(_.expireTime >= lift(now))).delete).map(_ > 0)
       } yield b)
         .provideSomeLayer[SessionContext & Logging & Clock](dataSourceLayer)

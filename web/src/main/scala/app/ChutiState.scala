@@ -44,7 +44,7 @@ case class ChutiState(
   flippedFichas:    Set[Ficha] = Set.empty,
   onSessionChanged: (Option[User], String) => Callback = (_, _) => Callback.empty,
   languageTag: String = {
-    val loc = window.sessionStorage.getItem("languageTag")
+    val loc: String | Null = window.sessionStorage.getItem("languageTag")
     println(s"languageTag = $loc")
     if (loc == null || loc.isEmpty)
       "es-MX"
@@ -70,7 +70,8 @@ case class ChutiState(
   playSound:             String => Callback = _ => Callback.empty
 ) {
 
-  lazy val locale: Locale = Locale.forLanguageTag(languageTag)
+  lazy val locale: Locale =
+    if (Locale.forLanguageTag(languageTag) == null) Locale.forLanguageTag("es-MX").nn else Locale.forLanguageTag(languageTag).nn
 
   def isFlipped(ficha: Ficha): Boolean = flippedFichas.contains(ficha)
 

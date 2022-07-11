@@ -31,7 +31,7 @@ object LoginPage {
 
   class Backend($ : BackendScope[Props, State]) {
 
-    val query: String = window.location.search.substring(1)
+    val query: String = window.location.search.substring(1).nn
     val isBad: Boolean = query.contains("bad=true")
     def render(
       P: Props

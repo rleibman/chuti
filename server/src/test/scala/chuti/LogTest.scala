@@ -16,12 +16,14 @@
 
 package chuti
 
+import dao.InMemoryRepository.now
 import zio.clock.Clock
 import zio.duration.*
 import zio.logging.*
 import zio.logging.slf4j.*
 import zio.{App, ExitCode, UIO, ZIO, ZLayer}
 
+import java.time.Instant
 import java.util.UUID
 
 case class SomethingElse(string: String) {
@@ -47,21 +49,19 @@ object LogTest extends App {
       s"${ctx(LogAnnotation.CorrelationId)} ${ctx(userAnnonation)}: $str"
     }
   )
+  private val now = Instant.now.nn
   private val users = List(
-    Option(User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")),
-    Option(User(Option(UserId(2)), "yoyo2@example.com", "yoyo2"))
+    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now),
+    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
   )
 
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
     val somethingElse = SomethingElse("Yoyo")
     (for {
-      _             <- log.info("Start...")
-      correlationId <- UIO(Some(UUID.randomUUID()))
-      _             <- somethingElse.foo
-      _ <- ZIO.foreachPar(users) { uId =>
-        log.locally(
-          _.annotate(userAnnonation, uId).annotate(LogAnnotation.CorrelationId, correlationId)
-        ) {
+      _ <- log.info("Start...")
+      _ <- somethingElse.foo
+      _ <- ZIO.foreachPar_(users) { user =>
+        log.locally(_.annotate(userAnnonation, Option(user)).annotate(LogAnnotation.CorrelationId, Option(UUID.randomUUID().nn))) {
           log.info("Starting operation") *>
             ZIO.sleep(500.millis) *>
             log.info("Stopping operation")

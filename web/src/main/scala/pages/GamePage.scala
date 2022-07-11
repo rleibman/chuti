@@ -86,7 +86,7 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
 
   }
   case class Props(chutiState: ChutiState)
-
+  import scala.language.unsafeNulls
   given messageReuse:      Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
   given gameReuse:         Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
   given userIdReuse:       Reusability[UserId] = Reusability.by(_.userId)

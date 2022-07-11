@@ -144,6 +144,7 @@ object GameService {
       _.get
         .play(
           gameId, {
+            import scala.language.unsafeNulls
             val decoder = summon[Decoder[PlayEvent]]
             decoder.decodeJson(playEvent) match {
               case Right(event) => event
@@ -355,6 +356,7 @@ object GameService {
         (for {
           user       <- ZIO.access[SessionContext](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
+          now        <- ZIO.service[Clock.Service].flatMap(_.instant)
           oldGame <-
             repository.gameOperations
               .get(oldGameId).map(_.getOrElse(throw GameException("No existe juego previo")))
@@ -362,7 +364,8 @@ object GameService {
             val newGame = Game(
               id = None,
               gameStatus = GameStatus.esperandoJugadoresInvitados,
-              satoshiPerPoint = oldGame.satoshiPerPoint
+              satoshiPerPoint = oldGame.satoshiPerPoint,
+              created = now
             )
             val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
             repository.gameOperations.upsert(game2)
@@ -381,11 +384,13 @@ object GameService {
         (for {
           user       <- ZIO.access[SessionContext](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
+          now        <- ZIO.service[Clock.Service].flatMap(_.instant)
           upserted <- {
             val newGame = Game(
               id = None,
               gameStatus = GameStatus.esperandoJugadoresInvitados,
-              satoshiPerPoint = satoshiPerPoint
+              satoshiPerPoint = satoshiPerPoint,
+              created = now
             )
             val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
             repository.gameOperations.upsert(game2)
@@ -473,11 +478,12 @@ object GameService {
           user       <- ZIO.access[SessionContext](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
           postman    <- ZIO.service[Postman.Service]
+          now        <- ZIO.service[Clock.Service].flatMap(_.instant)
           gameOpt    <- repository.gameOperations.get(gameId)
           invitedOpt <- repository.userOperations.userByEmail(email)
           invited <- invitedOpt.fold(
             repository.userOperations
-              .upsert(User(None, email, name))
+              .upsert(User(None, email, name, created = now, lastUpdated = now))
               .provideSomeLayer[Logging & Clock](godLayer)
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
@@ -548,11 +554,12 @@ object GameService {
         for {
           user       <- ZIO.access[SessionContext](_.get.session.user)
           repository <- ZIO.service[Repository.Service]
+          now        <- ZIO.service[Clock.Service].flatMap(_.instant)
           newOrRetrieved <- gameOpt.fold(
             // The game may have no players yet, so god needs to save it
             repository.gameOperations
               .upsert(
-                Game(None, gameStatus = GameStatus.esperandoJugadoresAzar)
+                Game(None, gameStatus = GameStatus.esperandoJugadoresAzar, created = now)
               ).provideSomeLayer[
                 Logging & Clock
               ](godLayer)

@@ -36,7 +36,7 @@ import scala.annotation.unused
 
 object AppRouter extends ChutiComponent {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").withLocale(Locale.US).withZone(ZoneId.systemDefault())
+  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
 
   sealed trait AppPage
 
@@ -170,7 +170,6 @@ object AppRouter extends ChutiComponent {
     page:       RouterCtl[AppPage],
     resolution: Resolution[AppPage]
   ): VdomElement = {
-    assert(page != null)
     ChutiState.ctx.consume { chutiState =>
       import chutiState.ChutiMessages.*
       given locale: Locale = chutiState.locale

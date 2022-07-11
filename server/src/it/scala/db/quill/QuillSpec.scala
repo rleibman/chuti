@@ -18,7 +18,13 @@ abstract class QuillSpec extends DefaultRunnableSpec {
 
   protected val password: String = "testPassword123"
   protected val satan: User = // A user with no permissions
-    User(id = Some(UserId(999)), email = "Satan@hell.com", name = "Lucifer Morningstar")
+    User(
+      id = Some(UserId(999)),
+      email = "Satan@hell.com",
+      name = "Lucifer Morningstar",
+      created = Instant.now().nn,
+      lastUpdated = Instant.now().nn
+    )
 
   protected val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
   protected val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
@@ -28,18 +34,19 @@ abstract class QuillSpec extends DefaultRunnableSpec {
   protected val godSession:              ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
   protected val satanSession:            ULayer[SessionContext] = SessionContext.live(ChutiSession(satan))
   protected def userSession(user: User): ULayer[SessionContext] = SessionContext.live(ChutiSession(user))
-  protected val now:                     Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z")
+  protected val now:                     Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z").nn
   protected val clockLayer: ULayer[Clock] =
-    ZLayer.succeed(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC))) >>> Clock.javaClock
+    ZLayer.succeed(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC).nn).nn) >>> Clock.javaClock
 
   //  val fullGodLayer: ULayer[Config & Repository & Logging & SessionContext & Clock & Random] =
   //    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
 
-  protected val testUserZIO: URIO[Random, User] = {
+  protected val testUserZIO: URIO[Random & Clock, User] = {
     for {
       random <- ZIO.service[Random.Service]
+      now    <- ZIO.service[Clock.Service].flatMap(_.instant)
       str    <- random.nextString(5)
-    } yield User(None, email = s"$str@example.com", name = "Frank Lloyd Wright")
+    } yield User(None, email = s"$str@example.com", name = "Frank Lloyd Wright", created = now, lastUpdated = now)
   }
 
 }

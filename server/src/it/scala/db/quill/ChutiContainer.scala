@@ -2,6 +2,7 @@ package db.quill
 
 import api.config.Config
 import com.dimafeng.testcontainers.MySQLContainer
+import com.typesafe.config
 import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
 import io.getquill.context.ZioJdbc.DataSourceLayer
@@ -24,40 +25,41 @@ object ChutiContainer {
     def migrate(): ZIO[Has[DataSource], RepositoryError, Unit] =
       (for {
         files <- ZIO {
+          import scala.language.unsafeNulls
           new java.io.File(path).listFiles.sortBy(_.getName)
         }.orDie
         dataSource <- ZIO.service[DataSource]
         statements <- ZIO
           .foreach(files) {
-            case file: io.File if file.getName.endsWith("sql") =>
+            case file: io.File if file.getName.nn.endsWith("sql") =>
               ZIO(Source.fromFile(file))
                 .bracket(f => ZIO.succeed(f.close())) { source =>
                   val str = source
                     .getLines()
-                    .map(str => str.replaceAll("--.*", "").trim)
+                    .map(str => str.replaceAll("--.*", "").nn.trim.nn)
                     .mkString("\n")
-                  ZIO(str.split(";\n"))
+                  ZIO(str.split(";\n").nn)
                 }
             case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
           }.map(
             _.flatten
-              .map(_.trim)
+              .map(_.nn.trim.nn)
               .filter(_.nonEmpty)
           ).catchSome(e => ZIO.fail(RepositoryError(e)))
         res <- {
           ZIO {
-            val conn = dataSource.getConnection
-            val stmt = conn.createStatement()
+            val conn = dataSource.getConnection.nn
+            val stmt = conn.createStatement().nn
             (conn, stmt)
           }.bracket { case (conn, stmt) =>
             ZIO.succeed {
-              stmt.close()
-              conn.close()
+              stmt.close().nn
+              conn.close().nn
             }
           } { case (_, stmt) =>
             ZIO
               .foreach_(statements) { statement =>
-                ZIO(stmt.executeUpdate(statement))
+                ZIO(stmt.executeUpdate(statement).nn)
               }.catchSome { case e: SQLException =>
                 ZIO.fail(RepositoryError(e))
               }
@@ -80,12 +82,12 @@ object ChutiContainer {
       c.container.start()
       c
     }
-    config = getConfig(c)
+    config = getConfig(c).nn
     _ <- Logging.debug("Migrating container")
     _ <-
       (Migrator("server/src/main/sql").migrate()
         *> Migrator("server/src/it/sql").migrate())
-        .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db")))
+        .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db").nn))
         .mapError(RepositoryError.apply)
   } yield new Service {
 
@@ -93,8 +95,9 @@ object ChutiContainer {
 
   }).mapError(RepositoryError.apply).toLayer
 
-  private def getConfig(container: MySQLContainer) =
-    ConfigFactory.parseString(s"""
+  private def getConfig(container: MySQLContainer): config.Config =
+    ConfigFactory
+      .parseString(s"""
       chuti.db.dataSourceClassName=com.mysql.cj.jdbc.MysqlDataSource
       chuti.db.dataSource.url="${container.container.getJdbcUrl}?logger=com.mysql.cj.log.Slf4JLogger&profileSQL=true&serverTimezone=UTC&useLegacyDatetimeCode=false"
       chuti.db.dataSource.user="${container.container.getUsername}"
@@ -103,7 +106,7 @@ object ChutiContainer {
       chuti.db.dataSource.prepStmtCacheSize=250
       chuti.db.dataSource.prepStmtCacheSqlLimit=2048
       chuti.db.maximumPoolSize=10
-    """)
+    """).nn
 
   val configLayer: URLayer[ChutiContainer & Config, Config] = {
     (for {
@@ -111,7 +114,7 @@ object ChutiContainer {
       baseConfig <- ZIO.service[Config.Service].map(_.config)
     } yield {
       new api.config.Config.Service {
-        override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig)
+        override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
       }
     }).toLayer
   }

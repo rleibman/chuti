@@ -25,6 +25,7 @@ import org.scalatest.{Assertion, Succeeded}
 import org.scalatest.Assertions.*
 import zio.ZIO
 
+import java.time.Instant
 import scala.util.Random
 
 class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
@@ -55,7 +56,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       cuantasCantas: CuantasCantas,
       testEndState:  Game => Assertion
     ): GameTester = {
-      val parsedHands = hands.map(str => str.split(",").toList.map(Ficha.fromString)).toList
+      val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
       assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
       val allHands = parsedHands ++ otherHands
@@ -78,7 +79,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
           )
         }
       }
-      val game = Game(None, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
+      val game = Game(None, created = Instant.now.nn, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
 
       new GameTester(description, game, testEndState)
     }

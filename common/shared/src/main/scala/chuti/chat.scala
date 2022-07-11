@@ -22,6 +22,6 @@ case class ChatMessage(
   fromUser:  User,
   msg:       String,
   channelId: ChannelId,
-  toUser:    Option[User] = None,
-  date:      Instant = Instant.now
+  date:      Instant,
+  toUser:    Option[User] = None
 )

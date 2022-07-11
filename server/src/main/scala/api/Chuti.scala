@@ -41,6 +41,7 @@ import zio.clock.Clock
 import zio.console.Console
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
+import io.circe.DecodingFailure
 
 import java.util.Locale
 
@@ -48,7 +49,14 @@ object Chuti extends zio.App {
 
   import api.auth.Auth.*
 
-  given Decoder[Locale] = Decoder.decodeString.map(Locale.forLanguageTag)
+  given Decoder[Locale] =
+    Decoder.decodeString.map(s =>
+      Locale.forLanguageTag(s) match {
+        case l: Locale => l
+        case null => throw DecodingFailure(s"invalid locale $s", List.empty)
+      }
+    )
+
   given Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
   type Environment = Blocking & Console & Clock & GameService & ChatService & Logging & Config & Has[Repository.Service] & Postman & TokenHolder &
@@ -65,6 +73,7 @@ object Chuti extends zio.App {
   private val repositoryLayer:    ULayer[Repository] = (loggingLayer ++ Clock.live ++ uncachedRepository) >>> QuillRepository.cached
   private val authOpsLayer: ULayer[Has[CRUDOperations[User, UserId, PagedStringSearch]]] =
     repositoryLayer >>> ZIO.service[Repository.Service].map(_.userOperations).toLayer
+  import scala.language.unsafeNulls
   val sessionStorageLayer: ULayer[SessionStorage[ChutiSession, String]] = Clock.live >>> Auth.SessionStorage.tokenEncripted[ChutiSession]
   val sessionTransportLayer: ULayer[SessionTransport[ChutiSession]] =
     (Clock.live ++ sessionStorageLayer) >>> Auth.SessionTransport.cookieSessionTransport[ChutiSession]
@@ -98,7 +107,7 @@ object Chuti extends zio.App {
           Http.succeed(Response.fromHttpError(e))
         case e: Throwable =>
           e.printStackTrace()
-          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
       } @@ sessionTransport.auth
 
   private val appZIO: URIO[Environment & AuthRoutes.OpsService, RHttpApp[Environment & AuthRoutes.OpsService]] = for {
@@ -116,7 +125,7 @@ object Chuti extends zio.App {
           Http.succeed(Response.fromHttpError(e))
         case e: Throwable =>
           e.printStackTrace()
-          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage, Some(e))))
+          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
       }
   }
 
@@ -143,8 +152,8 @@ object Chuti extends zio.App {
           config <- ZIO.service[Config.Service]
           app    <- appZIO
           server = Server.bind(
-            config.config.getString(s"${config.configKey}.host"),
-            config.config.getInt(s"${config.configKey}.port")
+            config.config.getString(s"${config.configKey}.host").nn,
+            config.config.getInt(s"${config.configKey}.port").nn
           ) ++
             Server.enableObjectAggregator(maxRequestSize = 210241024) ++
             Server.app(app)
