@@ -154,7 +154,7 @@ package object dao {
   case class TokenRow(
     tok:          String,
     tokenPurpose: String,
-    expireTime:   Long,
+    expireTime:   Timestamp,
     userId:       Int
   )
 

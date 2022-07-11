@@ -39,7 +39,7 @@ object InMemoryRepository {
 
 }
 
-class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
+case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
 
   import InMemoryRepository.*
   private val games =

@@ -15,6 +15,8 @@ import zio.duration.*
 
 object PostmanIntegrationSpec extends DefaultRunnableSpec {
 
+  val tokenLayer: ULayer[TokenHolder] = ???
+
   override def spec: Spec[TestEnvironment, TestFailure[Throwable], TestSuccess] =
     suite("PostmanIntegrationSpec")(
       testM("sending an email") {
@@ -46,10 +48,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
         zio.as(assert(true)(equalTo(true)))
       }
     ).provideCustomLayer(
-      ZLayer.succeed(CourierPostman.live(config.live)) ++
-        (for {
-          cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
-        } yield TokenHolder.tempCache(cache)).toLayer
+      ZLayer.succeed(CourierPostman.live(config.live)) ++ tokenLayer
     )
 
 }

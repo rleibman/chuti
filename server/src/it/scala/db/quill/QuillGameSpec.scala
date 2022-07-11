@@ -2,7 +2,7 @@ package db.quill
 
 import better.files.File
 import chuti.*
-import dao.Repository
+import dao.*
 import io.circe
 import io.circe.Decoder
 import io.circe.generic.auto.*
@@ -10,7 +10,8 @@ import io.circe.parser.decode
 import zio.*
 import zio.random.Random
 import zio.test.*
-import zio.test.environment.TestEnvironment
+import zio.test.environment.*
+import zio.logging.Logging
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -31,6 +32,10 @@ object QuillGameSpec extends QuillSpec {
   val GAME_WITH_2USERS =
     "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
   val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
+  val fullLayer: ULayer[
+    Repository & SessionContext & Logging & Annotations &
+      (Live & (Sized & (TestClock & (TestConfig & (TestConsole & (TestRandom & (TestSystem & zio.ZEnv)))))))
+  ] = ???
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     suite("Quill Game Suite")(
@@ -59,7 +64,7 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(deleted) &&
           assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)
       }
-    ).provideLayerShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
+    ).provideLayerShared(fullLayer) // containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]
   //  def userInGame(id:      GameId): RepositoryIO[Boolean]
   //  def updatePlayers(game: Game):   RepositoryIO[Game]

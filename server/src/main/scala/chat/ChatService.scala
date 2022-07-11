@@ -105,7 +105,7 @@ object ChatService {
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
-  def make(): ZLayer[Logging, Nothing, ChatService] =
+  def make(): URLayer[Logging, ChatService] =
     ZLayer.fromEffect {
       for {
         chatMessageQueue <- Ref.make(List.empty[MessageQueue])

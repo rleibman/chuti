@@ -32,7 +32,7 @@ lazy val scala3Opts = Seq(
   "-unchecked", // Enable additional warnings where generated code depends on assumptions.
   //  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
-  "-explain-types", // Explain type errors in more detail.
+//  "-explain-types", // Explain type errors in more detail.
   //  "-Yexplicit-nulls" // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines", "64"
 )
@@ -144,6 +144,7 @@ lazy val server = project
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
+      "org.scalatestplus" %% "mockito-4-5" % "3.2.12.0" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" % "it, test" withSources(),
       "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()

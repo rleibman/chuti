@@ -21,7 +21,7 @@ import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
 import dao.Repository.GameOperations
-import dao.{Repository, RepositoryIO}
+import dao.{InMemoryRepository, Repository, RepositoryIO}
 import io.circe.Printer
 import io.circe.generic.auto.*
 import io.circe.parser.decode
@@ -35,10 +35,11 @@ import zio.logging.slf4j.Slf4jLogger
 
 import java.util.UUID
 import zio.duration.*
+import org.scalatest.Assertions.*
 
 trait GameAbstractSpec {
 
-  val connectionId: ConnectionId = ConnectionId(UUID.randomUUID().toString)
+  val connectionId: ConnectionId = ConnectionId(5)
 
   val user1: User =
     User(Option(UserId(1)), "yoyo1@example.com", "yoyo1")
@@ -50,10 +51,6 @@ trait GameAbstractSpec {
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4")
 
   val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
-  def createUserOperations: Repository.UserOperations = {
-    val userOperations: Repository.UserOperations = mock[Repository.UserOperations]
-    userOperations
-  }
 
   def fullLayer(
     gameOps: Repository.GameOperations,
@@ -88,7 +85,7 @@ trait GameAbstractSpec {
     }) ++
       loggingLayer ++
       (for {
-        cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
+        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(chuti.god))) // TODO: fix this
       } yield TokenHolder.tempCache(cache)).toLayer ++
       ZLayer.succeed(postman) ++
       (loggingLayer >>> ChatService.make())

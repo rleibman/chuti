@@ -136,7 +136,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
                 SessionContext.live(ChutiSession(chuti.god))
               )
           gameEvents <- gameEventsFiber.join
-        } yield (end._2, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
+        } yield (end, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
       }
 
     assert(game.id === Option(gameId))

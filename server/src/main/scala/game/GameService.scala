@@ -227,7 +227,7 @@ object GameService {
     } yield sent
   }
 
-  def make(): ZLayer[Any, Nothing, GameService] =
+  def make(): ULayer[GameService] =
     (for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])

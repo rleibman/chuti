@@ -2,19 +2,24 @@ package db.quill
 
 import api.config.Config
 import chuti.*
-import dao.{Repository, RepositoryError, RepositoryPermissionError}
+import dao.{Repository, RepositoryError, RepositoryPermissionError, SessionContext}
 import zio.*
 import zio.clock.Clock
 import zio.logging.Logging
 import zio.random.Random
 import zio.test.*
-import zio.test.environment.TestEnvironment
+import zio.test.environment.{Live, TestClock, TestConsole, TestEnvironment, TestRandom, TestSystem}
 
 import java.math.BigInteger
 
 object QuillUserSpec extends QuillSpec {
 
   import Assertion.*
+
+  val fullLayer: ULayer[
+    Config & Repository & SessionContext & Logging & Annotations &
+      (Live & (Sized & (TestClock & (TestConfig & (TestConsole & (TestRandom & (TestSystem & zio.ZEnv)))))))
+  ] = ???
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     suite("Quill User Suite")(
@@ -37,7 +42,7 @@ object QuillUserSpec extends QuillSpec {
         } yield assertTrue(allUsersBeforeInsert.isEmpty) &&
           assertTrue(inserted.id.nonEmpty) &&
           assertTrue(allUsersAfterInsert.nonEmpty) &&
-          assertTrue(count > 1) && // Because tests are run in parallel, we don't really know how many there are, but there should at least be one
+          assertTrue(count > 1L) && // Because tests are run in parallel, we don't really know how many there are, but there should at least be one
           assertTrue(allUsersAfterInsert.exists(_.id == inserted.id)) &&
           assertTrue(allUsersAfterInsert.exists(_.email == inserted.email)) &&
           assertTrue(deleted) &&
@@ -176,6 +181,6 @@ object QuillUserSpec extends QuillSpec {
       // friends
       // getWallet
       // updateWallet
-    ).provideLayerShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
+    ).provideLayerShared(fullLayer) // containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
 
 }

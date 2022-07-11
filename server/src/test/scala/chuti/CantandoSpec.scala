@@ -18,9 +18,10 @@ package chuti
 
 import api.ChutiSession
 import chuti.CuantasCantas.Buenas
-import dao.{Repository, SessionContext}
+import dao.{InMemoryRepository, Repository, SessionContext}
 import game.GameService
 import org.scalatest.Assertion
+import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
 import zio.duration.*
@@ -51,9 +52,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
   }
 
   "Cantando casa sin salve" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -78,9 +79,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -88,27 +86,18 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
                 layer ++ SessionContext.live(ChutiSession(quienCanta))
               )
           jugador2 = game2.nextPlayer(quienCanta).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
-          )
           game3 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador2))
               )
           jugador3 = game3.nextPlayer(jugador2).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
-          )
           game4 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador3))
               )
           jugador4 = game4.nextPlayer(jugador3).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
-          )
           game5 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
@@ -134,9 +123,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando cinco sin salve" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -161,9 +150,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -171,27 +157,18 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
                 layer ++ SessionContext.live(ChutiSession(quienCanta))
               )
           jugador2 = game2.nextPlayer(quienCanta).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
-          )
           game3 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador2))
               )
           jugador3 = game3.nextPlayer(jugador2).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
-          )
           game4 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador3))
               )
           jugador4 = game4.nextPlayer(jugador3).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
-          )
           game5 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
@@ -216,9 +193,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando todas" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -243,9 +220,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -272,9 +246,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -299,9 +273,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -309,27 +280,18 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
                 layer ++ SessionContext.live(ChutiSession(quienCanta))
               )
           jugador2 = game2.nextPlayer(quienCanta).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
-          )
           game3 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador2))
               )
           jugador3 = game3.nextPlayer(jugador2).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
-          )
           game4 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador3))
               )
           jugador4 = game4.nextPlayer(jugador3).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
-          )
           game5 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
@@ -358,9 +320,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de chuti" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -385,9 +347,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -395,9 +354,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
                 layer ++ SessionContext.live(ChutiSession(quienCanta))
               )
           jugador2 = game2.nextPlayer(quienCanta).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
-          )
           game3 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
@@ -426,9 +382,9 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) // Though 2 happen (log in and log out, only log in should be registering)
   }
   "Cantando casa con salve de 5,6,7" should "get it done" in {
-    val gameOperations: Repository.GameOperations = mock[Repository.GameOperations]
-    when(gameOperations.upsert(*[Game])).thenAnswer((game: Game) => ZIO.succeed(game.copy(Some(GameId(1)))))
-    val userOperations = createUserOperations
+    val repo = new InMemoryRepository(Seq.empty)
+    val gameOperations = repo.gameOperations
+    val userOperations = repo.userOperations
 
     val layer = fullLayer(gameOperations, userOperations)
     val (
@@ -453,9 +409,6 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
           _               <- clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game1)))
-          )
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
             gameService
@@ -463,27 +416,18 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
                 layer ++ SessionContext.live(ChutiSession(quienCanta))
               )
           jugador2 = game2.nextPlayer(quienCanta).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game2)))
-          )
           game3 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador2))
               )
           jugador3 = game3.nextPlayer(jugador2).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game3)))
-          )
           game4 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.Canto6)).provideCustomLayer(
                 layer ++ SessionContext.live(ChutiSession(jugador3))
               )
           jugador4 = game4.nextPlayer(jugador3).user
-          _ <- ZIO.succeed(
-            when(gameOperations.get(GameId(1))).thenReturn(ZIO.succeed(Option(game4)))
-          )
           game5 <-
             gameService
               .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(

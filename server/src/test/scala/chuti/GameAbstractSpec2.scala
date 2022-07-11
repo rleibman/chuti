@@ -17,7 +17,7 @@
 package chuti
 
 import api.ChutiSession
-import api.token.{Token, TokenHolder}
+import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
 import chat.ChatService.ChatService
@@ -33,6 +33,7 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
 import mail.Postman.Postman
+import org.scalatest.Assertions.*
 import org.scalatest.{Assertion, Succeeded}
 import zio.*
 import zio.cache.{Cache, Lookup}
@@ -42,14 +43,14 @@ import zio.duration.*
 import zio.logging.Logging
 import zio.logging.slf4j.Slf4jLogger
 
-import java.util.UUID
+import java.util.{Random, UUID}
 
 trait GameAbstractSpec2 {
 
-  val connectionId:               ConnectionId = ConnectionId(UUID.randomUUID().toString)
+  val connectionId:               ConnectionId = ConnectionId(new Random().nextInt())
   lazy protected val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
 
-  def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, (Assertion, Game)] = {
+  def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, Game] = {
     for {
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
       start <-
@@ -59,32 +60,32 @@ trait GameAbstractSpec2 {
           )
       looped <-
         ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
-      asserted <- ZIO.succeed {
+      _ <- ZIO {
         val numFilas = looped.jugadores.map(_.filas.size).sum
         looped.quienCanta.fold(fail()) { cantante =>
           if (cantante.yaSeHizo) {
             println(
               s"${cantante.user.name} canto ${cantante.cuantasCantas.get} se hizo con ${cantante.filas.size}!"
             )
-//          if (cantante.fichas.size !== (numFilas - 7)) {
-//            println("what?!") //Save it to analyze
-//            testRuntime.unsafeRun(writeGame(afterCanto, WEIRD_GAME("regalos_dont_match")))
-//          }
-            assert(cantante.fichas.size === (numFilas - 7))
+            //          if (cantante.fichas.size !== (numFilas - 7)) {
+            //            println("what?!") //Save it to analyze
+            //            testRuntime.unsafeRun(writeGame(afterCanto, WEIRD_GAME("regalos_dont_match")))
+            //          }
+            assert(cantante.fichas.size == (numFilas - 7))
           } else {
             println(
               s"Fue hoyo de ${cantante.cuantasCantas.get} para ${cantante.user.name}!"
             )
           }
-          if (looped.gameStatus === GameStatus.partidoTerminado)
+          if (looped.gameStatus == GameStatus.partidoTerminado)
             println("Partido terminado!")
           assert(
-            looped.gameStatus === GameStatus.requiereSopa || looped.gameStatus === GameStatus.partidoTerminado
+            looped.gameStatus == GameStatus.requiereSopa || looped.gameStatus == GameStatus.partidoTerminado
           )
-        // May want to assert Que las cuentas quedaron claras
+          // May want to assert Que las cuentas quedaron claras
         }
       }
-    } yield (asserted, looped)
+    } yield looped
   }
 
   def juegaMano(gameId: GameId): RIO[TestLayer, Game] = {
@@ -139,7 +140,7 @@ trait GameAbstractSpec2 {
       ZLayer.succeed(postman) ++
       loggingLayer ++
       (for {
-        cache <- Cache.make[String, Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(Token(str))))
+        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
       } yield TokenHolder.tempCache(cache)).toLayer ++
       GameService.make() ++
       (loggingLayer >>> ChatService.make()) ++
@@ -181,10 +182,10 @@ trait GameAbstractSpec2 {
   }
 
   def assertSoloUnoCanta(game: Game): Assertion = {
-    assert(game.jugadores.count(_.cantante) === 1)
-    assert(game.jugadores.count(_.mano) === 1)
-    assert(game.jugadores.count(_.turno) === 1)
-    assert(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) === 1)
+    assert(game.jugadores.count(_.cantante) == 1)
+    assert(game.jugadores.count(_.mano) == 1)
+    assert(game.jugadores.count(_.turno) == 1)
+    assert(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) == 1)
     val cantante = game.jugadores.find(_.cantante).get
     assert(cantante.mano)
     assert(cantante.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad))
@@ -277,19 +278,17 @@ trait GameAbstractSpec2 {
     } yield g4
   }
 
-  def playFullGame: ZIO[zio.ZEnv, Throwable, (Assertion, Game)] =
+  def playFullGame: ZIO[zio.ZEnv, Throwable, Game] =
     (for {
       gameService <- ZIO.service[GameService.Service]
       start       <- newGame(satoshiPerPoint = 100)
       _           <- zio.console.putStrLn(s"Game ${start.id.get} started")
-      assert1 <- {
-        ZIO.succeed {
-          assert(start.gameStatus === GameStatus.esperandoJugadoresInvitados)
-          assert(start.currentEventIndex === 1)
-          assert(start.id.nonEmpty)
-          assert(start.jugadores.length == 1)
-          assert(start.jugadores.head.user.id === user1.id)
-        }
+      _ <- ZIO {
+        assert(start.gameStatus == GameStatus.esperandoJugadoresInvitados)
+        assert(start.currentEventIndex == 1)
+        assert(start.id.nonEmpty)
+        assert(start.jugadores.length == 1)
+        assert(start.jugadores.head.user.id == user1.id)
       }
       gameStream =
         gameService
@@ -303,19 +302,15 @@ trait GameAbstractSpec2 {
           }.runCollect.fork
       _           <- clock.sleep(1.second)
       readyToPlay <- getReadyToPlay(start.id.get)
-      assert2 <- ZIO.succeed {
-        assert(readyToPlay.gameStatus === GameStatus.cantando)
-        assert(readyToPlay.currentEventIndex === 10)
+      _ <- ZIO {
+        assert(readyToPlay.gameStatus == GameStatus.cantando)
+        assert(readyToPlay.currentEventIndex == 10)
         assert(readyToPlay.jugadores.length == 4)
         assert(readyToPlay.jugadores.forall(!_.invited))
       }
-      played <- ZIO.iterate((Succeeded: Assertion, start))(
-        _._2.gameStatus != GameStatus.partidoTerminado
-      ) { case (previousAssert, looped) =>
-        playRound(looped).map { case (newAssert, played) =>
-          (assert(previousAssert == Succeeded && newAssert == Succeeded), played)
-        }
-      }
+      played <- ZIO.iterate(start)(
+        _.gameStatus != GameStatus.partidoTerminado
+      )(playRound)
       _ <-
         gameService
           .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
@@ -324,21 +319,13 @@ trait GameAbstractSpec2 {
             SessionContext.live(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
-      finalAssert <- ZIO.succeed {
+      _ <- ZIO {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
         assert(gameEvents.nonEmpty)
       }
-    } yield (
-      assert(
-        assert1 == Succeeded &&
-          assert2 == Succeeded &&
-          played._1 == Succeeded &&
-          finalAssert == Succeeded
-      ),
-      played._2
-    )).provideCustomLayer(testLayer())
+    } yield played).provideCustomLayer(testLayer())
 
-  private def playRound(game: Game): ZIO[TestLayer, Throwable, (Assertion, Game)] = {
+  private def playRound(game: Game): ZIO[TestLayer, Throwable, Game] = {
     for {
       gameService <- ZIO.service[GameService.Service]
       start <-
@@ -350,17 +337,17 @@ trait GameAbstractSpec2 {
         } else
           ZIO.succeed(game)
       afterCanto <- canto(start.id.get)
-      assert1 <- ZIO.succeed {
-        assert(afterCanto.gameStatus === GameStatus.jugando)
+      _ <- ZIO {
+        assert(afterCanto.gameStatus == GameStatus.jugando)
         assertSoloUnoCanta(afterCanto)
       }
-      (assert2, round) <- juegaHastaElFinal(start.id.get)
-    } yield (assert(assert1 == Succeeded && assert2 == Succeeded), round)
+      round <- juegaHastaElFinal(start.id.get)
+    } yield round
   }
 
   def playGame(
     gameToPlay: Game
-  ): ZIO[TestLayer & Clock & Console, Throwable, (Assertion, Game)] =
+  ): ZIO[TestLayer & Clock & Console, Throwable, Game] =
     for {
       gameService    <- ZIO.service[GameService.Service]
       gameOperations <- ZIO.access[Repository](_.get.gameOperations)
@@ -385,8 +372,8 @@ trait GameAbstractSpec2 {
             case PoisonPill(Some(id), _) if id == game.id.get => true
             case _                                            => false
           }.runCollect.fork
-      _                 <- clock.sleep(1.second)
-      (assert4, played) <- juegaHastaElFinal(game.id.get)
+      _      <- clock.sleep(1.second)
+      played <- juegaHastaElFinal(game.id.get)
       _ <-
         gameService
           .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
@@ -395,26 +382,17 @@ trait GameAbstractSpec2 {
             SessionContext.live(ChutiSession(chuti.god))
           )
       gameEvents <- gameEventsFiber.join
-      finalAssert <- ZIO.succeed {
+      _ <- ZIO {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
         assert(gameEvents.nonEmpty)
       }
-    } yield (
-      assert(
-        assert4 == Succeeded &&
-          finalAssert == Succeeded
-      ),
-      played
-    )
+    } yield played
 
-  def playRound(filename: String): ZIO[zio.ZEnv, Throwable, (Assertion, Game)] =
+  def playRound(filename: String): ZIO[zio.ZEnv, Throwable, Game] =
     (for {
-      gameService       <- ZIO.service[GameService.Service]
-      game              <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[TestLayer](godLayer)
-      (asserts, played) <- juegaHastaElFinal(game.id.get)
-    } yield (
-      asserts,
-      played
-    )).provideCustomLayer(testLayer(filename))
+      gameService <- ZIO.service[GameService.Service]
+      game        <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[TestLayer](godLayer)
+      played      <- juegaHastaElFinal(game.id.get)
+    } yield played).provideCustomLayer(testLayer(filename))
 
 }

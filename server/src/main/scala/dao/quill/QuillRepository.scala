@@ -21,8 +21,10 @@ import api.config.*
 import api.token.*
 import chuti.*
 import dao.*
+import game.GameService.godLayer
 import io.circe.parser.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
+import io.getquill.*
 import io.getquill.extras.*
 import io.getquill.{query as qquery, *}
 import zio.*
@@ -31,6 +33,7 @@ import zio.clock.Clock
 import zio.duration.*
 import zio.logging.Logging
 import zio.random.Random
+import io.getquill.extras.*
 
 import java.math.BigInteger
 import java.sql.{SQLException, Timestamp, Types}
@@ -44,10 +47,12 @@ object QuillRepository {
     (for {
       config <- ZIO.service[Config.Service]
     } yield QuillRepository(config)).toLayer
-  val cached =
+
+  // TODO move to Repository
+  val cached = {
     (for {
       repository <- ZIO.service[Repository.Service]
-      cache <- zio.cache.Cache.make[GameId, SessionContext & Logging & Clock, RepositoryError, Game](
+      cache <- zio.cache.Cache.make[GameId, Logging & Clock, RepositoryError, Game](
         capacity = 10,
         timeToLive = 1.hour,
         lookup = Lookup { gameId =>
@@ -56,13 +61,16 @@ object QuillRepository {
               .get(gameId)
               .flatMap(ZIO.fromOption)
               .orElseFail(RepositoryError(s"Could not find game: $gameId"))
+              .provideSomeLayer[Logging & Clock](godLayer)
           } yield game
         }
       )
     } yield CachedQuillRepository(cache, repository): Repository.Service).toLayer
+  }
 
 }
 
+//TODO move to Repository, rename to CachedRepository
 case class CachedQuillRepository(
   gameCache:  Cache[GameId, RepositoryError, Game],
   repository: Repository.Service
@@ -137,28 +145,40 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   private val godSession: ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
 
-  private val users = quote {
-    querySchema[UserRow]("user")
-  }
-  private val userLogins = quote {
-    querySchema[UserLogRow]("userLog")
-  }
-  private val friends = quote {
-    querySchema[FriendsRow]("friends")
-  }
-  private val userWallets = quote {
-    querySchema[UserWalletRow]("userWallet")
-  }
-  private val games = quote {
-    querySchema[GameRow]("game")
-  }
+  inline private def users =
+    quote {
+      querySchema[UserRow]("user")
+    }
 
-  private val gamePlayers = quote {
-    querySchema[GamePlayersRow]("game_players", _.gameId -> "game_id", _.userId -> "user_id", _.order -> "sort_order")
-  }
-  private val tokens = quote {
-    querySchema[TokenRow]("token")
-  }
+  inline private def userLogins =
+    quote {
+      querySchema[UserLogRow]("userLog")
+    }
+
+  inline private def friends =
+    quote {
+      querySchema[FriendsRow]("friends")
+    }
+
+  inline private def userWallets =
+    quote {
+      querySchema[UserWalletRow]("userWallet")
+    }
+
+  inline private def games =
+    quote {
+      querySchema[GameRow]("game")
+    }
+
+  inline private def gamePlayers =
+    quote {
+      querySchema[GamePlayersRow]("game_players", _.gameId -> "game_id", _.userId -> "user_id", _.order -> "sort_order")
+    }
+
+  inline private def tokens =
+    quote {
+      querySchema[TokenRow]("token")
+    }
 
   private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db"))
 
@@ -169,19 +189,14 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
   private given GameStatusEncoder: ctx.Encoder[GameStatus] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.value))
 
-  //  extension (a: Timestamp) {
-  //    def ===(b: Timestamp): Boolean = a.getTime == b.getTime
-  //    def =!=(b: Timestamp): Boolean = a.getTime != b.getTime
-  //    def >(b: Timestamp): Boolean = a.getTime > b.getTime
-  //    def >=(b: Timestamp): Boolean = a.getTime >= b.getTime
-  //    def <(b: Timestamp): Boolean = a.getTime < b.getTime
-  //    def <=(b: Timestamp): Boolean = a.getTime <= b.getTime
-  //    def between(
-  //                 first: Timestamp,
-  //                 last: Timestamp
-  //               ) = quote(infix"$left between $first and $last".pure.as[Boolean])
-  //
-  //  }
+  extension (inline a: Timestamp) {
+
+    inline def >=(inline b: Timestamp): Quoted[Boolean] =
+      quote {
+        infix"$a >= $b".as[Boolean]
+      }
+
+  }
 
   private def assertAuth(
     authorized: ChutiSession => Boolean,
@@ -284,11 +299,9 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
                 .when(exists)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now))
               updateCount <- ctx.run(
-                quote(
-                  qquery[UserRow]
-                    .filter(u => u.id === lift(id.userId) && !u.deleted)
-                    .updateValue(lift(saveMe))
-                )
+                users
+                  .filter(u => u.id === lift(id.userId) && !u.deleted)
+                  .updateValue(lift(saveMe))
               )
               _ <- ZIO.fail(RepositoryError("User not found")).when(updateCount == 0)
             } yield saveMe.toUser
@@ -306,7 +319,8 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       email:    String,
       password: String
     ): ZIO[Clock & Logging, RepositoryError, Option[User]] = {
-      val sql = quote(infix"""select u.id
+      inline def sql =
+        quote(infix"""select u.id
                from `user` u
                where u.deleted = 0 and
                u.active = 1 and
@@ -429,7 +443,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         row = UserWalletRow.fromUserWallet(userWallet)
         _ <- existing.fold {
           ctx.run(userWallets.insertValue(lift(row)))
-        }(_ => ctx.run(quote(qquery[UserWalletRow].filter(_.userId == lift(userWallet.userId.userId)).updateValue(lift(row)))))
+        }(_ => ctx.run(userWallets.filter(_.userId == lift(userWallet.userId.userId)).updateValue(lift(row))))
       } yield userWallet)
         .provideSomeLayer[SessionContext & Clock & Logging](dataSourceLayer)
         .mapError(RepositoryError.apply)
@@ -567,11 +581,9 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           for {
             updateCount <- ctx
               .run(
-                quote(
-                  qquery[GameRow]
-                    .filter(g => g.id == lift(id.gameId) && !g.deleted)
-                    .updateValue(lift(upsertMe))
-                )
+                games
+                  .filter(g => g.id == lift(id.gameId) && !g.deleted)
+                  .updateValue(lift(upsertMe))
               )
               .mapError(RepositoryError.apply)
             _ <- ZIO.fail(RepositoryError("Game not found")).when(updateCount == 0): ZIO[Has[DataSource], RepositoryError, Unit]
@@ -626,15 +638,8 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
 
     override def cleanup: RepositoryIO[Boolean] =
       (for {
-        now <- ZIO.service[Clock.Service].flatMap(_.instant).map(_.toEpochMilli)
-        b <- ctx
-          .run(
-            quote(
-              tokens
-                .filter(t => t.expireTime >= lift(now))
-            ).delete
-          )
-          .map(_ > 0)
+        now <- ZIO.service[Clock.Service].flatMap(_.instant).map(Timestamp.from)
+        b   <- ctx.run(quote(tokens.filter(_.expireTime >= lift(now))).delete).map(_ > 0)
       } yield b)
         .provideSomeLayer[SessionContext & Logging & Clock](dataSourceLayer)
         .mapError(RepositoryError.apply)
@@ -662,7 +667,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           row = TokenRow(
             tok = tok,
             tokenPurpose = purpose.toString,
-            expireTime = ttl.fold(Long.MaxValue)(_.toMillis + now),
+            expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + now)),
             userId = user.id.fold(-1)(_.userId)
           )
           inserted <- ctx.run(tokens.insertValue(lift(row))).as(Token(row.tok))

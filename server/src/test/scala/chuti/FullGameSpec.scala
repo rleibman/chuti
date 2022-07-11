@@ -22,6 +22,7 @@ import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.Repository
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
+import org.scalatest.Assertions.*
 import zio.ZIO
 
 import scala.util.Random
@@ -41,7 +42,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       ZIO
         .foreachPar(1 to 100) { _ =>
           playFullGame
-        }.map(l => assert(l.forall(_._1 == Succeeded)))
+        }.as(assert(true))
     }.future
   }
 
@@ -161,7 +162,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
                 godLayer
               )
           played <- juegaHastaElFinal(saved.id.get)
-        } yield assert(tester.testEndState(played._2) == Succeeded && played._1 == Succeeded))
+        } yield assert(tester.testEndState(played) == Succeeded))
           .provideCustomLayer(testLayer())
       }.future
     }
