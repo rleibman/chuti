@@ -26,10 +26,10 @@ object SessionContext {
     def session: ChutiSession
 
   }
-  def live(session: ChutiSession): Layer[Nothing, Has[Session]] =
+  def live(s: ChutiSession): Layer[Nothing, Has[Session]] =
     ZLayer.succeed(new Session {
 
-      val session: ChutiSession = session
+      val session: ChutiSession = s
 
     })
 

@@ -23,16 +23,16 @@ lazy val debugDist = TaskKey[File]("debugDist")
 lazy val scala3Opts = Seq(
   "-no-indent", // scala3
   "-old-syntax", // scala3
-  "-encoding",
-  "utf-8", // Specify character encoding used by source files.
+  "-encoding", "utf-8", // Specify character encoding used by source files.
   "-feature", // Emit warning and location for usages of features that should be imported explicitly.
   "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
   "-language:implicitConversions",
   "-language:higherKinds", // Allow higher-kinded types
   "-unchecked", // Enable additional warnings where generated code depends on assumptions.
-  //  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
+  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
   //  "-explain-types", // Explain type errors in more detail.
+  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines", "64"
 )
@@ -144,7 +144,6 @@ lazy val server = project
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
-      "org.scalatestplus" %% "mockito-4-5" % "3.2.12.0" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "it, test" withSources(),
       "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" % "it, test" withSources(),
       "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()

@@ -76,7 +76,7 @@ case class CachedQuillRepository(
   repository: Repository.Service
 ) extends Repository.Service {
 
-  override def gameOperations =
+  override def gameOperations: Repository.GameOperations =
     new Repository.GameOperations {
 
       override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = repository.gameOperations.getHistoricalUserGames
@@ -112,9 +112,9 @@ case class CachedQuillRepository(
 
     }
 
-  override def userOperations = repository.userOperations
+  override def userOperations: Repository.UserOperations = repository.userOperations
 
-  override def tokenOperations = repository.tokenOperations
+  override def tokenOperations: Repository.TokenOperations = repository.tokenOperations
 
 }
 
@@ -155,7 +155,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
       querySchema[UserLogRow]("userLog")
     }
 
-  inline private def friends =
+  inline private def friendRows =
     quote {
       querySchema[FriendsRow]("friends")
     }
@@ -367,7 +367,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
         deleted <- rowOpt.fold(ZIO.succeed(true): ZIO[Has[DataSource], SQLException, Boolean])(row =>
           ctx
             .run(
-              QuillRepository.this.friends
+              friendRows
                 .filter(r => (r.one === lift(row.one) && r.two === lift(row.two)) || (r.one === lift(row.two) && r.two === lift(row.one)))
                 .delete
             ).map(_ > 0)
@@ -390,7 +390,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
             rowOpt.fold(
               ZIO.succeed(false): zio.ZIO[Has[DataSource], SQLException, Boolean]
             ) { row =>
-              ctx.run(QuillRepository.this.friends.insertValue(lift(row))).map(_ > 0)
+              ctx.run(friendRows.insertValue(lift(row))).map(_ > 0)
             }
           }(_ => ZIO.succeed(true))
       } yield res)
@@ -404,7 +404,7 @@ case class QuillRepository(config: Config.Service) extends Repository.Service {
           ctx
             .run {
               users
-                .join(QuillRepository.this.friends).on((a, b) => a.id === b.one || a.id === b.two).filter { case (u, f) =>
+                .join(friendRows).on((a, b) => a.id === b.one || a.id === b.two).filter { case (u, f) =>
                   (f.one == lift(id.userId) || f.two == lift(id.userId)) && u.id != lift(id.userId)
                 }
             }.map(_.map(_._1.toUser))

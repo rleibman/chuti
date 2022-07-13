@@ -19,9 +19,9 @@ package dao
 import chuti.Search
 
 /** Collects the basic CRUD operations of a single object (or object graph) against a data source.
-  * @tparam E
-  * @tparam PK
-  * @tparam SEARCH
+  * @tparam E the typeof the object to be stored.
+  * @tparam PK the type of the primary key of the object.
+  * @tparam SEARCH the type of the search object.
   */
 trait CRUDOperations[E, PK, SEARCH <: Search] {
 
