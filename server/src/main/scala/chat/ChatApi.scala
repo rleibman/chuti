@@ -75,25 +75,23 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
   lazy val api: GraphQL[ChatService & Repository & SessionContext] = ???
-    graphQL(
-      RootResolver(
-        Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
-        Mutations(
-          say = sayRequest => ChatService.say(sayRequest).as(true)
-        ),
-        Subscriptions(
-          chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
-        )
+  graphQL(
+    RootResolver(
+      Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
+      Mutations(
+        say = sayRequest => ChatService.say(sayRequest).as(true)
+      ),
+      Subscriptions(
+        chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
       )
-    ) @@
-      maxFields(22) @@ // query analyzer that limit query fields
-      maxDepth(30) 
+    )
+  ) @@
+    maxFields(22) @@ // query analyzer that limit query fields
+    maxDepth(30)
 //      @@ // query analyzer that limit query depth
 //      timeout(3.seconds) @@ // wrapper that fails slow queries
 //      printSlowQueries(3.seconds)
 
-  
-  
   //  @@ // wrapper that logs slow queries
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =

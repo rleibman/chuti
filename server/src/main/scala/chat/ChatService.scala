@@ -31,15 +31,15 @@ import java.time.temporal.ChronoUnit
 trait ChatService {
 
   def getRecentMessages(
-                         channelId: ChannelId
-                       ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
+    channelId: ChannelId
+  ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
 
   def say(msg: SayRequest): URIO[Repository & SessionContext, ChatMessage]
 
   def chatStream(
-                  channelId: ChannelId,
-                  connectionId: ConnectionId
-                ): ZStream[
+    channelId:    ChannelId,
+    connectionId: ConnectionId
+  ): ZStream[
     Repository & SessionContext,
     GameException,
     ChatMessage
@@ -58,10 +58,10 @@ object ChatService {
   lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & SessionContext, CalibanError]] = ChatApi.api.interpreter
 
   def sendMessage(
-                   msg: String,
-                   channelId: ChannelId,
-                   toUser: Option[User]
-                 ): ZIO[
+    msg:       String,
+    channelId: ChannelId,
+    toUser:    Option[User]
+  ): ZIO[
     ChatService & Repository & SessionContext,
     Nothing,
     ChatMessage
@@ -77,40 +77,40 @@ object ChatService {
   ] = ZIO.service[ChatService].flatMap(_.say(request))
 
   def chatStream(
-                  channelId: ChannelId,
-                  connectionId: ConnectionId
-                ): ZStream[
+    channelId:    ChannelId,
+    connectionId: ConnectionId
+  ): ZStream[
     ChatService & Repository & SessionContext,
     GameException,
     ChatMessage
   ] = ZStream.service[ChatService].flatMap(_.chatStream(channelId, connectionId))
 
   def getRecentMessages(
-                         channelId: ChannelId
-                       ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
+    channelId: ChannelId
+  ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
 
   case class MessageQueue(
-                           user: User,
-                           connectionId: ConnectionId,
-                           queue: Queue[ChatMessage]
-                         )
+    user:         User,
+    connectionId: ConnectionId,
+    queue:        Queue[ChatMessage]
+  )
 
   def dateFilter(
-                  timeAgo: Instant,
-                  msg: ChatMessage
-                ): Boolean = msg.date.isAfter(timeAgo)
+    timeAgo: Instant,
+    msg:     ChatMessage
+  ): Boolean = msg.date.isAfter(timeAgo)
 
   def make(): URLayer[Any, ChatService] =
     ZLayer.fromZIO {
       for {
         chatMessageQueue <- Ref.make(List.empty[MessageQueue])
-        recentMessages <- Ref.make(List.empty[ChatMessage])
-        _ <- ZIO.logInfo("========================== This should only ever be seen once.")
+        recentMessages   <- Ref.make(List.empty[ChatMessage])
+        _                <- ZIO.logInfo("========================== This should only ever be seen once.")
       } yield new ChatService {
 
         def getRecentMessages(
-                               channelId: ChannelId
-                             ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
+          channelId: ChannelId
+        ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
           for {
             now <- Clock.instant
             res <- recentMessages.get.map { seq =>
@@ -127,22 +127,22 @@ object ChatService {
         ] =
           for {
             allSubscriptions <- chatMessageQueue.get
-            now <- Clock.instant
-            user <- ZIO.service[SessionContext].map(_.session.user)
-            _ <- ZIO.logInfo(s"Sending ${request.msg}")
+            now              <- Clock.instant
+            user             <- ZIO.service[SessionContext].map(_.session.user)
+            _                <- ZIO.logInfo(s"Sending ${request.msg}")
             sent <- {
               // TODO make sure the user has rights to send messages on the channel,
               // basically if the channel is lobby, or the user is the game channel for that game,
               // or it's a direct message.
               // TODO validate that the message is not longer than MAX_MESSAGE_SIZE (1024?)
               val sendMe =
-              ChatMessage(
-                fromUser = user,
-                msg = request.msg,
-                channelId = request.channelId,
-                toUser = request.toUser,
-                date = now
-              )
+                ChatMessage(
+                  fromUser = user,
+                  msg = request.msg,
+                  channelId = request.channelId,
+                  toUser = request.toUser,
+                  date = now
+                )
 
               ZIO
                 .foreach(
@@ -166,7 +166,7 @@ object ChatService {
         ] =
           ZStream.unwrap {
             for {
-              user <- ZIO.service[SessionContext].map(_.session.user)
+              user    <- ZIO.service[SessionContext].map(_.session.user)
               gameOps <- ZIO.service[Repository].map(_.gameOperations)
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
@@ -182,7 +182,7 @@ object ChatService {
               queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)
               _     <- chatMessageQueue.update(MessageQueue(user, connectionId, queue) :: _)
               after <- chatMessageQueue.get
-              _ <- ZIO.logInfo(s"Chat stream started, queues have ${after.length} entries")
+              _     <- ZIO.logInfo(s"Chat stream started, queues have ${after.length} entries")
             } yield ZStream
               .fromQueue(queue)
               .ensuring(

@@ -22,27 +22,27 @@ import java.security.{InvalidKeyException, NoSuchAlgorithmException}
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-
 package object coinbase {
+
   trait Coinbase {
 
     def transactionRequest(
-                            to: String,
-                            amount: BigDecimal,
-                            currency: Currency,
-                            description: Option[String] = None
-                          ): Task[Unit]
+      to:          String,
+      amount:      BigDecimal,
+      currency:    Currency,
+      description: Option[String] = None
+    ): Task[Unit]
 
     def transactionSend(
-                         to: String,
-                         amount: BigDecimal,
-                         currency: Currency,
-                         description: Option[String] = None,
-                         skipNotifications: Boolean = true,
-                         fee: Option[BigDecimal] = None,
-                         idem: Option[String] = None,
-                         financial_institution_website: Option[String] = None
-                       ): Task[Unit]
+      to:                            String,
+      amount:                        BigDecimal,
+      currency:                      Currency,
+      description:                   Option[String] = None,
+      skipNotifications:             Boolean = true,
+      fee:                           Option[BigDecimal] = None,
+      idem:                          Option[String] = None,
+      financial_institution_website: Option[String] = None
+    ): Task[Unit]
 
     def walletCreateAddress(name: String): Task[String]
 
@@ -54,21 +54,20 @@ package object coinbase {
 
   }
 
-
   def akkaHttpLayer: ULayer[Coinbase] = ZLayer.succeed(akkaHttp())
 
   def akkaHttp(): Coinbase =
     new Coinbase {
 
       override def transactionRequest(
-                                       to: String,
-                                       amount: BigDecimal,
-                                       currency: Currency,
-                                       description: Option[String]
-                                     ): Task[Unit] = ???
+        to:          String,
+        amount:      BigDecimal,
+        currency:    Currency,
+        description: Option[String]
+      ): Task[Unit] = ???
 
       override def transactionSend(
-                                    to: String,
+        to:                            String,
         amount:                        BigDecimal,
         currency:                      Currency,
         description:                   Option[String],

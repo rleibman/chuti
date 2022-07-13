@@ -16,7 +16,7 @@
 
 package routes
 
-import api.Chuti.Environment
+import api.Chuti.ChutiEnvironment
 import api.auth.Auth.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import api.{ChutiSession, token}
@@ -36,7 +36,6 @@ import java.util.Locale
 import scala.language.unsafeNulls
 import UserId.*
 
-
 object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
   given localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
@@ -50,7 +49,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
   override def getPK(obj: User): UserId = obj.id.get
 
-  override def authOther: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  override def authOther: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case req @ Method.GET -> !! / "api" / "auth" / "isFirstLoginToday" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -59,7 +58,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             now           <- Clock.instant
             firstLoginOpt <- userOps.firstLogin
           } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(now.minus(java.time.Duration.ofDays(1)).nn))))
-            .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
         Http.collect(_ => ResponseExt.json(req.session.get.locale.toLanguageTag.nn))
@@ -81,7 +80,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           (for {
             userOps <- ZIO.service[Repository].map(_.userOperations)
             wallet  <- userOps.getWallet
-          } yield ResponseExt.json(wallet)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield ResponseExt.json(wallet)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / "api" / "auth" / "changePassword" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -89,7 +88,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             userOps <- ZIO.service[Repository].map(_.userOperations)
             body    <- req.bodyAsString
             ret     <- userOps.changePassword(req.session.get.user, body)
-          } yield ResponseExt.json(ret)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield ResponseExt.json(ret)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "refreshToken" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -107,7 +106,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         )
     }
 
-  override def unauthRoute: Http[Environment & OpsService, Throwable, Request, Response] =
+  override def unauthRoute: Http[ChutiEnvironment & OpsService, Throwable, Request, Response] =
     Http.collectHttp[Request] {
       case Method.GET -> !! / "serverVersion" =>
         Http.succeed(ResponseExt.json(chuti.BuildInfo.version))
@@ -117,7 +116,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             formData <- req.formData
             token = formData.get("token")
             password = formData.get("password")
-            _ <- ZIO.succeed(Response.fromHttpError(HttpError.BadRequest("You need to pass a token and password"))).when(token.isEmpty || password.isEmpty)
+            _ <- ZIO
+              .succeed(Response.fromHttpError(HttpError.BadRequest("You need to pass a token and password"))).when(token.isEmpty || password.isEmpty)
             userOps     <- ZIO.service[Repository].map(_.userOperations)
             tokenHolder <- ZIO.service[TokenHolder]
             userOpt <-
@@ -131,7 +131,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ResponseExt.seeOther("/loginForm?passwordChangeSucceeded")
             else
               ResponseExt.seeOther("/loginForm?passwordChangeFailed")
-          )).provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
+          )).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "passwordRecoveryRequest" =>
         Http.collectZIO[Request] { req =>
@@ -144,7 +144,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ZIO
                 .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope => ZIO.foreach(envelope)(postman.deliver)).forkDaemon
           } yield Response.ok)
-            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "updateInvitedUser" =>
         Http.collectZIO[Request] { req =>
@@ -174,7 +174,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               )(p => ResponseExt.json(UpdateInvitedUserResponse(Option.when(!p)("Error setting password"))))
             )(error => ResponseExt.json(UpdateInvitedUserResponse(Option(error))))
           })
-            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.GET -> !! / "getInvitedUserByToken" =>
         Http.collectZIO[Request] { req =>
@@ -222,7 +222,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ResponseExt.json(UserCreationResponse(Option("A user with that email already exists")))
             else
               ResponseExt.json(UserCreationResponse(validate))
-          }).provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
+          }).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.GET -> !! / "confirmRegistration" =>
         Http.collectZIO[Request] { req =>
@@ -235,7 +235,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             activate <-
               ZIO.foreach(user)(user => userOps.upsert(user.copy(active = true)))
           } yield activate.fold(ResponseExt.seeOther("/loginForm?registrationFailed"))(_ => ResponseExt.seeOther("/loginForm?registrationSucceeded")))
-            .provideSomeLayer[Environment & OpsService](SessionContext.live(ChutiSession.adminSession))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(ChutiSession.adminSession))
         }
       case Method.POST -> !! / "doLogin" =>
         Http.collectZIO[Request] { req =>

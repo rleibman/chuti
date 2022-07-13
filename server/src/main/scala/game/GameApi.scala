@@ -209,7 +209,7 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       )
     ) @@
       maxFields(200) @@ // query analyzer that limit query fields
-      maxDepth(30) 
+      maxDepth(30)
 //      @@ // query analyzer that limit query depth
 //      timeout(15.seconds) @@ // wrapper that fails slow queries
 //      printSlowQueries(3.seconds)

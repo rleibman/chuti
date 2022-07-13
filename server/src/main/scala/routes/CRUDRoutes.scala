@@ -16,7 +16,7 @@
 
 package routes
 
-import api.Chuti.Environment
+import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
 import chuti.Search
@@ -46,13 +46,13 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
     *
     * @return
     */
-  def authOther: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] = Http.empty
+  def authOther: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] = Http.empty
 
   /** Override this to add routes that don't require a session
     *
     * @return
     */
-  def unauthRoute: Http[Environment & OpsService, Throwable, Request, Response] = Http.empty
+  def unauthRoute: Http[ChutiEnvironment & OpsService, Throwable, Request, Response] = Http.empty
 
   /** Override this to support children routes (e.g. /api/student/classroom)
     *
@@ -63,11 +63,12 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
   def authChildrenRoutes(
     pk:  PK,
     obj: Option[E]
-  ): Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] = Http.empty
+  ): Http[ChutiEnvironment, Throwable, RequestWithSession[ChutiSession], Response] = Http.empty
 
   /** You need to override this method so that the architecture knows how to get a primary key from an object
     *
-    * @param the primary key for object obj
+    * @param the
+    *   primary key for object obj
     * @return
     */
   def getPK(obj: E): PK
@@ -121,7 +122,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
       ret <- ops.search(search)
     } yield ret
 
-  private val authCRUD: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  private val authCRUD: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case req @ (Method.POST | Method.PUT) -> !! / "api" / self.url if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -130,28 +131,28 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
             _   <- ZIO.logInfo(s"Upserting $url with $obj")
             ret <- upsertOperation(obj)
           } yield Response.json(ret.asJson.noSpaces))
-            .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ (Method.POST) -> !! / "api" / self.url / "search" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             search <- req.bodyAs[SEARCH]
             res    <- searchOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / s"api" / self.url / "count" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             search <- req.bodyAs[SEARCH]
             res    <- countOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
             res <- getOperation(pk)
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.DELETE -> !! / "api" / self.url / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -160,11 +161,11 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
             _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
     }
 
-  val authRoute: Http[Environment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  val authRoute: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     authOther ++ authCRUD
 
 }

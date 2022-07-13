@@ -14,24 +14,10 @@
  * limitations under the License.
  */
 
-package dao
+package api.token
 
-import api.ChutiSession
-import zio.{Layer, ULayer, ZLayer}
+case class Token(tok: String) {
 
-trait SessionContext {
-
-  def session: ChutiSession
-
-}
-
-object SessionContext {
-
-  def live(s: ChutiSession): ULayer[SessionContext] =
-    ZLayer.succeed(new SessionContext {
-
-      val session: ChutiSession = s
-
-    })
+  override def toString: String = tok
 
 }

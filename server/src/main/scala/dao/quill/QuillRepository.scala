@@ -48,7 +48,6 @@ object QuillRepository {
       config <- ZIO.service[Config.Service]
     } yield QuillRepository(config))
 
-
 }
 
 case class QuillRepository(config: Config.Service) extends Repository {

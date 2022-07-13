@@ -37,6 +37,7 @@ trait Repository {
 }
 
 object Repository {
+
   val cached: URLayer[Repository, Repository] = ZLayer.fromZIO {
     for {
       repository <- ZIO.service[Repository]
@@ -57,9 +58,9 @@ object Repository {
   }
 
   case class CachedRepository(
-                               gameCache: Cache[GameId, RepositoryError, Game],
-                               repository: Repository
-                             ) extends Repository {
+    gameCache:  Cache[GameId, RepositoryError, Game],
+    repository: Repository
+  ) extends Repository {
 
     override def gameOperations: Repository.GameOperations =
       new Repository.GameOperations {
@@ -85,9 +86,9 @@ object Repository {
         override def get(pk: GameId): RepositoryIO[Option[Game]] = gameCache.get(pk).map(Option.apply)
 
         override def delete(
-                             pk: GameId,
-                             softDelete: Boolean
-                           ): RepositoryIO[Boolean] =
+          pk:         GameId,
+          softDelete: Boolean
+        ): RepositoryIO[Boolean] =
           gameCache.invalidate(pk) *>
             repository.gameOperations.delete(pk, softDelete)
 
@@ -103,15 +104,14 @@ object Repository {
 
   }
 
-
   trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
 
     def firstLogin: RepositoryIO[Option[Instant]]
 
     def login(
-               email: String,
-               password: String
-             ): ZIO[Any, RepositoryError, Option[User]]
+      email:    String,
+      password: String
+    ): ZIO[Any, RepositoryError, Option[User]]
 
     def userByEmail(email: String): RepositoryIO[Option[User]]
 
@@ -145,20 +145,20 @@ object Repository {
     def cleanup: RepositoryIO[Boolean]
 
     def validateToken(
-                       token: Token,
-                       purpose: TokenPurpose
-                     ): RepositoryIO[Option[User]]
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]]
 
     def createToken(
-                     user: User,
-                     purpose: TokenPurpose,
-                     ttl: Option[Duration]
-                   ): ZIO[SessionContext, RepositoryError, Token]
+      user:    User,
+      purpose: TokenPurpose,
+      ttl:     Option[Duration]
+    ): ZIO[SessionContext, RepositoryError, Token]
 
     def peek(
-              token: Token,
-              purpose: TokenPurpose
-            ): RepositoryIO[Option[User]]
+      token:   Token,
+      purpose: TokenPurpose
+    ): RepositoryIO[Option[User]]
 
   }
 

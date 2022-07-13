@@ -16,7 +16,7 @@
 
 package routes
 
-import api.Chuti.Environment
+import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
 import api.config.Config
@@ -53,7 +53,7 @@ object StaticHTMLRoutes {
     }
   }
 
-  val unauthRoute: Http[Environment, Throwable, Request, Response] = Http.collectZIO[Request] {
+  val unauthRoute: Http[ChutiEnvironment, Throwable, Request, Response] = Http.collectZIO[Request] {
     case request @ Method.GET -> !! / "loginForm" =>
       for {
         config <- ZIO.service[Config.Service]
@@ -72,7 +72,7 @@ object StaticHTMLRoutes {
       }
   }
 
-  val authRoute: Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] =
+  val authRoute: Http[ChutiEnvironment, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectZIO[RequestWithSession[ChutiSession]] {
       case request @ Method.GET -> somethingElse if somethingElse == Path.decode("/") =>
         for {

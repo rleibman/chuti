@@ -15,9 +15,10 @@ import javax.sql.DataSource
 import scala.io.Source
 
 trait ChutiContainer {
-  def container: MySQLContainer
-}
 
+  def container: MySQLContainer
+
+}
 
 object ChutiContainer {
 
@@ -71,7 +72,6 @@ object ChutiContainer {
       } yield res).mapError(RepositoryError.apply)
 
   }
-
 
   val containerLayer: ZLayer[Any, RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
     _ <- ZIO.logDebug("Creating container")

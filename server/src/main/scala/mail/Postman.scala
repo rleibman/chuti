@@ -32,12 +32,12 @@ trait Postman {
 
   // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
   def inviteToPlayByEmail(
-                           user: User,
-                           invited: User
-                         ): RIO[TokenHolder, Envelope] =
+    user:    User,
+    invited: User
+  ): RIO[TokenHolder, Envelope] =
     for {
       tokenHolder <- ZIO.service[TokenHolder]
-      token <- tokenHolder.createToken(invited, TokenPurpose.NewUser, Option(3.days))
+      token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser, Option(3.days))
     } yield {
       val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
       Envelope
@@ -45,8 +45,7 @@ trait Postman {
         .replyTo(new InternetAddress(user.email, user.name))
         .to(new InternetAddress(invited.email, invited.name))
         .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
-        .content(Multipart().html(
-          s"""<html><body>
+        .content(Multipart().html(s"""<html><body>
              |<p>${user.name.capitalize}<p> Te invitó a ser su amigo y a jugar en chuti.fun</p>
              |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
              |<p>Te esperamos pronto! </p>
@@ -54,10 +53,10 @@ trait Postman {
     }
 
   def inviteToGameEmail(
-                         user: User,
-                         invited: User,
-                         game: Game
-                       ): RIO[TokenHolder, Envelope] =
+    user:    User,
+    invited: User,
+    game:    Game
+  ): RIO[TokenHolder, Envelope] =
     ZIO.succeed {
       val linkUrl =
         s"http://$webHostName/#lobby"
@@ -66,8 +65,7 @@ trait Postman {
         .replyTo(new InternetAddress(user.email, user.name))
         .to(new InternetAddress(invited.email, invited.name))
         .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
-        .content(Multipart().html(
-          s"""<html><body>
+        .content(Multipart().html(s"""<html><body>
              |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
              |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
              |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
@@ -86,8 +84,7 @@ trait Postman {
         .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
         .to(new InternetAddress(user.email))
         .subject("chuti.fun: perdiste tu contraseña")
-        .content(Multipart().html(
-          s"""<html><body>
+        .content(Multipart().html(s"""<html><body>
              | <p>Que triste que perdiste tu contraseña</p>
              | <p>Creamos un enlace por medio del cual podrás elegir una nueva.</p>
              | <p>Por favor haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
@@ -107,8 +104,7 @@ trait Postman {
         .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
         .to(new InternetAddress(user.email))
         .subject("Bienvenido a chuti.fun!")
-        .content(Multipart().html(
-          s"""<html><body>
+        .content(Multipart().html(s"""<html><body>
              | <p>Gracias por registrarte!</p>
              | <p>Todo lo que tienes que hacer ahora es ir al siguiente enlace para confirmar tu registro.</p>
              | <p>Por haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>

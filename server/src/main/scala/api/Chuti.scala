@@ -51,15 +51,15 @@ object Chuti extends zio.ZIOAppDefault {
 
   given Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
-  override type Environment = GameService & ChatService & Config & Repository & Postman & TokenHolder &
+  type ChutiEnvironment = GameService & ChatService & Config & Repository & Postman & TokenHolder &
     SessionStorage[
       ChutiSession,
       String
     ] & SessionTransport[ChutiSession]
   private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  private val postmanLayer = ZLayer.fromZIO(for {config <- ZIO.service[Config]} yield CourierPostman.live(config))
+  private val postmanLayer = ZLayer.fromZIO(for { config <- ZIO.service[Config] } yield CourierPostman.live(config))
   private val uncachedRepository: ULayer[Repository] = configLayer >>> QuillRepository.uncached
-  private val repositoryLayer: ULayer[Repository] = uncachedRepository >>> Repository.cached
+  private val repositoryLayer:    ULayer[Repository] = uncachedRepository >>> Repository.cached
 
   import scala.language.unsafeNulls
 
@@ -67,17 +67,17 @@ object Chuti extends zio.ZIOAppDefault {
     Middleware.interceptZIOPatch(req => zio.Clock.nanoTime.map(start => (req.method, req.url, start))) { case (response, (method, url, start)) =>
       for {
         end <- Clock.nanoTime
-        _ <- ZIO.logInfo(s"${response.status.asJava.code()} $method ${url.encode} ${(end - start) / 1000000}ms")
+        _   <- ZIO.logInfo(s"${response.status.asJava.code()} $method ${url.encode} ${(end - start) / 1000000}ms")
       } yield Patch.empty
     }
 
-  val unauthRoute: RHttpApp[Environment & AuthRoutes.OpsService] =
+  val unauthRoute: RHttpApp[ChutiEnvironment & AuthRoutes.OpsService] =
     Seq(
       AuthRoutes.unauthRoute,
       StaticHTMLRoutes.unauthRoute
     ).reduce(_ ++ _)
 
-  def authRoutes(sessionTransport: SessionTransport[ChutiSession]): HttpApp[Environment & AuthRoutes.OpsService & Clock, Nothing] =
+  def authRoutes(sessionTransport: SessionTransport[ChutiSession]): HttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock, Nothing] =
     Seq(
       AuthRoutes.authRoute,
       GameRoutes.authRoute,
@@ -94,12 +94,12 @@ object Chuti extends zio.ZIOAppDefault {
           Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
       } @@ sessionTransport.auth
 
-  private val appZIO: URIO[Environment & AuthRoutes.OpsService & Clock, RHttpApp[Environment & AuthRoutes.OpsService & Clock]] = for {
+  private val appZIO: URIO[ChutiEnvironment & AuthRoutes.OpsService & Clock, RHttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock]] = for {
     sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
   } yield {
     ((
       unauthRoute ++ authRoutes(sessionTransport)
-      ) @@ logRequest)
+    ) @@ logRequest)
       .tapErrorZIO { e =>
         ZIO.logErrorCause(s"Error", Cause.die(e))
       }
@@ -113,25 +113,26 @@ object Chuti extends zio.ZIOAppDefault {
       }
   }
 
-//  override def bootstrap: ZLayer[ZIOAppArgs with Scope, Any, Environment] = ZLayer.make[Environment]
+//  override def bootstrap: ZLayer[ZIOAppArgs with Scope, Any, ChutiEnvironment] = ZLayer.make[ChutiEnvironment]
   override def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = {
     ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
       ChatService.make().memoize.flatMap { chatServiceLayer =>
-
         (for {
           config <- ZIO.service[Config.Service]
-          app <- appZIO
+          app    <- appZIO
           server = Server.bind(
             config.config.getString(s"${config.configKey}.host").nn,
             config.config.getInt(s"${config.configKey}.port").nn
           ) ++
             Server.enableObjectAggregator(maxRequestSize = 210241024) ++
             Server.app(app)
-          started <- ZIO.scoped(server.make.flatMap(start =>
-            // Waiting for the server to start
-            Console.printLine(s"Server started on port ${start.port}") *> ZIO.never
-            // Ensures the server doesn't die after printing
-          ))
+          started <- ZIO.scoped(
+            server.make.flatMap(start =>
+              // Waiting for the server to start
+              Console.printLine(s"Server started on port ${start.port}") *> ZIO.never
+              // Ensures the server doesn't die after printing
+            )
+          )
         } yield started).exitCode
           .provide(
             ZLayer.succeed(Clock.ClockLive),

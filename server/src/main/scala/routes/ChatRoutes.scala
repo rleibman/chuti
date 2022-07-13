@@ -16,7 +16,7 @@
 
 package routes
 
-import api.Chuti.Environment
+import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
 import api.config.Config
@@ -28,24 +28,26 @@ import zio.*
 
 object ChatRoutes {
 
-  val authRoute: Http[Environment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
+  val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case _ -> !! / "api" / "chat" =>
-        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
-          for {
-            interpreter <- ChatService.interpreter
-          } yield ZHttpAdapter
-            .makeHttpService(interpreter)
-            .provideSomeLayer[Environment, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }.flatten
+        Http
+          .collectZIO[RequestWithSession[ChutiSession]] { req =>
+            for {
+              interpreter <- ChatService.interpreter
+            } yield ZHttpAdapter
+              .makeHttpService(interpreter)
+              .provideSomeLayer[ChutiEnvironment, SessionContext, Throwable](SessionContext.live(req.session.get))
+          }.flatten
       case _ -> !! / "api" / "chat" / "ws" =>
-        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
-          for {
-            interpreter <- ChatService.interpreter
-          } yield ZHttpAdapter
-            .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-            .provideSomeLayer[Environment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }.flatten
+        Http
+          .collectZIO[RequestWithSession[ChutiSession]] { req =>
+            for {
+              interpreter <- ChatService.interpreter
+            } yield ZHttpAdapter
+              .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
+              .provideSomeLayer[ChutiEnvironment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
+          }.flatten
       case _ -> !! / "api" / "chat" / "schema" =>
         Http.fromData(HttpData.fromString(ChatApi.api.render))
       case _ -> !! / "api" / "chat" / "graphiql" =>

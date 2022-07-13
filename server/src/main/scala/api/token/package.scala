@@ -35,29 +35,23 @@ package object token {
 
   }
 
-  case class Token(tok: String) {
-
-    override def toString: String = tok
-
-  }
-
   trait TokenHolder {
 
     def peek(
-              token: Token,
-              purpose: TokenPurpose
-            ): Task[Option[User]]
+      token:   Token,
+      purpose: TokenPurpose
+    ): Task[Option[User]]
 
     def createToken(
-                     user: User,
-                     purpose: TokenPurpose,
-                     ttl: Option[Duration] = Option(5.hours)
-                   ): Task[Token]
+      user:    User,
+      purpose: TokenPurpose,
+      ttl:     Option[Duration] = Option(5.hours)
+    ): Task[Token]
 
     def validateToken(
-                       token: Token,
-                       purpose: TokenPurpose
-                     ): Task[Option[User]]
+      token:   Token,
+      purpose: TokenPurpose
+    ): Task[Option[User]]
 
   }
 
@@ -67,20 +61,20 @@ package object token {
       ZLayer.succeed(new TokenHolder {
 
         override def peek(
-                           token: Token,
-                           purpose: TokenPurpose
-                         ): Task[Option[User]] = ZIO.none
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = ZIO.none
 
         override def createToken(
-                                  user: User,
-                                  purpose: TokenPurpose,
-                                  ttl: Option[Duration]
-                                ): Task[Token] = ZIO.succeed(Token(""))
+          user:    User,
+          purpose: TokenPurpose,
+          ttl:     Option[Duration]
+        ): Task[Token] = ZIO.succeed(Token(""))
 
         override def validateToken(
-                                    token: Token,
-                                    purpose: TokenPurpose
-                                  ): Task[Option[User]] = ZIO.none
+          token:   Token,
+          purpose: TokenPurpose
+        ): Task[Option[User]] = ZIO.none
 
       })
 
@@ -94,20 +88,20 @@ package object token {
         new TokenHolder {
 
           override def peek(
-                             token: Token,
-                             purpose: TokenPurpose
-                           ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
+            token:   Token,
+            purpose: TokenPurpose
+          ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
 
           override def createToken(
-                                    user: User,
-                                    purpose: TokenPurpose,
-                                    ttl: Option[Duration]
-                                  ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
+            user:    User,
+            purpose: TokenPurpose,
+            ttl:     Option[Duration]
+          ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
 
           override def validateToken(
-                                      token: Token,
-                                      purpose: TokenPurpose
-                                    ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
+            token:   Token,
+            purpose: TokenPurpose
+          ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
         }
       })
 

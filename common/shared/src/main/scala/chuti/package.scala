@@ -24,14 +24,18 @@ package object chuti {
   opaque type UserId = Int
 
   object UserId {
+
     def apply(userId: Int): UserId = userId
     given Decoder[UserId] = Decoder.decodeInt
     given Encoder[UserId] = Encoder.encodeInt
     given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
+
   }
 
   extension (id: UserId) {
+
     def userId: Int = id
+
   }
 
   val godlessUserId: UserId = -999
