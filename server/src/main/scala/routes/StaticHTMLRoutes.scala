@@ -22,7 +22,6 @@ import api.auth.Auth.RequestWithSession
 import api.config.Config
 import zhttp.http.*
 import zio.*
-import zio.blocking.Blocking
 
 import java.nio.file.{Files, Paths as JPaths}
 
@@ -46,7 +45,7 @@ object StaticHTMLRoutes {
   private def file(
     fileName: String,
     request:  Request
-  ): ZIO[Blocking, HttpError, HttpData] = {
+  ): ZIO[Any, HttpError, HttpData] = {
     JPaths.get(fileName) match {
       case path: java.nio.file.Path if !Files.exists(path) => ZIO.fail(HttpError.NotFound(request.path))
       case path: java.nio.file.Path                        => ZIO.succeed(HttpData.fromFile(path.toFile.nn))
@@ -54,14 +53,14 @@ object StaticHTMLRoutes {
     }
   }
 
-  val unauthRoute: Http[Environment & Blocking, Throwable, Request, Response] = Http.collectZIO[Request] {
-    case request @ (Method.GET -> !! / "loginForm") =>
+  val unauthRoute: Http[Environment, Throwable, Request, Response] = Http.collectZIO[Request] {
+    case request @ Method.GET -> !! / "loginForm" =>
       for {
         config <- ZIO.service[Config.Service]
         staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
         data <- file(s"$staticContentDir/login.html", request)
       } yield Response(data = data)
-    case request @ ((Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse) =>
+    case request @ (Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse =>
       if (authNotRequired(somethingElse.toString())) {
         for {
           config <- ZIO.service[Config.Service]
@@ -73,9 +72,9 @@ object StaticHTMLRoutes {
       }
   }
 
-  val authRoute: Http[Environment & Blocking, Throwable, RequestWithSession[ChutiSession], Response] =
+  val authRoute: Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectZIO[RequestWithSession[ChutiSession]] {
-      case request @ Method.GET -> somethingElse if somethingElse == Path("/") =>
+      case request @ Method.GET -> somethingElse if somethingElse == Path.decode("/") =>
         for {
           config <- ZIO.service[Config.Service]
           staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn

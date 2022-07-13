@@ -7,22 +7,25 @@ import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
 import io.getquill.context.ZioJdbc.DataSourceLayer
 import zio.*
-import zio.logging.Logging
+import zio.logging.*
 
 import java.io
 import java.sql.SQLException
 import javax.sql.DataSource
 import scala.io.Source
 
-object ChutiContainer {
+trait ChutiContainer {
+  def container: MySQLContainer
+}
 
-  type ChutiContainer = Has[ChutiContainer.Service]
+
+object ChutiContainer {
 
   private case class Migrator(
     path: String
   ) {
 
-    def migrate(): ZIO[Has[DataSource], RepositoryError, Unit] =
+    def migrate(): ZIO[DataSource, RepositoryError, Unit] =
       (for {
         files <- ZIO {
           import scala.language.unsafeNulls
@@ -69,31 +72,26 @@ object ChutiContainer {
 
   }
 
-  trait Service {
 
-    def container: MySQLContainer
-
-  }
-
-  val containerLayer: ZLayer[Logging, RepositoryError, ChutiContainer] = (for {
-    _ <- Logging.debug("Creating container")
+  val containerLayer: ZLayer[Any, RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
+    _ <- ZIO.logDebug("Creating container")
     c <- ZIO {
       val c = MySQLContainer()
       c.container.start()
       c
     }
     config = getConfig(c).nn
-    _ <- Logging.debug("Migrating container")
+    _ <- ZIO.logDebug("Migrating container")
     _ <-
       (Migrator("server/src/main/sql").migrate()
         *> Migrator("server/src/it/sql").migrate())
         .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db").nn))
         .mapError(RepositoryError.apply)
-  } yield new Service {
+  } yield new ChutiContainer {
 
     override def container: MySQLContainer = c
 
-  }).mapError(RepositoryError.apply).toLayer
+  }).mapError(RepositoryError.apply))
 
   private def getConfig(container: MySQLContainer): config.Config =
     ConfigFactory
@@ -108,15 +106,15 @@ object ChutiContainer {
       chuti.db.maximumPoolSize=10
     """).nn
 
-  val configLayer: URLayer[ChutiContainer & Config, Config] = {
-    (for {
-      container  <- ZIO.service[ChutiContainer.Service].map(_.container)
+  val configLayer: URLayer[ChutiContainer & Config, Config] = ZLayer.fromZIO {
+    for {
+      container  <- ZIO.service[ChutiContainer].map(_.container)
       baseConfig <- ZIO.service[Config.Service].map(_.config)
     } yield {
       new api.config.Config.Service {
         override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
       }
-    }).toLayer
+    }
   }
 
 }

@@ -24,27 +24,28 @@ import caliban.ZHttpAdapter
 import chat.{ChatApi, ChatService}
 import dao.SessionContext
 import zhttp.http.*
-import zio.ZIO
-import zio.duration.*
+import zio.*
 
 object ChatRoutes {
 
-  import ChatService.*
-
-  val authRoute: Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] = {
+  val authRoute: Http[Environment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case _ -> !! / "api" / "chat" =>
-        Http.collectHttp[RequestWithSession[ChutiSession]] { req =>
-          ZHttpAdapter
+        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
+          for {
+            interpreter <- ChatService.interpreter
+          } yield ZHttpAdapter
             .makeHttpService(interpreter)
             .provideSomeLayer[Environment, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }
+        }.flatten
       case _ -> !! / "api" / "chat" / "ws" =>
-        Http.collectHttp[RequestWithSession[ChutiSession]] { req =>
-          ZHttpAdapter
+        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
+          for {
+            interpreter <- ChatService.interpreter
+          } yield ZHttpAdapter
             .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-            .provideSomeLayer[Environment, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }
+            .provideSomeLayer[Environment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
+        }.flatten
       case _ -> !! / "api" / "chat" / "schema" =>
         Http.fromData(HttpData.fromString(ChatApi.api.render))
       case _ -> !! / "api" / "chat" / "graphiql" =>

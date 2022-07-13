@@ -20,11 +20,8 @@ import chuti.{User, UserId}
 import dao.{Repository, SessionContext}
 import game.GameService
 import zio.*
-import zio.duration.*
 import zio.cache.Cache
-import zio.clock.Clock
-import zio.logging.{Logger, Logging}
-import zio.random.Random
+import zio.logging.*
 
 import java.math.BigInteger
 import java.security.SecureRandom
@@ -38,89 +35,84 @@ package object token {
 
   }
 
-  type TokenHolder = Has[TokenHolder.Service]
-
   case class Token(tok: String) {
 
     override def toString: String = tok
 
   }
 
+  trait TokenHolder {
+
+    def peek(
+              token: Token,
+              purpose: TokenPurpose
+            ): Task[Option[User]]
+
+    def createToken(
+                     user: User,
+                     purpose: TokenPurpose,
+                     ttl: Option[Duration] = Option(5.hours)
+                   ): Task[Token]
+
+    def validateToken(
+                       token: Token,
+                       purpose: TokenPurpose
+                     ): Task[Option[User]]
+
+  }
+
   object TokenHolder {
 
-    trait Service {
-
-      def peek(
-        token:   Token,
-        purpose: TokenPurpose
-      ): Task[Option[User]]
-
-      def createToken(
-        user:    User,
-        purpose: TokenPurpose,
-        ttl:     Option[Duration] = Option(5.hours)
-      ): Task[Token]
-      def validateToken(
-        token:   Token,
-        purpose: TokenPurpose
-      ): Task[Option[User]]
-
-    }
-
     def mockLayer: ULayer[TokenHolder] =
-      ZLayer.succeed(new Service {
+      ZLayer.succeed(new TokenHolder {
 
         override def peek(
-          token:   Token,
-          purpose: TokenPurpose
-        ): Task[Option[User]] = Task.none
+                           token: Token,
+                           purpose: TokenPurpose
+                         ): Task[Option[User]] = ZIO.none
 
         override def createToken(
-          user:    User,
-          purpose: TokenPurpose,
-          ttl:     Option[Duration]
-        ): Task[Token] = Task.succeed(Token(""))
+                                  user: User,
+                                  purpose: TokenPurpose,
+                                  ttl: Option[Duration]
+                                ): Task[Token] = ZIO.succeed(Token(""))
 
         override def validateToken(
-          token:   Token,
-          purpose: TokenPurpose
-        ): Task[Option[User]] = Task.none
+                                    token: Token,
+                                    purpose: TokenPurpose
+                                  ): Task[Option[User]] = ZIO.none
 
       })
 
-    def liveLayer: ZLayer[Repository & Logging, Nothing, TokenHolder] =
-      ZLayer.fromServices[Repository.Service, Logger[String], TokenHolder.Service]((repo, log) => {
-        new Service {
-          //          SessionContext & Logging
-          val layer: ZLayer[Any, Nothing, SessionContext & Logging & Clock & Random] =
-            GameService.godLayer ++ ZLayer.succeed(log) ++ Clock.live ++ Random.live
-
-          zio.Runtime.default.unsafeRun {
-            val freq = new zio.DurationSyntax(1).hour
-            (log.info("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provideLayer(layer))
-              .repeat(Schedule.spaced(freq).jittered).forkDaemon
-          }
+    def liveLayer: URLayer[Repository, TokenHolder] =
+      ZLayer.fromZIO(for {
+        repo <- ZIO.service[Repository]
+        freq = new zio.DurationSyntax(1).hour
+        _ <- (ZIO.logInfo("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provide(GameService.godLayer))
+          .repeat(Schedule.spaced(freq).jittered).forkDaemon
+      } yield {
+        new TokenHolder {
 
           override def peek(
-            token:   Token,
-            purpose: TokenPurpose
-          ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provideLayer(layer)
+                             token: Token,
+                             purpose: TokenPurpose
+                           ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
 
           override def createToken(
-            user:    User,
-            purpose: TokenPurpose,
-            ttl:     Option[Duration]
-          ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provideLayer(layer)
+                                    user: User,
+                                    purpose: TokenPurpose,
+                                    ttl: Option[Duration]
+                                  ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
 
           override def validateToken(
-            token:   Token,
-            purpose: TokenPurpose
-          ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provideLayer(layer)
+                                      token: Token,
+                                      purpose: TokenPurpose
+                                    ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
         }
       })
 
-    def tempCache(cache: Cache[(String, TokenPurpose), Nothing, User]): Service =
-      new Service {
+    def tempCache(cache: Cache[(String, TokenPurpose), Nothing, User]): TokenHolder =
+      new TokenHolder {
 
         private val random = SecureRandom.getInstanceStrong
 

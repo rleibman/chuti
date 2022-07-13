@@ -19,12 +19,10 @@ package dao
 import api.token.*
 import chuti.*
 import dao.Repository.TokenOperations
-import zio.clock.Clock
-import zio.logging.Logging
-import zio.{Task, ZIO}
+import zio.logging.*
+import zio.*
 
 import java.time.Instant
-import zio.duration.*
 
 object InMemoryRepository {
 
@@ -41,7 +39,7 @@ object InMemoryRepository {
 
 }
 
-case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service {
+case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository {
 
   import InMemoryRepository.*
   private val games =
@@ -61,22 +59,22 @@ case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service
     override def getGameForUser:           RepositoryIO[Option[Game]] = ???
     override def upsert(e: Game): RepositoryIO[Game] = {
       val id = e.id.getOrElse(GameId(games.size + 1))
-      Task.succeed {
+      ZIO.succeed {
         games.put(id, e.copy(id = Option(id)))
         games(id)
       }
     }
-    override def get(pk: GameId): RepositoryIO[Option[Game]] = Task.succeed(games.get(pk))
+    override def get(pk: GameId): RepositoryIO[Option[Game]] = ZIO.succeed(games.get(pk))
     override def delete(
       pk:         GameId,
       softDelete: Boolean
     ): RepositoryIO[Boolean] = ???
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = Task.succeed(games.values.toSeq)
-    override def count(search: Option[EmptySearch]):  RepositoryIO[Long] = Task.succeed(games.size.toLong)
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = ZIO.succeed(games.values.toSeq)
+    override def count(search: Option[EmptySearch]):  RepositoryIO[Long] = ZIO.succeed(games.size.toLong)
 
-    override def updatePlayers(game: Game): RepositoryIO[Game] = Task.succeed(game)
+    override def updatePlayers(game: Game): RepositoryIO[Game] = ZIO.succeed(game)
 
-    override def userInGame(id: GameId): RepositoryIO[Boolean] = Task.succeed(true)
+    override def userInGame(id: GameId): RepositoryIO[Boolean] = ZIO.succeed(true)
 
   }
 
@@ -85,7 +83,7 @@ case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service
     override def login(
       email:    String,
       password: String
-    ): ZIO[Clock & Logging, RepositoryError, Option[User]] = ???
+    ): ZIO[Any, RepositoryError, Option[User]] = ???
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
 
@@ -106,13 +104,13 @@ case class InMemoryRepository(loadedGames: Seq[Game]) extends Repository.Service
 
     override def upsert(e: User): RepositoryIO[User] = {
       val id = e.id.getOrElse(UserId(users.size + 1))
-      Task.succeed {
+      ZIO.succeed {
         users.put(id, e.copy(id = Option(id)))
         users(id)
       }
     }
 
-    override def get(pk: UserId): RepositoryIO[Option[User]] = Task.succeed(users.get(pk))
+    override def get(pk: UserId): RepositoryIO[Option[User]] = ZIO.succeed(users.get(pk))
 
     override def delete(
       pk:         UserId,

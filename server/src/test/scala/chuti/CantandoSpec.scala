@@ -23,8 +23,7 @@ import game.GameService
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AnyFlatSpec
-import zio.*
-import zio.duration.*
+import zio.{Clock, Console, *}
 
 class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
 
@@ -32,7 +31,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     testRuntime.unsafeRun {
       for {
         game <- readGame(GAME_STARTED)
-        _    <- console.putStrLn(game.toString)
+        _    <- Console.printLine(game.toString)
       } yield game
     }
 
@@ -64,7 +63,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -77,7 +76,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
@@ -135,7 +134,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -148,7 +147,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
@@ -205,7 +204,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -218,7 +217,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
@@ -258,7 +257,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -271,7 +270,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
@@ -332,7 +331,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -345,7 +344,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-
@@ -394,7 +393,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -407,7 +406,7 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game1           <- readGame(GAME_STARTED)
           quienCanta = game1.jugadores.find(_.turno).map(_.user).get
           game2 <-

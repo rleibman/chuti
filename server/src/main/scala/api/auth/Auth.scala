@@ -19,18 +19,18 @@ package api.auth
 import io.circe.parser.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder}
+import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.{DefaultFullHttpRequest, HttpRequest}
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
 import util.ResponseExt
 import zhttp.http.*
 import zhttp.http.Cookie.SameSite
-import zio.clock.Clock
+import zio.config.*
 import zio.config.magnolia.*
-import zio.config.*, ConfigDescriptor.*
 import zio.config.typesafe.*
-import zio.duration.*
-import zio.{Has, IO, Ref, Schedule, Tag, UIO, ZIO, ZLayer}
+import zio.*
 
+import java.io.IOException
 import java.net.InetAddress
 import java.time.Instant
 
@@ -82,7 +82,7 @@ object Auth {
   //  given durationDescriptor: Descriptor[Duration] = zio.config.magnolia.Descriptor.from[Long].
   //    zio.config.magnolia.Descriptor.implicitLongDesc.transform[Duration](_.minutes, _.toMinutes)
   //  given pathConfigDescriptor: ConfigDescriptor[Path] = string("PATH")(Path.apply, a => Some(a.encode))  //zio.config.magnolia.Descriptor.from[java.nio.file.Path]
-  given Descriptor[Path] = Descriptor.from[Path](ConfigDescriptor.string.transform(Path(_), _.toString))
+  given Descriptor[Path] = Descriptor.from[Path](ConfigDescriptor.string.transform(Path.decode _, _.toString))
 
   //  given Descriptor[Option[Path]] = string("OPATH").transform[Option[Path]](p => Some(Path.apply(p)), _.fold("")(_.encode))
   given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
@@ -142,23 +142,21 @@ object Auth {
       )
     }
 
-    //    override def unsafeContext: ChannelHandlerContext = throw new IOException("Request does not have a context")
-
-    override def remoteAddress: Option[InetAddress] = request.remoteAddress
+    override def unsafeContext: ChannelHandlerContext = throw new IOException("Request does not have a context")
 
   }
 
   private def jwtEncode[SessionType: Encoder](
-    session: SessionType
-  ): ZIO[Clock, SessionError, String] =
+                                               session: SessionType
+                                             ): ZIO[Any, SessionError, String] =
     for {
       config <- sessionConfig.orElseFail(SessionError("failed to encode jwtClaim"))
-      clock  <- ZIO.service[Clock.Service].flatMap(_.instant)
+      now <- Clock.instant
     } yield {
       val json = session.asJson.noSpaces
       val claim = JwtClaim(json)
-        .issuedAt(clock.getEpochSecond)
-        .expiresAt(clock.getEpochSecond + 300)
+        .issuedAt(now.getEpochSecond)
+        .expiresAt(now.getEpochSecond + 300)
       Jwt.encode(claim, config.secretKey.key, JwtAlgorithm.HS512)
     }
 
@@ -169,104 +167,100 @@ object Auth {
     } yield tok
 
   protected def jwtExpire[SessionType: Encoder](
-    mySession: SessionType
-  ): ZIO[Clock, SessionError, String] =
+                                                 mySession: SessionType
+                                               ): ZIO[Any, SessionError, String] =
     for {
       config <- sessionConfig.orElseFail(SessionError("failed to expire jwtClaim"))
-      clock  <- ZIO.service[Clock.Service].flatMap(_.instant)
+      now <- Clock.instant
     } yield {
       val json = mySession.asJson.noSpaces
       val claim = JwtClaim(json)
-        .issuedAt(clock.getEpochSecond)
-        .expiresAt(clock.getEpochSecond)
+        .issuedAt(now.getEpochSecond)
+        .expiresAt(now.getEpochSecond)
       Jwt.encode(claim, config.secretKey.key, JwtAlgorithm.HS512)
     }
 
   object SessionTransport {
-
-    trait Service[SessionType] {
-
-      def auth: Middleware[Any, Nothing, RequestWithSession[SessionType], Response, Request, Response]
-
-      def getSession(request: Request): IO[SessionError, Option[SessionType]]
-
-      def invalidateSession(
-        session:  SessionType,
-        response: Response
-      ): ZIO[Clock, SessionError, Response]
-
-      def cleanUp: UIO[Unit]
-
-      def isValid(session: SessionType): ZIO[Any, Nothing, Boolean]
-
-      def refreshSession(
-        session:  SessionType,
-        response: Response
-      ): IO[SessionError, Response]
-
-    }
-
     def cookieSessionTransport[
-      SessionType: Encoder: Decoder: Tag
-    ]: ZLayer[Clock & SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
-      (
+      SessionType: Encoder : Decoder : Tag
+    ]: ZLayer[SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
+      ZLayer.fromZIO(
         for {
           invalidSessions <- Ref.make(Map.empty[SessionType, Instant])
-          sessionStorage  <- ZIO.service[SessionStorage.Service[SessionType, String]]
-          mgr             <- ZIO.succeed(CookieSessionTransport(sessionStorage, invalidSessions))
-          _               <- mgr.cleanUp.repeat(Schedule.fixed(1.hour)).forkDaemon
+          sessionStorage <- ZIO.service[SessionStorage[SessionType, String]]
+          mgr <- ZIO.succeed(CookieSessionTransport(sessionStorage, invalidSessions))
+          _ <- mgr.cleanUp.repeat(Schedule.fixed(1.hour)).forkDaemon
         } yield mgr
-      ).toLayer
+      )
 
   }
 
-  type SessionTransport[SessionType] = Has[SessionTransport.Service[SessionType]]
+  trait SessionTransport[SessionType] {
 
-  type SessionStorage[SessionType, PK] = Has[SessionStorage.Service[SessionType, PK]]
+    def auth: Middleware[Any, Nothing, RequestWithSession[SessionType], Response, Request, Response]
+
+    def getSession(request: Request): IO[SessionError, Option[SessionType]]
+
+    def invalidateSession(
+                           session: SessionType,
+                           response: Response
+                         ): ZIO[Any, SessionError, Response]
+
+    def cleanUp: UIO[Unit]
+
+    def isValid(session: SessionType): ZIO[Any, Nothing, Boolean]
+
+    def refreshSession(
+                        session: SessionType,
+                        response: Response
+                      ): IO[SessionError, Response]
+
+  }
+
+
+  trait SessionStorage[SessionType, PK] {
+
+    def storeSession(session: SessionType): IO[SessionError, PK]
+
+    def getSession(sessionId: PK): IO[SessionError, Option[SessionType]]
+
+    def deleteSession(sessionId: PK): IO[SessionError, Boolean]
+
+  }
 
   object SessionStorage {
+    def tokenEncripted[SessionType: Encoder : Decoder : Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
+      ZLayer.succeed {
+        new SessionStorage[SessionType, String] {
 
-    trait Service[SessionType, PK] {
+          override def storeSession(session: SessionType): IO[SessionError, String] = jwtEncode(session)
 
-      def storeSession(session:    SessionType): IO[SessionError, PK]
-      def getSession(sessionId:    PK):          IO[SessionError, Option[SessionType]]
-      def deleteSession(sessionId: PK):          IO[SessionError, Boolean]
+          override def getSession(sessionId: String): IO[SessionError, Option[SessionType]] =
+            for {
+              decoded <- jwtDecode(sessionId)
+              session <- decoded.session
+            } yield Option(session)
 
-    }
+          override def deleteSession(sessionId: String): IO[SessionError, Boolean] = ZIO.succeed(true)
 
-    def tokenEncripted[SessionType: Encoder: Decoder: Tag]: ZLayer[Clock, Nothing, SessionStorage[SessionType, String]] = {
-      for {
-        clock <- ZIO.service[Clock.Service]
-      } yield new SessionStorage.Service[SessionType, String] {
-
-        override def storeSession(session: SessionType): IO[SessionError, String] = jwtEncode(session).provideLayer(ZLayer.succeed(clock))
-
-        override def getSession(sessionId: String): IO[SessionError, Option[SessionType]] =
-          for {
-            decoded <- jwtDecode(sessionId)
-            session <- decoded.session
-          } yield Option(session)
-
-        override def deleteSession(sessionId: String): IO[SessionError, Boolean] = ZIO.succeed(true)
-
+        }
       }
-    }.toLayer
 
   }
 
-  private case class CookieSessionTransport[SessionType: Encoder: Decoder: Tag](
-    sessionStorage:  SessionStorage.Service[SessionType, String],
-    invalidSessions: Ref[Map[SessionType, Instant]]
-  ) extends SessionTransport.Service[SessionType] {
+  private case class CookieSessionTransport[SessionType: Encoder : Decoder : Tag](
+                                                                                   sessionStorage: SessionStorage[SessionType, String],
+                                                                                   invalidSessions: Ref[Map[SessionType, Instant]]
+                                                                                 ) extends SessionTransport[SessionType] {
 
     override def invalidateSession(
-      session:  SessionType,
-      response: Response
-    ): ZIO[Clock, SessionError, Response] =
+                                    session: SessionType,
+                                    response: Response
+                                  ): ZIO[Any, SessionError, Response] =
       (for {
-        now    <- ZIO.service[Clock.Service].flatMap(_.instant)
+        now <- Clock.instant
         config <- sessionConfig
-        _      <- invalidSessions.update(_ + (session -> now.plusSeconds(config.sessionTTL.toSeconds + 60).nn))
+        _ <- invalidSessions.update(_ + (session -> now.plusSeconds(config.sessionTTL.toSeconds + 60).nn))
       } yield {
         val deleteCookie = Cookie(
           name = config.sessionName,
@@ -323,12 +317,11 @@ object Auth {
           Http
             .fromFunctionZIO[Request] { request =>
               (for {
-                config  <- sessionConfig.mapError(e => SessionError(e.getMessage.nn, Some(e)))
                 session <- getSession(request)
               } yield {
                 session match {
-                  case _ if request.path.startsWith(Path("/loginForm")) => http.contramap[Request](req => RequestWithSession(None, req))
-                  case _                                                => http.contramap[Request](req => RequestWithSession(session, req))
+                  case _ if request.path.startsWith(Path.decode("/loginForm")) => http.contramap[Request](req => RequestWithSession(None, req))
+                  case _ => http.contramap[Request](req => RequestWithSession(session, req))
                 }
               }).catchAll(_ => ZIO.succeed(Http.response(ResponseExt.seeOther("/loginForm"))))
             }.flatten

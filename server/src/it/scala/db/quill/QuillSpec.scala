@@ -5,8 +5,9 @@ import api.config.Config
 import chuti.{User, UserId}
 import dao.SessionContext
 import dao.quill.QuillRepository
+import db.quill.ChutiContainer.ChutiContainer
 import zio.clock.Clock
-import zio.logging.Logging
+import zio.logging.*
 import zio.logging.slf4j.Slf4jLogger
 import zio.random.Random
 import zio.test.DefaultRunnableSpec
@@ -28,9 +29,9 @@ abstract class QuillSpec extends DefaultRunnableSpec {
 
   protected val loggingLayer:    ULayer[Logging] = Slf4jLogger.make((_, b) => b)
   protected val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  protected val containerLayer = ChutiContainer.containerLayer.orDie
+  protected val containerLayer:  ULayer[ChutiContainer] = loggingLayer >>> ChutiContainer.containerLayer.orDie
   protected val configLayer = (containerLayer ++ baseConfigLayer) >>> ChutiContainer.configLayer
-  protected val quillLayer = QuillRepository.cached
+  protected val quillLayer = QuillRepository.uncached
   protected val godSession:              ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
   protected val satanSession:            ULayer[SessionContext] = SessionContext.live(ChutiSession(satan))
   protected def userSession(user: User): ULayer[SessionContext] = SessionContext.live(ChutiSession(user))
@@ -38,14 +39,13 @@ abstract class QuillSpec extends DefaultRunnableSpec {
   protected val clockLayer: ULayer[Clock] =
     ZLayer.succeed(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC).nn).nn) >>> Clock.javaClock
 
-  //  val fullGodLayer: ULayer[Config & Repository & Logging & SessionContext & Clock & Random] =
+  //  val fullGodLayer: ULayer[Config & Repository  & SessionContext ] =
   //    configLayer ++ quillLayer ++ loggingLayer ++ godSession ++ clockLayer ++ Random.live
 
-  protected val testUserZIO: URIO[Random & Clock, User] = {
+  protected val testUserZIO: UIO[User] = {
     for {
-      random <- ZIO.service[Random.Service]
-      now    <- ZIO.service[Clock.Service].flatMap(_.instant)
-      str    <- random.nextString(5)
+      now <- Clock.instant
+      str <- random.nextString(5)
     } yield User(None, email = s"$str@example.com", name = "Frank Lloyd Wright", created = now, lastUpdated = now)
   }
 

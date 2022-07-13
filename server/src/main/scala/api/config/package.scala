@@ -18,12 +18,10 @@ package api
 
 import better.files.File
 import com.typesafe.config.*
+import zio.IO
 import zio.config.magnolia.*
-import zio.config.*, ConfigDescriptor.*
 import zio.config.typesafe.TypesafeConfigSource
-import zio.config.{PropertyTreePath, ReadError, read}
-import zio.{Has, IO}
-import zio.config.magnolia.*
+import zio.config.*
 
 /** A trait to keep app configuration
   */
@@ -64,7 +62,7 @@ package object config {
     httpConfig: HttpConfig
   )
 
-  type Config = Has[Config.Service]
+  type Config = Config.Service
 
   object Config {
 

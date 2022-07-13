@@ -20,9 +20,9 @@ import courier.Envelope
 import mail.Postman
 import zio.Task
 
-class MockPostman extends Postman.Service {
+class MockPostman extends Postman {
 
-  override def deliver(email: Envelope): Task[Unit] = Task.succeed(())
+  override def deliver(email: Envelope): Task[Unit] = ZIO.succeed(())
 
   override def webHostName: String = "chuti.fun"
 

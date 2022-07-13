@@ -24,27 +24,29 @@ import caliban.ZHttpAdapter
 import dao.SessionContext
 import game.{GameApi, GameService}
 import zhttp.http.*
-import zio.ZIO
-import zio.duration.*
+import zio.*
 
 object GameRoutes {
 
-  import GameService.*
 
-  val authRoute: Http[Environment, Throwable, RequestWithSession[ChutiSession], Response] = {
+  val authRoute: Http[Environment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case _ -> !! / "api" / "game" =>
-        Http.collectHttp { req =>
-          ZHttpAdapter
+        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
+          for {
+            interpreter <- GameService.interpreter
+          } yield ZHttpAdapter
             .makeHttpService(interpreter)
             .provideSomeLayer[Environment, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }
+        }.flatten
       case _ -> !! / "api" / "game" / "ws" =>
-        Http.collectHttp { req =>
-          ZHttpAdapter
+        Http.collectZIO[RequestWithSession[ChutiSession]] { req =>
+          for {
+            interpreter <- GameService.interpreter
+          } yield ZHttpAdapter
             .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-            .provideSomeLayer[Environment, SessionContext, Throwable](SessionContext.live(req.session.get))
-        }
+            .provideSomeLayer[Environment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
+        }.flatten
       case _ -> !! / "api" / "game" / "schema" =>
         Http.fromData(HttpData.fromString(GameApi.api.render))
       case _ -> !! / "api" / "game" / "graphiql" =>

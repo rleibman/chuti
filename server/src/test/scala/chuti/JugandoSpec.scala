@@ -21,7 +21,6 @@ import dao.SessionContext
 import game.GameService
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
-import zio.duration.*
 
 class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
 
@@ -36,7 +35,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.service[GameService.Service]
+          gameService <- ZIO.service[GameService]
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
@@ -47,7 +46,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
                 case PoisonPill(Some(id), _) if id == gameId => true
                 case _                                       => false
               }.runCollect.fork
-          _     <- clock.sleep(1.second)
+          _     <- Clock.sleep(1.second)
           mano1 <- juegaMano(gameId)
           _ <-
             gameService
@@ -75,7 +74,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.service[GameService.Service]
+          gameService <- ZIO.service[GameService]
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
@@ -86,7 +85,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
                 case PoisonPill(Some(id), _) if id == gameId => true
                 case _                                       => false
               }.runCollect.fork
-          _     <- clock.sleep(1.second)
+          _     <- Clock.sleep(1.second)
           _     <- juegaMano(gameId)
           _     <- juegaMano(gameId)
           _     <- juegaMano(gameId)
@@ -117,7 +116,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
     ) =
       testRuntime.unsafeRun {
         (for {
-          gameService <- ZIO.service[GameService.Service]
+          gameService <- ZIO.service[GameService]
           gameStream =
             gameService
               .gameStream(gameId, connectionId)
@@ -128,7 +127,7 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
                 case PoisonPill(Some(id), _) if id == gameId => false
                 case _                                       => true
               }.runCollect.fork
-          _   <- clock.sleep(1.second)
+          _   <- Clock.sleep(1.second)
           end <- juegaHastaElFinal(gameId)
           _ <-
             gameService

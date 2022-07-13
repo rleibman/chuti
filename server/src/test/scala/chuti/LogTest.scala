@@ -17,24 +17,22 @@
 package chuti
 
 import dao.InMemoryRepository.now
-import zio.clock.Clock
-import zio.duration.*
 import zio.logging.*
 import zio.logging.slf4j.*
-import zio.{App, ExitCode, UIO, ZIO, ZLayer}
+import zio.{Clock, ExitCode, UIO, ZIO, ZIOAppDefault, ZLayer, *}
 
 import java.time.Instant
 import java.util.UUID
 
 case class SomethingElse(string: String) {
 
-  def foo: ZIO[Logging, Nothing, Unit] = {
-    log.info(s"Hello from SomethingElse $string")
+  def foo: ZIO[Any, Nothing, Unit] = {
+    ZIO.logInfo(s"Hello from SomethingElse $string")
   }
 
 }
 
-object LogTest extends App {
+object LogTest extends ZIOAppDefault {
 
   private val userAnnonation = LogAnnotation[Option[User]](
     name = "user",
@@ -58,13 +56,13 @@ object LogTest extends App {
   override def run(args: List[String]): ZIO[zio.ZEnv, Nothing, ExitCode] = {
     val somethingElse = SomethingElse("Yoyo")
     (for {
-      _ <- log.info("Start...")
+      _ <- ZIO.logInfo("Start...")
       _ <- somethingElse.foo
-      _ <- ZIO.foreachPar_(users) { user =>
+      _ <- ZIO.foreachParDiscard(users) { user =>
         log.locally(_.annotate(userAnnonation, Option(user)).annotate(LogAnnotation.CorrelationId, Option(UUID.randomUUID().nn))) {
-          log.info("Starting operation") *>
+          ZIO.logInfo("Starting operation") *>
             ZIO.sleep(500.millis) *>
-            log.info("Stopping operation")
+            ZIO.logInfo("Stopping operation")
         }
       }
     } yield ExitCode.success).provideSomeLayer[Clock](logLayer)

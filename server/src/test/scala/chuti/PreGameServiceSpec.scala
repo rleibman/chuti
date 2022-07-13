@@ -21,7 +21,6 @@ import dao.{InMemoryRepository, Repository, SessionContext}
 import game.GameService
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
-import zio.duration.*
 
 class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
@@ -34,7 +33,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
     val game: Game = testRuntime.unsafeRun {
       for {
-        gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+        gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
         operation <-
           gameService
             .newGame(satoshiPerPoint = 100).provideCustomLayer(
@@ -62,7 +61,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -75,7 +74,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_NEW)
           withUser2 <-
             gameService
@@ -113,7 +112,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -126,7 +125,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_NEW)
           withUser2 <-
             gameService
@@ -179,7 +178,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -192,7 +191,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_WITH_2USERS)
           abandonedGame <-
             gameService
@@ -241,7 +240,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -254,7 +253,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_STARTED)
           abandonedGame <-
             gameService
@@ -303,7 +302,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -316,7 +315,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_NEW)
           invited <-
             gameService
@@ -357,7 +356,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -370,7 +369,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_NEW)
           _ <-
             gameService
@@ -434,7 +433,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     ) =
       testRuntime.unsafeRun {
         for {
-          gameService <- ZIO.service[GameService.Service].provideCustomLayer(GameService.make())
+          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
           gameStream =
             gameService
               .gameStream(GameId(1), connectionId).provideCustomLayer(
@@ -447,7 +446,7 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
               )
           gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
           userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- clock.sleep(1.second)
+          _               <- Clock.sleep(1.second)
           game            <- readGame(GAME_NEW)
           _ <-
             gameService

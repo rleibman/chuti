@@ -28,14 +28,14 @@ import io.circe.generic.auto.*
 import mail.Postman
 import util.*
 import zhttp.http.*
-import zio.clock.Clock
-import zio.logging.Logging
-import zio.{Has, ZIO}
+import zio.{Clock, ZIO}
+import zio.logging.*
 
 import java.time.Instant
 import java.util.Locale
-
 import scala.language.unsafeNulls
+import UserId.*
+
 
 object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
@@ -44,7 +44,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
   // TODO get from config
   val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
 
-  override type OpsService = Has[CRUDOperations[User, UserId, PagedStringSearch]]
+  override type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
 
   override val url: String = "auth"
 
@@ -55,8 +55,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
       case req @ Method.GET -> !! / "api" / "auth" / "isFirstLoginToday" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            userOps       <- ZIO.service[Repository.Service].map(_.userOperations)
-            now           <- ZIO.service[Clock.Service].flatMap(_.instant)
+            userOps       <- ZIO.service[Repository].map(_.userOperations)
+            now           <- Clock.instant
             firstLoginOpt <- userOps.firstLogin
           } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(now.minus(java.time.Duration.ofDays(1)).nn))))
             .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
@@ -67,7 +67,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         Http.collectZIO(_ =>
           for {
             locale           <- req.bodyAsString
-            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
             response <- sessionTransport.refreshSession(req.session.get.copy(locale = Locale.forLanguageTag(locale).nn), ResponseExt.json(true))
           } yield response
         )
@@ -79,14 +79,14 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
       case req @ Method.GET -> !! / "api" / "auth" / "userWallet" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            userOps <- ZIO.service[Repository.Service].map(_.userOperations)
+            userOps <- ZIO.service[Repository].map(_.userOperations)
             wallet  <- userOps.getWallet
           } yield ResponseExt.json(wallet)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / "api" / "auth" / "changePassword" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            userOps <- ZIO.service[Repository.Service].map(_.userOperations)
+            userOps <- ZIO.service[Repository].map(_.userOperations)
             body    <- req.bodyAsString
             ret     <- userOps.changePassword(req.session.get.user, body)
           } yield ResponseExt.json(ret)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
@@ -94,14 +94,14 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
       case req @ Method.GET -> !! / "api" / "auth" / "refreshToken" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
-            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
             response         <- sessionTransport.refreshSession(req.session.get, ResponseExt.json(true))
           } yield response
         )
       case req @ Method.GET -> !! / "api" / "auth" / "doLogout" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
-            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
+            sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
             response         <- sessionTransport.invalidateSession(req.session.get, Response(Status.SeeOther, Headers.location("/loginForm")))
           } yield response
         )
@@ -117,9 +117,9 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             formData <- req.formData
             token = formData.get("token")
             password = formData.get("password")
-            _ <- ZIO(Response.fromHttpError(HttpError.BadRequest("You need to pass a token and password"))).when(token.isEmpty || password.isEmpty)
-            userOps     <- ZIO.service[Repository.Service].map(_.userOperations)
-            tokenHolder <- ZIO.service[TokenHolder.Service]
+            _ <- ZIO.succeed(Response.fromHttpError(HttpError.BadRequest("You need to pass a token and password"))).when(token.isEmpty || password.isEmpty)
+            userOps     <- ZIO.service[Repository].map(_.userOperations)
+            tokenHolder <- ZIO.service[TokenHolder]
             userOpt <-
               tokenHolder
                 .validateToken(Token(token.get), TokenPurpose.LostPassword)
@@ -137,8 +137,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         Http.collectZIO[Request] { req =>
           (for {
             email   <- req.bodyAsString
-            userOps <- ZIO.service[Repository.Service].map(_.userOperations)
-            postman <- ZIO.service[Postman.Service]
+            userOps <- ZIO.service[Repository].map(_.userOperations)
+            postman <- ZIO.service[Postman]
             userOpt <- userOps.userByEmail(email)
             _ <-
               ZIO
@@ -150,7 +150,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         Http.collectZIO[Request] { req =>
           (for {
             request <- req.bodyAs[UpdateInvitedUserRequest]
-            userOps <- ZIO.service[Repository.Service].map(_.userOperations)
+            userOps <- ZIO.service[Repository].map(_.userOperations)
             validate <- ZIO.succeed(
               if (request.user.email.trim.nn.isEmpty)
                 Option("User Email cannot be empty")
@@ -161,7 +161,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               else
                 None
             )
-            tokenHolder <- ZIO.service[token.TokenHolder.Service]
+            tokenHolder <- ZIO.service[token.TokenHolder]
             userOpt <- validate.fold(
               tokenHolder.validateToken(Token(request.token), TokenPurpose.NewUser)
             )(_ => ZIO.none)
@@ -182,15 +182,15 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
             token <- ZIO
               .fromOption(req.queryParams.get("token").toSeq.flatten.headOption)
               .orElseFail(HttpError.BadRequest("Must pass token"))
-            tokenHolder <- ZIO.service[TokenHolder.Service]
+            tokenHolder <- ZIO.service[TokenHolder]
             user        <- tokenHolder.peek(Token(token), TokenPurpose.NewUser)
           } yield ResponseExt.json(user)
         }
       case Method.PUT -> !! / "userCreation" =>
         Http.collectZIO[Request] { req =>
           (for {
-            postman             <- ZIO.service[Postman.Service]
-            userOps             <- ZIO.service[Repository.Service].map(_.userOperations)
+            postman             <- ZIO.service[Postman]
+            userOps             <- ZIO.service[Repository].map(_.userOperations)
             userCreationRequest <- req.bodyAs[UserCreationRequest]
             validate <- ZIO.succeed( // TODO Use cats validate instead of option
               if (userCreationRequest.user.email.trim.nn.isEmpty)
@@ -210,13 +210,13 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
                 ZIO.none
               else
                 userOps.upsert(userCreationRequest.user.copy(active = false)).map(Option(_))
-            _ <- ZIO.foreach_(saved)(userOps.changePassword(_, userCreationRequest.password))
-            _ <- Logging.info("About to send")
+            _ <- ZIO.foreachDiscard(saved)(userOps.changePassword(_, userCreationRequest.password))
+            _ <- ZIO.logInfo("About to send")
             _ <- ZIO
               .foreach(saved)(postman.registrationEmail)
               .flatMap(envelope => ZIO.foreach(envelope)(postman.deliver))
               .forkDaemon
-            _ <- Logging.info("Maybe sent")
+            _ <- ZIO.logInfo("Maybe sent")
           } yield {
             if (exists)
               ResponseExt.json(UserCreationResponse(Option("A user with that email already exists")))
@@ -229,8 +229,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           (for {
             formData    <- req.formData
             token       <- ZIO.fromOption(formData.get("token")).orElseFail(HttpError.BadRequest("Token not found"))
-            userOps     <- ZIO.service[Repository.Service].map(_.userOperations)
-            tokenHolder <- ZIO.service[TokenHolder.Service]
+            userOps     <- ZIO.service[Repository].map(_.userOperations)
+            tokenHolder <- ZIO.service[TokenHolder]
             user        <- tokenHolder.validateToken(Token(token), TokenPurpose.NewUser)
             activate <-
               ZIO.foreach(user)(user => userOps.upsert(user.copy(active = true)))
@@ -245,11 +245,11 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
               ZIO.fromOption(formData.get("email")).orElseFail(HttpError.BadRequest("Missing email"))
             password <- ZIO.fromOption(formData.get("password")).orElseFail(HttpError.BadRequest("Missing Password"))
 
-            userOps          <- ZIO.service[Repository.Service].map(_.userOperations)
+            userOps          <- ZIO.service[Repository].map(_.userOperations)
             login            <- userOps.login(email, password)
-            _                <- login.fold(Logging.debug(s"Bad login for $email"))(_ => Logging.debug(s"Good Login for $email"))
-            sessionTransport <- ZIO.service[SessionTransport.Service[ChutiSession]]
-            res <- login.fold(ZIO(Response(Status.SeeOther, Headers.location("/loginForm?bad=true")))) { user =>
+            _                <- login.fold(ZIO.logDebug(s"Bad login for $email"))(_ => ZIO.logDebug(s"Good Login for $email"))
+            sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
+            res <- login.fold(ZIO.succeed(Response(Status.SeeOther, Headers.location("/loginForm?bad=true")))) { user =>
               sessionTransport.refreshSession(
                 ChutiSession(user, req.preferredLocale(availableLocales, formData.get("forcedLocale"))),
                 Response(

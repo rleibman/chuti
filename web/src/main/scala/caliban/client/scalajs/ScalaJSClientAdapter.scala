@@ -29,7 +29,7 @@ import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
 import sttp.capabilities
 import sttp.client3.*
-import zio.duration.*
+import zio.*
 
 import java.net.URI
 import java.time.Instant

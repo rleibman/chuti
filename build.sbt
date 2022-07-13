@@ -3,7 +3,7 @@
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import org.apache.commons.io.FileUtils
-import sbt.Keys.testFrameworks
+import sbt.Keys.{libraryDependencies, testFrameworks}
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ lazy val scala3Opts = Seq(
   "-Xfatal-warnings", // Fail the compilation if there are any warnings.
   "-deprecation", // Emit warning and location for usages of deprecated APIs.
   //  "-explain-types", // Explain type errors in more detail.
-  "-explain",
+  //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines", "64"
 )
@@ -43,28 +43,28 @@ enablePlugins(
 )
 
 val circeVersion = "0.14.2"
-val calibanVersion = "1.4.1"
-val zioVersion = "1.0.14"
-val quillVersion = "3.19.0"
-val zioHttpVersion = "1.0.0.0-RC27"
+val calibanVersion = "2.0.0-RC2"
+val zioVersion = "2.0.0"
+val quillVersion = "4.0.0"
+val zioHttpVersion = "2.0.0-RC9"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
   scalaVersion := "3.1.3",
   startYear := Some(2020),
   organizationName := "Roberto Leibman",
-  headerLicense := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
-)
-
-lazy val commonVmSettings = commonSettings ++ Seq(
-  scalacOptions := scala3Opts,
+  headerLicense := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
+  libraryDependencies += "dev.zio" %% "zio" % zioVersion withSources(),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
     "io.circe" %% "circe-generic",
     "io.circe" %% "circe-parser",
     "io.circe" %% "circe-literal"
-  ).map(_ % circeVersion)
+  ).map(_ % circeVersion),
+  scalacOptions := scala3Opts
 )
+
+lazy val commonVmSettings = commonSettings
 
 ////////////////////////////////////////////////////////////////////////////////////
 // common (i.e. model)
@@ -86,14 +86,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     commonVmSettings
   )
   .jsSettings(
-    commonSettings ++ Seq(
-      libraryDependencies ++= Seq(
-        "io.circe" %%% "circe-core",
-        "io.circe" %%% "circe-generic",
-        "io.circe" %%% "circe-parser",
-        "io.circe" %%% "circe-literal"
-      ).map(_ % circeVersion)
-    )
+    commonSettings
   )
 
 resolvers += Resolver.sonatypeRepo("releases")
@@ -123,13 +116,13 @@ lazy val server = project
       "io.getquill" %% "quill-jdbc-zio" % quillVersion withSources(),
       // ZIO
       "dev.zio" %% "zio" % zioVersion withSources(),
-      "dev.zio" %% "zio-cache" % "0.1.2" withSources(),
-      "dev.zio" %% "zio-config" % "2.0.4" withSources(),
-      "dev.zio" %% "zio-config-derivation" % "2.0.4" withSources(),
-      "dev.zio" %% "zio-config-magnolia" % "2.0.4" withSources(),
-      "dev.zio" %% "zio-config-typesafe" % "2.0.4" withSources(),
-      "dev.zio" %% "zio-logging-slf4j" % "0.5.14" withSources(),
-      "dev.zio" %% "izumi-reflect" % "2.1.0" withSources(),
+      "dev.zio" %% "zio-cache" % "0.2.0" withSources(),
+      "dev.zio" %% "zio-config" % "3.0.1" withSources(),
+      "dev.zio" %% "zio-config-derivation" % "3.0.1" withSources(),
+      "dev.zio" %% "zio-config-magnolia" % "3.0.1" withSources(),
+      "dev.zio" %% "zio-config-typesafe" % "3.0.1" withSources(),
+      "dev.zio" %% "zio-logging-slf4j" % zioVersion withSources(),
+      "dev.zio" %% "izumi-reflect" % "2.1.3" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),

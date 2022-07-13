@@ -19,7 +19,6 @@ package chuti
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
-import chat.ChatService.ChatService
 import dao.InMemoryRepository.now
 import dao.Repository.GameOperations
 import dao.{InMemoryRepository, Repository, RepositoryIO}
@@ -29,22 +28,20 @@ import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
 import mail.Postman.Postman
+import org.scalatest.Assertions.*
 import zio.*
 import zio.cache.{Cache, Lookup}
-import zio.logging.Logging
+import zio.logging.*
 import zio.logging.slf4j.Slf4jLogger
 
-import java.util.UUID
-import zio.duration.*
-import org.scalatest.Assertions.*
-
 import java.time.Instant
+import java.util.UUID
 
 trait GameAbstractSpec {
 
   val connectionId: ConnectionId = ConnectionId(5)
 
-  val now = Instant.now.nn
+  private val now = Instant.now.nn
 
   val user1: User =
     User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
@@ -60,12 +57,12 @@ trait GameAbstractSpec {
   def fullLayer(
     gameOps: Repository.GameOperations,
     userOps: Repository.UserOperations,
-    postman: Postman.Service = new MockPostman
+    postman: Postman = new MockPostman
   ): ULayer[
-    Repository & Postman & Logging & TokenHolder & ChatService
+    Repository & Postman & TokenHolder & ChatService
   ] = {
     val loggingLayer = Slf4jLogger.make((_, b) => b)
-    ZLayer.succeed(new Repository.Service {
+    ZLayer.succeed(new Repository {
       override val gameOperations: GameOperations = gameOps
       override val userOperations: Repository.UserOperations = userOps
       override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
@@ -89,9 +86,9 @@ trait GameAbstractSpec {
       }
     }) ++
       loggingLayer ++
-      (for {
-        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(str => ZIO.succeed(chuti.god))) // TODO: fix this
-      } yield TokenHolder.tempCache(cache)).toLayer ++
+      ZLayer.fromZIO(for {
+        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god))) // TODO: fix this
+      } yield TokenHolder.tempCache(cache)) ++
       ZLayer.succeed(postman) ++
       (loggingLayer >>> ChatService.make())
   }
@@ -100,13 +97,13 @@ trait GameAbstractSpec {
     game:     Game,
     filename: String
   ): Task[Unit] =
-    ZIO.effect {
+    ZIO.attempt {
       val file = File(filename)
       file.write(game.asJson.printWith(Printer.spaces2))
     }
 
   def readGame(filename: String): Task[Game] =
-    ZIO.effect {
+    ZIO.attempt {
       import scala.language.unsafeNulls
       val file = File(filename)
       decode[Game](file.contentAsString.nn)

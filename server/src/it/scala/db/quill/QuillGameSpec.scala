@@ -8,10 +8,10 @@ import io.circe.Decoder
 import io.circe.generic.auto.*
 import io.circe.parser.decode
 import zio.*
+import zio.logging.*
 import zio.random.Random
 import zio.test.*
 import zio.test.environment.*
-import zio.logging.Logging
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -35,8 +35,7 @@ object QuillGameSpec extends QuillSpec {
     "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
   val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
   val fullLayer: ULayer[
-    Repository & SessionContext & Logging & Annotations &
-      (Live & (Sized & (TestClock & (TestConfig & (TestConsole & (TestRandom & (TestSystem & zio.ZEnv)))))))
+    Repository & SessionContext & Annotations & (Live & (Sized & (TestClock & (TestConfig & (TestConsole & (TestRandom & (TestSystem & zio.ZEnv)))))))
   ] = ???
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
@@ -44,8 +43,8 @@ object QuillGameSpec extends QuillSpec {
       testM("CRUD") {
         for {
           testUser             <- testUserZIO
-          userRepo             <- ZIO.service[Repository.Service].map(_.userOperations)
-          gameRepo             <- ZIO.service[Repository.Service].map(_.gameOperations)
+          userRepo             <- ZIO.service[Repository].map(_.userOperations)
+          gameRepo             <- ZIO.service[Repository].map(_.gameOperations)
           allGamesBeforeInsert <- gameRepo.search()
           game                 <- readGame(GAME_NEW)
           inserted             <- gameRepo.upsert(game.copy(id = None))

@@ -20,13 +20,11 @@ import api.ChutiSession
 import api.token.{Token, TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
-import chat.ChatService.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.{InMemoryRepository, Repository, SessionContext}
 import game.GameService
-import game.GameService.GameService
 import io.circe.Printer
 import io.circe.generic.auto.*
 import io.circe.parser.decode
@@ -35,13 +33,10 @@ import mail.Postman
 import mail.Postman.Postman
 import org.scalatest.Assertions.*
 import org.scalatest.{Assertion, Succeeded}
-import zio.*
 import zio.cache.{Cache, Lookup}
-import zio.clock.Clock
-import zio.console.Console
-import zio.duration.*
-import zio.logging.Logging
+import zio.logging.*
 import zio.logging.slf4j.Slf4jLogger
+import zio.{Clock, Console, *}
 
 import java.util.{Random, UUID}
 
@@ -52,7 +47,7 @@ trait GameAbstractSpec2 {
 
   def juegaHastaElFinal(gameId: GameId): RIO[TestLayer, Game] = {
     for {
-      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+      gameOperations <- ZIO.environment[Repository](_.get.gameOperations)
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
@@ -91,7 +86,7 @@ trait GameAbstractSpec2 {
   def juegaMano(gameId: GameId): RIO[TestLayer, Game] = {
     val bot = DumbChutiBot
     for {
-      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+      gameOperations <- ZIO.environment[Repository](_.get.gameOperations)
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[TestLayer](
@@ -124,24 +119,25 @@ trait GameAbstractSpec2 {
     } yield afterPlayer4
   }
 
-  def repositoryLayer(gameFiles: String*): ULayer[Repository] = {
-    val z: ZIO[Any, Throwable, Seq[Game]] =
-      ZIO.foreachPar(gameFiles)(filename => readGame(filename))
-    val zz: UIO[InMemoryRepository] = z.map(games => new InMemoryRepository(games)).orDie
-    zz
-  }.toLayer
+  def repositoryLayer(gameFiles: String*): ULayer[Repository] =
+    ZLayer.fromZIO {
+      ZIO
+        .foreachPar(gameFiles)(filename => readGame(filename))
+        .map(games => new InMemoryRepository(games))
+        .orDie
+    }
 
-  type TestLayer = Repository & Postman & Logging & TokenHolder & GameService & ChatService & Clock
+  type TestLayer = Repository & Postman & TokenHolder & GameService & ChatService
 
   final protected def testLayer(gameFiles: String*): ULayer[TestLayer] = {
-    val postman: Postman.Service = new MockPostman
+    val postman: Postman = new MockPostman
     val loggingLayer = Slf4jLogger.make((_, b) => b)
     repositoryLayer(gameFiles: _*) ++
       ZLayer.succeed(postman) ++
       loggingLayer ++
-      (for {
+      ZLayer.fromZIO(for {
         cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
-      } yield TokenHolder.tempCache(cache)).toLayer ++
+      } yield TokenHolder.tempCache(cache)) ++
       GameService.make() ++
       (loggingLayer >>> ChatService.make()) ++
       Clock.live // Change for a fixed clock
@@ -151,13 +147,13 @@ trait GameAbstractSpec2 {
     game:     Game,
     filename: String
   ): Task[Unit] =
-    ZIO.effect {
+    ZIO.attempt {
       val file = File(filename)
       file.write(game.asJson.printWith(Printer.spaces2))
     }
 
   def readGame(filename: String): Task[Game] =
-    ZIO.effect {
+    ZIO.attempt {
       import scala.language.unsafeNulls
       val file = File(filename)
       decode[Game](file.contentAsString)
@@ -194,15 +190,15 @@ trait GameAbstractSpec2 {
 
   def newGame(satoshiPerPoint: Int): RIO[TestLayer, Game] =
     for {
-      gameService <- ZIO.service[GameService.Service]
+      gameService <- ZIO.service[GameService]
       // Start the game
       game <- gameService.newGame(satoshiPerPoint).provideSomeLayer[TestLayer](userLayer(user1))
     } yield game
 
   def getReadyToPlay(gameId: GameId): ZIO[TestLayer, Throwable, Game] = {
     for {
-      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
-      gameService    <- ZIO.service[GameService.Service]
+      gameOperations <- ZIO.environment[Repository](_.get.gameOperations)
+      gameService    <- ZIO.service[GameService]
       game           <- gameOperations.get(gameId).map(_.get).provideSomeLayer[TestLayer](godLayer)
       // Invite people
       _ <-
@@ -237,7 +233,7 @@ trait GameAbstractSpec2 {
   def canto(gameId: GameId): ZIO[TestLayer, Throwable, Game] = {
     val bot = DumbChutiBot
     for {
-      gameService <- ZIO.service[GameService.Service]
+      gameService <- ZIO.service[GameService]
       game        <- gameService.getGame(gameId).provideSomeLayer[TestLayer](godLayer).map(_.get)
       quienCanta = game.jugadores.find(_.turno).map(_.user).get
       sigiuente1 = game.nextPlayer(quienCanta).user
@@ -281,9 +277,9 @@ trait GameAbstractSpec2 {
 
   def playFullGame: ZIO[zio.ZEnv, Throwable, Game] =
     (for {
-      gameService <- ZIO.service[GameService.Service]
+      gameService <- ZIO.service[GameService]
       start       <- newGame(satoshiPerPoint = 100)
-      _           <- zio.console.putStrLn(s"Game ${start.id.get} started")
+      _           <- zio.Console.printLine(s"Game ${start.id.get} started")
       _ <- ZIO {
         assert(start.gameStatus == GameStatus.esperandoJugadoresInvitados)
         assert(start.currentEventIndex == 1)
@@ -301,7 +297,7 @@ trait GameAbstractSpec2 {
             case PoisonPill(Some(id), _) if id == start.id.get => true
             case _                                             => false
           }.runCollect.fork
-      _           <- clock.sleep(1.second)
+      _           <- Clock.sleep(1.second)
       readyToPlay <- getReadyToPlay(start.id.get)
       _ <- ZIO {
         assert(readyToPlay.gameStatus == GameStatus.cantando)
@@ -328,7 +324,7 @@ trait GameAbstractSpec2 {
 
   private def playRound(game: Game): ZIO[TestLayer, Throwable, Game] = {
     for {
-      gameService <- ZIO.service[GameService.Service]
+      gameService <- ZIO.service[GameService]
       start <-
         if (game.gameStatus == GameStatus.requiereSopa) {
           gameService
@@ -348,10 +344,10 @@ trait GameAbstractSpec2 {
 
   def playGame(
     gameToPlay: Game
-  ): ZIO[TestLayer & Clock & Console, Throwable, Game] =
+  ): ZIO[TestLayer, Throwable, Game] =
     for {
-      gameService    <- ZIO.service[GameService.Service]
-      gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+      gameService    <- ZIO.service[GameService]
+      gameOperations <- ZIO.environment[Repository](_.get.gameOperations)
       getGame <-
         ZIO
           .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[TestLayer](
@@ -362,7 +358,7 @@ trait GameAbstractSpec2 {
           .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[TestLayer](
             godLayer
           )
-      _ <- zio.console.putStrLn(s"Game ${game.id.get} loaded")
+      _ <- zio.Console.printLine(s"Game ${game.id.get} loaded")
       gameStream =
         gameService
           .gameStream(game.id.get, connectionId)
@@ -373,7 +369,7 @@ trait GameAbstractSpec2 {
             case PoisonPill(Some(id), _) if id == game.id.get => true
             case _                                            => false
           }.runCollect.fork
-      _      <- clock.sleep(1.second)
+      _      <- Clock.sleep(1.second)
       played <- juegaHastaElFinal(game.id.get)
       _ <-
         gameService
@@ -391,7 +387,7 @@ trait GameAbstractSpec2 {
 
   def playRound(filename: String): ZIO[zio.ZEnv, Throwable, Game] =
     (for {
-      gameService <- ZIO.service[GameService.Service]
+      gameService <- ZIO.service[GameService]
       game        <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[TestLayer](godLayer)
       played      <- juegaHastaElFinal(game.id.get)
     } yield played).provideCustomLayer(testLayer(filename))

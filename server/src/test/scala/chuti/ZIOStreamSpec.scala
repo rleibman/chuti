@@ -17,10 +17,9 @@
 package chuti
 
 import org.scalatest.flatspec.AsyncFlatSpec
-import zio.console.*
-import zio.duration.*
+import zio.Console.*
 import zio.stream.ZStream
-import zio.{Queue, UIO, ZIO, ZQueue}
+import zio.*
 
 class ZIOStreamSpec extends AsyncFlatSpec {
 
@@ -29,7 +28,7 @@ class ZIOStreamSpec extends AsyncFlatSpec {
 
     val result = for {
       queue <- zioQueue
-      consumeQueue = ZStream.fromQueue(queue).foreach(e => putStrLn(e.toString))
+      consumeQueue = ZStream.fromQueue(queue).foreach(e => printLine(e.toString))
       // Sleep without blocking threads thanks to ZIO fibers
       feedQueue = ZIO.foreach(Range(1, 1000)) { e =>
         if (e == 999)

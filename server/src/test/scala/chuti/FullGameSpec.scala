@@ -20,9 +20,9 @@ import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
 import chuti.Triunfo.TriunfoNumero
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.Repository
+import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
-import org.scalatest.Assertions.*
 import zio.ZIO
 
 import java.time.Instant
@@ -156,7 +156,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
     tester.description should "work" in {
       testRuntime.unsafeRunToFuture {
         (for {
-          gameOperations <- ZIO.access[Repository](_.get.gameOperations)
+          gameOperations <- ZIO.service[Repository](_.gameOperations)
           saved <-
             gameOperations
               .upsert(tester.game).provideSomeLayer[TestLayer](

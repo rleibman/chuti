@@ -20,8 +20,8 @@ import io.circe.parser.parse
 import io.circe.syntax.*
 import io.netty.handler.codec.http.QueryStringDecoder
 import zhttp.http.*
-import zio.ZIO
-import zio.logging.Logging
+import zio.*
+import zio.logging.*
 
 import java.util.Locale
 import scala.jdk.CollectionConverters.*
@@ -65,13 +65,13 @@ package object util {
       Locale.lookup(range, availableLocales.toList.asJava).nn
     }
 
-    def bodyAs[E: Decoder]: ZIO[Logging, Throwable, E] =
+    def bodyAs[E: Decoder]: ZIO[Any, Throwable, E] =
       for {
         body <- request.bodyAsString
         obj <- ZIO
           .fromEither(parse(body).flatMap(_.as[E]))
           .tapError { e =>
-            Logging.throwable(s"Error parsing body.\n$body", e)
+            ZIO.logErrorCause(s"Error parsing body.\n$body", Cause.die(e))
           }
           .mapError(e => HttpError.BadRequest(e.getMessage.nn))
       } yield obj

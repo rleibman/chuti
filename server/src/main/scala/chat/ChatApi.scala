@@ -20,17 +20,14 @@ import caliban.GraphQL.graphQL
 import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
-import chat.ChatService.ChatService
-import chuti.{ConnectionId, *}
-import dao.{Repository, SessionContext}
-import zio.clock.Clock
-import zio.console.Console
-import zio.duration.*
-import zio.logging.Logging
-import zio.stream.ZStream
-import zio.{URIO, ZIO}
-import chuti.UserId.*
+import chat.ChatService
+import chuti.*
 import chuti.ChannelId.*
+import chuti.UserId.*
+import dao.{Repository, SessionContext}
+import zio.*
+import zio.logging.*
+import zio.stream.ZStream
 
 case class SayRequest(
   msg:       String,
@@ -38,7 +35,7 @@ case class SayRequest(
   toUser:    Option[User] = None
 )
 
-object ChatApi extends GenericSchema[ChatService & Repository & SessionContext & Logging & Clock] {
+object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -46,18 +43,18 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext &
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext & Clock, GameException, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameException, Seq[
       ChatMessage
     ]]
   )
 
   case class Mutations(
-    say: SayRequest => URIO[ChatService & Repository & SessionContext & Logging & Clock, Boolean]
+    say: SayRequest => URIO[ChatService & Repository & SessionContext, Boolean]
   )
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & Repository & SessionContext & Logging & Clock,
+      ChatService & Repository & SessionContext,
       GameException,
       ChatMessage
     ]
@@ -68,17 +65,16 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext &
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
-  private given Schema[ChatService & SessionContext & Clock, Queries] = Schema.gen[ChatService & SessionContext & Clock, Queries]
-  private given Schema[ChatService & Repository & SessionContext & Logging & Clock, Mutations] =
-    Schema.gen[ChatService & Repository & SessionContext & Logging & Clock, Mutations]
-  private given Schema[ChatService & Repository & SessionContext & Logging & Clock, Subscriptions] =
-    Schema.gen[ChatService & Repository & SessionContext & Logging & Clock, Subscriptions]
+  private given Schema[ChatService & SessionContext, Queries] = Schema.gen[ChatService & SessionContext, Queries]
+  private given Schema[ChatService & Repository & SessionContext, Mutations] = Schema.gen[ChatService & Repository & SessionContext, Mutations]
+  private given Schema[ChatService & Repository & SessionContext, Subscriptions] =
+    Schema.gen[ChatService & Repository & SessionContext, Subscriptions]
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
-  lazy val api: GraphQL[Console & Clock & ChatService & Repository & SessionContext & Logging] =
+  lazy val api: GraphQL[ChatService & Repository & SessionContext] = ???
     graphQL(
       RootResolver(
         Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
@@ -91,10 +87,14 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext &
       )
     ) @@
       maxFields(22) @@ // query analyzer that limit query fields
-      maxDepth(30) @@ // query analyzer that limit query depth
-      timeout(3.seconds) @@ // wrapper that fails slow queries
-      printSlowQueries(3.seconds)
-//  @@ // wrapper that logs slow queries
+      maxDepth(30) 
+//      @@ // query analyzer that limit query depth
+//      timeout(3.seconds) @@ // wrapper that fails slow queries
+//      printSlowQueries(3.seconds)
+
+  
+  
+  //  @@ // wrapper that logs slow queries
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
     """schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Instant\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: Insant!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"""

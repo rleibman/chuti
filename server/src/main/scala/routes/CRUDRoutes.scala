@@ -27,15 +27,14 @@ import io.circe.{Decoder, Encoder}
 import util.*
 import zhttp.http.*
 import zio.*
-import zio.clock.Clock
-import zio.logging.Logging
+import zio.logging.*
 
 import scala.util.matching.Regex
 
 abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: Search: Tag: Decoder] {
   self =>
 
-  type OpsService = Has[CRUDOperations[E, PK, SEARCH]]
+  type OpsService = CRUDOperations[E, PK, SEARCH]
 
   val url: String
 
@@ -68,13 +67,13 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
 
   /** You need to override this method so that the architecture knows how to get a primary key from an object
     *
-    * @param obj
+    * @param the primary key for object obj
     * @return
     */
   def getPK(obj: E): PK
 
   def getOperation(id: PK): ZIO[
-    SessionContext & Logging & Clock & OpsService,
+    SessionContext & OpsService,
     RepositoryError,
     Option[E]
   ] =
@@ -85,14 +84,14 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
 
   def deleteOperation(
     objOpt: Option[E]
-  ): ZIO[SessionContext & Logging & Clock & OpsService, Throwable, Boolean] =
+  ): ZIO[SessionContext & OpsService, Throwable, Boolean] =
     for {
       ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
       ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
     } yield ret
 
   def upsertOperation(obj: E): ZIO[
-    SessionContext & Logging & Clock & OpsService,
+    SessionContext & OpsService,
     RepositoryError,
     E
   ] = {
@@ -103,7 +102,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
   }
 
   def countOperation(search: Option[SEARCH]): ZIO[
-    SessionContext & Logging & Clock & OpsService,
+    SessionContext & OpsService,
     RepositoryError,
     Long
   ] =
@@ -113,7 +112,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
     } yield ret
 
   def searchOperation(search: Option[SEARCH]): ZIO[
-    SessionContext & Logging & Clock & OpsService,
+    SessionContext & OpsService,
     RepositoryError,
     Seq[E]
   ] =
@@ -128,7 +127,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
         Http.collectZIO(_ =>
           (for {
             obj <- req.bodyAs[E]
-            _   <- Logging.info(s"Upserting $url with $obj")
+            _   <- ZIO.logInfo(s"Upserting $url with $obj")
             ret <- upsertOperation(obj)
           } yield Response.json(ret.asJson.noSpaces))
             .provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
@@ -160,7 +159,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
             pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[PK])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
-            _      <- Logging.info(s"Deleted ${pk.toString}")
+            _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
           } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[Environment & OpsService](SessionContext.live(req.session.get))
         )
     }

@@ -5,14 +5,13 @@ import api.token.*
 import chuti.User
 import courier.{Envelope, Text}
 import zio.*
-import zio.clock.*
 import zio.cache.{Cache, Lookup}
+import zio.clock.*
 import zio.test.Assertion.*
 import zio.test.environment.*
 import zio.test.{DefaultRunnableSpec, *}
 
 import javax.mail.internet.InternetAddress
-import zio.duration.*
 
 object PostmanIntegrationSpec extends DefaultRunnableSpec {
 
@@ -24,7 +23,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
 //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
 //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
-          postman <- ZIO.service[Postman.Service]
+          postman <- ZIO.service[Postman]
           delivered <- postman
             .deliver(
               Envelope
@@ -41,8 +40,8 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
         //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
         //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
-          postman   <- ZIO.service[Postman.Service]
-          now       <- ZIO.service[Clock.Service].flatMap(_.instant)
+          postman   <- ZIO.service[Postman]
+          now       <- Clock.instant
           envelope  <- postman.registrationEmail(User(id = None, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now))
           delivered <- postman.deliver(envelope).fork
         } yield delivered

@@ -20,101 +20,101 @@ import api.config.Config
 import api.token.{TokenHolder, TokenPurpose}
 import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
-import zio.{Has, RIO, Task, ZIO}
+import zio.{RIO, Task, ZIO, *}
 
 import javax.mail.internet.InternetAddress
-import zio.duration.*
 
-object Postman {
+trait Postman {
 
-  type Postman = Has[Service]
+  def deliver(email: Envelope): Task[Unit]
 
-  trait Service {
+  def webHostName: String
 
-    def deliver(email: Envelope): Task[Unit]
-    def webHostName: String
+  // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
+  def inviteToPlayByEmail(
+                           user: User,
+                           invited: User
+                         ): RIO[TokenHolder, Envelope] =
+    for {
+      tokenHolder <- ZIO.service[TokenHolder]
+      token <- tokenHolder.createToken(invited, TokenPurpose.NewUser, Option(3.days))
+    } yield {
+      val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
+      Envelope
+        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+        .replyTo(new InternetAddress(user.email, user.name))
+        .to(new InternetAddress(invited.email, invited.name))
+        .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
+        .content(Multipart().html(
+          s"""<html><body>
+             |<p>${user.name.capitalize}<p> Te invitó a ser su amigo y a jugar en chuti.fun</p>
+             |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
+             |<p>Te esperamos pronto! </p>
+             |</body></html>""".stripMargin))
+    }
 
-    // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
-    def inviteToPlayByEmail(
-      user:    User,
-      invited: User
-    ): RIO[TokenHolder, Envelope] =
-      for {
-        tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(invited, TokenPurpose.NewUser, Option(3.days))
-      } yield {
-        val linkUrl = s"http://$webHostName/loginForm?newUserAcceptFriend&token=$token"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .replyTo(new InternetAddress(user.email, user.name))
-          .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invitó a ser su amigo en chuti.fun")
-          .content(Multipart().html(s"""<html><body>
-                                     |<p>${user.name.capitalize}<p> Te invitó a ser su amigo y a jugar en chuti.fun</p>
-                                     |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
-                                     |<p>Te esperamos pronto! </p>
-                                     |</body></html>""".stripMargin))
-      }
+  def inviteToGameEmail(
+                         user: User,
+                         invited: User,
+                         game: Game
+                       ): RIO[TokenHolder, Envelope] =
+    ZIO.succeed {
+      val linkUrl =
+        s"http://$webHostName/#lobby"
+      Envelope
+        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+        .replyTo(new InternetAddress(user.email, user.name))
+        .to(new InternetAddress(invited.email, invited.name))
+        .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
+        .content(Multipart().html(
+          s"""<html><body>
+             |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
+             |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
+             |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
+             |<p>Te esperamos pronto! </p>
+             |</body></html>""".stripMargin))
+    }
 
-    def inviteToGameEmail(
-      user:    User,
-      invited: User,
-      game:    Game
-    ): RIO[TokenHolder, Envelope] =
-      ZIO.succeed {
-        val linkUrl =
-          s"http://$webHostName/#lobby"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .replyTo(new InternetAddress(user.email, user.name))
-          .to(new InternetAddress(invited.email, invited.name))
-          .subject(s"${user.name.capitalize} te invitó a jugar chuti en chuti.fun")
-          .content(Multipart().html(s"""<html><body>
-                                     |<p>${user.name.capitalize}<p> Te invitó a jugar chuti, hasta ahorita se han apuntado en este juego</p>
-                                     |<p>${game.jugadores.map(_.user.name).mkString(",")}</p>
-                                     |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
-                                     |<p>Te esperamos pronto! </p>
-                                     |</body></html>""".stripMargin))
-      }
+  def lostPasswordEmail(user: User): RIO[TokenHolder, Envelope] =
+    for {
+      tokenHolder <- ZIO.service[TokenHolder]
 
-    def lostPasswordEmail(user: User): RIO[TokenHolder, Envelope] =
-      for {
-        tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(user, TokenPurpose.LostPassword)
-      } yield {
-        val linkUrl = s"http://$webHostName/loginForm?passwordReset=true&token=$token"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .to(new InternetAddress(user.email))
-          .subject("chuti.fun: perdiste tu contraseña")
-          .content(Multipart().html(s"""<html><body>
-                                 | <p>Que triste que perdiste tu contraseña</p>
-                                 | <p>Creamos un enlace por medio del cual podrás elegir una nueva.</p>
-                                 | <p>Por favor haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
-                                 | <p>Nota que este enlace estará activo por un tiempo limitado</p>
-                                 |</body></html>""".stripMargin))
-      }
+      token <- tokenHolder.createToken(user, TokenPurpose.LostPassword)
+    } yield {
+      val linkUrl = s"http://$webHostName/loginForm?passwordReset=true&token=$token"
+      Envelope
+        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+        .to(new InternetAddress(user.email))
+        .subject("chuti.fun: perdiste tu contraseña")
+        .content(Multipart().html(
+          s"""<html><body>
+             | <p>Que triste que perdiste tu contraseña</p>
+             | <p>Creamos un enlace por medio del cual podrás elegir una nueva.</p>
+             | <p>Por favor haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
+             | <p>Nota que este enlace estará activo por un tiempo limitado</p>
+             |</body></html>""".stripMargin))
+    }
 
-    def registrationEmail(user: User): RIO[TokenHolder, Envelope] =
-      for {
-        tokenHolder <- ZIO.access[TokenHolder](_.get)
-        token       <- tokenHolder.createToken(user, TokenPurpose.NewUser)
-      } yield {
-        val linkUrl =
-          s"http://$webHostName/confirmRegistration?token=$token"
-        Envelope
-          .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
-          .to(new InternetAddress(user.email))
-          .subject("Bienvenido a chuti.fun!")
-          .content(Multipart().html(s"""<html><body>
-                                       | <p>Gracias por registrarte!</p>
-                                       | <p>Todo lo que tienes que hacer ahora es ir al siguiente enlace para confirmar tu registro.</p>
-                                       | <p>Por haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
-                                       | <p>Nota que este enlace estará activo por un tiempo limitado, si te tardas mucho tendrás que intentar de nuevo</p>
-                                       |</body></html>""".stripMargin))
-      }
+  def registrationEmail(user: User): RIO[TokenHolder, Envelope] =
+    for {
+      tokenHolder <- ZIO.service[TokenHolder]
 
-  }
+      token <- tokenHolder.createToken(user, TokenPurpose.NewUser)
+    } yield {
+      val linkUrl =
+        s"http://$webHostName/confirmRegistration?token=$token"
+      Envelope
+        .from(new InternetAddress("admin@chuti.fun", "Chuti Administrator"))
+        .to(new InternetAddress(user.email))
+        .subject("Bienvenido a chuti.fun!")
+        .content(Multipart().html(
+          s"""<html><body>
+             | <p>Gracias por registrarte!</p>
+             | <p>Todo lo que tienes que hacer ahora es ir al siguiente enlace para confirmar tu registro.</p>
+             | <p>Por haz click aquí: <a href="$linkUrl">$linkUrl</a>.</p>
+             | <p>Nota que este enlace estará activo por un tiempo limitado, si te tardas mucho tendrás que intentar de nuevo</p>
+             |</body></html>""".stripMargin))
+    }
 
 }
 
@@ -122,13 +122,13 @@ object Postman {
   */
 object CourierPostman {
 
-  def live(config: Config.Service): Postman.Service =
-    new Postman.Service {
+  def live(config: Config.Service): Postman =
+    new Postman {
 
       lazy val mailer: Mailer = {
         val localhost = config.config.getString(s"${config.configKey}.smtp.localhost").nn
-        System.setProperty("mail.smtp.localhost", localhost)
-        System.setProperty("mail.smtp.localaddress", localhost)
+        java.lang.System.setProperty("mail.smtp.localhost", localhost)
+        java.lang.System.setProperty("mail.smtp.localaddress", localhost)
         val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth").nn
         if (auth)
           Mailer(
@@ -147,7 +147,7 @@ object CourierPostman {
           ).auth(auth)()
       }
 
-      override def deliver(email: Envelope): Task[Unit] = Task.fromFuture(implicit ec => mailer(email))
+      override def deliver(email: Envelope): Task[Unit] = ZIO.fromFuture(implicit ec => mailer(email))
 
       override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname").nn
 

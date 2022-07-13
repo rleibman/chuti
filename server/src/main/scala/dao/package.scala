@@ -18,21 +18,15 @@ import chuti.*
 import io.circe.*
 import io.circe.generic.auto.*
 import io.circe.syntax.*
-import zio.clock.Clock
-import zio.logging.Logging
-import zio.{Has, ZIO}
-import chuti.GameId
+import zio.{Clock, ZIO}
+import zio.logging.*
 
 import java.sql.Timestamp
 
 package object dao {
 
-  type Repository = Has[Repository.Service]
-
-  type SessionContext = Has[SessionContext.Session]
-
   type RepositoryIO[E] =
-    ZIO[SessionContext & Logging & Clock, RepositoryError, E]
+    ZIO[SessionContext, RepositoryError, E]
 
   case class FriendsRow(
     one: Int,

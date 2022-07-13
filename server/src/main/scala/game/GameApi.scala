@@ -21,19 +21,17 @@ import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
 import caliban.{GraphQL, RootResolver}
 import chat.ChatApi.{Mutations, Queries, Subscriptions}
-import chat.ChatService.ChatService
+import chat.ChatService
 import chuti.*
 import dao.{Repository, SessionContext}
-import game.GameService.{GameLayer, GameService}
+import game.GameService
+import game.GameService.GameLayer
 import io.circe.Json
 import io.circe.generic.auto.*
 import io.circe.syntax.*
-import zio.ZIO
-import zio.clock.Clock
-import zio.console.Console
-import zio.duration.*
-import zio.logging.Logging
+import zio.logging.*
 import zio.stream.ZStream
+import zio.{Clock, Console, ZIO, *}
 
 object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 
@@ -140,10 +138,10 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 
   def sanitizeGame(game: Game): ZIO[SessionContext, Nothing, Game] =
     for {
-      user <- ZIO.access[SessionContext](_.get.session.user)
+      user <- ZIO.service[SessionContext].map(_.session.user)
     } yield sanitizeGame(game, user)
 
-  val api: GraphQL[Console & Clock & GameService & GameLayer & ChatService] =
+  val api: GraphQL[GameService & GameLayer & ChatService] =
     graphQL(
       RootResolver(
         Queries(
@@ -211,9 +209,10 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       )
     ) @@
       maxFields(200) @@ // query analyzer that limit query fields
-      maxDepth(30) @@ // query analyzer that limit query depth
-      timeout(15.seconds) @@ // wrapper that fails slow queries
-      printSlowQueries(3.seconds)
+      maxDepth(30) 
+//      @@ // query analyzer that limit query depth
+//      timeout(15.seconds) @@ // wrapper that fails slow queries
+//      printSlowQueries(3.seconds)
 //  @@ // wrapper that logs slow queries
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
