@@ -28,13 +28,15 @@ import zio.{Clock, Console, *}
 class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
 
   "Printing the game" should "print it" in {
-    testRuntime.unsafeRun {
-      for {
-        game <- readGame(GAME_STARTED)
-        _    <- Console.printLine(game.toString)
-      } yield game
+    Unsafe.unsafe {
+      u ?=>
+        testRuntime.unsafe.run {
+          for {
+            game <- readGame(GAME_STARTED)
+            _ <- Console.printLine(game.toString)
+          } yield game
+        }
     }
-
   }
 
   def assertSoloUnoCanta(game: Game): Assertion = {
@@ -60,52 +62,55 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          jugador2 = game2.nextPlayer(quienCanta).user
-          game3 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador2))
-              )
-          jugador3 = game3.nextPlayer(jugador2).user
-          game4 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador3))
-              )
-          jugador4 = game4.nextPlayer(jugador3).user
-          game5 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador4))
-              )
-          _          <- writeGame(game5, GAME_CANTO4)
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game5, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Casa)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              jugador2 = game2.nextPlayer(quienCanta).user
+              game3 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador2))
+                )
+              jugador3 = game3.nextPlayer(jugador2).user
+              game4 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador3))
+                )
+              jugador4 = game4.nextPlayer(jugador3).user
+              game5 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador4))
+                )
+              _ <- writeGame(game5, GAME_CANTO4)
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game5, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -131,51 +136,54 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          jugador2 = game2.nextPlayer(quienCanta).user
-          game3 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador2))
-              )
-          jugador3 = game3.nextPlayer(jugador2).user
-          game4 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador3))
-              )
-          jugador4 = game4.nextPlayer(jugador3).user
-          game5 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador4))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game5, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Canto5)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              jugador2 = game2.nextPlayer(quienCanta).user
+              game3 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador2))
+                )
+              jugador3 = game3.nextPlayer(jugador2).user
+              game4 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador3))
+                )
+              jugador4 = game4.nextPlayer(jugador3).user
+              game5 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador4))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game5, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -201,34 +209,37 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          // Hay que pararle aqui, ya canto todas.
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game2, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              // Hay que pararle aqui, ya canto todas.
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game2, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -254,51 +265,54 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          jugador2 = game2.nextPlayer(quienCanta).user
-          game3 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador2))
-              )
-          jugador3 = game3.nextPlayer(jugador2).user
-          game4 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador3))
-              )
-          jugador4 = game4.nextPlayer(jugador3).user
-          game5 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Buenas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador4))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game5, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Casa)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              jugador2 = game2.nextPlayer(quienCanta).user
+              game3 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Canto5)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador2))
+                )
+              jugador3 = game3.nextPlayer(jugador2).user
+              game4 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador3))
+                )
+              jugador4 = game4.nextPlayer(jugador3).user
+              game5 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Buenas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador4))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game5, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -328,39 +342,42 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          jugador2 = game2.nextPlayer(quienCanta).user
-          game3 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador2))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game3, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Casa)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              jugador2 = game2.nextPlayer(quienCanta).user
+              game3 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador2))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game3, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -390,51 +407,54 @@ class CantandoSpec extends AnyFlatSpec with GameAbstractSpec {
       game,
       gameEvents,
       userEvents
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game1           <- readGame(GAME_STARTED)
-          quienCanta = game1.jugadores.find(_.turno).map(_.user).get
-          game2 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Casa)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(quienCanta))
-              )
-          jugador2 = game2.nextPlayer(quienCanta).user
-          game3 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Canto5)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador2))
-              )
-          jugador3 = game3.nextPlayer(jugador2).user
-          game4 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.Canto6)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador3))
-              )
-          jugador4 = game4.nextPlayer(jugador3).user
-          game5 <-
-            gameService
-              .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(jugador4))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (game5, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game1 <- readGame(GAME_STARTED)
+              quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+              game2 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Casa)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(quienCanta))
+                )
+              jugador2 = game2.nextPlayer(quienCanta).user
+              game3 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Canto5)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador2))
+                )
+              jugador3 = game3.nextPlayer(jugador2).user
+              game4 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.Canto6)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador3))
+                )
+              jugador4 = game4.nextPlayer(jugador3).user
+              game5 <-
+                gameService
+                  .play(GameId(1), Canta(CuantasCantas.CantoTodas)).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(jugador4))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (game5, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))

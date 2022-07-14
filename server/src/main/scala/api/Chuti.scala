@@ -33,11 +33,13 @@ import zhttp.http.middleware.HttpMiddleware
 import zhttp.service.*
 import zhttp.service.server.ServerChannelFactory
 import zio.logging.*
+import zio.logging.backend.SLF4J
 import zio.{Clock, Console, *}
 
 import java.util.Locale
 
 object Chuti extends zio.ZIOAppDefault {
+  private val slf4jLogger = SLF4J.slf4j(zio.LogLevel.Debug, LogFormat.line |-| LogFormat.cause)
 
   import api.auth.Auth.*
 
@@ -135,6 +137,7 @@ object Chuti extends zio.ZIOAppDefault {
           )
         } yield started).exitCode
           .provide(
+            slf4jLogger,
             ZLayer.succeed(Clock.ClockLive),
             gameServiceLayer,
             chatServiceLayer,

@@ -17,8 +17,11 @@
 package chuti
 
 import api.ChutiSession
-import dao.SessionContext
+import api.token.TokenHolder
+import chat.ChatService
+import dao.{Repository, SessionContext}
 import game.GameService
+import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
 
@@ -30,31 +33,34 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
     val gameId = GameId(1)
 
     val (
-      game:       Game,
+      game: Game,
       gameEvents: Chunk[GameEvent]
-    ) =
-      testRuntime.unsafeRun {
-        (for {
-          gameService <- ZIO.service[GameService]
-          gameStream =
-            gameService
-              .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
-          gameEventsFiber <-
-            gameStream
-              .takeUntil {
-                case PoisonPill(Some(id), _) if id == gameId => true
-                case _                                       => false
-              }.runCollect.fork
-          _     <- Clock.sleep(1.second)
-          mano1 <- juegaMano(gameId)
-          _ <-
-            gameService
-              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionContext.live(ChutiSession(chuti.god))
-              )
-          gameEvents <- gameEventsFiber.join
-        } yield (mano1, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            (for {
+              gameService <- ZIO.service[GameService]
+              gameStream =
+                gameService
+                  .gameStream(gameId, connectionId)
+                  .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+              gameEventsFiber <-
+                gameStream
+                  .takeUntil {
+                    case PoisonPill(Some(id), _) if id == gameId => true
+                    case _ => false
+                  }.runCollect.fork
+              _ <- Clock.sleep(1.second)
+              mano1 <- juegaMano(gameId)
+              _ <-
+                gameService
+                  .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+                  SessionContext.live(ChutiSession(chuti.god))
+                )
+              gameEvents <- gameEventsFiber.join
+            } yield (mano1, gameEvents)).provide(testLayer(GAME_CANTO4))
+          }.getOrThrow()
       }
 
     assert(game.id === Option(gameId))
@@ -69,34 +75,37 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
     val gameId = GameId(1)
 
     val (
-      game:       Game,
+      game: Game,
       gameEvents: Chunk[GameEvent]
-    ) =
-      testRuntime.unsafeRun {
-        (for {
-          gameService <- ZIO.service[GameService]
-          gameStream =
-            gameService
-              .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
-          gameEventsFiber <-
-            gameStream
-              .takeUntil {
-                case PoisonPill(Some(id), _) if id == gameId => true
-                case _                                       => false
-              }.runCollect.fork
-          _     <- Clock.sleep(1.second)
-          _     <- juegaMano(gameId)
-          _     <- juegaMano(gameId)
-          _     <- juegaMano(gameId)
-          mano4 <- juegaMano(gameId)
-          _ <-
-            gameService
-              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionContext.live(ChutiSession(chuti.god))
-              )
-          gameEvents <- gameEventsFiber.join
-        } yield (mano4, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            (for {
+              gameService <- ZIO.service[GameService]
+              gameStream =
+                gameService
+                  .gameStream(gameId, connectionId)
+                  .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+              gameEventsFiber <-
+                gameStream
+                  .takeUntil {
+                    case PoisonPill(Some(id), _) if id == gameId => true
+                    case _ => false
+                  }.runCollect.fork
+              _ <- Clock.sleep(1.second)
+              _ <- juegaMano(gameId)
+              _ <- juegaMano(gameId)
+              _ <- juegaMano(gameId)
+              mano4 <- juegaMano(gameId)
+              _ <-
+                gameService
+                  .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+                  SessionContext.live(ChutiSession(chuti.god))
+                )
+              gameEvents <- gameEventsFiber.join
+            } yield (mano4, gameEvents)).provide(testLayer(GAME_CANTO4))
+          }.getOrThrow()
       }
 
     assert(game.id === Option(gameId))
@@ -111,31 +120,34 @@ class JugandoSpec extends AnyFlatSpec with GameAbstractSpec2 {
   "jugando hasta que se haga o sea hoyo" should "work" in {
     val gameId = GameId(1)
     val (
-      game:       Game,
+      game: Game,
       gameEvents: Chunk[GameEvent]
-    ) =
-      testRuntime.unsafeRun {
-        (for {
-          gameService <- ZIO.service[GameService]
-          gameStream =
-            gameService
-              .gameStream(gameId, connectionId)
-              .provideSomeLayer[TestLayer](SessionContext.live(ChutiSession(user1)))
-          gameEventsFiber <-
-            gameStream
-              .takeWhile {
-                case PoisonPill(Some(id), _) if id == gameId => false
-                case _                                       => true
-              }.runCollect.fork
-          _   <- Clock.sleep(1.second)
-          end <- juegaHastaElFinal(gameId)
-          _ <-
-            gameService
-              .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[TestLayer](
-                SessionContext.live(ChutiSession(chuti.god))
-              )
-          gameEvents <- gameEventsFiber.join
-        } yield (end, gameEvents)).provideCustomLayer(testLayer(GAME_CANTO4))
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            (for {
+              gameService <- ZIO.service[GameService]
+              gameStream =
+                gameService
+                  .gameStream(gameId, connectionId)
+                  .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+              gameEventsFiber <-
+                gameStream
+                  .takeWhile {
+                    case PoisonPill(Some(id), _) if id == gameId => false
+                    case _ => true
+                  }.runCollect.fork
+              _ <- Clock.sleep(1.second)
+              end <- juegaHastaElFinal(gameId)
+              _ <-
+                gameService
+                  .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+                  SessionContext.live(ChutiSession(chuti.god))
+                )
+              gameEvents <- gameEventsFiber.join
+            } yield (end, gameEvents)).provide(testLayer(GAME_CANTO4))
+          }.getOrThrow()
       }
 
     assert(game.id === Option(gameId))

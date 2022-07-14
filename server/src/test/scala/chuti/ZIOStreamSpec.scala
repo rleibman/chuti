@@ -24,7 +24,7 @@ import zio.*
 class ZIOStreamSpec extends AsyncFlatSpec {
 
   "open a stream and writing to it" should "all work" in {
-    val zioQueue: UIO[Queue[String]] = ZQueue.unbounded[String]
+    val zioQueue: UIO[Queue[String]] = Queue.unbounded[String]
 
     val result = for {
       queue <- zioQueue
@@ -41,7 +41,7 @@ class ZIOStreamSpec extends AsyncFlatSpec {
       _ <- consumeQueue.zipPar(feedQueue)
     } yield ()
 
-    val fut = zio.Runtime.default.unsafeRunToFuture(result)
+    val fut = Unsafe.unsafe(zio.Runtime.default.unsafe.runToFuture(result))
     fut.map { _ =>
       assert(true)
     }

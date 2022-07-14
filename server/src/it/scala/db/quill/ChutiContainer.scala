@@ -12,7 +12,7 @@ import zio.logging.*
 import java.io
 import java.sql.SQLException
 import javax.sql.DataSource
-import scala.io.Source
+import scala.io.{BufferedSource, Source}
 
 trait ChutiContainer {
 
@@ -26,56 +26,57 @@ object ChutiContainer {
     path: String
   ) {
 
-    def migrate(): ZIO[DataSource, RepositoryError, Unit] =
-      (for {
-        files <- ZIO {
+    def migrate(): ZIO[DataSource, RepositoryError, Unit] = {
+      for {
+        files <- ZIO.succeed {
           import scala.language.unsafeNulls
           new java.io.File(path).listFiles.sortBy(_.getName)
-        }.orDie
+        }
         dataSource <- ZIO.service[DataSource]
-        statements <- ZIO
-          .foreach(files) {
-            case file: io.File if file.getName.nn.endsWith("sql") =>
-              ZIO(Source.fromFile(file))
-                .bracket(f => ZIO.succeed(f.close())) { source =>
-                  val str = source
-                    .getLines()
-                    .map(str => str.replaceAll("--.*", "").nn.trim.nn)
-                    .mkString("\n")
-                  ZIO(str.split(";\n").nn)
-                }
-            case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
-          }.map(
-            _.flatten
-              .map(_.nn.trim.nn)
-              .filter(_.nonEmpty)
-          ).catchSome(e => ZIO.fail(RepositoryError(e)))
+        statements <- ZIO.foreach(files) {
+          case file: io.File if file.getName.nn.endsWith("sql") =>
+            ZIO.acquireReleaseWith(ZIO.attempt(Source.fromFile(file)))(f => ZIO.attempt(f.close()).orDie) { source =>
+              val str = source
+                .getLines()
+                .map(str => str.replaceAll("--.*", "").nn.trim.nn)
+                .mkString("\n")
+              ZIO.attempt(str.split(";\n").nn)
+            }
+          case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
+        }.mapBoth(
+          RepositoryError.apply,
+          _.flatten
+            .map(_.nn.trim.nn)
+            .filter(_.nonEmpty)
+        ).catchSome(e => ZIO.fail(RepositoryError(e)))
         res <- {
-          ZIO {
-            val conn = dataSource.getConnection.nn
-            val stmt = conn.createStatement().nn
-            (conn, stmt)
-          }.bracket { case (conn, stmt) =>
+          ZIO.acquireReleaseWith {
+            ZIO.attempt {
+              val conn = dataSource.getConnection.nn
+              val stmt = conn.createStatement().nn
+              (conn, stmt)
+            }
+          } { case (conn, stmt) =>
             ZIO.succeed {
               stmt.close().nn
               conn.close().nn
             }
           } { case (_, stmt) =>
-            ZIO
-              .foreach_(statements) { statement =>
-                ZIO(stmt.executeUpdate(statement).nn)
-              }.catchSome { case e: SQLException =>
-                ZIO.fail(RepositoryError(e))
-              }
+            ZIO.foreach(statements) { statement =>
+              ZIO.attempt(stmt.executeUpdate(statement).nn)
+            }.catchSome { case e: SQLException =>
+              ZIO.fail(RepositoryError(e))
+            }
           }
-        }
-      } yield res).mapError(RepositoryError.apply)
+        }.unit.mapError(RepositoryError.apply)
+      } yield res
+    }
 
   }
 
   val containerLayer: ZLayer[Any, RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
     _ <- ZIO.logDebug("Creating container")
-    c <- ZIO {
+    c <- ZIO.succeed {
       val c = MySQLContainer()
       c.container.start()
       c

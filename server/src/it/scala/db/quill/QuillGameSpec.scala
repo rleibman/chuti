@@ -3,15 +3,14 @@ package db.quill
 import better.files.File
 import chuti.*
 import dao.*
+import db.quill.QuillUserSpec.fixedClock
 import io.circe
 import io.circe.Decoder
 import io.circe.generic.auto.*
 import io.circe.parser.decode
 import zio.*
 import zio.logging.*
-import zio.random.Random
 import zio.test.*
-import zio.test.environment.*
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
@@ -34,27 +33,24 @@ object QuillGameSpec extends QuillSpec {
   val GAME_WITH_2USERS =
     "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
   val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
-  val fullLayer: ULayer[
-    Repository & SessionContext & Annotations & (Live & (Sized & (TestClock & (TestConfig & (TestConsole & (TestRandom & (TestSystem & zio.ZEnv)))))))
-  ] = ???
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec =
     suite("Quill Game Suite")(
-      testM("CRUD") {
-        for {
-          testUser             <- testUserZIO
-          userRepo             <- ZIO.service[Repository].map(_.userOperations)
-          gameRepo             <- ZIO.service[Repository].map(_.gameOperations)
+      test("CRUD") {
+        (for {
+          testUser <- testUserZIO
+          userRepo <- ZIO.service[Repository].map(_.userOperations)
+          gameRepo <- ZIO.service[Repository].map(_.gameOperations)
           allGamesBeforeInsert <- gameRepo.search()
-          game                 <- readGame(GAME_NEW)
-          inserted             <- gameRepo.upsert(game.copy(id = None))
-          gotten               <- gameRepo.get(inserted.id.get)
-          allGamesAfterInsert  <- gameRepo.search()
-          allGamesCount        <- gameRepo.count()
-          updated              <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
-          gottenUpdated        <- gameRepo.get(inserted.id.get)
-          deleted              <- gameRepo.delete(inserted.id.get)
-          allGamesAfterDelete  <- gameRepo.search()
+          game <- readGame(GAME_NEW)
+          inserted <- gameRepo.upsert(game.copy(id = None))
+          gotten <- gameRepo.get(inserted.id.get)
+          allGamesAfterInsert <- gameRepo.search()
+          allGamesCount <- gameRepo.count()
+          updated <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
+          gottenUpdated <- gameRepo.get(inserted.id.get)
+          deleted <- gameRepo.delete(inserted.id.get)
+          allGamesAfterDelete <- gameRepo.search()
         } yield assertTrue(inserted.id.nonEmpty) &&
           assertTrue(gotten.nonEmpty) &&
           assertTrue(allGamesAfterInsert.nonEmpty) &&
@@ -64,8 +60,9 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(updated == gottenUpdated.get) &&
           assertTrue(deleted) &&
           assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)
+          ).withClock(fixedClock)
       }
-    ).provideLayerShared(fullLayer) // containerLayer, configLayer, quillLayer, loggingLayer, godSession, clockLayer, Random.live)
+    ).provideShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]
   //  def userInGame(id:      GameId): RepositoryIO[Boolean]
   //  def updatePlayers(game: Game):   RepositoryIO[Game]

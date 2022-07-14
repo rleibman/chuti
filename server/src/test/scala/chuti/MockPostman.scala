@@ -18,7 +18,7 @@ package chuti
 
 import courier.Envelope
 import mail.Postman
-import zio.Task
+import zio.*
 
 class MockPostman extends Postman {
 

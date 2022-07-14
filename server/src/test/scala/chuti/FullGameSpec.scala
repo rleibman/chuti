@@ -16,14 +16,18 @@
 
 package chuti
 
+import api.token.TokenHolder
+import chat.ChatService
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
 import chuti.Triunfo.TriunfoNumero
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.Repository
+import game.GameService
+import mail.Postman
 import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
-import zio.ZIO
+import zio.{Unsafe, ZIO}
 
 import java.time.Instant
 import scala.util.Random
@@ -39,23 +43,26 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
 //  }
 
   "Playing a bunch of full games" should "look all nice" in {
-    testRuntime.unsafeRunToFuture {
-      ZIO
-        .foreachPar(1 to 100) { _ =>
-          playFullGame
-        }.as(assert(true))
-    }.future
+    Unsafe.unsafe {
+      u ?=>
+        testRuntime.unsafe.runToFuture {
+          ZIO
+            .foreachPar(1 to 100) { _ =>
+              playFullGame
+            }.as(assert(true))
+        }.future
+    }
   }
 
   object GameTester {
 
     def apply(
-      description:   String,
-      hands:         Seq[String],
-      triunfo:       Option[Triunfo],
-      cuantasCantas: CuantasCantas,
-      testEndState:  Game => Assertion
-    ): GameTester = {
+               description: String,
+               hands: Seq[String],
+               triunfo: Option[Triunfo],
+               cuantasCantas: CuantasCantas,
+               testEndState: Game => Assertion
+             ): GameTester = {
       val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
       assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
@@ -154,18 +161,21 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
 
   gamesToTest.foreach { tester =>
     tester.description should "work" in {
-      testRuntime.unsafeRunToFuture {
-        (for {
-          gameOperations <- ZIO.service[Repository](_.gameOperations)
-          saved <-
-            gameOperations
-              .upsert(tester.game).provideSomeLayer[TestLayer](
-                godLayer
-              )
-          played <- juegaHastaElFinal(saved.id.get)
-        } yield assert(tester.testEndState(played) == Succeeded))
-          .provideCustomLayer(testLayer())
-      }.future
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.runToFuture {
+            (for {
+              gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+              saved <-
+                gameOperations
+                  .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+                  godLayer
+                )
+              played <- juegaHastaElFinal(saved.id.get)
+            } yield assert(tester.testEndState(played) == Succeeded))
+              .provide(testLayer())
+          }.future
+      }
     }
   }
 

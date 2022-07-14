@@ -27,12 +27,10 @@ import io.circe.generic.auto.*
 import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
-import mail.Postman.Postman
 import org.scalatest.Assertions.*
 import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.logging.*
-import zio.logging.slf4j.Slf4jLogger
 
 import java.time.Instant
 import java.util.UUID
@@ -52,7 +50,7 @@ trait GameAbstractSpec {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
-  val testRuntime: zio.Runtime[zio.ZEnv] = zio.Runtime.default
+  val testRuntime: Runtime[Any] = zio.Runtime.default
 
   def fullLayer(
     gameOps: Repository.GameOperations,
@@ -61,7 +59,6 @@ trait GameAbstractSpec {
   ): ULayer[
     Repository & Postman & TokenHolder & ChatService
   ] = {
-    val loggingLayer = Slf4jLogger.make((_, b) => b)
     ZLayer.succeed(new Repository {
       override val gameOperations: GameOperations = gameOps
       override val userOperations: Repository.UserOperations = userOps
@@ -85,12 +82,11 @@ trait GameAbstractSpec {
         ): RepositoryIO[Option[User]] = ???
       }
     }) ++
-      loggingLayer ++
       ZLayer.fromZIO(for {
         cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god))) // TODO: fix this
       } yield TokenHolder.tempCache(cache)) ++
       ZLayer.succeed(postman) ++
-      (loggingLayer >>> ChatService.make())
+      ChatService.make()
   }
 
   def writeGame(

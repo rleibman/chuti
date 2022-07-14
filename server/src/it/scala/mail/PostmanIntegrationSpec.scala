@@ -6,20 +6,18 @@ import chuti.User
 import courier.{Envelope, Text}
 import zio.*
 import zio.cache.{Cache, Lookup}
-import zio.clock.*
 import zio.test.Assertion.*
-import zio.test.environment.*
-import zio.test.{DefaultRunnableSpec, *}
+import zio.test.*
 
 import javax.mail.internet.InternetAddress
 
-object PostmanIntegrationSpec extends DefaultRunnableSpec {
+object PostmanIntegrationSpec extends ZIOSpecDefault {
 
   val tokenLayer: ULayer[TokenHolder] = ???
 
-  override def spec: Spec[TestEnvironment, TestFailure[Throwable], TestSuccess] =
+  override def spec =
     suite("PostmanIntegrationSpec")(
-      testM("sending an email") {
+      test("sending an email") {
 //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
 //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
@@ -36,7 +34,7 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
 
         zio.as(assert(true)(equalTo(true)))
       },
-      testM("sending a specific email") {
+      test("sending a specific email") {
         //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
         //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
@@ -48,8 +46,8 @@ object PostmanIntegrationSpec extends DefaultRunnableSpec {
 
         zio.as(assert(true)(equalTo(true)))
       }
-    ).provideCustomLayer(
-      ZLayer.succeed(CourierPostman.live(config.live)) ++ tokenLayer
+    ).provide(
+      ZLayer.succeed(CourierPostman.live(config.live)) , tokenLayer
     )
 
 }

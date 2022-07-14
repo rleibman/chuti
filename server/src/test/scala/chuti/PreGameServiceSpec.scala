@@ -31,16 +31,19 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
 
-    val game: Game = testRuntime.unsafeRun {
-      for {
-        gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-        operation <-
-          gameService
-            .newGame(satoshiPerPoint = 100).provideCustomLayer(
-              layer ++ SessionContext.live(ChutiSession(user1))
-            )
-        _ <- writeGame(operation, GAME_NEW)
-      } yield operation
+    val game: Game = Unsafe.unsafe {
+      u ?=>
+        testRuntime.unsafe.run {
+          (for {
+            gameService <- ZIO.service[GameService].provide(GameService.make())
+            operation <-
+              gameService
+                .newGame(satoshiPerPoint = 100).provide(
+                layer, SessionContext.live(ChutiSession(user1))
+              )
+            _ <- writeGame(operation, GAME_NEW)
+          } yield operation).orDie
+        }.getOrThrow()
     }
 
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
@@ -48,8 +51,8 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     assert(game.id === Option(GameId(1)))
     assert(game.jugadores.length == 1)
     assert(game.jugadores.head.user.id === user1.id)
-//    verify(gameOperations).upsert(*[Game])
-//    verify(userOperations, times(1)).upsert(*[User])
+    //    verify(gameOperations).upsert(*[Game])
+    //    verify(userOperations, times(1)).upsert(*[User])
   }
 
   "Loading a new game and having 1 more random users join" should "keep the game open" in {
@@ -59,33 +62,36 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
     val layer = fullLayer(gameOperations, userOperations)
     val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_NEW)
-          withUser2 <-
-            gameService
-              .joinRandomGame().provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          _          <- writeGame(withUser2, GAME_WITH_2USERS)
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (withUser2, gameEvents, userEvents)
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_NEW)
+              withUser2 <-
+                gameService
+                  .joinRandomGame().provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              _ <- writeGame(withUser2, GAME_WITH_2USERS)
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (withUser2, gameEvents, userEvents)
 
+          }.getOrThrow()
       }
 
     assert(game.gameStatus === GameStatus.esperandoJugadoresInvitados)
@@ -110,43 +116,46 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
 
     val (game: Game, gameEvents: Chunk[GameEvent], userEvents: Chunk[UserEvent]) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_NEW)
-          withUser2 <-
-            gameService
-              .joinRandomGame().provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          withUser3 <-
-            gameService
-              .joinRandomGame().provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user3))
-              )
-          withUser4 <-
-            gameService
-              .joinRandomGame().provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user4))
-              )
-          _          <- writeGame(withUser4, GAME_STARTED)
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (withUser4, gameEvents, userEvents)
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_NEW)
+              withUser2 <-
+                gameService
+                  .joinRandomGame().provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              withUser3 <-
+                gameService
+                  .joinRandomGame().provide(
+                  layer, SessionContext.live(ChutiSession(user3))
+                )
+              withUser4 <-
+                gameService
+                  .joinRandomGame().provide(
+                  layer, SessionContext.live(ChutiSession(user4))
+                )
+              _ <- writeGame(withUser4, GAME_STARTED)
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (withUser4, gameEvents, userEvents)
 
+          }.getOrThrow()
       }
 
     assert(game.id === Option(GameId(1)))
@@ -173,35 +182,38 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
     val (
       abandonedGame: Boolean,
-      gameEvents:    Chunk[GameEvent],
-      userEvents:    Chunk[UserEvent]
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_WITH_2USERS)
-          abandonedGame <-
-            gameService
-              .abandonGame(GameId(1)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (abandonedGame, gameEvents, userEvents)
+      gameEvents: Chunk[GameEvent],
+      userEvents: Chunk[UserEvent]
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_WITH_2USERS)
+              abandonedGame <-
+                gameService
+                  .abandonGame(GameId(1)).provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (abandonedGame, gameEvents, userEvents)
 
+          }.getOrThrow()
       }
 
 //    val gameCaptor = ArgCaptor[Game]
@@ -235,35 +247,37 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
 
     val (
       abandonedGame: Boolean,
-      gameEvents:    Chunk[GameEvent],
-      userEvents:    Chunk[UserEvent]
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_STARTED)
-          abandonedGame <-
-            gameService
-              .abandonGame(GameId(1)).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (abandonedGame, gameEvents, userEvents)
-
+      gameEvents: Chunk[GameEvent],
+      userEvents: Chunk[UserEvent]
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_STARTED)
+              abandonedGame <-
+                gameService
+                  .abandonGame(GameId(1)).provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (abandonedGame, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
 //    val gameCaptor = ArgCaptor[Game]
@@ -296,35 +310,38 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
-      invited:    Boolean,
+      invited: Boolean,
       gameEvents: Chunk[GameEvent],
       userEvents: Chunk[UserEvent]
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_NEW)
-          invited <-
-            gameService
-              .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (invited, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_NEW)
+              invited <-
+                gameService
+                  .inviteToGame(user2.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (invited, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
 //    val gameCaptor = ArgCaptor[Game]
@@ -350,60 +367,63 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
-      game:       Game,
+      game: Game,
       gameEvents: Chunk[GameEvent],
       userEvents: Chunk[UserEvent]
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_NEW)
-          _ <-
-            gameService
-              .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          _ <-
-            gameService
-              .inviteToGame(user3.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          _ <-
-            gameService
-              .inviteToGame(user4.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          accepted2 <-
-            gameService
-              .acceptGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          accepted3 <-
-            gameService
-              .acceptGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user3))
-              )
-          accepted4 <-
-            gameService
-              .acceptGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user4))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (accepted4, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_NEW)
+              _ <-
+                gameService
+                  .inviteToGame(user2.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              _ <-
+                gameService
+                  .inviteToGame(user3.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              _ <-
+                gameService
+                  .inviteToGame(user4.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              accepted2 <-
+                gameService
+                  .acceptGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              accepted3 <-
+                gameService
+                  .acceptGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user3))
+                )
+              accepted4 <-
+                gameService
+                  .acceptGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user4))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (accepted4, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
 //    val gameCaptor = ArgCaptor[Game]
@@ -427,60 +447,63 @@ class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
     val layer = fullLayer(gameOperations, userOperations)
 
     val (
-      game:       Game,
+      game: Game,
       gameEvents: Chunk[GameEvent],
       userEvents: Chunk[UserEvent]
-    ) =
-      testRuntime.unsafeRun {
-        for {
-          gameService <- ZIO.service[GameService].provideCustomLayer(GameService.make())
-          gameStream =
-            gameService
-              .gameStream(GameId(1), connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          userStream =
-            gameService
-              .userStream(connectionId).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
-          userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
-          _               <- Clock.sleep(1.second)
-          game            <- readGame(GAME_NEW)
-          _ <-
-            gameService
-              .inviteToGame(user2.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          _ <-
-            gameService
-              .inviteToGame(user3.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          _ <-
-            gameService
-              .inviteToGame(user4.id.get, game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user1))
-              )
-          accepted2 <-
-            gameService
-              .acceptGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user2))
-              )
-          _ <-
-            gameService
-              .declineGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user3))
-              )
-          accepted4 <-
-            gameService
-              .acceptGameInvitation(game.id.get).provideCustomLayer(
-                layer ++ SessionContext.live(ChutiSession(user4))
-              )
-          gameEvents <- gameEventsFiber.join
-          userEvents <- userEventsFiber.join
-        } yield (accepted4, gameEvents, userEvents)
+      ) =
+      Unsafe.unsafe {
+        u ?=>
+          testRuntime.unsafe.run {
+            for {
+              gameService <- ZIO.service[GameService].provide(GameService.make())
+              gameStream =
+                gameService
+                  .gameStream(GameId(1), connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              userStream =
+                gameService
+                  .userStream(connectionId).provideLayer(
+                  layer ++ SessionContext.live(ChutiSession(user1))
+                )
+              gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
+              userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
+              _ <- Clock.sleep(1.second)
+              game <- readGame(GAME_NEW)
+              _ <-
+                gameService
+                  .inviteToGame(user2.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              _ <-
+                gameService
+                  .inviteToGame(user3.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              _ <-
+                gameService
+                  .inviteToGame(user4.id.get, game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user1))
+                )
+              accepted2 <-
+                gameService
+                  .acceptGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user2))
+                )
+              _ <-
+                gameService
+                  .declineGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user3))
+                )
+              accepted4 <-
+                gameService
+                  .acceptGameInvitation(game.id.get).provide(
+                  layer, SessionContext.live(ChutiSession(user4))
+                )
+              gameEvents <- gameEventsFiber.join
+              userEvents <- userEventsFiber.join
+            } yield (accepted4, gameEvents, userEvents)
+          }.getOrThrow()
       }
 
 //    val gameCaptor = ArgCaptor[Game]
