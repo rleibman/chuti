@@ -38,7 +38,7 @@ trait Repository {
 
 object Repository {
 
-  val cached: URLayer[Repository, Repository] = ZLayer.fromZIO {
+  lazy val cached: URLayer[Repository, Repository] = ZLayer.fromZIO {
     for {
       repository <- ZIO.service[Repository]
       cache <- zio.cache.Cache.make[GameId, Any, RepositoryError, Game](

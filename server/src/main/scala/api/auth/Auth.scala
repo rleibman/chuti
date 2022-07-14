@@ -87,7 +87,7 @@ object Auth {
   //  given Descriptor[Option[Path]] = string("OPATH").transform[Option[Path]](p => Some(Path.apply(p)), _.fold("")(_.encode))
   given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
 
-  private val sessionConfig: IO[ReadError[String], SessionConfig] = read(
+  private lazy val sessionConfig: IO[ReadError[String], SessionConfig] = read(
     sessionConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("sessionConfig"))
   )
 

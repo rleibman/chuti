@@ -141,7 +141,7 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       user <- ZIO.service[SessionContext].map(_.session.user)
     } yield sanitizeGame(game, user)
 
-  val api: GraphQL[GameService & GameLayer & ChatService] =
+  lazy val api: GraphQL[GameService & GameLayer & ChatService] =
     graphQL(
       RootResolver(
         Queries(

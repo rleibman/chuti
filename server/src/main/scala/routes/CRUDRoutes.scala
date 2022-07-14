@@ -122,7 +122,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
       ret <- ops.search(search)
     } yield ret
 
-  private val authCRUD: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  private lazy val authCRUD: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case req @ (Method.POST | Method.PUT) -> !! / "api" / self.url if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -165,7 +165,7 @@ abstract class CRUDRoutes[E: Tag: Encoder: Decoder, PK: Tag: Decoder, SEARCH <: 
         )
     }
 
-  val authRoute: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  lazy val authRoute: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     authOther ++ authCRUD
 
 }

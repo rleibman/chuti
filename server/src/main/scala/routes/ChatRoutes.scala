@@ -28,7 +28,7 @@ import zio.*
 
 object ChatRoutes {
 
-  val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
+  lazy val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case _ -> !! / "api" / "chat" =>
         Http

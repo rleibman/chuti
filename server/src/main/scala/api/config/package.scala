@@ -74,7 +74,7 @@ package object config {
     trait Service {
 
       val configKey = "chuti"
-      val config: com.typesafe.config.Config = {
+      lazy val config: com.typesafe.config.Config = {
         val confFileName =
           System.getProperty("application.conf", "./src/main/resources/application.conf").nn
         val confFile = File(confFileName)
@@ -88,6 +88,6 @@ package object config {
 
   }
 
-  val live: Config.Service = new Config.Service {}
+  lazy val live: Config.Service = new Config.Service {}
 
 }
