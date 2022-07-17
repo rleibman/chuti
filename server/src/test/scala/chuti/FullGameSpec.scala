@@ -27,32 +27,22 @@ import mail.Postman
 import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
+import org.testcontainers.shaded.org.bouncycastle.util.test.TestResult
+import zio.test.{ZIOSpecDefault, assertCompletes}
 import zio.{Unsafe, ZIO}
 
 import java.time.Instant
 import scala.util.Random
 
-class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
+object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
 
-//  "Playing a specific game" should "look all nice" in {
-//    val game =
-//      "/Volumes/Personal/projects/chuti/server/src/test/resources/weird_game1589819797.json"
-//    testRuntime.unsafeRunToFuture {
-//      playSpecificGame(game)
-//    }.future
-//  }
-
-  "Playing a bunch of full games" should "look all nice" in {
-    Unsafe.unsafe {
-      u ?=>
-        testRuntime.unsafe.runToFuture {
-          ZIO
-            .foreachPar(1 to 100) { _ =>
-              playFullGame
-            }.as(assert(true))
-        }.future
-    }
-  }
+  //  "Playing a specific game" should "look all nice" in {
+  //    val game =
+  //      "/Volumes/Personal/projects/chuti/server/src/test/resources/weird_game1589819797.json"
+  //    testRuntime.unsafeRunToFuture {
+  //      playSpecificGame(game)
+  //    }.future
+  //  }
 
   object GameTester {
 
@@ -95,7 +85,7 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
   case class GameTester(
     description:  String,
     game:         Game,
-    testEndState: Game => Assertion
+    testEndState: Game => TestResult
   )
 
   private val gamesToTest = Seq(
@@ -105,9 +95,9 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       None,
       Canto7,
       game => {
-        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
-        assert(game.gameStatus == GameStatus.requiereSopa)
-        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
+        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
+        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
       }
     ),
     GameTester(
@@ -116,10 +106,10 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       None,
       Canto7,
       game => {
-        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
-        assert(game.gameStatus == GameStatus.requiereSopa)
-        assert(game.quienCanta.get.cuenta.head.esHoyo)
-        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -7)
+        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
+        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
+        assertTrue(game.quienCanta.get.cuenta.head.esHoyo) &&
+        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == -7)
       }
     ),
     GameTester(
@@ -128,10 +118,10 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       None,
       CantoTodas,
       game => {
-        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
-        assert(game.gameStatus == GameStatus.partidoTerminado)
-        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 21)
-        assert(game.gameStatus == GameStatus.partidoTerminado)
+        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
+        assertTrue(game.gameStatus == GameStatus.partidoTerminado) &&
+        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == 21) &&
+        assertTrue(game.gameStatus == GameStatus.partidoTerminado)
       }
     ),
     GameTester(
@@ -140,10 +130,10 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       None,
       CantoTodas,
       game => {
-        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
-        assert(game.gameStatus == GameStatus.requiereSopa)
-        assert(game.quienCanta.get.cuenta.head.esHoyo)
-        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == -21)
+        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
+        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
+        assertTrue(game.quienCanta.get.cuenta.head.esHoyo) &&
+        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == -21)
       }
     ),
     GameTester(
@@ -152,31 +142,31 @@ class FullGameSpec extends GameAbstractSpec2 with AsyncFlatSpecLike {
       None,
       Casa,
       game => {
-        assert(game.triunfo == Option(TriunfoNumero(Numero.Numero3)))
-        assert(game.gameStatus == GameStatus.requiereSopa)
-        assert(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
+        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
+        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
+        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
       }
     )
   )
 
-  gamesToTest.foreach { tester =>
-    tester.description should "work" in {
-      Unsafe.unsafe {
-        u ?=>
-          testRuntime.unsafe.runToFuture {
-            (for {
-              gameOperations <- ZIO.service[Repository].map(_.gameOperations)
-              saved <-
-                gameOperations
-                  .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-                  godLayer
-                )
-              played <- juegaHastaElFinal(saved.id.get)
-            } yield assert(tester.testEndState(played) == Succeeded))
-              .provide(testLayer())
-          }.future
-      }
+  test("Play a bunch of games")(
+    ZIO
+      .foreachPar(1 to 100) { _ =>
+        playFullGame
+      }.as(assertCompletes)
+  ) ++
+    gamesToTest.foreach { tester =>
+      test(tester.description)(
+        for {
+          gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+          saved <-
+            gameOperations
+              .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+              godLayer
+            )
+          played <- juegaHastaElFinal(saved.id.get)
+        } yield tester.testEndState(played)
+      )
     }
-  }
 
 }

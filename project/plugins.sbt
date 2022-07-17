@@ -20,7 +20,7 @@ addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "1.4.1")
 libraryDependencies += "org.slf4j"   % "slf4j-nop"           % "1.7.36" // Needed by sbt-git
 libraryDependencies += "commons-io"  % "commons-io"          % "2.11.0"
 
-addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta38")
+addSbtPlugin("org.scalablytyped.converter" % "sbt-converter" % "1.0.0-beta39")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Testing

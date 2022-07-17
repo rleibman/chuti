@@ -10,6 +10,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 // Global stuff
 resolvers += Resolver.mavenLocal
 resolvers += Resolver.sonatypeRepo("snapshots")
+resolvers += Resolver.sonatypeRepo("releases")
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -34,7 +35,7 @@ lazy val scala3Opts = Seq(
   //  "-explain-types", // Explain type errors in more detail.
   //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
-  "-Xmax-inlines", "64"
+  "-Xmax-inlines", "64",
 )
 
 enablePlugins(
@@ -46,7 +47,7 @@ val circeVersion = "0.14.2"
 val calibanVersion = "2.0.0-RC2"
 val zioVersion = "2.0.0"
 val quillVersion = "4.0.0"
-val zioHttpVersion = "2.0.0-RC9"
+val zioHttpVersion = "2.0.0-RC10"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
@@ -61,7 +62,7 @@ lazy val commonSettings = Seq(
     "io.circe" %% "circe-parser",
     "io.circe" %% "circe-literal"
   ).map(_ % circeVersion),
-  scalacOptions := scala3Opts
+  scalacOptions ++= scala3Opts
 )
 
 lazy val commonVmSettings = commonSettings
@@ -89,7 +90,6 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     commonSettings
   )
 
-resolvers += Resolver.sonatypeRepo("releases")
 
 lazy val server = project
   .enablePlugins(
@@ -123,6 +123,7 @@ lazy val server = project
       "dev.zio" %% "zio-config-typesafe" % "3.0.1" withSources(),
       "dev.zio" %% "zio-logging-slf4j" % zioVersion withSources(),
       "dev.zio" %% "izumi-reflect" % "2.1.3" withSources(),
+      "dev.zio" %% "zio-json" % "0.3.0-RC10" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
@@ -137,9 +138,9 @@ lazy val server = project
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
       "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.8" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.8" % "it, test" withSources(),
-      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.9" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.9" % "it, test" withSources(),
+//      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
     IntegrationTest / testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -356,7 +357,7 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client3" %%% "core" % "3.6.2" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.7.0" withSources(),
       //      ("com.softwaremill.sttp.model" %%% "core" % "1.4.27" withSources()).cross(CrossVersion.for3Use2_13),
       //      ("com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources()).cross(CrossVersion.for3Use2_13),
       //      ("com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0").cross(CrossVersion.for3Use2_13),
@@ -375,7 +376,7 @@ lazy val commonWeb: Project => Project =
     organizationName := "Roberto Leibman",
     startYear := Some(2020),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    scalacOptions := scala3Opts,
+    scalacOptions ++= scala3Opts,
     Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
     Test / unmanagedSourceDirectories := Seq((Test / scalaSource).value),
     webpackDevServerPort := 8009

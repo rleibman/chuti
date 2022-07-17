@@ -16,21 +16,26 @@
 
 package chuti
 
-import api.token.{Token, TokenHolder, TokenPurpose}
+import api.ChutiSession
+import api.token.{TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
-import dao.InMemoryRepository.now
+import chuti.bots.DumbChutiBot
+import dao.InMemoryRepository.{now, user1, user2, user3, user4}
 import dao.Repository.GameOperations
-import dao.{InMemoryRepository, Repository, RepositoryIO}
+import dao.{InMemoryRepository, Repository, RepositoryIO, SessionContext}
+import game.GameService
 import io.circe.Printer
 import io.circe.generic.auto.*
 import io.circe.parser.decode
 import io.circe.syntax.*
 import mail.Postman
+import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.logging.*
+import zio.test.{TestResult, assertTrue}
 
 import java.time.Instant
 import java.util.UUID
@@ -39,55 +44,11 @@ trait GameAbstractSpec {
 
   val connectionId: ConnectionId = ConnectionId(5)
 
-  private val now = Instant.now.nn
-
-  val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
-  val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
-  val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", created = now, lastUpdated = now)
-  val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
-
-  val testRuntime: Runtime[Any] = zio.Runtime.default
-
-  def fullLayer(
-    gameOps: Repository.GameOperations,
-    userOps: Repository.UserOperations,
-    postman: Postman = new MockPostman
-  ): ULayer[
-    Repository & Postman & TokenHolder & ChatService
-  ] = {
-    ZLayer.succeed(new Repository {
-      override val gameOperations: GameOperations = gameOps
-      override val userOperations: Repository.UserOperations = userOps
-      override val tokenOperations: Repository.TokenOperations = new Repository.TokenOperations {
-        override def cleanup: RepositoryIO[Boolean] = ???
-
-        override def validateToken(
-          token:   Token,
-          purpose: TokenPurpose
-        ): RepositoryIO[Option[User]] = ???
-
-        override def createToken(
-          user:    User,
-          purpose: TokenPurpose,
-          ttl:     Option[Duration]
-        ): RepositoryIO[Token] = ???
-
-        override def peek(
-          token:   Token,
-          purpose: TokenPurpose
-        ): RepositoryIO[Option[User]] = ???
-      }
-    }) ++
-      ZLayer.fromZIO(for {
-        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god))) // TODO: fix this
-      } yield TokenHolder.tempCache(cache)) ++
-      ZLayer.succeed(postman) ++
-      ChatService.make()
-  }
+  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
+  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
+  val GAME_WITH_2USERS =
+    "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
+  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
 
   def writeGame(
     game:     Game,
@@ -98,17 +59,371 @@ trait GameAbstractSpec {
       file.write(game.asJson.printWith(Printer.spaces2))
     }
 
-  def readGame(filename: String): Task[Game] =
+  def readGame(filename: String): Task[Game] = {
     ZIO.attempt {
       import scala.language.unsafeNulls
       val file = File(filename)
       decode[Game](file.contentAsString.nn)
     }.absolve
+  }
 
-  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
-  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
-  val GAME_WITH_2USERS =
+  def assertSoloUnoCanta(game: Game): TestResult = {
+    assertTrue(game.jugadores.count(_.cantante) === 1) &&
+      assertTrue(game.jugadores.count(_.mano) === 1) &&
+      assertTrue(game.jugadores.count(_.turno) === 1) &&
+      assertTrue(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) === 1) &&
+      assertTrue(
+        game.jugadores
+          .find(_.cantante).fold(false)(
+          _.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad)
+        )
+      )
+  }
+
+
+  def repositoryLayer(gameFiles: String*): ULayer[Repository] =
+    ZLayer.fromZIO {
+      ZIO
+        .foreachPar(gameFiles)(filename => readGame(filename))
+        .map(games => InMemoryRepository.fromGames(games))
+        .orDie
+    }.flatten
+
+  def juegaHastaElFinal(gameId: GameId): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] = {
+    for {
+      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      start <-
+        gameOperations
+          .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(chuti.god))
+        )
+      looped <-
+        ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
+      _ <- ZIO.succeed {
+        val numFilas = looped.jugadores.map(_.filas.size).sum
+        looped.quienCanta.fold(fail()) { cantante =>
+          if (cantante.yaSeHizo) {
+            println(
+              s"${cantante.user.name} canto ${cantante.cuantasCantas.get} se hizo con ${cantante.filas.size}!"
+            )
+            //          if (cantante.fichas.size !== (numFilas - 7)) {
+            //            println("what?!") //Save it to analyze
+            //            testRuntime.unsafeRun(writeGame(afterCanto, WEIRD_GAME("regalos_dont_match")))
+            //          }
+            assert(cantante.fichas.size == (numFilas - 7))
+          } else {
+            println(
+              s"Fue hoyo de ${cantante.cuantasCantas.get} para ${cantante.user.name}!"
+            )
+          }
+          if (looped.gameStatus == GameStatus.partidoTerminado)
+            println("Partido terminado!")
+          assert(
+            looped.gameStatus == GameStatus.requiereSopa || looped.gameStatus == GameStatus.partidoTerminado
+          )
+          // May want to assert Que las cuentas quedaron claras
+        }
+      }
+    } yield looped
+  }
+
+  def juegaMano(gameId: GameId): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] = {
+    val bot = DumbChutiBot
+    for {
+      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      game <-
+        gameOperations
+          .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(chuti.god))
+        )
+      mano = game.mano.get
+      sigiuente1 = game.nextPlayer(mano)
+      sigiuente2 = game.nextPlayer(sigiuente1)
+      sigiuente3 = game.nextPlayer(sigiuente2)
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(mano.user))
+        )
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(sigiuente1.user))
+        )
+      _ <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(sigiuente2.user))
+        )
+      afterPlayer4 <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(sigiuente3.user))
+        )
+    } yield afterPlayer4
+  }
+
+  final protected def testLayer(gameFiles: String*): ULayer[Repository & Postman & TokenHolder & GameService & ChatService] =
+    ZLayer.make[Repository & Postman & TokenHolder & GameService & ChatService](
+      repositoryLayer(gameFiles: _*),
+      ZLayer.succeed(new MockPostman),
+      ZLayer.fromZIO(for {
+        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
+      } yield TokenHolder.tempCache(cache)),
+      GameService.make(),
+      ChatService.make()
+    )
+
+  def writeGame(
+                 game: Game,
+                 filename: String
+               ): Task[Unit] =
+    ZIO.attempt {
+      val file = File(filename)
+      file.write(game.asJson.printWith(Printer.spaces2))
+    }
+
+  def readGame(filename: String): Task[Game] =
+    ZIO.attempt {
+      import scala.language.unsafeNulls
+      val file = File(filename)
+      decode[Game](file.contentAsString)
+    }.absolve
+
+  lazy final val GAME_NEW =
+    "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
+  lazy final val GAME_STARTED =
+    "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
+  lazy final val GAME_WITH_2USERS =
     "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
-  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
+  lazy final val GAME_CANTO4 =
+    "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
 
+  def WEIRD_GAME(prefix: String) =
+    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${
+      java.lang.System
+        .currentTimeMillis() / 1000
+    }.json"
+
+  protected def userLayer(user: User): ULayer[SessionContext] = {
+    SessionContext.live(ChutiSession(user))
+  }
+  protected def godLayer: ULayer[SessionContext] = {
+    SessionContext.live(ChutiSession(chuti.god))
+  }
+
+  def assertSoloUnoCanta(game: Game): Assertion = {
+    assert(game.jugadores.count(_.cantante) == 1)
+    assert(game.jugadores.count(_.mano) == 1)
+    assert(game.jugadores.count(_.turno) == 1)
+    assert(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) == 1)
+    val cantante = game.jugadores.find(_.cantante).get
+    assert(cantante.mano)
+    assert(cantante.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad))
+  }
+
+  def newGame(satoshiPerPoint: Int): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] =
+    for {
+      gameService <- ZIO.service[GameService]
+      // Start the game
+      game <- gameService.newGame(satoshiPerPoint).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user1))
+    } yield game
+
+  def getReadyToPlay(gameId: GameId): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+    for {
+      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameService <- ZIO.service[GameService]
+      game <- gameOperations.get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
+      // Invite people
+      _ <-
+        gameService
+          .inviteToGame(user2.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          userLayer(user1)
+        )
+      _ <-
+        gameService
+          .inviteToGame(user3.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          userLayer(user1)
+        )
+      _ <-
+        gameService
+          .inviteToGame(user4.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          userLayer(user1)
+        )
+      // they accept
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user2))
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user3))
+      _ <-
+        gameService
+          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user4))
+      result <- gameOperations.get(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
+    } yield result.get
+  }
+
+  def canto(gameId: GameId): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+    val bot = DumbChutiBot
+    for {
+      gameService <- ZIO.service[GameService]
+      game <- gameService.getGame(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer).map(_.get)
+      quienCanta = game.jugadores.find(_.turno).map(_.user).get
+      sigiuente1 = game.nextPlayer(quienCanta).user
+      sigiuente2 = game.nextPlayer(sigiuente1).user
+      sigiuente3 = game.nextPlayer(sigiuente2).user
+      // Una vez que alguien ya canto chuti, pasa a los demas.
+      g1 <-
+        bot
+          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          SessionContext.live(ChutiSession(quienCanta))
+        )
+      g2 <-
+        if (g1.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g1)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            SessionContext.live(ChutiSession(sigiuente1))
+          )
+        }
+      g3 <-
+        if (g2.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g2)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            SessionContext.live(ChutiSession(sigiuente2))
+          )
+        }
+      g4 <-
+        if (g3.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
+          ZIO.succeed(g3)
+        else {
+          bot
+            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            SessionContext.live(ChutiSession(sigiuente3))
+          )
+        }
+    } yield g4
+  }
+
+  def playFullGame: ZIO[Any, Throwable, Game] =
+    (for {
+      gameService <- ZIO.service[GameService]
+      start <- newGame(satoshiPerPoint = 100)
+      _ <- zio.Console.printLine(s"Game ${start.id.get} started")
+      _ <- ZIO.succeed {
+        assert(start.gameStatus == GameStatus.esperandoJugadoresInvitados)
+        assert(start.currentEventIndex == 1)
+        assert(start.id.nonEmpty)
+        assert(start.jugadores.length == 1)
+        assert(start.jugadores.head.user.id == user1.id)
+      }
+      gameStream =
+        gameService
+          .gameStream(start.id.get, connectionId)
+          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+      gameEventsFiber <-
+        gameStream
+          .takeUntil {
+            case PoisonPill(Some(id), _) if id == start.id.get => true
+            case _                                             => false
+          }.runCollect.fork
+      _           <- Clock.sleep(1.second)
+      readyToPlay <- getReadyToPlay(start.id.get)
+      _ <- ZIO.succeed {
+        assert(readyToPlay.gameStatus == GameStatus.cantando)
+        assert(readyToPlay.currentEventIndex == 10)
+        assert(readyToPlay.jugadores.length == 4)
+        assert(readyToPlay.jugadores.forall(!_.invited))
+      }
+      played <- ZIO.iterate(start)(
+        _.gameStatus != GameStatus.partidoTerminado
+      )(playRound)
+      _ <-
+        gameService
+          .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
+          Repository & Postman & TokenHolder & GameService & ChatService
+        ](
+          SessionContext.live(ChutiSession(chuti.god))
+        )
+      gameEvents <- gameEventsFiber.join
+      _ <- ZIO.succeed {
+        assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
+        assert(gameEvents.nonEmpty)
+      }
+    } yield played).provide(testLayer())
+
+  private def playRound(game: Game): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+    for {
+      gameService <- ZIO.service[GameService]
+      start <-
+        if (game.gameStatus == GameStatus.requiereSopa) {
+          gameService
+            .play(game.id.get, Sopa()).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            userLayer(game.jugadores.find(_.turno).get.user)
+          )
+        } else
+          ZIO.succeed(game)
+      afterCanto <- canto(start.id.get)
+      _ <- ZIO.succeed {
+        assert(afterCanto.gameStatus == GameStatus.jugando)
+        assertSoloUnoCanta(afterCanto)
+      }
+      round <- juegaHastaElFinal(start.id.get)
+    } yield round
+  }
+
+  def playGame(
+                gameToPlay: Game
+              ): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] =
+    for {
+      gameService <- ZIO.service[GameService]
+      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      getGame <-
+        ZIO
+          .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          godLayer
+        )
+      game <-
+        getGame.flatten
+          .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          godLayer
+        )
+      _ <- zio.Console.printLine(s"Game ${game.id.get} loaded")
+      gameStream =
+        gameService
+          .gameStream(game.id.get, connectionId)
+          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+      gameEventsFiber <-
+        gameStream
+          .takeUntil {
+            case PoisonPill(Some(id), _) if id == game.id.get => true
+            case _                                            => false
+          }.runCollect.fork
+      _      <- Clock.sleep(1.second)
+      played <- juegaHastaElFinal(game.id.get)
+      _ <-
+        gameService
+          .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
+          Repository & Postman & TokenHolder & GameService & ChatService
+        ](
+          SessionContext.live(ChutiSession(chuti.god))
+        )
+      gameEvents <- gameEventsFiber.join
+      _ <- ZIO.succeed {
+        assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
+        assert(gameEvents.nonEmpty)
+      }
+    } yield played
+
+  def playRound(filename: String): ZIO[Any, Throwable, Game] =
+    (for {
+      gameService <- ZIO.service[GameService]
+      game <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
+      played <- juegaHastaElFinal(game.id.get)
+    } yield played).provide(testLayer(filename))
+  
 }

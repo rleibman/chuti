@@ -100,7 +100,7 @@ object ChatService {
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
-  def make(): URLayer[Any, ChatService] =
+  def make(): URLayer[Any, ChatService] = 
     ZLayer.fromZIO {
       for {
         chatMessageQueue <- Ref.make(List.empty[MessageQueue])

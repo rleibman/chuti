@@ -220,7 +220,7 @@ object GameService {
     } yield sent
   }
 
-  def make(): ULayer[GameService] =
+  def make(): ULayer[GameService] = 
     ZLayer.fromZIO(for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])

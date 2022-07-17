@@ -74,8 +74,8 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
-  lazy val api: GraphQL[ChatService & Repository & SessionContext] = ???
-  graphQL(
+  lazy val api: GraphQL[ChatService & Repository & SessionContext] = 
+    graphQL(
     RootResolver(
       Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
       Mutations(

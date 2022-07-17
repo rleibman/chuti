@@ -21,8 +21,13 @@ import dao.{InMemoryRepository, Repository, SessionContext}
 import game.GameService
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
+import zio.test.ZIOSpecDefault
 
-class PreGameServiceSpec extends AnyFlatSpec with GameAbstractSpec {
+object PreGameServiceSpec extends ZIOSpecDefault {
+
+}
+
+class PreGameServiceSpec2 extends AnyFlatSpec with GameAbstractSpec {
 
   "Creating a new Game" should "create a game" in {
     val repo = new InMemoryRepository(Seq.empty)
