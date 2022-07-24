@@ -38,19 +38,19 @@ object QuillGameSpec extends QuillSpec {
     suite("Quill Game Suite")(
       test("CRUD") {
         (for {
-          testUser <- testUserZIO
-          userRepo <- ZIO.service[Repository].map(_.userOperations)
-          gameRepo <- ZIO.service[Repository].map(_.gameOperations)
+          testUser             <- testUserZIO
+          userRepo             <- ZIO.service[Repository].map(_.userOperations)
+          gameRepo             <- ZIO.service[Repository].map(_.gameOperations)
           allGamesBeforeInsert <- gameRepo.search()
-          game <- readGame(GAME_NEW)
-          inserted <- gameRepo.upsert(game.copy(id = None))
-          gotten <- gameRepo.get(inserted.id.get)
-          allGamesAfterInsert <- gameRepo.search()
-          allGamesCount <- gameRepo.count()
-          updated <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
-          gottenUpdated <- gameRepo.get(inserted.id.get)
-          deleted <- gameRepo.delete(inserted.id.get)
-          allGamesAfterDelete <- gameRepo.search()
+          game                 <- readGame(GAME_NEW)
+          inserted             <- gameRepo.upsert(game.copy(id = None))
+          gotten               <- gameRepo.get(inserted.id.get)
+          allGamesAfterInsert  <- gameRepo.search()
+          allGamesCount        <- gameRepo.count()
+          updated              <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
+          gottenUpdated        <- gameRepo.get(inserted.id.get)
+          deleted              <- gameRepo.delete(inserted.id.get)
+          allGamesAfterDelete  <- gameRepo.search()
         } yield assertTrue(inserted.id.nonEmpty) &&
           assertTrue(gotten.nonEmpty) &&
           assertTrue(allGamesAfterInsert.nonEmpty) &&
@@ -59,8 +59,7 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(updated.gameStatus == GameStatus.abandonado) &&
           assertTrue(updated == gottenUpdated.get) &&
           assertTrue(deleted) &&
-          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)
-          ).withClock(fixedClock)
+          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)).withClock(fixedClock)
       }
     ).provideShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]

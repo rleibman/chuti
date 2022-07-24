@@ -110,8 +110,8 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
   private given Schema[Any, GameId] = Schema.intSchema.contramap(_.gameId)
   private given Schema[Any, UserId] = Schema.intSchema.contramap(_.userId)
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
-  private given Schema[Any, User] = gen[Any, User]
-  private given Schema[Any, Game] = gen[Any, Game]
+  private given Schema[Any, User] = Schema.gen[Any, User]
+  private given Schema[Any, Game] = Schema.gen[Any, Game]
   private given Schema[GameService & GameLayer, Queries] = Schema.gen[GameService & GameLayer, Queries]
   private given Schema[GameService & GameLayer & ChatService, Mutations] = Schema.gen[GameService & GameLayer & ChatService, Mutations]
   private given Schema[GameService & GameLayer & ChatService, Subscriptions] = Schema.gen[GameService & GameLayer & ChatService, Subscriptions]

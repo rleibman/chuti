@@ -87,7 +87,7 @@ object Auth {
   //  given Descriptor[Option[Path]] = string("OPATH").transform[Option[Path]](p => Some(Path.apply(p)), _.fold("")(_.encode))
   given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
 
-  private lazy val sessionConfig: IO[ReadError[String], SessionConfig] = read(
+  lazy private val sessionConfig: IO[ReadError[String], SessionConfig] = read(
     sessionConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("sessionConfig"))
   )
 
@@ -324,7 +324,10 @@ object Auth {
                   case _ if request.path.startsWith(Path.decode("/loginForm")) => http.contramap[Request](req => RequestWithSession(None, req))
                   case _                                                       => http.contramap[Request](req => RequestWithSession(session, req))
                 }
-              }).catchAll(_ => ZIO.succeed(Http.response(ResponseExt.seeOther("/loginForm"))))
+              }).catchAll(e =>
+                ZIO.logError(e.getMessage.nn) *>
+                  ZIO.succeed(Http.response(ResponseExt.seeOther("/loginForm")))
+              )
             }.flatten
       }
     }

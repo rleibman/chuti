@@ -36,6 +36,7 @@ lazy val scala3Opts = Seq(
   //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines", "64",
+  "-Yretain-trees", // Retain trees for debugging.
 )
 
 enablePlugins(
@@ -44,7 +45,7 @@ enablePlugins(
 )
 
 val circeVersion = "0.14.2"
-val calibanVersion = "2.0.0-RC2"
+val calibanVersion = "2.0.0"
 val zioVersion = "2.0.0"
 val quillVersion = "4.0.0"
 val zioHttpVersion = "2.0.0-RC10"
@@ -121,14 +122,14 @@ lazy val server = project
       "dev.zio" %% "zio-config-derivation" % "3.0.1" withSources(),
       "dev.zio" %% "zio-config-magnolia" % "3.0.1" withSources(),
       "dev.zio" %% "zio-config-typesafe" % "3.0.1" withSources(),
-      "dev.zio" %% "zio-logging-slf4j" % zioVersion withSources(),
+      "dev.zio" %% "zio-logging-slf4j" % "2.0.1" withSources(),
       "dev.zio" %% "izumi-reflect" % "2.1.3" withSources(),
       "dev.zio" %% "zio-json" % "0.3.0-RC10" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
       "io.d11" %% "zhttp" % zioHttpVersion withSources(),
-      "com.github.jwt-scala" %% "jwt-circe" % "9.0.5" withSources(),
+      "com.github.jwt-scala" %% "jwt-circe" % "9.0.6" withSources(),
       // Other random utilities
       ("com.github.pathikrit" %% "better-files" % "3.9.1" withSources()).cross(CrossVersion.for3Use2_13),
       "com.github.daddykotex" %% "courier" % "3.2.0" withSources(),
@@ -160,7 +161,6 @@ lazy val login: Project = project
   )
   .settings(
     name := "chuti-login",
-    scalacOptions ++= Seq("-scalajs"),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "login" / "src" / "main" / "web"
@@ -299,7 +299,6 @@ lazy val web: Project = project
   )
   .settings(
     name := "chuti-web",
-    scalacOptions ++= Seq("-scalajs"),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
@@ -357,7 +356,7 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client3" %%% "core" % "3.7.0" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.7.1" withSources(),
       //      ("com.softwaremill.sttp.model" %%% "core" % "1.4.27" withSources()).cross(CrossVersion.for3Use2_13),
       //      ("com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources()).cross(CrossVersion.for3Use2_13),
       //      ("com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0").cross(CrossVersion.for3Use2_13),
@@ -376,7 +375,6 @@ lazy val commonWeb: Project => Project =
     organizationName := "Roberto Leibman",
     startYear := Some(2020),
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    scalacOptions ++= scala3Opts,
     Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
     Test / unmanagedSourceDirectories := Seq((Test / scalaSource).value),
     webpackDevServerPort := 8009

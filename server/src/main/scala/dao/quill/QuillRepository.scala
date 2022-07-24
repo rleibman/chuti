@@ -254,15 +254,15 @@ case class QuillRepository(config: Config.Service) extends Repository {
     ): ZIO[Any, RepositoryError, Option[User]] = {
       inline def sql =
         quote(infix"""select u.id
-               from `user` u
-               where u.deleted = 0 and
-               u.active = 1 and
-               u.email = ${lift(email)} and
-               u.hashedpassword = SHA2(${lift(password)}, 512)""".as[Query[Int]])
+                 from `user` u
+                 where u.deleted = 0 and
+                 u.active = 1 and
+                 u.email = ${lift(email)} and
+                 u.hashedpassword = SHA2(${lift(password)}, 512)""".as[Query[Int]])
       (for {
         now    <- Clock.instant
         userId <- ctx.run(sql).map(_.headOption.map(UserId.apply))
-        user   <- ZIO.foreach(userId)(id => get(id)).provide(godSession)
+        user   <- ZIO.foreach(userId)(id => get(id)).provideLayer(godSession)
         saveTime = Timestamp.from(now).nn
         _ <- ZIO.foreachDiscard(userId)(id => ctx.run(userLogins.insertValue(UserLogRow(lift(id.userId), lift(saveTime)))))
       } yield user.flatten).provideLayer(dataSourceLayer).mapError(RepositoryError.apply)

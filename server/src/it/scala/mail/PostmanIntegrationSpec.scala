@@ -46,8 +46,6 @@ object PostmanIntegrationSpec extends ZIOSpecDefault {
 
         zio.as(assert(true)(equalTo(true)))
       }
-    ).provide(
-      ZLayer.succeed(CourierPostman.live(config.live)) , tokenLayer
-    )
+    ).provideLayer(ZLayer.succeed(CourierPostman.live(config.live)) ++ tokenLayer)
 
 }

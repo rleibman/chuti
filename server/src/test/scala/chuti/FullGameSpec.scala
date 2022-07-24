@@ -27,8 +27,7 @@ import mail.Postman
 import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AsyncFlatSpecLike
 import org.scalatest.{Assertion, Succeeded}
-import org.testcontainers.shaded.org.bouncycastle.util.test.TestResult
-import zio.test.{ZIOSpecDefault, assertCompletes}
+import zio.test.*
 import zio.{Unsafe, ZIO}
 
 import java.time.Instant
@@ -36,6 +35,7 @@ import scala.util.Random
 
 object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
 
+  def spec: zio.test.Spec[chuti.FullGameSpec.Environment & (zio.test.TestEnvironment & zio.Scope), Any] = ???
   //  "Playing a specific game" should "look all nice" in {
   //    val game =
   //      "/Volumes/Personal/projects/chuti/server/src/test/resources/weird_game1589819797.json"
@@ -47,17 +47,17 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
   object GameTester {
 
     def apply(
-               description: String,
-               hands: Seq[String],
-               triunfo: Option[Triunfo],
-               cuantasCantas: CuantasCantas,
-               testEndState: Game => Assertion
-             ): GameTester = {
+      description:   String,
+      hands:         Seq[String],
+      triunfo:       Option[Triunfo],
+      cuantasCantas: CuantasCantas,
+      testEndState:  Game => TestResult
+    ): GameTester = {
       val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
-      assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
+      assertTrue(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
       val allHands = parsedHands ++ otherHands
-      assert(allHands.size == 4)
+      assertTrue(allHands.size == 4)
       val users = Seq(user1, user2, user3, user4)
       val jugadores = allHands.zip(users).map { case (hand, user) =>
         if (user == user1) {
@@ -154,19 +154,20 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
       .foreachPar(1 to 100) { _ =>
         playFullGame
       }.as(assertCompletes)
-  ) ++
-    gamesToTest.foreach { tester =>
-      test(tester.description)(
-        for {
-          gameOperations <- ZIO.service[Repository].map(_.gameOperations)
-          saved <-
-            gameOperations
-              .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-              godLayer
-            )
-          played <- juegaHastaElFinal(saved.id.get)
-        } yield tester.testEndState(played)
-      )
-    }
+  )
+//    ++
+//    gamesToTest.foreach { tester =>
+//      test(tester.description)(
+//        for {
+//          gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+//          saved <-
+//            gameOperations
+//              .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+//                godLayer
+//              )
+//          played <- juegaHastaElFinal(saved.id.get)
+//        } yield tester.testEndState(played)
+//      )
+//    }
 
 }

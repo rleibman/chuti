@@ -33,22 +33,23 @@ object ChutiContainer {
           new java.io.File(path).listFiles.sortBy(_.getName)
         }
         dataSource <- ZIO.service[DataSource]
-        statements <- ZIO.foreach(files) {
-          case file: io.File if file.getName.nn.endsWith("sql") =>
-            ZIO.acquireReleaseWith(ZIO.attempt(Source.fromFile(file)))(f => ZIO.attempt(f.close()).orDie) { source =>
-              val str = source
-                .getLines()
-                .map(str => str.replaceAll("--.*", "").nn.trim.nn)
-                .mkString("\n")
-              ZIO.attempt(str.split(";\n").nn)
-            }
-          case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
-        }.mapBoth(
-          RepositoryError.apply,
-          _.flatten
-            .map(_.nn.trim.nn)
-            .filter(_.nonEmpty)
-        ).catchSome(e => ZIO.fail(RepositoryError(e)))
+        statements <- ZIO
+          .foreach(files) {
+            case file: io.File if file.getName.nn.endsWith("sql") =>
+              ZIO.acquireReleaseWith(ZIO.attempt(Source.fromFile(file)))(f => ZIO.attempt(f.close()).orDie) { source =>
+                val str = source
+                  .getLines()
+                  .map(str => str.replaceAll("--.*", "").nn.trim.nn)
+                  .mkString("\n")
+                ZIO.attempt(str.split(";\n").nn)
+              }
+            case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
+          }.mapBoth(
+            RepositoryError.apply,
+            _.flatten
+              .map(_.nn.trim.nn)
+              .filter(_.nonEmpty)
+          ).catchSome(e => ZIO.fail(RepositoryError(e)))
         res <- {
           ZIO.acquireReleaseWith {
             ZIO.attempt {
@@ -62,11 +63,12 @@ object ChutiContainer {
               conn.close().nn
             }
           } { case (_, stmt) =>
-            ZIO.foreach(statements) { statement =>
-              ZIO.attempt(stmt.executeUpdate(statement).nn)
-            }.catchSome { case e: SQLException =>
-              ZIO.fail(RepositoryError(e))
-            }
+            ZIO
+              .foreach(statements) { statement =>
+                ZIO.attempt(stmt.executeUpdate(statement).nn)
+              }.catchSome { case e: SQLException =>
+                ZIO.fail(RepositoryError(e))
+              }
           }
         }.unit.mapError(RepositoryError.apply)
       } yield res
@@ -113,7 +115,7 @@ object ChutiContainer {
       baseConfig <- ZIO.service[Config.Service].map(_.config)
     } yield {
       new api.config.Config.Service {
-        override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
+        lazy override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
       }
     }
   }

@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package dao
+package chuti
 
-import chuti.ChutiError
+object ChutiError {
 
-object RepositoryError {
-
-  def apply(t: Throwable): RepositoryError = {
+  def apply(t: Throwable): ChutiError = {
     t match {
-      case t: RepositoryError => t
-      case t => RepositoryError("", Some(t))
+      case t: ChutiError => t
+      case t => ChutiError("", Some(t))
     }
   }
 
@@ -31,14 +29,12 @@ object RepositoryError {
     msg:   String = "",
     cause: Option[Throwable] = None
   ) = {
-    new RepositoryError(msg, cause)
+    new ChutiError(msg, cause)
   }
 
 }
 
-sealed class RepositoryError(
+class ChutiError(
   msg:   String = "",
   cause: Option[Throwable] = None
-) extends ChutiError(msg, cause)
-
-case class RepositoryPermissionError(msg: String = "") extends RepositoryError(msg)
+) extends Exception(msg, cause.orNull)

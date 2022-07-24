@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package routes
+package api.routes
 
 import api.Chuti.ChutiEnvironment
 import api.ChutiSession
@@ -28,18 +28,18 @@ import java.nio.file.{Files, Paths as JPaths}
 object StaticHTMLRoutes {
 
   lazy val authNotRequired: Set[String] = Set(
-    "/login.html",
-    "/css/chuti.css",
-    "/css/app-sui-theme.css",
-    "/chuti-login-opt-bundle.js",
-    "/chuti-login-opt-bundle.js.map",
-    "/css/app.css",
-    "/images/favicon.ico",
-    "/images/logo.png",
-    "/favicon.ico",
-    "/webfonts/fa-solid-900.woff2",
-    "/webfonts/fa-solid-900.woff",
-    "/webfonts/fa-solid-900.ttf"
+    "login.html",
+    "css/chuti.css",
+    "css/app-sui-theme.css",
+    "chuti-login-opt-bundle.js",
+    "chuti-login-opt-bundle.js.map",
+    "css/app.css",
+    "images/favicon.ico",
+    "images/logo.png",
+    "favicon.ico",
+    "webfonts/fa-solid-900.woff2",
+    "webfonts/fa-solid-900.woff",
+    "webfonts/fa-solid-900.ttf"
   )
 
   private def file(
@@ -60,7 +60,7 @@ object StaticHTMLRoutes {
         staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
         data <- file(s"$staticContentDir/login.html", request)
       } yield Response(data = data)
-    case request @ (Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse =>
+    case request @ (Method.GET | Method.PUT | Method.POST) -> "" /: "unauth" /: somethingElse =>
       if (authNotRequired(somethingElse.toString())) {
         for {
           config <- ZIO.service[Config.Service]

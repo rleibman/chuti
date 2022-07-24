@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package routes
+package api.routes
 
 import api.Chuti.ChutiEnvironment
 import api.auth.Auth.*
@@ -22,8 +22,10 @@ import api.token.{Token, TokenHolder, TokenPurpose}
 import api.{ChutiSession, token}
 import cats.data.NonEmptyList
 import chuti.*
-import dao.{CRUDOperations, Repository, SessionContext}
-import io.circe.Encoder
+import dao.{CRUDOperations, Repository, RepositoryError, RepositoryIO, SessionContext}
+import io.circe.parser.*
+import io.circe.syntax.*
+import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto.*
 import mail.Postman
 import util.*
@@ -35,21 +37,23 @@ import java.time.Instant
 import java.util.Locale
 import scala.language.unsafeNulls
 import UserId.*
+import io.circe.parser.parse
 
-object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
+object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
   given localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
 
   // TODO get from config
-  val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
+  lazy val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
+  val defaultSoftDelete:     Boolean = false
 
-  override type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
+  type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
 
-  override val url: String = "auth"
+  val url: String = "auth"
 
-  override def getPK(obj: User): UserId = obj.id.get
+  def getPK(obj: User): UserId = obj.id.get
 
-  override def authOther: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+  def authOther: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case req @ Method.GET -> !! / "api" / "auth" / "isFirstLoginToday" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
@@ -106,7 +110,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
         )
     }
 
-  override def unauthRoute: Http[ChutiEnvironment & OpsService, Throwable, Request, Response] =
+  def unauthRoute: Http[ChutiEnvironment & OpsService, Throwable, Request, Response] =
     Http.collectHttp[Request] {
       case Method.GET -> !! / "serverVersion" =>
         Http.succeed(ResponseExt.json(chuti.BuildInfo.version))
@@ -261,5 +265,100 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           } yield res
         }
     }
+
+  def getOperation(id: UserId): ZIO[
+    SessionContext & OpsService,
+    RepositoryError,
+    Option[User]
+  ] =
+    for {
+      ops <- ZIO.service[CRUDOperations[User, UserId, PagedStringSearch]]
+      ret <- ops.get(id)
+    } yield ret
+
+  def deleteOperation(
+    objOpt: Option[User]
+  ): ZIO[SessionContext & OpsService, Throwable, Boolean] =
+    for {
+      ops <- ZIO.service[CRUDOperations[User, UserId, PagedStringSearch]]
+      ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
+    } yield ret
+
+  def upsertOperation(obj: User): ZIO[
+    SessionContext & OpsService,
+    RepositoryError,
+    User
+  ] = {
+    for {
+      ops <- ZIO.service[CRUDOperations[User, UserId, PagedStringSearch]]
+      ret <- ops.upsert(obj)
+    } yield ret
+  }
+
+  def countOperation(search: Option[PagedStringSearch]): ZIO[
+    SessionContext & OpsService,
+    RepositoryError,
+    Long
+  ] =
+    for {
+      ops <- ZIO.service[CRUDOperations[User, UserId, PagedStringSearch]]
+      ret <- ops.count(search)
+    } yield ret
+
+  def searchOperation(search: Option[PagedStringSearch]): ZIO[
+    SessionContext & OpsService,
+    RepositoryError,
+    Seq[User]
+  ] =
+    for {
+      ops <- ZIO.service[CRUDOperations[User, UserId, PagedStringSearch]]
+      ret <- ops.search(search)
+    } yield ret
+
+  lazy private val authCRUD: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+    Http.collectHttp[RequestWithSession[ChutiSession]] {
+      case req @ (Method.POST | Method.PUT) -> !! / "api" / `url` if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
+            obj <- req.bodyAs[User]
+            _   <- ZIO.logInfo(s"Upserting $url with $obj")
+            ret <- upsertOperation(obj)
+          } yield Response.json(ret.asJson.noSpaces))
+            .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+        )
+      case req @ (Method.POST) -> !! / "api" / `url` / "search" if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
+            search <- req.bodyAs[PagedStringSearch]
+            res    <- searchOperation(Some(search))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+        )
+      case req @ Method.POST -> !! / s"api" / `url` / "count" if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
+            search <- req.bodyAs[PagedStringSearch]
+            res    <- countOperation(Some(search))
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+        )
+      case req @ Method.GET -> !! / "api" / `url` / pk if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
+            pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[UserId])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
+            res <- getOperation(pk)
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+        )
+      case req @ Method.DELETE -> !! / "api" / `url` / pk if req.session.nonEmpty =>
+        Http.collectZIO(_ =>
+          (for {
+            pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[UserId])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
+            getted <- getOperation(pk)
+            res    <- deleteOperation(getted)
+            _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
+          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+        )
+    }
+
+  lazy val authRoute: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
+    authOther ++ authCRUD
 
 }

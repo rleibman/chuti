@@ -14,43 +14,43 @@
  * limitations under the License.
  */
 
-package routes
+package api.routes
 
 import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
 import api.config.Config
 import caliban.ZHttpAdapter
+import chat.{ChatApi, ChatService}
 import dao.SessionContext
-import game.{GameApi, GameService}
 import zhttp.http.*
 import zio.*
 
-object GameRoutes {
+object ChatRoutes {
 
   lazy val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
     Http.collectHttp[RequestWithSession[ChutiSession]] {
-      case _ -> !! / "api" / "game" =>
+      case _ -> !! / "api" / "chat" =>
         Http
           .collectZIO[RequestWithSession[ChutiSession]] { req =>
             for {
-              interpreter <- GameService.interpreter
+              interpreter <- ChatService.interpreter
             } yield ZHttpAdapter
               .makeHttpService(interpreter)
               .provideSomeLayer[ChutiEnvironment, SessionContext, Throwable](SessionContext.live(req.session.get))
           }.flatten
-      case _ -> !! / "api" / "game" / "ws" =>
+      case _ -> !! / "api" / "chat" / "ws" =>
         Http
           .collectZIO[RequestWithSession[ChutiSession]] { req =>
             for {
-              interpreter <- GameService.interpreter
+              interpreter <- ChatService.interpreter
             } yield ZHttpAdapter
               .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
               .provideSomeLayer[ChutiEnvironment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
           }.flatten
-      case _ -> !! / "api" / "game" / "schema" =>
-        Http.fromData(HttpData.fromString(GameApi.api.render))
-      case _ -> !! / "api" / "game" / "graphiql" =>
+      case _ -> !! / "api" / "chat" / "schema" =>
+        Http.fromData(HttpData.fromString(ChatApi.api.render))
+      case _ -> !! / "api" / "chat" / "graphiql" =>
         Http.fromFileZIO(
           for {
             config <- ZIO.service[Config.Service]

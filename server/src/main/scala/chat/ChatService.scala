@@ -100,12 +100,12 @@ object ChatService {
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
-  def make(): URLayer[Any, ChatService] = 
+  def make(): URLayer[Any, ChatService] =
     ZLayer.fromZIO {
       for {
+        _                <- ZIO.logInfo("Making ChatService")
         chatMessageQueue <- Ref.make(List.empty[MessageQueue])
         recentMessages   <- Ref.make(List.empty[ChatMessage])
-        _                <- ZIO.logInfo("========================== This should only ever be seen once.")
       } yield new ChatService {
 
         def getRecentMessages(
@@ -174,9 +174,9 @@ object ChatService {
               userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameException.apply)
               _ <-
                 if (channelId == ChannelId.directChannel)
-                  throw GameException("No te puedes subscribir a un canal directo!")
+                  ZIO.fail(GameException("No te puedes subscribir a un canal directo!"))
                 else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame)
-                  throw GameException("El usuario no esta en este canal")
+                  ZIO.fail(GameException("El usuario no esta en este canal"))
                 else
                   ZIO.succeed(true)
               queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)

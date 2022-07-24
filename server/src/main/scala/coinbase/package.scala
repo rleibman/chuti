@@ -54,9 +54,9 @@ package object coinbase {
 
   }
 
-  def akkaHttpLayer: ULayer[Coinbase] = ZLayer.succeed(akkaHttp())
+  val live: ULayer[Coinbase] = ZLayer.succeed(liveCoinbase())
 
-  def akkaHttp(): Coinbase =
+  private def liveCoinbase(): Coinbase =
     new Coinbase {
 
       override def transactionRequest(
