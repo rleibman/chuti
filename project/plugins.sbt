@@ -1,3 +1,4 @@
+resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/"
 ////////////////////////////////////////////////////////////////////////////////////
 // Common stuff
 addSbtPlugin("com.dwijnand"       % "sbt-travisci"             % "1.2.0")
@@ -16,7 +17,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.9.1")
 // Web client
 addSbtPlugin("org.scala-js"          % "sbt-scalajs"         % "1.10.1")
 addSbtPlugin("ch.epfl.scala"         % "sbt-scalajs-bundler" % "0.20.0")
-addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "2.0.0")
+addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt" % "2.0.0+4-e2c13143-SNAPSHOT")
 libraryDependencies += "org.slf4j"   % "slf4j-nop"           % "1.7.36" // Needed by sbt-git
 libraryDependencies += "commons-io"  % "commons-io"          % "2.11.0"
 

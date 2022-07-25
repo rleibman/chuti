@@ -3,15 +3,12 @@
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import org.apache.commons.io.FileUtils
-import sbt.Keys.{libraryDependencies, testFrameworks}
+import sbt.Keys.{libraryDependencies, resolvers, testFrameworks}
+import sbt.Resolver
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Global stuff
-resolvers += Resolver.mavenLocal
-resolvers += Resolver.sonatypeRepo("snapshots")
-resolvers += Resolver.sonatypeRepo("releases")
-resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +42,7 @@ enablePlugins(
 )
 
 val circeVersion = "0.14.2"
-val calibanVersion = "2.0.0"
+val calibanVersion = "2.0.0+4-e2c13143-SNAPSHOT"
 val zioVersion = "2.0.0"
 val quillVersion = "4.0.0"
 val zioHttpVersion = "2.0.0-RC10"
@@ -56,6 +53,10 @@ lazy val commonSettings = Seq(
   startYear := Some(2020),
   organizationName := "Roberto Leibman",
   headerLicense := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
+  resolvers += Resolver.mavenLocal,
+  resolvers += Resolver.sonatypeRepo("releases"),
+  resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
+  resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/",
   libraryDependencies += "dev.zio" %% "zio" % zioVersion withSources(),
   libraryDependencies ++= Seq(
     "io.circe" %% "circe-core",
