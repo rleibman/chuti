@@ -32,7 +32,7 @@ trait ChatService {
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
+  ): ZIO[SessionContext, GameError, Seq[ChatMessage]]
 
   def say(msg: SayRequest): URIO[Repository & SessionContext, ChatMessage]
 
@@ -41,7 +41,7 @@ trait ChatService {
     connectionId: ConnectionId
   ): ZStream[
     Repository & SessionContext,
-    GameException,
+    GameError,
     ChatMessage
   ]
 
@@ -81,13 +81,13 @@ object ChatService {
     connectionId: ConnectionId
   ): ZStream[
     ChatService & Repository & SessionContext,
-    GameException,
+    GameError,
     ChatMessage
   ] = ZStream.service[ChatService].flatMap(_.chatStream(channelId, connectionId))
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
+  ): ZIO[ChatService & SessionContext, GameError, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -110,7 +110,7 @@ object ChatService {
 
         def getRecentMessages(
           channelId: ChannelId
-        ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
+        ): ZIO[SessionContext, GameError, Seq[ChatMessage]] = {
           for {
             now <- Clock.instant
             res <- recentMessages.get.map { seq =>
@@ -161,7 +161,7 @@ object ChatService {
           connectionId: ConnectionId
         ): ZStream[
           Repository & SessionContext,
-          GameException,
+          GameError,
           ChatMessage
         ] =
           ZStream.unwrap {
@@ -171,12 +171,12 @@ object ChatService {
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
               // admins can listen in on games.
-              userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameException.apply)
+              userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameError.apply)
               _ <-
                 if (channelId == ChannelId.directChannel)
-                  ZIO.fail(GameException("No te puedes subscribir a un canal directo!"))
+                  ZIO.fail(GameError("No te puedes subscribir a un canal directo!"))
                 else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame)
-                  ZIO.fail(GameException("El usuario no esta en este canal"))
+                  ZIO.fail(GameError("El usuario no esta en este canal"))
                 else
                   ZIO.succeed(true)
               queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)

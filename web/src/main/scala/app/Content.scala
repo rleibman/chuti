@@ -110,7 +110,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         val moddedGame = s.chutiState.gameInProgress.flatMap { (currentGame: Game) =>
           gameEvent.index match {
             case None =>
-              throw GameException(
+              throw GameError(
                 "Esto es imposible (el evento no tiene indice)"
               )
             case Some(index) if index == currentGame.currentEventIndex =>
@@ -126,7 +126,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               Option(currentGame)
             case Some(index) =>
               // If it's past, mark an error, how could we have a past event???
-              throw GameException(
+              throw GameError(
                 s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
               )
           }

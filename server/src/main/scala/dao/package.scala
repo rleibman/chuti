@@ -108,7 +108,7 @@ package object dao {
         )
       } match {
         case Right(state) => state
-        case Left(error)  => throw GameException(error)
+        case Left(error)  => throw GameError(error)
       }
     }
 

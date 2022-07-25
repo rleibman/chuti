@@ -60,51 +60,51 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
   )
 
   case class Queries(
-    getGame:                GameId => ZIO[GameService & GameLayer, GameException, Option[Json]],
-    getGameForUser:         ZIO[GameService & GameLayer, GameException, Option[Json]],
-    getFriends:             ZIO[GameService & GameLayer, GameException, Seq[User]],
-    getGameInvites:         ZIO[GameService & GameLayer, GameException, Seq[Json]],
-    getLoggedInUsers:       ZIO[GameService & GameLayer, GameException, Seq[User]],
-    getHistoricalUserGames: ZIO[GameService & GameLayer, GameException, Seq[Json]]
+    getGame:                GameId => ZIO[GameService & GameLayer, GameError, Option[Json]],
+    getGameForUser:         ZIO[GameService & GameLayer, GameError, Option[Json]],
+    getFriends:             ZIO[GameService & GameLayer, GameError, Seq[User]],
+    getGameInvites:         ZIO[GameService & GameLayer, GameError, Seq[Json]],
+    getLoggedInUsers:       ZIO[GameService & GameLayer, GameError, Seq[User]],
+    getHistoricalUserGames: ZIO[GameService & GameLayer, GameError, Seq[Json]]
   )
   case class Mutations(
-    newGame: NewGameArgs => ZIO[GameService & GameLayer, GameException, Json],
+    newGame: NewGameArgs => ZIO[GameService & GameLayer, GameError, Json],
     newGameSameUsers: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameException,
+      GameError,
       Json
     ],
-    joinRandomGame: ZIO[GameService & GameLayer, GameException, Json],
-    abandonGame:    GameId => ZIO[GameService & GameLayer, GameException, Boolean],
+    joinRandomGame: ZIO[GameService & GameLayer, GameError, Json],
+    abandonGame:    GameId => ZIO[GameService & GameLayer, GameError, Boolean],
     inviteByEmail: InviteByEmailArgs => ZIO[
       GameService & GameLayer & ChatService,
-      GameException,
+      GameError,
       Boolean
     ],
-    startGame: GameId => ZIO[GameService & GameLayer, GameException, Boolean],
+    startGame: GameId => ZIO[GameService & GameLayer, GameError, Boolean],
     inviteToGame: GameInviteArgs => ZIO[
       GameService & GameLayer & ChatService,
-      GameException,
+      GameError,
       Boolean
     ],
-    acceptGameInvitation: GameId => ZIO[GameService & GameLayer, GameException, Json],
+    acceptGameInvitation: GameId => ZIO[GameService & GameLayer, GameError, Json],
     declineGameInvitation: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameException,
+      GameError,
       Boolean
     ],
     cancelUnacceptedInvitations: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameException,
+      GameError,
       Boolean
     ],
-    friend:   UserId => ZIO[GameService & GameLayer & ChatService, GameException, Boolean],
-    unfriend: UserId => ZIO[GameService & GameLayer & ChatService, GameException, Boolean],
-    play:     PlayArgs => ZIO[GameService & GameLayer, GameException, Boolean]
+    friend:   UserId => ZIO[GameService & GameLayer & ChatService, GameError, Boolean],
+    unfriend: UserId => ZIO[GameService & GameLayer & ChatService, GameError, Boolean],
+    play:     PlayArgs => ZIO[GameService & GameLayer, GameError, Boolean]
   )
   case class Subscriptions(
-    gameStream: GameStreamArgs => ZStream[GameService & GameLayer, GameException, Json],
-    userStream: ConnectionId => ZStream[GameService & GameLayer, GameException, UserEvent]
+    gameStream: GameStreamArgs => ZStream[GameService & GameLayer, GameError, Json],
+    userStream: ConnectionId => ZStream[GameService & GameLayer, GameError, UserEvent]
   )
 
   private given Schema[Any, GameId] = Schema.intSchema.contramap(_.gameId)

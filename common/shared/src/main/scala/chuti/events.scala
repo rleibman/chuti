@@ -84,9 +84,9 @@ sealed trait PlayEvent extends GameEvent {
     userOpt: Option[User],
     game:    Game
   ): Game = {
-    userOpt.fold(throw GameException("Eventos de juego requieren un usuario")) { user =>
+    userOpt.fold(throw GameError("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
+        throw GameError(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
       processStatusMessages(redoEvent(game.jugador(user.id), game))
     }
@@ -96,9 +96,9 @@ sealed trait PlayEvent extends GameEvent {
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    userOpt.fold(throw GameException("Eventos de juego requieren un usuario")) { user =>
+    userOpt.fold(throw GameError("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameException(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
+        throw GameError(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
 
       doEvent(game.jugador(user.id), game)
     }
@@ -228,7 +228,7 @@ case class PoisonPill(
     game:    Game
   ): (Game, GameEvent) = {
     if (userOpt.fold(false)(_.id != Option(godUserId)))
-      throw GameException("Solo dios puede administrar veneno")
+      throw GameError("Solo dios puede administrar veneno")
     (
       game,
       copy(gameId = game.id, userId = userOpt.flatMap(_.id))
@@ -238,7 +238,7 @@ case class PoisonPill(
   override def redoEvent(
     userOpt: Option[User],
     game:    Game
-  ): Game = throw GameException("No puedes volver a hacer este evento")
+  ): Game = throw GameError("No puedes volver a hacer este evento")
 
 }
 
@@ -258,7 +258,7 @@ case class AbandonGame(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    val user = userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
+    val user = userOpt.getOrElse(throw GameError("Se necesita un usuario para esta movida"))
 
     (
       game.copy(
@@ -301,7 +301,7 @@ case class DeclineInvite(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    val user = userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
+    val user = userOpt.getOrElse(throw GameError("Se necesita un usuario para esta movida"))
     (
       game.copy(jugadores = game.jugadores.filter(_.id != user.id)),
       copy(
@@ -336,11 +336,11 @@ case class InviteToGame(
     game:    Game
   ): (Game, GameEvent) = {
     if (game.jugadores.exists(j => j.id == invited.id))
-      throw GameException("Un jugador no puede estar dos veces en el mismo juego")
+      throw GameError("Un jugador no puede estar dos veces en el mismo juego")
     if (game.jugadores.exists(_.id == invited.id))
-      throw GameException(s"Usuario ${invited.id} ya esta en el juego")
+      throw GameError(s"Usuario ${invited.id} ya esta en el juego")
     if (game.jugadores.length == game.numPlayers)
-      throw GameException("El juego ya esta completo")
+      throw GameError("El juego ya esta completo")
     (
       game.copy(jugadores = game.jugadores :+ Jugador(invited, invited = true)),
       copy(
@@ -375,10 +375,10 @@ case class JoinGame(
   ): (Game, GameEvent) = {
     val user =
       joinedUser.getOrElse(
-        userOpt.getOrElse(throw GameException("Se necesita un usuario para esta movida"))
+        userOpt.getOrElse(throw GameError("Se necesita un usuario para esta movida"))
       )
     if (game.jugadores.exists(j => j.id == user.id && !j.invited))
-      throw GameException("Un jugador no puede estar dos veces en el mismo juego")
+      throw GameError("Un jugador no puede estar dos veces en el mismo juego")
 
     val newPlayer = game.jugadores
       .find(_.id == user.id).fold(Jugador(user))(j => j.copy(invited = false))
@@ -480,7 +480,7 @@ case class Sopa(
     // La sopa siempre la debe de hacer el jugador anterior al turno
     // Realmente no importa, pero hay que mantener la tradición :)
     if (!firstSopa && !jugador.turno)
-      throw GameException("Quien canto la ultima vez tiene que hacer la sopa")
+      throw GameError("Quien canto la ultima vez tiene que hacer la sopa")
     val nextTurno: Jugador = game.nextPlayer(jugador)
 
     val jugadores = game.jugadores
@@ -528,7 +528,7 @@ case class Sopa(
     game:    Game
   ): Game = {
     // necesitas básicamente el juego completo, sopa should call for a reload of the game
-    throw GameException("No puedes hacer la sopa, tienes que empezar el juego desde el principio")
+    throw GameError("No puedes hacer la sopa, tienes que empezar el juego desde el principio")
   }
 
 }
@@ -555,7 +555,7 @@ case class Canta(
     game:    Game
   ): (Game, GameEvent) = {
     if (game.gameStatus != GameStatus.cantando)
-      throw GameException("No es el momento de cantar, que onda?")
+      throw GameError("No es el momento de cantar, que onda?")
 
     val nextPlayer = game.nextPlayer(jugador)
     val cantanteActual = game.jugadores.find(_.cantante).getOrElse(jugador)
@@ -655,7 +655,7 @@ case class Pide(
     game:            Game
   ): (Game, Pide) = {
     if (game.triunfo.fold(false)(_ != triunfo))
-      throw GameException("No puedes cambiar triunfos cuando se te antoje.")
+      throw GameError("No puedes cambiar triunfos cuando se te antoje.")
     val modified = game
       .copy(
         triunfo = Option(triunfo),
@@ -725,9 +725,9 @@ case class Pide(
   ): (Game, GameEvent) = {
     // Restricciones
     if (!jugador.fichas.contains(ficha))
-      throw GameException("No puedes jugar una ficha que no tienes!")
+      throw GameError("No puedes jugar una ficha que no tienes!")
     if (game.enJuego.nonEmpty)
-      throw GameException("No puedes pedir si hay fichas en la mesa")
+      throw GameError("No puedes pedir si hay fichas en la mesa")
     triunfo.fold(pide(ficha, estrictaDerecha, jugador, game))(triunfo => pideInicial(ficha, triunfo, estrictaDerecha, jugador, game))
   }
 
@@ -798,9 +798,9 @@ case class Da(
   ): (Game, GameEvent) = {
     // Restricciones
     if (!jugador.fichas.contains(ficha))
-      throw GameException("Este jugador no tiene esta ficha!")
+      throw GameError("Este jugador no tiene esta ficha!")
     if (game.estrictaDerecha && !game.enJuego.exists(_._1 == game.prevPlayer(jugador).id.get))
-      throw GameException("Estricta derecha, no te adelantes!")
+      throw GameError("Estricta derecha, no te adelantes!")
     val enJuego = game.enJuego :+ (jugador.id.get, ficha)
     // Si es el cuarto jugador dando la ficha
     val (modifiedGame, ganador, gameStatusString): (Game, Option[UserId], Option[String]) =
@@ -852,7 +852,7 @@ case class Da(
     // Checar hoyo tecnico (el jugador dio una ficha que no fue pedida, o teniendo triunfo no lo solto)
     val pidióFicha = enJuego.head._2
     val pidioNum = game.triunfo match {
-      case None                     => throw GameException("Nuncamente!")
+      case None                     => throw GameError("Nuncamente!")
       case Some(TriunfoNumero(num)) => if (pidióFicha.es(num)) num else pidióFicha.arriba
       case Some(SinTriunfos)        => pidióFicha.arriba
     }
@@ -866,7 +866,7 @@ case class Da(
       else if (
         !ficha.es(pidioNum) &&
         (game.triunfo match {
-          case None => throw GameException("Nuncamente!")
+          case None => throw GameError("Nuncamente!")
           case Some(TriunfoNumero(num)) =>
             !ficha.es(num) &&
             modifiedGame.jugador(jugador.id).fichas.exists(_.es(num))
@@ -951,7 +951,7 @@ case class Caete(
   ): (Game, GameEvent) = {
     // Restricciones
     if (!jugador.mano)
-      throw GameException("No te adelantes")
+      throw GameError("No te adelantes")
     // Te puedes caer antes de pedir la inicial, en cuyo caso hay que establecer los triunfos
     val conTriunfos = game.copy(triunfo = game.triunfo.fold(triunfo)(Option(_)))
 
@@ -1097,7 +1097,7 @@ case class MeRindo(
     // Nada mas te puedes rendir hasta correr la primera.
     // Se apunta un hoyo, juego nuevo
     if (jugador.filas.size > 1)
-      throw GameException("No te puedes rendir después de la primera")
+      throw GameError("No te puedes rendir después de la primera")
     (
       game.copy(
         gameStatus = GameStatus.requiereSopa,

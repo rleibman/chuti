@@ -43,7 +43,7 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameException, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameError, Seq[
       ChatMessage
     ]]
   )
@@ -55,7 +55,7 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
       ChatService & Repository & SessionContext,
-      GameException,
+      GameError,
       ChatMessage
     ]
   )

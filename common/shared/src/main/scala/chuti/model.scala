@@ -23,20 +23,16 @@ import io.circe.{Decoder, Encoder}
 import java.time.Instant
 import scala.annotation.tailrec
 
-object GameException {
+object GameError {
 
-  def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
+  def apply(cause: Throwable): GameError = GameError(cause = Option(cause))
 
 }
 
-case class GameException(
+case class GameError(
   msg:   String = "",
   cause: Option[Throwable] = None
-) extends Exception(msg, cause.orNull) {
-
-  this.printStackTrace()
-
-}
+) extends ChutiError(msg, cause)
 
 enum Numero(val value: Int) {
 
@@ -142,7 +138,7 @@ object Ficha {
   def fromString(str: String): Ficha = {
     val splitted = str.split(":").nn.map {
       case s: String => Numero(s.toInt)
-      case null => throw GameException(s"Invalid ficha string: $str")
+      case null => throw GameError(s"Invalid ficha string: $str")
     }
     Ficha(splitted(0), splitted(1))
   }
@@ -174,12 +170,12 @@ sealed trait Ficha extends Product with Serializable {
 
 case object FichaTapada extends Ficha {
 
-  override def arriba:             Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def abajo:              Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def esMula:             Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def value:              Int = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def es(num: Numero):    Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def other(num: Numero): Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def arriba:             Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def abajo:              Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def esMula:             Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def es(num: Numero):    Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
   override def toString:           String = "?:?"
 
 }
@@ -255,8 +251,8 @@ case class Jugador(
 
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
-      throw GameException("Si no canta no se puede hacer!!")
-    filas.size >= cuantasCantas.fold(throw GameException("Si no canta no se puede hacer!!"))(
+      throw GameError("Si no canta no se puede hacer!!")
+    filas.size >= cuantasCantas.fold(throw GameError("Si no canta no se puede hacer!!"))(
       _.numFilas
     )
   }
@@ -399,7 +395,7 @@ case class Game(
   def jugadorState(jugador: Jugador): JugadorState = {
     gameStatus match {
       case GameStatus.comienzo =>
-        throw GameException("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
+        throw GameError("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
       case GameStatus.abandonado =>
         JugadorState.partidoTerminado
       case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
@@ -519,7 +515,7 @@ case class Game(
     da:   Ficha
   ): Int = {
     triunfo match {
-      case None => throw GameException("Nuncamente!")
+      case None => throw GameError("Nuncamente!")
       case Some(SinTriunfos) =>
         if (!da.es(pide.arriba))
           0 // Ni siquiera es lo que pediste.
@@ -598,7 +594,7 @@ case class Game(
 
   def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
     triunfo match {
-      case None              => throw GameException("Nuncamente!")
+      case None              => throw GameError("Nuncamente!")
       case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)
       case Some(TriunfoNumero(num)) =>
         fichas.maxByOption(f =>
@@ -634,7 +630,7 @@ case class Game(
   def jugador(id: Option[UserId]): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
-        throw GameException("Este usuario no esta jugando en este juego")
+        throw GameError("Este usuario no esta jugando en este juego")
       )
 
   def modifiedJugadores(
@@ -701,7 +697,7 @@ case class Game(
     // It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex)
-      throw GameException("Error! El evento no tenia el indice correcto")
+      throw GameError("Error! El evento no tenia el indice correcto")
     (processed._1.copy(currentEventIndex = nextIndex), processed._2)
   }
 
@@ -712,7 +708,7 @@ case class Game(
     val user = jugadores.find(_.user.id == event.userId).map(_.user)
     val processed = event.redoEvent(user, game = this)
     if (event.index.getOrElse(-1) != currentEventIndex)
-      throw GameException("Error! No puedes re-aplicar este evento al juego!")
+      throw GameError("Error! No puedes re-aplicar este evento al juego!")
     processed.copy(currentEventIndex = nextIndex)
   }
 

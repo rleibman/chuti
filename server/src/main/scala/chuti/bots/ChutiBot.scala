@@ -16,18 +16,18 @@
 
 package chuti.bots
 
-import chuti.{Game, GameId, PlayEvent, User}
+import chuti.*
 import dao.{Repository, SessionContext}
 import game.GameService
 import game.GameService.GameLayer
-import zio.ZIO
+import zio.*
 
 trait ChutiBot {
 
   def decideTurn(
     user: User,
     game: Game
-  ): Option[PlayEvent]
+  ): IO[GameError, PlayEvent]
 
   def takeTurn(gameId: GameId): ZIO[GameLayer & GameService, Exception, Game] = {
     for {
@@ -35,8 +35,9 @@ trait ChutiBot {
       gameService    <- ZIO.service[GameService]
       user           <- ZIO.service[SessionContext].map(_.session.user)
       game           <- gameOperations.get(gameId).map(_.get)
-      played         <- ZIO.foreach(decideTurn(user, game))(gameService.play(gameId, _))
-    } yield played.getOrElse(game)
+      toPlay         <- decideTurn(user, game)
+      played         <- gameService.play(gameId, toPlay)
+    } yield played
   }
 
 }

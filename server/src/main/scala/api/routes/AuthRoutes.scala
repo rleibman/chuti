@@ -76,7 +76,6 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
         )
       case req @ Method.GET -> !! / "api" / "auth" / "whoami" if req.session.nonEmpty =>
         Http.collect { r =>
-          println(r)
           ResponseExt.json(req.session.get.user)
         }
       case req @ Method.GET -> !! / "api" / "auth" / "userWallet" if req.session.nonEmpty =>
