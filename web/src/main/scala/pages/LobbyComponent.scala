@@ -20,9 +20,7 @@ import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
 import components.{Confirm, Toast}
-import game.GameClient.{Mutations, Queries}
-import io.circe.generic.auto.*
-import io.circe.{Decoder, Json}
+import game.GameClient.{GameAsJson, Mutations, Queries}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
@@ -32,6 +30,7 @@ import net.leibman.chuti.react.reactStrings.center
 import net.leibman.chuti.semanticUiReact.components.{ModalActions, *}
 import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import zio.json.*
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
@@ -68,21 +67,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   class Backend($ : BackendScope[Props, State]) {
 
     import scala.language.unsafeNulls
-    private val gameDecoder = summon[Decoder[Game]]
-
     def refresh(): Callback = {
-      calibanCall[Queries, Option[List[Json]]](
+      calibanCall[Queries, Option[List[GameAsJson]]](
         Queries.getGameInvites,
         jsonInvites => {
           $.modState(
-            _.copy(invites =
-              jsonInvites.toList.flatten.map(json =>
-                gameDecoder.decodeJson(json) match {
-                  case Right(game) => game
-                  case Left(error) => throw error
-                }
-              )
-            )
+            _.copy(invites = jsonInvites.toList.flatten.map(_.fromJson[Game] match {
+              case Right(game) => game
+              case Left(error) => throw RuntimeException(error)
+            }))
           )
         }
       )

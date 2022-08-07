@@ -23,8 +23,14 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
 import components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
-import io.circe.*, io.circe.generic.auto.*
+import game.GameClient.{
+  GameEventAsJson,
+  Queries,
+  Subscriptions,
+  User => CalibanUser,
+  UserEvent => CalibanUserEvent,
+  UserEventType => CalibanUserEventType
+}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
@@ -42,6 +48,8 @@ import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
 import java.time.Instant
+import scala.util.Random
+import zio.json.*
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the router should be the main
   * content of the app, but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and presenting
@@ -49,14 +57,11 @@ import java.time.Instant
   */
 object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSupport {
 
-  private val connectionId = UUID.randomUUID().toString
+  private val connectionId = Random.nextInt
 
   case class State(chutiState: ChutiState)
 
   class Backend($ : BackendScope[Unit, State]) {
-
-    import scala.language.unsafeNulls
-    private val gameEventDecoder: Decoder[GameEvent] = summon[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
       $.modState(s => {
@@ -410,14 +415,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               if (!needNewGameStream) copy.chutiState.gameStream
               else
                 gameInProgressOpt.map(game =>
-                  makeWebSocketClient[Option[Json]](
+                  makeWebSocketClient[Option[GameEventAsJson]](
                     uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                     query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
                     onData = { (_, data) =>
-                      data.flatten.fold(Callback.empty)(json =>
-                        gameEventDecoder
-                          .decodeJson(json)
-                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                      data.flatten.fold(Callback.empty)(
+                        _.fromJson[GameEvent]
+                          .fold(
+                            failure => Callback.throwException(RuntimeException(failure)),
+                            g => onGameEvent(g)
+                          )
                       )
                     },
                     operationId = "-",

@@ -25,9 +25,6 @@ import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import dao.{Repository, RepositoryError, SessionContext}
 import game.GameService.{EventQueue, GameLayer}
-import io.circe.generic.auto.*
-import io.circe.syntax.*
-import io.circe.{Decoder, Json}
 import mail.Postman
 import zio.{Clock, Console, *}
 import zio.logging.*
@@ -129,21 +126,10 @@ object GameService {
 
   def play(
     gameId:    GameId,
-    playEvent: Json
+    playEvent: PlayEvent
   ): ZIO[GameService & GameLayer, GameError, Boolean] =
     ZIO
-      .service[GameService].flatMap(
-        _.play(
-          gameId, {
-            import scala.language.unsafeNulls
-            val decoder = summon[Decoder[PlayEvent]]
-            decoder.decodeJson(playEvent) match {
-              case Right(event) => event
-              case Left(error)  => throw GameError(error)
-            }
-          }
-        ).as(true)
-      )
+      .service[GameService].flatMap(_.play(gameId, playEvent).as(true))
 
   def getGameForUser: ZIO[GameService & GameLayer, GameError, Option[Game]] = ZIO.service[GameService].flatMap(_.getGameForUser)
 
@@ -734,8 +720,8 @@ object GameService {
       //              .redoEvent(Option(user), sanitizedBefore)
       //              .copy(currentEventIndex = before.nextIndex)
       //          {
-      //            println(sanitizedAfter.asJson.noSpaces)
-      //            println(redone.asJson.noSpaces)
+      //            println(sanitizedAfter.toJson.noSpaces)
+      //            println(redone.toJson.noSpaces)
       //            ZIO.fail(GameError("Done and ReDone should be the same"))
       //          }.unless(sanitizedAfter == redone)
       //        }.unless(event.isInstanceOf[Sopa])

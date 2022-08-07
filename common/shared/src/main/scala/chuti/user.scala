@@ -16,9 +16,8 @@
 
 package chuti
 
-import io.circe.{Decoder, Encoder}
-
 import java.time.Instant
+import zio.json.*
 
 case class User(
   id:          Option[UserId],
@@ -35,14 +34,40 @@ case class User(
 
 }
 
+object User {
+
+  given JsonDecoder[User] = DeriveJsonDecoder.gen[User]
+
+  given JsonEncoder[User] = DeriveJsonEncoder.gen[User]
+
+}
+
 case class UserWallet(
   userId: UserId,
   amount: BigDecimal = 0.0
 )
 
+object UserWallet {
+
+  given JsonDecoder[UserWallet] = DeriveJsonDecoder.gen[UserWallet]
+  given JsonEncoder[UserWallet] = DeriveJsonEncoder.gen[UserWallet]
+
+}
+
 enum UserEventType {
 
   case Disconnected, Connected, Modified, JoinedGame, AbandonedGame
+
+}
+
+object UserEventType {
+
+  given JsonDecoder[UserEventType] =
+    JsonDecoder.string.mapOrFail(s =>
+      values.find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, UserEventType]
+    )
+
+  given JsonEncoder[UserEventType] = JsonEncoder.string.contramap(_.toString)
 
 }
 
@@ -51,3 +76,10 @@ case class UserEvent(
   userEventType: UserEventType,
   gameId:        Option[GameId]
 )
+
+object UserEvent {
+
+  given JsonDecoder[UserEvent] = DeriveJsonDecoder.gen[UserEvent]
+  given JsonEncoder[UserEvent] = DeriveJsonEncoder.gen[UserEvent]
+
+}

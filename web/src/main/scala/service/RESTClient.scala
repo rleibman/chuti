@@ -17,17 +17,15 @@
 package service
 
 import chuti.Search
-import io.circe.parser.*
-import io.circe.syntax.*
-import io.circe.{Decoder, Encoder, Error}
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.extra.internal.AjaxException
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.XMLHttpRequest
+import zio.json.*
 
 trait RESTOperations {
 
-  def processErrors[A](fn: XMLHttpRequest => Either[Error, A])(xhr: XMLHttpRequest): A =
+  def processErrors[A](fn: XMLHttpRequest => Either[String, A])(xhr: XMLHttpRequest): A =
     try {
       if (xhr.status >= 400)
         throw AjaxException(xhr)
@@ -35,7 +33,7 @@ trait RESTOperations {
         fn(xhr) match {
           case Right(a) => a
           case Left(e) =>
-            throw e
+            throw RuntimeException(e)
         }
       }
     } catch {
@@ -44,7 +42,7 @@ trait RESTOperations {
         throw e
     }
 
-  def RESTOperation[Request: Encoder, Response: Decoder](
+  def RESTOperation[Request: JsonEncoder, Response: JsonDecoder](
     method:      String,
     fullUrl:     String,
     request:     Option[Request] = None,
@@ -54,13 +52,13 @@ trait RESTOperations {
       .and(_.withCredentials = true)
 
     val step2 = request
-      .fold(step1.send)(s => step1.setRequestContentTypeJson.send(s.asJson.noSpaces))
+      .fold(step1.send)(s => step1.setRequestContentTypeJson.send(s.toJson))
 
     withTimeout
       .fold(step2)(a => step2.withTimeout(a._1, a._2))
       .asAsyncCallback
       .map {
-        processErrors(xhr => decode[Response](xhr.responseText))
+        processErrors(_.responseText.fromJson[Response])
       }
   }
 
@@ -74,7 +72,7 @@ trait RESTClient[E, PK, SEARCH <: Search] {
 
 object RESTClient {
 
-  abstract class Service[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder] extends RESTOperations {
+  abstract class Service[E: JsonDecoder: JsonEncoder, PK, SEARCH <: Search: JsonEncoder] extends RESTOperations {
 
     def get(id: PK): AsyncCallback[Option[E]]
 
@@ -90,7 +88,7 @@ object RESTClient {
 
 }
 
-abstract class LiveRESTClient[E: Decoder: Encoder, PK, SEARCH <: Search: Encoder] extends RESTClient[E, PK, SEARCH] {
+abstract class LiveRESTClient[E: JsonDecoder: JsonEncoder, PK, SEARCH <: Search: JsonEncoder] extends RESTClient[E, PK, SEARCH] {
 
   val baseUrl: String
 

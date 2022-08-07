@@ -4,29 +4,22 @@ import better.files.File
 import chuti.*
 import dao.*
 import db.quill.QuillUserSpec.fixedClock
-import io.circe
-import io.circe.Decoder
-import io.circe.generic.auto.*
-import io.circe.parser.decode
 import zio.*
 import zio.logging.*
 import zio.test.*
+import zio.json.*
 
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneOffset}
 
 object QuillGameSpec extends QuillSpec {
 
-  import scala.language.unsafeNulls
-  given localDateTimeDecoder: Decoder[LocalDateTime] = Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME)
-  given instantDecoder: Decoder[Instant] =
-    Decoder.decodeLocalDateTimeWithFormatter(DateTimeFormatter.ISO_DATE_TIME).map(_.toInstant(ZoneOffset.UTC).nn)
-
-  def readGame(filename: String): IO[circe.Error, Game] =
-    ZIO.fromEither {
-      val file = File(filename)
-      decode[Game](file.contentAsString)
-    }
+  def readGame(filename: String): IO[Error, Game] =
+    ZIO
+      .fromEither {
+        val file = File(filename)
+        file.contentAsString.nn.fromJson[Game]
+      }.mapError(Error(_))
 
   val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
   val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"

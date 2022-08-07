@@ -20,6 +20,7 @@ import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 
 import scala.annotation.tailrec
 import scala.util.Random
+import zio.json.*
 
 //////////////////////////////////////////////////////////////////////////////////////
 // General stuff and parents
@@ -66,6 +67,13 @@ sealed trait GameEvent {
 
 }
 
+object GameEvent {
+
+  given JsonEncoder[GameEvent] = DeriveJsonEncoder.gen[GameEvent]
+  given JsonDecoder[GameEvent] = DeriveJsonDecoder.gen[GameEvent]
+
+}
+
 sealed trait PreGameEvent extends GameEvent
 sealed trait PlayEvent extends GameEvent {
 
@@ -103,6 +111,13 @@ sealed trait PlayEvent extends GameEvent {
       doEvent(game.jugador(user.id), game)
     }
   }
+
+}
+
+object PlayEvent {
+
+  given JsonEncoder[PlayEvent] = DeriveJsonEncoder.gen[PlayEvent]
+  given JsonDecoder[PlayEvent] = DeriveJsonDecoder.gen[PlayEvent]
 
 }
 

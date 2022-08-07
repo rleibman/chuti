@@ -25,10 +25,6 @@ import dao.InMemoryRepository.{now, user1, user2, user3, user4}
 import dao.Repository.GameOperations
 import dao.{InMemoryRepository, Repository, RepositoryIO, SessionContext}
 import game.GameService
-import io.circe.Printer
-import io.circe.generic.auto.*
-import io.circe.parser.decode
-import io.circe.syntax.*
 import mail.Postman
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
@@ -36,6 +32,7 @@ import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.logging.*
 import zio.test.{TestResult, assertTrue}
+import zio.json.*
 
 import java.time.Instant
 import java.util.UUID
@@ -61,15 +58,16 @@ trait GameAbstractSpec {
   ): Task[Unit] =
     ZIO.attempt {
       val file = File(filename)
-      file.write(game.asJson.printWith(Printer.spaces2))
+      file.write(game.toJson)
     }
 
   def readGame(filename: String): Task[Game] = {
-    ZIO.attempt {
-      import scala.language.unsafeNulls
-      val file = File(filename)
-      decode[Game](file.contentAsString.nn)
-    }.absolve
+    ZIO
+      .fromEither {
+        import scala.language.unsafeNulls
+        val file = File(filename)
+        file.contentAsString.nn.fromJson[Game]
+      }.mapError(e => Exception(e))
   }
 
   def assertSoloUnoCanta(game: Game): TestResult = {

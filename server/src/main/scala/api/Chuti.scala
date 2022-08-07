@@ -27,8 +27,6 @@ import chuti.{PagedStringSearch, User, UserId}
 import dao.quill.QuillRepository
 import dao.{CRUDOperations, Repository}
 import game.GameService
-import io.circe.generic.auto.*
-import io.circe.{Decoder, DecodingFailure, Encoder}
 import mail.{CourierPostman, Postman}
 import util.ResponseExt
 import zhttp.http.*
@@ -40,22 +38,14 @@ import zio.logging.backend.SLF4J
 import zio.{Clock, Console, *}
 
 import java.util.Locale
+import zio.json.*
 
 object Chuti extends zio.ZIOAppDefault {
 
   lazy private val slf4jLogger = SLF4J.slf4j(zio.LogLevel.Debug, LogFormat.line |-| LogFormat.cause)
 
   import api.auth.Auth.*
-
-  given Decoder[Locale] =
-    Decoder.decodeString.map(s =>
-      Locale.forLanguageTag(s) match {
-        case l: Locale => l
-        case null => throw DecodingFailure(s"invalid locale $s", List.empty)
-      }
-    )
-
-  given Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
+  import util.*
 
   type ChutiEnvironment = GameService & ChatService & Config & Repository & Postman & TokenHolder &
     SessionStorage[

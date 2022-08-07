@@ -23,25 +23,21 @@ import api.{ChutiSession, token}
 import cats.data.NonEmptyList
 import chuti.*
 import dao.{CRUDOperations, Repository, RepositoryError, RepositoryIO, SessionContext}
-import io.circe.parser.*
-import io.circe.syntax.*
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.auto.*
 import mail.Postman
 import util.*
 import zhttp.http.*
 import zio.{Clock, ZIO}
 import zio.logging.*
+import zio.json.*
 
 import java.time.Instant
 import java.util.Locale
 import scala.language.unsafeNulls
 import UserId.*
-import io.circe.parser.parse
 
 object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
-  given localeEncoder: Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
+  given localeEncoder: JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
 
   // TODO get from config
   lazy val availableLocales: NonEmptyList[Locale] = NonEmptyList.of("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
@@ -65,7 +61,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
             .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
-        Http.collect(_ => ResponseExt.json(req.session.get.locale.toLanguageTag.nn))
+        Http.collect(_ => Response.json(req.session.get.locale.toLanguageTag.nn))
       case req @ Method.PUT -> !! / "api" / "auth" / "locale" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           for {
@@ -112,7 +108,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
   def unauthRoute: Http[ChutiEnvironment & OpsService, Throwable, Request, Response] =
     Http.collectHttp[Request] {
       case Method.GET -> !! / "serverVersion" =>
-        Http.succeed(ResponseExt.json(chuti.BuildInfo.version))
+        Http.succeed(Response.json(chuti.BuildInfo.version))
       case Method.POST -> !! / "passwordReset" =>
         Http.collectZIO[Request] { req =>
           (for {
@@ -322,7 +318,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
             obj <- req.bodyAs[User]
             _   <- ZIO.logInfo(s"Upserting $url with $obj")
             ret <- upsertOperation(obj)
-          } yield Response.json(ret.asJson.noSpaces))
+          } yield Response.json(ret.toJson))
             .provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ (Method.POST) -> !! / "api" / `url` / "search" if req.session.nonEmpty =>
@@ -330,30 +326,30 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
           (for {
             search <- req.bodyAs[PagedStringSearch]
             res    <- searchOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.toJson)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.POST -> !! / s"api" / `url` / "count" if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
             search <- req.bodyAs[PagedStringSearch]
             res    <- countOperation(Some(search))
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.toJson)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.GET -> !! / "api" / `url` / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            pk  <- ZIO.fromEither(parse(pk).flatMap(_.as[UserId])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
+            pk  <- ZIO.fromEither(pk.fromJson[UserId]).mapError(e => HttpError.BadRequest(e))
             res <- getOperation(pk)
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.toJson)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
       case req @ Method.DELETE -> !! / "api" / `url` / pk if req.session.nonEmpty =>
         Http.collectZIO(_ =>
           (for {
-            pk     <- ZIO.fromEither(parse(pk).flatMap(_.as[UserId])).mapError(e => HttpError.BadRequest(e.getMessage.nn))
+            pk     <- ZIO.fromEither(pk.fromJson[UserId]).mapError(e => HttpError.BadRequest(e))
             getted <- getOperation(pk)
             res    <- deleteOperation(getted)
             _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
-          } yield Response.json(res.asJson.noSpaces)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
+          } yield Response.json(res.toJson)).provideSomeLayer[ChutiEnvironment & OpsService](SessionContext.live(req.session.get))
         )
     }
 

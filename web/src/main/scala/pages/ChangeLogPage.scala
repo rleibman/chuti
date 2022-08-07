@@ -75,7 +75,6 @@ object ChangeLogPage extends ChutiPage {
        |    <li>DONE mysql with json column</li>
        |    <li>DONE Server</li>
        |    <li>DONE decide server technology.</li>
-       |    <li>DONE Zio, akka-http, caliban, circe</li>
        |    <li>DONE Client</li>
        |    <li>DONE decide client technology</li>
        |    <li>DONE Scalajs, scalablytyped, websockets, caliban, circe</li>

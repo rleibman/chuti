@@ -15,13 +15,11 @@
  */
 
 import cats.data.NonEmptyList
-import io.circe.Decoder
-import io.circe.parser.parse
-import io.circe.syntax.*
 import io.netty.handler.codec.http.QueryStringDecoder
 import zhttp.http.*
 import zio.*
 import zio.logging.*
+import zio.json.*
 
 import java.util.Locale
 import scala.jdk.CollectionConverters.*
@@ -65,27 +63,35 @@ package object util {
       Locale.lookup(range, availableLocales.toList.asJava).nn
     }
 
-    def bodyAs[E: Decoder]: ZIO[Any, Throwable, E] =
+    def bodyAs[E: JsonDecoder]: ZIO[Any, Throwable, E] =
       for {
         body <- request.bodyAsString
         obj <- ZIO
-          .fromEither(parse(body).flatMap(_.as[E]))
+          .fromEither(body.fromJson[E])
+          .mapError(e => HttpError.BadRequest(e))
           .tapError { e =>
             ZIO.logErrorCause(s"Error parsing body.\n$body", Cause.die(e))
           }
-          .mapError(e => HttpError.BadRequest(e.getMessage.nn))
       } yield obj
 
   }
 
   object ResponseExt {
 
-    def json(value: io.circe.Json): Response = Response.json(value.noSpaces)
-
-    def json[A: io.circe.Encoder](value: A): Response = Response.json(value.asJson.noSpaces)
+    def json[A: JsonEncoder](value: A): Response = Response.json(value.toJson)
 
     def seeOther(location: String): Response = Response(Status.SeeOther, Headers.location(location))
 
   }
+
+  given JsonDecoder[Locale] =
+    JsonDecoder.string.mapOrFail(s =>
+      Locale.forLanguageTag(s) match {
+        case l: Locale => Right(l)
+        case null => Left(s"invalid locale $s")
+      }
+    )
+
+  given JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
 
 }

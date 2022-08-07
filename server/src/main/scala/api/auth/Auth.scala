@@ -16,9 +16,6 @@
 
 package api.auth
 
-import io.circe.parser.*
-import io.circe.syntax.*
-import io.circe.{Decoder, Encoder}
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.{DefaultFullHttpRequest, HttpRequest}
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
@@ -33,6 +30,7 @@ import zio.*
 import java.io.IOException
 import java.net.InetAddress
 import java.time.Instant
+import zio.json.*
 
 /** This is a collection of utilities for authenticating users. Authentication is parametrized on a given Session Type, and we assume you're using
   * circe to convert it to/from JSON. We divide the authentication into SessionTransport and SessionStorage, currently I've written these:
@@ -95,8 +93,8 @@ object Auth {
   // scala3 extension
   implicit class JwtClaimExt(claim: JwtClaim) {
 
-    def session[SessionType: Decoder]: ZIO[Any, SessionError, SessionType] =
-      ZIO.fromEither(decode[SessionType](claim.content)).mapError(e => SessionError(e.getMessage.nn, Some(e)))
+    def session[SessionType: JsonDecoder]: ZIO[Any, SessionError, SessionType] =
+      ZIO.fromEither(claim.content.fromJson[SessionType]).mapError(e => SessionError(e, None))
 
   }
 
@@ -146,14 +144,14 @@ object Auth {
 
   }
 
-  private def jwtEncode[SessionType: Encoder](
+  private def jwtEncode[SessionType: JsonEncoder](
     session: SessionType
   ): ZIO[Any, SessionError, String] =
     for {
       config <- sessionConfig.orElseFail(SessionError("failed to encode jwtClaim"))
       now    <- Clock.instant
     } yield {
-      val json = session.asJson.noSpaces
+      val json = EncoderOps(session).toJson
       val claim = JwtClaim(json)
         .issuedAt(now.getEpochSecond)
         .expiresAt(now.getEpochSecond + 300)
@@ -166,14 +164,14 @@ object Auth {
       tok    <- ZIO.fromTry(Jwt.decode(token, config.secretKey.key, Seq(JwtAlgorithm.HS512))).mapError(e => SessionError("", Option(e)))
     } yield tok
 
-  protected def jwtExpire[SessionType: Encoder](
+  protected def jwtExpire[SessionType: JsonEncoder](
     mySession: SessionType
   ): ZIO[Any, SessionError, String] =
     for {
       config <- sessionConfig.orElseFail(SessionError("failed to expire jwtClaim"))
       now    <- Clock.instant
     } yield {
-      val json = mySession.asJson.noSpaces
+      val json = EncoderOps(mySession).toJson
       val claim = JwtClaim(json)
         .issuedAt(now.getEpochSecond)
         .expiresAt(now.getEpochSecond)
@@ -183,7 +181,7 @@ object Auth {
   object SessionTransport {
 
     def cookieSessionTransport[
-      SessionType: Encoder: Decoder: Tag
+      SessionType: JsonEncoder: JsonDecoder: Tag
     ]: ZLayer[SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
       ZLayer.fromZIO(
         for {
@@ -230,7 +228,7 @@ object Auth {
 
   object SessionStorage {
 
-    def tokenEncripted[SessionType: Encoder: Decoder: Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
+    def tokenEncripted[SessionType: JsonEncoder: JsonDecoder: Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
       ZLayer.succeed {
         new SessionStorage[SessionType, String] {
 
@@ -249,7 +247,7 @@ object Auth {
 
   }
 
-  private case class CookieSessionTransport[SessionType: Encoder: Decoder: Tag](
+  private case class CookieSessionTransport[SessionType: JsonEncoder: JsonDecoder: Tag](
     sessionStorage:  SessionStorage[SessionType, String],
     invalidSessions: Ref[Map[SessionType, Instant]]
   ) extends SessionTransport[SessionType] {

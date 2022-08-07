@@ -22,7 +22,6 @@ import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.ChatClient.{ChatMessage as CalibanChatMessage, Instant as CalibanInstant, Mutations, Queries, Subscriptions, User as CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
-import io.circe.generic.auto.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Ref as ReactRef, *}
@@ -39,8 +38,11 @@ import scala.util.{Failure, Success}
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
+import zio.json.*
 
 object ChatComponent extends ScalaJSClientAdapter {
+
+  given JsonCodec[ChatMessage] = DeriveJsonCodec.gen[ChatMessage]
 
   private val connectionId = UUID.randomUUID().toString
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"

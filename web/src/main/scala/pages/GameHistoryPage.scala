@@ -20,13 +20,12 @@ import java.time.format.DateTimeFormatter
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
-import game.GameClient.Queries
-import io.circe.generic.auto.*
-import io.circe.{Decoder, Json}
+import game.GameClient.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow}
+import zio.json.*
 
 import java.time.ZoneId
 import java.util.Locale
@@ -38,22 +37,15 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
 
   class Backend($ : BackendScope[Unit, State]) {
 
-    import scala.language.unsafeNulls
-    private val gameDecoder = summon[Decoder[Game]]
-
     def init: Callback = {
-      calibanCall[Queries, Option[List[Json]]](
+      calibanCall[Queries, Option[List[GameAsJson]]](
         Queries.getHistoricalUserGames,
         jsonGames => {
           $.modState(
-            _.copy(games =
-              jsonGames.toList.flatten.map(json =>
-                gameDecoder.decodeJson(json) match {
-                  case Right(game) => game
-                  case Left(error) => throw error
-                }
-              )
-            )
+            _.copy(games = jsonGames.toList.flatten.map(_.fromJson[Game] match {
+              case Right(game) => game
+              case Left(error) => throw RuntimeException(error)
+            }))
           )
         }
       )

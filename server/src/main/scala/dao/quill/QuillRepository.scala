@@ -22,7 +22,6 @@ import api.token.*
 import chuti.*
 import dao.*
 import game.GameService.godLayer
-import io.circe.parser.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
 import io.getquill.*
 import io.getquill.extras.*
@@ -67,13 +66,6 @@ case class QuillRepository(config: Config.Service) extends Repository {
   private given TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder((index: Index, row: ResultRow, _: Session) => row.getTimestamp(index).nn)
 
   private given TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
-
-  private given JsonEncoder: ctx.Encoder[io.circe.Json] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.noSpaces))
-
-  private given JsonDecoder: ctx.Decoder[io.circe.Json] =
-    JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
-      parse(row.getString(index).nn).fold(e => throw RepositoryError(e), json => json)
-    }
 
   private val godSession: ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
 
@@ -386,7 +378,7 @@ case class QuillRepository(config: Config.Service) extends Repository {
   def unCachedGet(pk: GameId): RepositoryIO[Option[Game]] =
     ctx
       .run(games.filter(g => g.id == lift(pk.gameId) && !g.deleted))
-      .map(_.headOption.map(_.toGame))
+      .flatMap(r => ZIO.foreach(r.headOption)(_.toGame))
       .provideLayer(dataSourceLayer)
       .mapError(RepositoryError.apply)
 
@@ -395,7 +387,7 @@ case class QuillRepository(config: Config.Service) extends Repository {
     override def getHistoricalUserGames: RepositoryIO[Seq[Game]] =
       (for {
         session <- ZIO.service[SessionContext].map(_.session)
-        players <- ctx
+        playerRows <- ctx
           .run(
             gamePlayers
               .filter(p => p.userId == lift(session.user.id.fold(-1)(_.userId)) && !p.invited)
@@ -403,8 +395,9 @@ case class QuillRepository(config: Config.Service) extends Repository {
                 players.gameId == game.id
               )
               .sortBy(_._2.lastUpdated)(Ord.descNullsLast)
-          ).map(_.map(_._2.toGame))
-      } yield players).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+          )
+        historicalGames <- ZIO.foreach(playerRows)(_._2.toGame)
+      } yield historicalGames).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] =
       (for {
@@ -450,22 +443,25 @@ case class QuillRepository(config: Config.Service) extends Repository {
     override def gameInvites: RepositoryIO[Seq[Game]] =
       (for {
         session <- ZIO.service[SessionContext].map(_.session)
-        ret <- ctx
+        retRows <- ctx
           .run(
             gamePlayers
               .filter(player => player.userId == lift(session.user.id.fold(-1)(_.userId)) && player.invited)
               .join(games).on((player, game) => player.gameId == game.id).map(_._2)
-          ).map(_.map(_.toGame))
+          )
+        ret <- ZIO.foreach(retRows)(_.toGame)
       } yield ret).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
-      ctx
-        .run(
-          games
-            .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
-        )
-        .map(_.map(_.toGame))
-        .provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = {
+      for {
+        retRows <- ctx
+          .run(
+            games
+              .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
+          )
+        ret <- ZIO.foreach(retRows)(_.toGame)
+      } yield ret
+    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
     private val runningGames: Set[GameStatus] = Set(
       GameStatus.comienzo,
@@ -480,7 +476,7 @@ case class QuillRepository(config: Config.Service) extends Repository {
     override def getGameForUser: RepositoryIO[Option[Game]] =
       (for {
         session <- ZIO.service[SessionContext].map(_.session)
-        ret <-
+        retRows <-
           ctx
             .run(
               gamePlayers
@@ -488,7 +484,8 @@ case class QuillRepository(config: Config.Service) extends Repository {
                 .join(games.filter(g => liftQuery(runningGames).contains(g.status)))
                 .on(_.gameId == _.id)
                 .map(_._2)
-            ).map(_.headOption.map(_.toGame))
+            )
+        ret <- ZIO.foreach(retRows.headOption)(_.toGame)
       } yield ret).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def upsert(game: Game): RepositoryIO[Game] =
@@ -522,15 +519,16 @@ case class QuillRepository(config: Config.Service) extends Repository {
             _ <- ZIO.fail(RepositoryError("Game not found")).when(updateCount == 0)
           } yield upsertMe
         }
-        res = upserted.toGame
+        res <- upserted.toGame
       } yield res).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] =
-      ctx
-        .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted))
-        .map(_.headOption.map(_.toGame))
-        .provideLayer(dataSourceLayer)
-        .mapError(RepositoryError.apply)
+      (for {
+        retRows <- ctx
+          .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted))
+          .provideLayer(dataSourceLayer)
+        ret <- ZIO.foreach(retRows.headOption)(_.toGame)
+      } yield ret).mapError(RepositoryError.apply)
 
     override def delete(
       pk:         GameId,
@@ -553,12 +551,14 @@ case class QuillRepository(config: Config.Service) extends Repository {
       } yield result
     }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-      ctx
-        .run(games.filter(!_.deleted))
-        .map(_.map(_.toGame))
-        .provideSomeLayer[SessionContext](dataSourceLayer)
-        .mapError(RepositoryError.apply)
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = {
+      for {
+        retRows <- ctx
+          .run(games.filter(!_.deleted))
+          .provideSomeLayer[SessionContext](dataSourceLayer)
+        ret <- ZIO.foreach(retRows)(_.toGame)
+      } yield ret
+    }.mapError(RepositoryError.apply)
 
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
       ctx

@@ -19,10 +19,23 @@ package api
 import chuti.User
 
 import java.util.Locale
+import zio.json.*
 
 object ChutiSession {
 
   val adminSession: ChutiSession = ChutiSession(chuti.god)
+
+  private given JsonDecoder[Locale] =
+    JsonDecoder.string.mapOrFail(s =>
+      Locale.forLanguageTag(s) match {
+        case l: Locale => Right(l)
+        case null => Left(s"invalid locale $s")
+      }
+    )
+
+  private given JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
+
+  given JsonCodec[ChutiSession] = DeriveJsonCodec.gen[ChutiSession]
 
 }
 

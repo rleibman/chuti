@@ -18,13 +18,11 @@ package pages
 
 import _root_.util.LocalizedMessages
 import app.{ChutiState, GameViewMode}
-import chuti.CuantasCantas.{Canto5, CuantasCantas}
+import chuti.CuantasCantas.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.*
 import components.{Confirm, Toast}
 import game.GameClient.Mutations
-import io.circe.generic.auto.*
-import io.circe.syntax.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
@@ -34,6 +32,7 @@ import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
 import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
 import net.leibman.chuti.semanticUiReact.imageImageMod.ImageProps
 import pages.LobbyComponent.calibanCall
+import zio.json.*
 
 import scala.scalajs.js.JSConverters.*
 
@@ -78,7 +77,7 @@ object GameComponent {
       event:  PlayEvent
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.gameId, event.asJson),
+        Mutations.play(gameId.gameId, event.toJson),
         _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
       )
     }

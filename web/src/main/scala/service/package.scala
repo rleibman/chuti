@@ -15,8 +15,8 @@
  */
 
 import chuti.{PagedStringSearch, User, UserId, UserWallet}
-import io.circe.generic.auto.*
 import japgolly.scalajs.react.AsyncCallback
+import zio.json.*
 
 package object service {
 

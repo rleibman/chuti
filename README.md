@@ -122,9 +122,7 @@ Repeat Password
 
 #Technology
 - ZIO
-- akka-http
 - Caliban GraphQL library
-- Circe
 - Scala.js
 - Semantic UI
 

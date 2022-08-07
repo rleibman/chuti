@@ -16,9 +16,10 @@
 
 package chuti
 
+import chuti.CuantasCantas.*
 import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import io.circe.{Decoder, Encoder}
+import zio.json.*
 
 import java.time.Instant
 import scala.annotation.tailrec
@@ -61,16 +62,31 @@ object Numero {
 
   def apply(num: Int): Numero = values(num)
 
-  given Decoder[Numero] = Decoder.forProduct1("value")(apply)
+  given JsonDecoder[Numero] = JsonDecoder.int.map(apply)
+  given JsonEncoder[Numero] = JsonEncoder.int.contramap(_.value)
 
-  given Encoder[Numero] = Encoder.forProduct1("value")(_.value)
+}
+
+enum CuantasCantas(
+  val numFilas:          Int,
+  val score:             Int,
+  val prioridad:         Int,
+  override val toString: String
+) {
+
+  case Casa extends CuantasCantas(4, 4, 4, "Casa")
+  case Canto5 extends CuantasCantas(5, 5, 5, "Cinco")
+  case Canto6 extends CuantasCantas(6, 6, 6, "Seis")
+  case Canto7 extends CuantasCantas(7, 7, 7, "Siete (?!?)")
+  case CantoTodas extends CuantasCantas(7, 21, 8, "Chuti!")
+  case Buenas extends CuantasCantas(-1, 0, -1, "Buenas")
 
 }
 
 object CuantasCantas {
 
   def posibilidades(min: CuantasCantas): Seq[CuantasCantas] = {
-    values.filter(_.prioridad >= min.prioridad)
+    values.toIndexedSeq.filter(_.prioridad >= min.prioridad)
   }
 
   def byNum(cuantas: Int): CuantasCantas =
@@ -83,44 +99,11 @@ object CuantasCantas {
 
   def byPriority(prioridad: Int): CuantasCantas = (Buenas +: values).find(_.prioridad == prioridad).get
 
-  sealed abstract class CuantasCantas protected (
-    val numFilas:  Int,
-    val score:     Int,
-    val prioridad: Int
-  ) {}
-
-  case object Casa extends CuantasCantas(4, 4, 4) {
-
-    override def toString: String = "Casa"
-
-  }
-  case object Canto5 extends CuantasCantas(5, 5, 5) {
-
-    override def toString: String = "Cinco"
-
-  }
-  case object Canto6 extends CuantasCantas(6, 6, 6) {
-
-    override def toString: String = "Seis"
-
-  }
-  case object Canto7 extends CuantasCantas(7, 7, 7) {
-
-    override def toString: String = "Siete (?!?)"
-
-  }
-  case object CantoTodas extends CuantasCantas(7, 21, 8) {
-
-    override def toString: String = "Chuti!"
-
-  }
-  case object Buenas extends CuantasCantas(-1, 0, -1) {
-
-    override def toString: String = "Buenas"
-
-  }
-
-  val values: Seq[CuantasCantas] = Seq(Casa, Canto5, Canto6, Canto7, CantoTodas)
+  given JsonDecoder[CuantasCantas] =
+    JsonDecoder.string.mapOrFail(s =>
+      values.find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, CuantasCantas]
+    )
+  given JsonEncoder[CuantasCantas] = JsonEncoder.string.contramap(_.toString)
 
 }
 
@@ -135,7 +118,7 @@ object Ficha {
     FichaConocida(max, min)
   }
 
-  def fromString(str: String): Ficha = {
+  def apply(str: String): Ficha = {
     val splitted = str.split(":").nn.map {
       case s: String => Numero(s.toInt)
       case null => throw GameError(s"Invalid ficha string: $str")
@@ -143,16 +126,24 @@ object Ficha {
     Ficha(splitted(0), splitted(1))
   }
 
-  given Decoder[Ficha] =
-    Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
-      case ("tapada", _, _)                   => FichaTapada
-      case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
+  private case class TempFicha(
+    `type`: String,
+    arriba: Numero,
+    abajo:  Numero
+  )
+  private given JsonDecoder[TempFicha] = DeriveJsonDecoder.gen[TempFicha]
+  private given JsonEncoder[TempFicha] = DeriveJsonEncoder.gen[TempFicha]
+
+  given JsonDecoder[Ficha] =
+    JsonDecoder[TempFicha].map {
+      case TempFicha("tapada", _, _)                   => FichaTapada
+      case TempFicha(_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
     }
 
-  given Encoder[Ficha] =
-    Encoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
-      case FichaTapada                  => ("tapada", Numero0, Numero0)
-      case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
+  given JsonEncoder[Ficha] =
+    JsonEncoder[TempFicha].contramap {
+      case FichaTapada                  => TempFicha("tapada", Numero0, Numero0)
+      case FichaConocida(arriba, abajo) => TempFicha("conocida", arriba, abajo)
     }
 
 }
@@ -200,6 +191,9 @@ object Fila {
     fichas: Ficha*
   ): Fila = new Fila(fichas.toSeq, index)
 
+  given JsonDecoder[Fila] = DeriveJsonDecoder.gen[Fila]
+  given JsonEncoder[Fila] = DeriveJsonEncoder.gen[Fila]
+
 }
 
 case class Fila(
@@ -234,6 +228,13 @@ object JugadorState {
 
 }
 import chuti.JugadorState.*
+
+object Jugador {
+
+  given JsonDecoder[Jugador] = DeriveJsonDecoder.gen[Jugador]
+  given JsonEncoder[Jugador] = DeriveJsonEncoder.gen[Jugador]
+
+}
 
 case class Jugador(
   user:             User,
@@ -281,6 +282,9 @@ sealed trait Triunfo extends Product with Serializable
 
 object Triunfo {
 
+  given JsonDecoder[Triunfo] = JsonDecoder.string.map(Triunfo.apply)
+  given JsonEncoder[Triunfo] = JsonEncoder.string.contramap(_.toString)
+
   case object SinTriunfos extends Triunfo {
 
     override def toString: String = "SinTriunfos"
@@ -299,6 +303,13 @@ object Triunfo {
       case "SinTriunfos" => SinTriunfos
       case str           => TriunfoNumero(Numero(str.toInt))
     }
+
+}
+
+object GameStatus {
+
+  given JsonDecoder[GameStatus] = JsonDecoder.string.map(GameStatus.valueOf)
+  given JsonEncoder[GameStatus] = JsonEncoder.string.contramap(_.toString)
 
 }
 
@@ -345,7 +356,18 @@ enum Borlote(override val toString: String) {
 
 }
 
+object Borlote {
+
+  given JsonDecoder[Borlote] =
+    JsonDecoder.string.mapOrFail(s => values.find(_.toString == s).toRight(s"No se pudo decodificar $s como Borlote"): Either[String, Borlote])
+  given JsonEncoder[Borlote] = JsonEncoder.string.contramap(_.toString)
+
+}
+
 object Game {
+
+  given JsonDecoder[Game] = DeriveJsonDecoder.gen[Game]
+  given JsonEncoder[Game] = DeriveJsonEncoder.gen[Game]
 
   val laMulota:  Ficha = Ficha(Numero6, Numero6)
   val campanita: Ficha = Ficha(Numero0, Numero1)
@@ -732,6 +754,13 @@ case class Game(
        |""".stripMargin
 
   }
+
+}
+
+object Cuenta {
+
+  given JsonDecoder[Cuenta] = DeriveJsonDecoder.gen[Cuenta]
+  given JsonEncoder[Cuenta] = DeriveJsonEncoder.gen[Cuenta]
 
 }
 

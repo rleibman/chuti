@@ -20,9 +20,6 @@ import java.time.Instant
 
 import app.{LoginControllerState, Mode}
 import chuti.{User, UserCreationRequest, UserCreationResponse}
-import io.circe.generic.auto.*
-import io.circe.parser.decode
-import io.circe.syntax.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -34,6 +31,8 @@ import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import zio.json.*
+import zio.json.EncoderOps.*
 
 object RegistrationPage {
 
@@ -76,14 +75,15 @@ object RegistrationPage {
           val async: AsyncCallback[Callback] = for {
             saved <-
               Ajax("PUT", "/userCreation").setRequestContentTypeJson
-                .send(UserCreationRequest(state.user, state.passwordPair._1).asJson.noSpaces)
+                .send(UserCreationRequest(state.user, state.passwordPair._1).toJson)
                 .asAsyncCallback
                 .map { xhr =>
                   if (xhr.status < 300) {
                     import scala.language.unsafeNulls
-                    decode[UserCreationResponse](xhr.responseText)
+                    xhr.responseText
+                      .fromJson[UserCreationResponse]
                       .fold(
-                        e => Toast.error(e.getLocalizedMessage),
+                        e => Toast.error(e),
                         response =>
                           response.error.fold(
                             context.onModeChanged(Mode.login, response.error) >> Toast.success(

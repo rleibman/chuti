@@ -41,7 +41,6 @@ enablePlugins(
   CalibanPlugin
 )
 
-val circeVersion = "0.14.2"
 val calibanVersion = "2.0.0+4-e2c13143-SNAPSHOT"
 val zioVersion = "2.0.0"
 val quillVersion = "4.0.0"
@@ -57,17 +56,12 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/",
-  libraryDependencies += "dev.zio" %% "zio" % zioVersion withSources(),
   libraryDependencies ++= Seq(
-    "io.circe" %% "circe-core",
-    "io.circe" %% "circe-generic",
-    "io.circe" %% "circe-parser",
-    "io.circe" %% "circe-literal"
-  ).map(_ % circeVersion),
+    "dev.zio" %% "zio" % zioVersion withSources(),
+    "dev.zio" %% "zio-json" % "0.3.0-RC10" withSources(),
+  ),
   scalacOptions ++= scala3Opts
 )
-
-lazy val commonVmSettings = commonSettings
 
 ////////////////////////////////////////////////////////////////////////////////////
 // common (i.e. model)
@@ -85,10 +79,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     name := "chuti-common",
     buildInfoPackage := "chuti"
   )
-  .jvmSettings(
-    commonVmSettings
-  )
-  .jsSettings(
+  .settings(
     commonSettings
   )
 
@@ -103,10 +94,11 @@ lazy val server = project
     DebianDeployPlugin,
     JavaServerAppPackaging,
     SystemloaderPlugin,
-    SystemdPlugin
+    SystemdPlugin,
+    CalibanPlugin
   )
   .settings(Defaults.itSettings, debianSettings)
-  .settings(commonVmSettings)
+  .settings(commonSettings)
   .configs(IntegrationTest)
   .dependsOn(commonJVM)
   .settings(
@@ -125,7 +117,6 @@ lazy val server = project
       "dev.zio" %% "zio-config-typesafe" % "3.0.1" withSources(),
       "dev.zio" %% "zio-logging-slf4j" % "2.0.1" withSources(),
       "dev.zio" %% "izumi-reflect" % "2.1.3" withSources(),
-      "dev.zio" %% "zio-json" % "0.3.0-RC10" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
@@ -348,20 +339,10 @@ lazy val web: Project = project
 lazy val commonWeb: Project => Project =
   _.settings(
     libraryDependencies ++= Seq(
-      "io.circe" %%% "circe-core",
-      "io.circe" %%% "circe-generic",
-      "io.circe" %%% "circe-parser",
-      "io.circe" %%% "circe-literal"
-    ).map(_ % circeVersion),
-    libraryDependencies ++= Seq(
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
       "com.softwaremill.sttp.client3" %%% "core" % "3.7.1" withSources(),
-      //      ("com.softwaremill.sttp.model" %%% "core" % "1.4.27" withSources()).cross(CrossVersion.for3Use2_13),
-      //      ("com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources()).cross(CrossVersion.for3Use2_13),
-      //      ("com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0").cross(CrossVersion.for3Use2_13),
-      //      ("ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources()).cross(CrossVersion.for3Use2_13),
       "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),

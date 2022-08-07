@@ -18,7 +18,7 @@ package chuti
 
 import api.token.TokenHolder
 import chat.ChatService
-import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
+import chuti.CuantasCantas.*
 import chuti.Triunfo.TriunfoNumero
 import dao.InMemoryRepository.{user1, user2, user3, user4}
 import dao.Repository
@@ -53,7 +53,7 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
       cuantasCantas: CuantasCantas,
       testEndState:  Game => TestResult
     ): GameTester = {
-      val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
+      val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha(s.nn))).toList
       assertTrue(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
       val allHands = parsedHands ++ otherHands

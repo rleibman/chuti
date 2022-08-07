@@ -18,9 +18,6 @@ package pages
 
 import app.{LoginControllerState, Mode}
 import chuti.{UpdateInvitedUserRequest, UpdateInvitedUserResponse, User}
-import io.circe.generic.auto.*
-import io.circe.parser.decode
-import io.circe.syntax.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -32,6 +29,7 @@ import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
 import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import zio.json.*
 
 object NewUserAcceptFriendPage {
 
@@ -68,9 +66,10 @@ object NewUserAcceptFriendPage {
       Ajax("GET", s"/getInvitedUserByToken?token=${props.token.get}").send.asAsyncCallback
         .map { xhr =>
           if (xhr.status < 300) {
-            decode[Option[User]](xhr.responseText)
+            xhr.responseText
+              .fromJson[Option[User]]
               .fold(
-                e => Toast.error(e.getLocalizedMessage.nn),
+                e => Toast.error(e),
                 response => $.modState(_.copy(user = response))
               )
           } else
@@ -97,15 +96,16 @@ object NewUserAcceptFriendPage {
                     state.user.get,
                     state.passwordPair._1,
                     token = props.token.get
-                  ).asJson.noSpaces
+                  ).toJson
                 )
                 .asAsyncCallback
                 .map { xhr =>
                   if (xhr.status < 300) {
                     import scala.language.unsafeNulls
-                    decode[UpdateInvitedUserResponse](xhr.responseText)
+                    xhr.responseText
+                      .fromJson[UpdateInvitedUserResponse]
                       .fold(
-                        e => Toast.error(e.getLocalizedMessage),
+                        e => Toast.error(e),
                         response =>
                           response.error.fold(
                             context.onModeChanged(Mode.login, response.error) >> Toast.success(

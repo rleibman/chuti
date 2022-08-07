@@ -15,11 +15,9 @@
  */
 
 import chuti.*
-import io.circe.*
-import io.circe.generic.auto.*
-import io.circe.syntax.*
 import zio.{Clock, ZIO}
 import zio.logging.*
+import zio.json.*
 
 import java.sql.Timestamp
 
@@ -77,7 +75,7 @@ package object dao {
       val ret = GameRow(
         id = value.id.fold(0)(_.gameId),
         current_index = value.currentEventIndex,
-        lastSnapshot = value.asJson,
+        lastSnapshot = value.toJson,
         status = value.gameStatus,
         created = Timestamp.from(value.created).nn,
         lastUpdated = new Timestamp(System.currentTimeMillis())
@@ -89,7 +87,7 @@ package object dao {
 
   case class GameRow(
     id:            Int,
-    lastSnapshot:  Json,
+    lastSnapshot:  String,
     status:        GameStatus,
     created:       Timestamp,
     lastUpdated:   Timestamp,
@@ -97,19 +95,15 @@ package object dao {
     deleted:       Boolean = false
   ) {
 
-    def toGame: Game = {
-      import scala.language.unsafeNulls
-      val decoder = summon[Decoder[Game]]
-      decoder.decodeJson(lastSnapshot).map {
-        _.copy(
-          id = Option(GameId(id)),
-          currentEventIndex = current_index,
-          gameStatus = status
-        )
-      } match {
-        case Right(state) => state
-        case Left(error)  => throw GameError(error)
-      }
+    def toGame: ZIO[Any, RepositoryError, Game] = {
+      ZIO
+        .fromEither(lastSnapshot.fromJson[Game].map {
+          _.copy(
+            id = Option(GameId(id)),
+            currentEventIndex = current_index,
+            gameStatus = status
+          )
+        }).mapError(s => RepositoryError(s))
     }
 
   }

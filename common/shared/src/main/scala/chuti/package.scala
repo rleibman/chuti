@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-import io.circe.{Decoder, Encoder}
+import chuti.Numero
 
 import java.time.{Instant, ZoneOffset}
 import scala.util.Random
+import zio.json.*
 
 package object chuti {
 
@@ -26,8 +27,9 @@ package object chuti {
   object UserId {
 
     def apply(userId: Int): UserId = userId
-    given Decoder[UserId] = Decoder.decodeInt
-    given Encoder[UserId] = Encoder.encodeInt
+    given JsonDecoder[UserId] = JsonDecoder.int
+
+    given JsonEncoder[UserId] = JsonEncoder.int
     given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
 
   }
@@ -54,9 +56,8 @@ package object chuti {
 
     def apply(connectionId: Int): ConnectionId = connectionId
 
-    given Decoder[ConnectionId] = Decoder.decodeInt
-
-    given Encoder[ConnectionId] = Encoder.encodeInt
+    given JsonDecoder[ConnectionId] = JsonDecoder.int
+    given JsonEncoder[ConnectionId] = JsonEncoder.int
 
   }
 
@@ -72,9 +73,9 @@ package object chuti {
 
     def apply(gameId: Int): GameId = gameId
 
-    given Decoder[GameId] = Decoder.decodeInt
+    given JsonDecoder[GameId] = JsonDecoder.int
 
-    given Encoder[GameId] = Encoder.encodeInt
+    given JsonEncoder[GameId] = JsonEncoder.int
 
   }
 
@@ -90,9 +91,9 @@ package object chuti {
 
     def apply(channelId: Int): ChannelId = channelId
 
-    given Decoder[ChannelId] = Decoder.decodeInt
+    given JsonDecoder[ChannelId] = JsonDecoder.int
 
-    given Encoder[ChannelId] = Encoder.encodeInt
+    given JsonEncoder[ChannelId] = JsonEncoder.int
 
     // some special channels
     val lobbyChannel:  ChannelId = -1
