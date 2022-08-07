@@ -18,6 +18,9 @@ target
 # IntelliJ
 .idea
 
+#vscode
+.vscode
+
 # ENSIME
 .ensime
 .ensime_lucene
@@ -50,6 +53,7 @@ dist
 /.bloop/
 /.metals/
 /project/metals.sbt
+/project/.bloop/
 
 .bsp
 /tree.txt
