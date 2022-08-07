@@ -342,7 +342,7 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client3" %%% "core" % "3.7.1" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.7.2" withSources(),
       "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),
