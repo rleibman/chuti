@@ -94,7 +94,9 @@ sealed trait PlayEvent extends GameEvent {
   ): Game = {
     userOpt.fold(throw GameError("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameError(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
+        throw GameError(
+          s"redoEvent: No es el momento de ${game.gameStatus}, que onda? expectedStatus = $expectedStatus, gameStatus = $game.gameStatus, Event = $this"
+        )
 
       processStatusMessages(redoEvent(game.jugador(user.id), game))
     }
@@ -106,7 +108,7 @@ sealed trait PlayEvent extends GameEvent {
   ): (Game, GameEvent) = {
     userOpt.fold(throw GameError("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameError(s"No es el momento de ${game.gameStatus}, que onda? Event = $this")
+        throw GameError(s"doEvent: No es el momento de ${game.gameStatus}, que onda? expectedStatus = $expectedStatus, Event = $this")
 
       doEvent(game.jugador(user.id), game)
     }

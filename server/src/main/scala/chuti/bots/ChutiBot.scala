@@ -36,7 +36,11 @@ trait ChutiBot {
       user           <- ZIO.service[SessionContext].map(_.session.user)
       game           <- gameOperations.get(gameId).map(_.get)
       toPlay         <- decideTurn(user, game)
-      played         <- gameService.play(gameId, toPlay)
+      played <-
+        toPlay match {
+          case _: NoOpPlay => ZIO.succeed(game)
+          case _ => gameService.play(gameId, toPlay)
+        }
     } yield played
   }
 

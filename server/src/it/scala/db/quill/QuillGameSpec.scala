@@ -3,7 +3,7 @@ package db.quill
 import better.files.File
 import chuti.*
 import dao.*
-import db.quill.QuillUserSpec.fixedClock
+// import db.quill.QuillUserSpec.fixedClock
 import zio.*
 import zio.logging.*
 import zio.test.*
@@ -52,7 +52,8 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(updated.gameStatus == GameStatus.abandonado) &&
           assertTrue(updated == gottenUpdated.get) &&
           assertTrue(deleted) &&
-          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)).withClock(fixedClock)
+          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size))
+        // .withClock(fixedClock)
       }
     ).provideShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]

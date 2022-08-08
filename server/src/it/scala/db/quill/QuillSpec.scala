@@ -16,8 +16,8 @@ import java.time.{Instant, ZoneId, ZoneOffset}
 
 abstract class QuillSpec extends ZIOSpecDefault {
 
-  protected val now:        Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z").nn
-  protected val fixedClock: Clock = Clock.ClockJava(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC).nn).nn)
+  protected val now: Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z").nn
+  // protected val fixedClock: Clock = Clock.ClockJava(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC).nn).nn)
 
   protected val password: String = "testPassword123"
   protected val satan: User = // A user with no permissions

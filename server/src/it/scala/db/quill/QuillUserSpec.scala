@@ -3,7 +3,7 @@ package db.quill
 import api.config.Config
 import chuti.*
 import dao.{Repository, RepositoryError, RepositoryPermissionError, SessionContext}
-import db.quill.QuillGameSpec.fixedClock
+// import db.quill.QuillGameSpec.fixedClock
 import zio.*
 import zio.logging.*
 import zio.test.*
@@ -41,7 +41,8 @@ object QuillUserSpec extends QuillSpec {
           assertTrue(allUsersAfterInsert.exists(_.email == inserted.email)) &&
           assertTrue(deleted) &&
           assertTrue(!allUsersAfterDelete.exists(_.id == inserted.id)) &&
-          assertTrue(!allUsersAfterDelete.exists(_.email == inserted.email))).withClock(fixedClock)
+          assertTrue(!allUsersAfterDelete.exists(_.email == inserted.email)))
+        // .withClock(fixedClock)
       },
       test("inserting the same user (by email should fail)") {
         (for {
@@ -50,7 +51,7 @@ object QuillUserSpec extends QuillSpec {
           _        <- repo.upsert(testUser)
           _        <- repo.upsert(testUser)
         } yield assertTrue(false))
-          .withClock(fixedClock)
+          // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
@@ -63,7 +64,7 @@ object QuillUserSpec extends QuillSpec {
           secondUser <- repo.upsert(testUser2)
           _          <- repo.upsert(firstUser.copy(email = secondUser.email))
         } yield assertTrue(false))
-          .withClock(fixedClock)
+          // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
@@ -72,7 +73,8 @@ object QuillUserSpec extends QuillSpec {
           repo     <- ZIO.service[Repository].map(_.userOperations)
           deleted  <- repo.delete(UserId(123), softDelete = false)
           deleted2 <- repo.delete(UserId(123), softDelete = true)
-        } yield assertTrue(!deleted) && assertTrue(!deleted2)).withClock(fixedClock)
+        } yield assertTrue(!deleted) && assertTrue(!deleted2))
+        // .withClock(fixedClock)
       },
       test("Updating a non-existent user") {
         (for {
@@ -80,7 +82,7 @@ object QuillUserSpec extends QuillSpec {
           testUser <- testUserZIO
           _        <- repo.upsert(testUser.copy(id = Some(UserId(123)), name = "ChangedName"))
         } yield assertTrue(false))
-          .withClock(fixedClock)
+          // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
           .catchSome { case _: RepositoryError => ZIO.succeed(assertTrue(true)) }
       },
@@ -89,7 +91,7 @@ object QuillUserSpec extends QuillSpec {
           repo <- ZIO.service[Repository].map(_.userOperations)
           _    <- repo.delete(UserId(123)).provideSomeLayer[Config & Repository](satanSession)
         } yield assertTrue(false))
-          .withClock(fixedClock)
+          // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
           .catchSome { case _: RepositoryPermissionError =>
             ZIO.succeed(assertTrue(true))
@@ -102,7 +104,7 @@ object QuillUserSpec extends QuillSpec {
           inserted <- repo.upsert(testUser)
           _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[Config & Repository](satanSession)
         } yield assertTrue(false))
-          .withClock(fixedClock)
+          // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
           .catchSome { case _: RepositoryPermissionError =>
             ZIO.succeed(assertTrue(true))
@@ -120,7 +122,8 @@ object QuillUserSpec extends QuillSpec {
           firstLogin      <- repo.firstLogin.provideSomeLayer[Config & Repository](userSession(active))
         } yield assertTrue(passwordChanged) &&
           assertTrue(loggedIn.contains(active)) &&
-          assertTrue(firstLogin.contains(now))).withClock(fixedClock)
+          assertTrue(firstLogin.contains(now)))
+        // .withClock(fixedClock)
       },
       test("user by email") {
         (for {
@@ -129,7 +132,8 @@ object QuillUserSpec extends QuillSpec {
           inserted    <- repo.upsert(testUser)
           active      <- repo.upsert(inserted.copy(active = true))
           userByEmail <- repo.userByEmail(testUser.email)
-        } yield assertTrue(userByEmail.contains(active))).withClock(fixedClock)
+        } yield assertTrue(userByEmail.contains(active)))
+        // .withClock(fixedClock)
 
       },
       test("friend stuff") {
@@ -156,7 +160,8 @@ object QuillUserSpec extends QuillSpec {
           assertTrue(unfriended) &&
           assert(noFriends3)(isEmpty) &&
           assert(noFriends4)(isEmpty)
-        }).withClock(fixedClock)
+        })
+        // .withClock(fixedClock)
       },
       test("wallet") {
         (for {
@@ -169,7 +174,8 @@ object QuillUserSpec extends QuillSpec {
         } yield assertTrue(wallet.nonEmpty) &&
           assert(wallet.get.amount)(equalTo(BigDecimal(10000))) &&
           assertTrue(updated == walletUpdated.get) &&
-          assert(walletUpdated.get.amount)(equalTo(BigDecimal(12345)))).withClock(fixedClock)
+          assert(walletUpdated.get.amount)(equalTo(BigDecimal(12345))))
+        // .withClock(fixedClock)
       }
 
       // Crud tests

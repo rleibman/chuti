@@ -27,7 +27,9 @@ object PreGameServiceSpec extends ZIOSpecDefault {
 
   import InMemoryRepository.*
 
-  def spec: zio.test.Spec[chuti.PreGameServiceSpec.Environment & (zio.test.TestEnvironment & zio.Scope), Any] = ???
+  def spec =
+    suite("Pre game tests")(
+    )
   //  "Creating a new Game" should "create a game" in {
   //    val repo = new InMemoryRepository(Seq.empty)
   //    val gameOperations = repo.gameOperations

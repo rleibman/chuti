@@ -1,14 +1,8 @@
 {
-  "id" : {
-    "value" : 1
-  },
-  "gameStatus" : {
-    "esperandoJugadoresInvitados" : {
-      
-    }
-  },
+  "id" : 1,
+  "gameStatus" : "esperandoJugadoresInvitados",
   "currentEventIndex" : 3,
-  "created" : "2022-05-03T10:20:52.318405",
+  "created" : "2022-05-03T10:20:52.318405Z",
   "triunfo" : null,
   "enJuego" : [
   ],
@@ -16,13 +10,11 @@
   "jugadores" : [
     {
       "user" : {
-        "id" : {
-          "value" : 1
-        },
+        "id" : 1,
         "email" : "yoyo1@example.com",
         "name" : "yoyo1",
-        "created" : "2022-05-03T10:20:19.575143",
-        "lastUpdated" : "2022-05-03T10:20:19.575167",
+        "created" : "2022-05-03T10:20:19.575143Z",
+        "lastUpdated" : "2022-05-03T10:20:19.575167Z",
         "active" : false,
         "deleted" : false,
         "isAdmin" : false
@@ -43,13 +35,11 @@
     },
     {
       "user" : {
-        "id" : {
-          "value" : 2
-        },
+        "id" : 2,
         "email" : "yoyo2@example.com",
         "name" : "yoyo2",
-        "created" : "2022-05-03T10:20:19.575188",
-        "lastUpdated" : "2022-05-03T10:20:19.575193",
+        "created" : "2022-05-03T10:20:19.575188Z",
+        "lastUpdated" : "2022-05-03T10:20:19.575193Z",
         "active" : false,
         "deleted" : false,
         "isAdmin" : false

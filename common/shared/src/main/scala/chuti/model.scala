@@ -126,24 +126,18 @@ object Ficha {
     Ficha(splitted(0), splitted(1))
   }
 
-  private case class TempFicha(
-    `type`: String,
-    arriba: Numero,
-    abajo:  Numero
-  )
-  private given JsonDecoder[TempFicha] = DeriveJsonDecoder.gen[TempFicha]
-  private given JsonEncoder[TempFicha] = DeriveJsonEncoder.gen[TempFicha]
-
+  private val pattern = "([X,0-6]):([X,0-6])".r
   given JsonDecoder[Ficha] =
-    JsonDecoder[TempFicha].map {
-      case TempFicha("tapada", _, _)                   => FichaTapada
-      case TempFicha(_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
+    JsonDecoder.string.mapOrFail {
+      case pattern("X", _) | pattern(_, "X") => Right(FichaTapada)
+      case pattern(top, bottom)              => Right(FichaConocida(Numero(top.toInt), Numero(bottom.toInt)))
+      case other                             => Left(s"No se pudo decodificar $other como Ficha")
     }
 
   given JsonEncoder[Ficha] =
-    JsonEncoder[TempFicha].contramap {
-      case FichaTapada                  => TempFicha("tapada", Numero0, Numero0)
-      case FichaConocida(arriba, abajo) => TempFicha("conocida", arriba, abajo)
+    JsonEncoder.string.contramap {
+      case FichaTapada         => "X:X"
+      case FichaConocida(a, b) => s"${a.value}:${b.value}"
     }
 
 }

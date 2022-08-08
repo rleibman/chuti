@@ -35,7 +35,16 @@ import scala.util.Random
 
 object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
 
-  def spec: zio.test.Spec[chuti.FullGameSpec.Environment & (zio.test.TestEnvironment & zio.Scope), Any] = ???
+  def spec =
+    suite("fullGameSpec")(
+      test("Play a bunch of games")(
+        ZIO
+          .foreachPar(1 to 100) { _ =>
+            playFullGame
+          }.as(assertCompletes)
+      )
+    ) @@ TestAspect.withLiveClock
+
   //  "Playing a specific game" should "look all nice" in {
   //    val game =
   //      "/Volumes/Personal/projects/chuti/server/src/test/resources/weird_game1589819797.json"
@@ -149,12 +158,6 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
     )
   )
 
-  test("Play a bunch of games")(
-    ZIO
-      .foreachPar(1 to 100) { _ =>
-        playFullGame
-      }.as(assertCompletes)
-  )
 //    ++
 //    gamesToTest.foreach { tester =>
 //      test(tester.description)(

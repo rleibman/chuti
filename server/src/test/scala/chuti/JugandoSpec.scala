@@ -25,6 +25,7 @@ import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
 import zio.test.{ZIOSpecDefault, assertTrue}
+import zio.test.TestAspect
 
 object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
 
@@ -130,6 +131,6 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         assertTrue(gameEvents.nonEmpty)
       }).provideLayer(testLayer(GAME_CANTO4))
     }
-  )
+  ) @@ TestAspect.withLiveClock
 
 }

@@ -38,7 +38,6 @@ lazy val scala3Opts = Seq(
 
 enablePlugins(
   GitVersioning,
-  CalibanPlugin
 )
 
 val calibanVersion = "2.0.0+4-e2c13143-SNAPSHOT"
@@ -95,7 +94,6 @@ lazy val server = project
     JavaServerAppPackaging,
     SystemloaderPlugin,
     SystemdPlugin,
-    CalibanPlugin
   )
   .settings(Defaults.itSettings, debianSettings)
   .settings(commonSettings)
@@ -148,8 +146,7 @@ lazy val login: Project = project
   .enablePlugins(
     AutomateHeaderPlugin,
     GitVersioning,
-    ScalaJSPlugin,
-    CalibanPlugin
+    ScalaJSPlugin
   )
   .settings(
     name := "chuti-login",
@@ -287,7 +284,6 @@ lazy val web: Project = project
     AutomateHeaderPlugin,
     GitVersioning,
     ScalaJSPlugin,
-    CalibanPlugin
   )
   .settings(
     name := "chuti-web",

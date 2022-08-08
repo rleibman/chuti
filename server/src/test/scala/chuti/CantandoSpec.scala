@@ -40,7 +40,7 @@ object CantandoSpec extends ZIOSpecDefault with GameAbstractSpec {
       } yield assertCompletes
     ),
     test("Cantando casa sin salve should get it done")(
-      for {
+      (for {
         gameService <- ZIO.service[GameService].provideLayer(GameService.make())
         gameStream = gameService
           .gameStream(GameId(1), connectionId).provideSomeLayer[Repository & Postman & TokenHolder](SessionContext.live(ChutiSession(user1)))
@@ -88,11 +88,11 @@ object CantandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         assertSoloUnoCanta(game5) &&
         assertTrue(gameEvents.size === 4) &&
         assertTrue(userEvents.size === 0) // Though 2 happen (log in and log out, only log in should be registering)
-      }
+      })
     )
-  ).provideLayer(
-    ???
-  )
+  ).provideLayerShared(
+    testLayer(GAME_STARTED)
+  ) @@ TestAspect.withLiveClock
 
 }
 //

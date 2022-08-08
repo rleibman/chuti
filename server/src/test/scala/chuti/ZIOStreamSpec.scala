@@ -28,7 +28,7 @@ class ZIOStreamSpec extends AsyncFlatSpec {
 
     val result = for {
       queue <- zioQueue
-      consumeQueue = ZStream.fromQueue(queue).foreach(e => printLine(e.toString))
+      consumeQueue = ZStream.fromQueue(queue).foreach(_ => ZIO.unit)
       // Sleep without blocking threads thanks to ZIO fibers
       feedQueue = ZIO.foreach(Range(1, 1000)) { e =>
         if (e == 999)
