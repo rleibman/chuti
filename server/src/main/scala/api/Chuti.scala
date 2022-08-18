@@ -42,7 +42,7 @@ import zio.json.*
 
 object Chuti extends zio.ZIOAppDefault {
 
-  lazy private val slf4jLogger = SLF4J.slf4j(zio.LogLevel.Debug, LogFormat.line |-| LogFormat.cause)
+  lazy private val slf4jLogger = SLF4J.slf4j(LogFormat.line |-| LogFormat.cause)
 
   import api.auth.Auth.*
   import util.*

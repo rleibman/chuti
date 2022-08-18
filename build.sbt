@@ -40,10 +40,11 @@ enablePlugins(
   GitVersioning,
 )
 
-val calibanVersion = "2.0.0+4-e2c13143-SNAPSHOT"
-val zioVersion = "2.0.0"
-val quillVersion = "4.0.0"
+val calibanVersion = "2.0.1"
+val zioVersion = "2.0.1"
+val quillVersion = "4.3.0"
 val zioHttpVersion = "2.0.0-RC10"
+val zioConfigVersion = "3.0.2"
 
 lazy val commonSettings = Seq(
   organization := "net.leibman",
@@ -55,10 +56,6 @@ lazy val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("releases"),
   resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
   resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/",
-  libraryDependencies ++= Seq(
-    "dev.zio" %% "zio" % zioVersion withSources(),
-    "dev.zio" %% "zio-json" % "0.3.0-RC10" withSources(),
-  ),
   scalacOptions ++= scala3Opts
 )
 
@@ -79,7 +76,19 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     buildInfoPackage := "chuti"
   )
   .settings(
-    commonSettings
+    commonSettings,
+  )
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % zioVersion withSources(),
+      "dev.zio" %% "zio-json" % "0.3.0-RC11" withSources(),
+    ),
+  )
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio" % zioVersion withSources(),
+      "dev.zio" %%% "zio-json" % "0.3.0-RC11" withSources(),
+    ),
   )
 
 
@@ -104,17 +113,17 @@ lazy val server = project
     libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
     libraryDependencies ++= Seq(
       // DB
-      "mysql" % "mysql-connector-java" % "8.0.29" withSources(),
+      "mysql" % "mysql-connector-java" % "8.0.30" withSources(),
       "io.getquill" %% "quill-jdbc-zio" % quillVersion withSources(),
       // ZIO
       "dev.zio" %% "zio" % zioVersion withSources(),
       "dev.zio" %% "zio-cache" % "0.2.0" withSources(),
-      "dev.zio" %% "zio-config" % "3.0.1" withSources(),
-      "dev.zio" %% "zio-config-derivation" % "3.0.1" withSources(),
-      "dev.zio" %% "zio-config-magnolia" % "3.0.1" withSources(),
-      "dev.zio" %% "zio-config-typesafe" % "3.0.1" withSources(),
-      "dev.zio" %% "zio-logging-slf4j" % "2.0.1" withSources(),
-      "dev.zio" %% "izumi-reflect" % "2.1.3" withSources(),
+      "dev.zio" %% "zio-config" %zioConfigVersion withSources(),
+      "dev.zio" %% "zio-config-derivation" % zioConfigVersion withSources(),
+      "dev.zio" %% "zio-config-magnolia" % zioConfigVersion withSources(),
+      "dev.zio" %% "zio-config-typesafe" % zioConfigVersion withSources(),
+      "dev.zio" %% "zio-logging-slf4j" % "2.1.0" withSources(),
+      "dev.zio" %% "izumi-reflect" % "2.1.5" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
@@ -128,9 +137,9 @@ lazy val server = project
       // Testing
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
-      "org.scalatest" %% "scalatest" % "3.2.12" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.9" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.9" % "it, test" withSources(),
+      "org.scalatest" %% "scalatest" % "3.2.13" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.10" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.10" % "it, test" withSources(),
 //      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
@@ -150,6 +159,10 @@ lazy val login: Project = project
   )
   .settings(
     name := "chuti-login",
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio" % zioVersion withSources(),
+      "dev.zio" %%% "zio-json" % "0.3.0-RC11" withSources(),
+    ),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "login" / "src" / "main" / "web"
@@ -287,6 +300,10 @@ lazy val web: Project = project
   )
   .settings(
     name := "chuti-web",
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio" % zioVersion withSources(),
+      "dev.zio" %%% "zio-json" % "0.3.0-RC11" withSources(),
+    ),
     debugDist := {
 
       val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
@@ -338,7 +355,7 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client3" %%% "core" % "3.7.2" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.7.4" withSources(),
       "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),

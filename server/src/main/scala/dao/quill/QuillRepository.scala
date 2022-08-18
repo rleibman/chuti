@@ -39,6 +39,7 @@ import java.time.*
 import javax.sql.DataSource
 import scala.annotation.targetName
 import zio.Random
+import io.getquill.jdbczio.Quill
 
 object QuillRepository {
 
@@ -104,7 +105,7 @@ case class QuillRepository(config: Config.Service) extends Repository {
       querySchema[TokenRow]("token")
     }
 
-  private val dataSourceLayer = DataSourceLayer.fromConfig(config.config.getConfig("chuti.db").nn)
+  private val dataSourceLayer = Quill.DataSource.fromConfig(config.config.getConfig("chuti.db").nn)
 
   private given GameStatusDecoder: ctx.Decoder[GameStatus] =
     JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
