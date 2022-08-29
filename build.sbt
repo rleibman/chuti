@@ -41,9 +41,9 @@ enablePlugins(
 )
 
 val calibanVersion = "2.0.1"
-val zioVersion = "2.0.1"
+val zioVersion = "2.0.2"
 val quillVersion = "4.3.0"
-val zioHttpVersion = "2.0.0-RC10"
+val zioHttpVersion = "2.0.0-RC11"
 val zioConfigVersion = "3.0.2"
 
 lazy val commonSettings = Seq(
@@ -110,7 +110,7 @@ lazy val server = project
   .dependsOn(commonJVM)
   .settings(
     name                                                 := "chuti-server",
-    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
+    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
     libraryDependencies ++= Seq(
       // DB
       "mysql" % "mysql-connector-java" % "8.0.30" withSources(),
@@ -123,12 +123,12 @@ lazy val server = project
       "dev.zio" %% "zio-config-magnolia" % zioConfigVersion withSources(),
       "dev.zio" %% "zio-config-typesafe" % zioConfigVersion withSources(),
       "dev.zio" %% "zio-logging-slf4j" % "2.1.0" withSources(),
-      "dev.zio" %% "izumi-reflect" % "2.1.5" withSources(),
+      "dev.zio" %% "izumi-reflect" % "2.2.0" withSources(),
       "com.github.ghostdogpr" %% "caliban" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-tapir" % calibanVersion withSources(),
       "com.github.ghostdogpr" %% "caliban-zio-http" % calibanVersion withSources(),
       "io.d11" %% "zhttp" % zioHttpVersion withSources(),
-      "com.github.jwt-scala" %% "jwt-circe" % "9.0.6" withSources(),
+      "com.github.jwt-scala" %% "jwt-circe" % "9.1.0" withSources(),
       // Other random utilities
       ("com.github.pathikrit" %% "better-files" % "3.9.1" withSources()).cross(CrossVersion.for3Use2_13),
       "com.github.daddykotex" %% "courier" % "3.2.0" withSources(),
@@ -137,9 +137,9 @@ lazy val server = project
       // Testing
       "dev.zio" %% "zio-test" % zioVersion % "it, test" withSources(),
       "dev.zio" %% "zio-test-sbt" % zioVersion % "it, test" withSources(),
-      "org.scalatest" %% "scalatest" % "3.2.13" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-scalatest" % "0.40.10" % "it, test" withSources(),
-      "com.dimafeng" %% "testcontainers-scala-mysql" % "0.40.10" % "it, test" withSources(),
+      "org.scalatest" %% "scalatest" % "3.3.0-SNAP2" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-scalatest" % "1.0.0-alpha1" % "it, test" withSources(),
+      "com.dimafeng" %% "testcontainers-scala-mysql" % "1.0.0-alpha1" % "it, test" withSources(),
 //      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
@@ -355,7 +355,7 @@ lazy val commonWeb: Project => Project =
       "commons-io" % "commons-io" % "2.11.0" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources(),
       "dev.zio" %%% "zio" % zioVersion withSources(),
-      "com.softwaremill.sttp.client3" %%% "core" % "3.7.4" withSources(),
+      "com.softwaremill.sttp.client3" %%% "core" % "3.7.6" withSources(),
       "io.github.cquiroz" %%% "scala-java-time" % "2.4.0" withSources(),
       "io.github.cquiroz" %%% "scala-java-time-tzdb" % "2.4.0" withSources(),
       "org.scala-js" %%% "scalajs-dom" % "2.2.0" withSources(),
