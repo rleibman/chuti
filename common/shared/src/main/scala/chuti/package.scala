@@ -30,7 +30,7 @@ package object chuti {
     given JsonDecoder[UserId] = JsonDecoder.int
 
     given JsonEncoder[UserId] = JsonEncoder.int
-    given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
+//    given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
 
   }
 
