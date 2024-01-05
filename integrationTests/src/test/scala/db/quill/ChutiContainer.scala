@@ -1,6 +1,6 @@
 package db.quill
 
-import api.config.Config
+import api.config.ConfigurationService
 import com.dimafeng.testcontainers.MySQLContainer
 import com.typesafe.config
 import com.typesafe.config.ConfigFactory
@@ -109,12 +109,12 @@ object ChutiContainer {
       chuti.db.maximumPoolSize=10
     """).nn
 
-  val configLayer: URLayer[ChutiContainer & Config, Config] = ZLayer.fromZIO {
+  val configLayer: URLayer[ChutiContainer & ConfigurationService, ConfigurationService] = ZLayer.fromZIO {
     for {
       container  <- ZIO.service[ChutiContainer].map(_.container)
-      baseConfig <- ZIO.service[Config.Service].map(_.config)
+      baseConfig <- ZIO.service[ConfigurationService].map(_.config)
     } yield {
-      new api.config.Config.Service {
+      new api.config.ConfigurationService {
         lazy override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
       }
     }

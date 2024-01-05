@@ -43,14 +43,14 @@ import io.getquill.jdbczio.Quill
 
 object QuillRepository {
 
-  val uncached: URLayer[Config, Repository] =
+  val uncached: URLayer[ConfigurationService, Repository] =
     ZLayer.fromZIO(for {
-      config <- ZIO.service[Config.Service]
+      config <- ZIO.service[ConfigurationService]
     } yield QuillRepository(config))
 
 }
 
-case class QuillRepository(config: Config.Service) extends Repository {
+case class QuillRepository(config: ConfigurationService) extends Repository {
 
   private object ctx extends MysqlZioJdbcContext(MysqlEscape)
 

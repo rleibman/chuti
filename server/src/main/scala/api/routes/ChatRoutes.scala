@@ -19,45 +19,51 @@ package api.routes
 import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
-import api.config.Config
-import caliban.ZHttpAdapter
+import api.config.ConfigurationService
+import caliban.{CalibanError, ZHttpAdapter}
+import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
 import chat.{ChatApi, ChatService}
-import dao.SessionContext
-import zhttp.http.*
+import dao.{Repository, SessionContext}
+import zio.http.*
 import zio.*
 
 object ChatRoutes {
 
-  lazy val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
-    Http.collectHttp[RequestWithSession[ChutiSession]] {
-      case _ -> !! / "api" / "chat" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
-            for {
-              interpreter <- ChatService.interpreter
-            } yield ZHttpAdapter
-              .makeHttpService(interpreter)
-              .provideSomeLayer[ChutiEnvironment, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "chat" / "ws" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
-            for {
-              interpreter <- ChatService.interpreter
-            } yield ZHttpAdapter
-              .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-              .provideSomeLayer[ChutiEnvironment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "chat" / "schema" =>
-        Http.fromData(HttpData.fromString(ChatApi.api.render))
-      case _ -> !! / "api" / "chat" / "graphiql" =>
-        Http.fromFileZIO(
+  import sttp.tapir.CodecFormat.*
+  import sttp.tapir.json.circe.*
+
+  extension (req: Request) {
+
+    def session: Option[ChutiSession] = ???
+
+  }
+
+  lazy val route =
+    Routes(
+      Method.ANY / "api" / "chat" -> handler { (req: Request) =>
+        for {
+          interpreter <- ChatService.interpreter
+        } yield ZHttpAdapter
+          .makeHttpService(HttpInterpreter(interpreter))
+          .provideSomeLayer[ChatService & Repository, SessionContext, Throwable](SessionContext.live(req.session.get))
+      }.flatten,
+      Method.ANY / "api" / "chat" / "ws" -> handler { (req: Request) =>
+        for {
+          interpreter <- ChatService.interpreter
+        } yield ZHttpAdapter
+          .makeWebSocketService(WebSocketInterpreter(interpreter, keepAliveTime = Option(5.minutes)))
+          .provideSomeLayer[ChatService & Repository, SessionContext, Throwable](SessionContext.live(req.session.get))
+      }.flatten,
+      Method.ANY / "api" / "chat" / "schema" -> handler {
+        Response.text(ChatApi.api.render)
+      },
+      Method.ANY / "api" / "chat" / "graphiql" ->
+        Handler.fromFileZIO(
           for {
-            config <- ZIO.service[Config.Service]
+            config <- ZIO.service[ConfigurationService]
             staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           } yield new java.io.File(s"$staticContentDir/graphiql.html")
         )
-    }
-  }
+    )
 
 }

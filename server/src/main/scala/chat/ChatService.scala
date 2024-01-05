@@ -55,7 +55,7 @@ object ChatService {
 
   given runtime: zio.Runtime[Any] = zio.Runtime.default
 
-  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & SessionContext, CalibanError]] = ChatApi.api.interpreter
+  lazy val interpreter: IO[CalibanError.ValidationError, GraphQLInterpreter[ChatService & Repository & SessionContext, CalibanError]] = ChatApi.api.interpreter
 
   def sendMessage(
     msg:       String,

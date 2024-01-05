@@ -1,7 +1,7 @@
 package db.quill
 
 import api.ChutiSession
-import api.config.Config
+import api.config.ConfigurationService
 import chuti.{User, UserId}
 import dao.quill.QuillRepository
 import dao.{Repository, SessionContext}
@@ -31,10 +31,10 @@ abstract class QuillSpec extends ZIOSpecDefault {
 
   protected val loggingLayer: ULayer[Unit] = SLF4J.slf4j(zio.LogLevel.Debug, LogFormat.line |-| LogFormat.cause)
 
-  protected val baseConfigLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
+  protected val baseConfigLayer: ULayer[ConfigurationService] = ZLayer.succeed(api.config.live)
   protected val containerLayer:  ULayer[ChutiContainer] = ChutiContainer.containerLayer.orDie
-  protected val configLayer:     URLayer[ChutiContainer, Config] = baseConfigLayer >>> ChutiContainer.configLayer
-  protected val quillLayer:      URLayer[Config, Repository] = QuillRepository.uncached
+  protected val configLayer:     URLayer[ChutiContainer, ConfigurationService] = baseConfigLayer >>> ChutiContainer.configLayer
+  protected val quillLayer:      URLayer[ConfigurationService, Repository] = QuillRepository.uncached
   protected val godSession:      ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
   protected val satanSession:    ULayer[SessionContext] = SessionContext.live(ChutiSession(satan))
 

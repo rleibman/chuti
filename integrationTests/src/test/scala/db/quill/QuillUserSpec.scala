@@ -1,6 +1,6 @@
 package db.quill
 
-import api.config.Config
+import api.config.ConfigurationService
 import chuti.*
 import dao.{Repository, RepositoryError, RepositoryPermissionError, SessionContext}
 // import db.quill.QuillGameSpec.fixedClock
@@ -89,7 +89,7 @@ object QuillUserSpec extends QuillSpec {
       test("Deleting a user with no permissions") {
         (for {
           repo <- ZIO.service[Repository].map(_.userOperations)
-          _    <- repo.delete(UserId(123)).provideSomeLayer[Config & Repository](satanSession)
+          _    <- repo.delete(UserId(123)).provideSomeLayer[ConfigurationService & Repository](satanSession)
         } yield assertTrue(false))
           // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
@@ -102,7 +102,7 @@ object QuillUserSpec extends QuillSpec {
           repo     <- ZIO.service[Repository].map(_.userOperations)
           testUser <- testUserZIO
           inserted <- repo.upsert(testUser)
-          _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[Config & Repository](satanSession)
+          _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[ConfigurationService & Repository](satanSession)
         } yield assertTrue(false))
           // .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
@@ -119,7 +119,7 @@ object QuillUserSpec extends QuillSpec {
           active          <- repo.upsert(inserted.copy(active = true))
           passwordChanged <- repo.changePassword(active, password)
           loggedIn        <- repo.login(active.email, password)
-          firstLogin      <- repo.firstLogin.provideSomeLayer[Config & Repository](userSession(active))
+          firstLogin      <- repo.firstLogin.provideSomeLayer[ConfigurationService & Repository](userSession(active))
         } yield assertTrue(passwordChanged) &&
           assertTrue(loggedIn.contains(active)) &&
           assertTrue(firstLogin.contains(now)))
@@ -143,14 +143,14 @@ object QuillUserSpec extends QuillSpec {
           inserted1  <- repo.upsert(testUser1.copy(active = true))
           testUser2  <- testUserZIO
           inserted2  <- repo.upsert(testUser2.copy(active = true))
-          noFriends1 <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted1))
-          noFriends2 <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted2))
-          friended   <- repo.friend(inserted2).provideSomeLayer[Config & Repository](userSession(inserted1))
-          aFriend1   <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted1))
-          aFriend2   <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted2))
-          unfriended <- repo.unfriend(inserted1).provideSomeLayer[Config & Repository](userSession(inserted2))
-          noFriends3 <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted1))
-          noFriends4 <- repo.friends.provideSomeLayer[Config & Repository](userSession(inserted2))
+          noFriends1 <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted1))
+          noFriends2 <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted2))
+          friended   <- repo.friend(inserted2).provideSomeLayer[ConfigurationService & Repository](userSession(inserted1))
+          aFriend1   <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted1))
+          aFriend2   <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted2))
+          unfriended <- repo.unfriend(inserted1).provideSomeLayer[ConfigurationService & Repository](userSession(inserted2))
+          noFriends3 <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted1))
+          noFriends4 <- repo.friends.provideSomeLayer[ConfigurationService & Repository](userSession(inserted2))
         } yield {
           assert(noFriends1)(isEmpty) &&
           assert(noFriends2)(isEmpty) &&

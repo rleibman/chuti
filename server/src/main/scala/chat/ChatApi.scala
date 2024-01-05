@@ -16,10 +16,9 @@
 
 package chat
 
-import caliban.GraphQL.graphQL
+import caliban.*
 import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{GraphQL, RootResolver}
 import chat.ChatService
 import chuti.*
 import chuti.ChannelId.*
@@ -85,10 +84,9 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
           chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
         )
       )
-    ) @@
-      maxFields(22) @@ // query analyzer that limit query fields
-      maxDepth(30)
-//      @@ // query analyzer that limit query depth
+    )
+    @@ maxFields (22) // query analyzer that limit query fields
+    @@ maxDepth (30) // query analyzer that limit query depth
 //      timeout(3.seconds) @@ // wrapper that fails slow queries
 //      printSlowQueries(3.seconds)
 

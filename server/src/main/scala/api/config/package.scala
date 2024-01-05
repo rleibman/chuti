@@ -18,10 +18,11 @@ package api
 
 import better.files.File
 import com.typesafe.config.*
-import zio.IO
+import zio.{Config, IO}
 import zio.config.magnolia.*
-import zio.config.typesafe.TypesafeConfigSource
+import zio.config.typesafe.TypesafeConfigProvider
 import zio.config.*
+import zio.schema.codec.DecodeError.ReadError
 
 /** A trait to keep app configuration
   */
@@ -62,32 +63,29 @@ package object config {
     httpConfig: HttpConfig
   )
 
-  type Config = Config.Service
+  trait ConfigurationService {
 
-  object Config {
-
-    private val chutiConfigDescriptor: ConfigDescriptor[ChutiConfig] = descriptor[ChutiConfig]
-    val chutiConfig: IO[ReadError[String], ChutiConfig] = read(
-      chutiConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("chuti"))
-    )
-
-    trait Service {
-
-      val configKey = "chuti"
-      lazy val config: com.typesafe.config.Config = {
-        val confFileName =
-          System.getProperty("application.conf", "./src/main/resources/application.conf").nn
-        val confFile = File(confFileName)
-        val config = ConfigFactory
-          .parseFile(confFile.toJava).nn
-          .withFallback(ConfigFactory.load()).nn
-        config
-      }
-
+    val configKey = "chuti"
+    lazy val config: com.typesafe.config.Config = {
+      val confFileName =
+        System.getProperty("application.conf", "./src/main/resources/application.conf").nn
+      val confFile = File(confFileName)
+      val config = ConfigFactory
+        .parseFile(confFile.toJava).nn
+        .withFallback(ConfigFactory.load()).nn
+      config
     }
 
   }
 
-  lazy val live: Config.Service = new Config.Service {}
+  object ConfigurationService {
+
+    val chutiConfig: IO[Config.Error, ChutiConfig] = {
+      read(deriveConfig[ChutiConfig] from TypesafeConfigProvider.fromResourcePath().nested("chuti"))
+    }
+
+  }
+
+  lazy val live: ConfigurationService = new ConfigurationService {}
 
 }

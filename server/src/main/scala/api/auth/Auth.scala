@@ -20,8 +20,8 @@ import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.{DefaultFullHttpRequest, HttpRequest}
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
 import util.ResponseExt
-import zhttp.http.*
-import zhttp.http.Cookie.SameSite
+import zio.http.*
+import zio.http.Cookie.SameSite
 import zio.config.*
 import zio.config.magnolia.*
 import zio.config.typesafe.*
@@ -80,14 +80,14 @@ object Auth {
   //  given durationDescriptor: Descriptor[Duration] = zio.config.magnolia.Descriptor.from[Long].
   //    zio.config.magnolia.Descriptor.implicitLongDesc.transform[Duration](_.minutes, _.toMinutes)
   //  given pathConfigDescriptor: ConfigDescriptor[Path] = string("PATH")(Path.apply, a => Some(a.encode))  //zio.config.magnolia.Descriptor.from[java.nio.file.Path]
-  given Descriptor[Path] = Descriptor.from[Path](ConfigDescriptor.string.transform(Path.decode _, _.toString))
+//  given ConfigDescriptor[Path] = ConfigDescriptor.from[Path](ConfigDescriptor.string.transform(Path.decode _, _.toString))
 
   //  given Descriptor[Option[Path]] = string("OPATH").transform[Option[Path]](p => Some(Path.apply(p)), _.fold("")(_.encode))
-  given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
-
-  lazy private val sessionConfig: IO[ReadError[String], SessionConfig] = read(
-    sessionConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("sessionConfig"))
-  )
+//  given sessionConfigDescriptor: ConfigDescriptor[SessionConfig] = descriptor[SessionConfig]
+//
+//  lazy private val sessionConfig: IO[ReadError[String], SessionConfig] = read(
+//    sessionConfigDescriptor from TypesafeConfigSource.fromResourcePath.at(PropertyTreePath.$("sessionConfig"))
+//  )
 
   // None, it'd be nice if JwtClaim was parametrized on Content, but this works
   // scala3 extension
@@ -323,8 +323,7 @@ object Auth {
                   case _                                                       => http.contramap[Request](req => RequestWithSession(session, req))
                 }
               }).catchAll(e =>
-                ZIO.logError(e.getMessage.nn) *>
-                  ZIO.succeed(Http.response(ResponseExt.seeOther("/loginForm")))
+                ZIO.logError(e.getMessage.nn).as(Http.response(Response.seeOther("/loginForm")))
               )
             }.flatten
       }

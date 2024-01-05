@@ -18,7 +18,7 @@ package api
 
 import api.auth.Auth
 import api.auth.Auth.SessionStorage
-import api.config.Config
+import api.config.ConfigurationService
 import api.routes.*
 import api.routes.AuthRoutes.OpsService
 import api.token.TokenHolder
@@ -29,13 +29,13 @@ import dao.{CRUDOperations, Repository}
 import game.GameService
 import mail.{CourierPostman, Postman}
 import util.ResponseExt
-import zhttp.http.*
-import zhttp.http.middleware.HttpMiddleware
+import zio.http.*
+import zio.http.middleware.HttpMiddleware
 import zhttp.service.*
 import zhttp.service.server.ServerChannelFactory
 import zio.logging.*
 import zio.logging.backend.SLF4J
-import zio.{Clock, Console, *}
+import zio.*
 
 import java.util.Locale
 import zio.json.*
@@ -47,14 +47,14 @@ object Chuti extends zio.ZIOAppDefault {
   import api.auth.Auth.*
   import util.*
 
-  type ChutiEnvironment = GameService & ChatService & Config & Repository & Postman & TokenHolder &
+  type ChutiEnvironment = GameService & ChatService & ConfigurationService & Repository & Postman & TokenHolder &
     SessionStorage[
       ChutiSession,
       String
     ] & SessionTransport[ChutiSession]
 
-  lazy private val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  lazy private val postmanLayer = ZLayer.fromZIO(for { config <- ZIO.service[Config] } yield CourierPostman.live(config))
+  lazy private val configLayer: ULayer[ConfigurationService] = ZLayer.succeed(api.config.live)
+  lazy private val postmanLayer = ZLayer.fromZIO(for { config <- ZIO.service[ConfigurationService]} yield CourierPostman.live(config))
   lazy private val uncachedRepository: ULayer[Repository] = configLayer >>> QuillRepository.uncached
   lazy private val repositoryLayer:    ULayer[Repository] = uncachedRepository >>> Repository.cached
 
@@ -74,11 +74,11 @@ object Chuti extends zio.ZIOAppDefault {
       StaticHTMLRoutes.unauthRoute
     ).reduce(_ ++ _)
 
-  def authRoutes(sessionTransport: SessionTransport[ChutiSession]): HttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock, Nothing] =
+  def authRoutes(sessionTransport: SessionTransport[ChutiSession]): HttpApp[ChutiEnvironment & AuthRoutes.OpsService, Nothing] =
     Seq(
       AuthRoutes.authRoute,
       GameRoutes.authRoute,
-      ChatRoutes.authRoute,
+      ChatRoutes.route,
       StaticHTMLRoutes.authRoute
     )
       .reduce(_ ++ _)
@@ -91,7 +91,7 @@ object Chuti extends zio.ZIOAppDefault {
           Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
       } @@ sessionTransport.auth
 
-  lazy private val appZIO: URIO[ChutiEnvironment & AuthRoutes.OpsService & Clock, RHttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock]] = {
+  lazy private val appZIO: URIO[ChutiEnvironment & AuthRoutes.OpsService, RHttpApp[ChutiEnvironment & AuthRoutes.OpsService]] = {
     for {
       sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
     } yield {
@@ -114,11 +114,11 @@ object Chuti extends zio.ZIOAppDefault {
     }
   }
 
-  override def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = {
+  override def run: ZIO[Environment & ZIOAppArgs & Scope, Any, Any] = {
     ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
       ChatService.make().memoize.flatMap { chatServiceLayer =>
         (for {
-          config <- ZIO.service[Config.Service]
+          config <- ZIO.service[ConfigurationService]
           app    <- appZIO
           server = Server.bind(
             config.config.getString(s"${config.configKey}.host").nn,

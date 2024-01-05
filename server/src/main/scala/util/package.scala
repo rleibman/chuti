@@ -16,7 +16,7 @@
 
 import cats.data.NonEmptyList
 import io.netty.handler.codec.http.QueryStringDecoder
-import zhttp.http.*
+import zio.http.*
 import zio.*
 import zio.logging.*
 import zio.json.*
@@ -32,14 +32,14 @@ package object util {
       import scala.language.unsafeNulls
 
       for {
-        str <- request.bodyAsString
+        str <- request.body.asString
         _ <- ZIO
           .fail(
-            HttpError.BadRequest(
-              s"Trying to retrieve form data from a non-form post (content type = ${request.headerValue(HeaderNames.contentType)})"
+            Exception(
+              s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"
             )
           )
-          .when(!request.headerValue(HeaderNames.contentType).contains(HeaderValues.applicationXWWWFormUrlencoded.toString))
+          .when(!request.header(Header.ContentType).contains(MediaType.application.`x-www-form-urlencoded`.toString))
       } yield str
         .split("&").map(_.split("="))
         .collect { case Array(k: String, v: String) =>
@@ -48,7 +48,7 @@ package object util {
         .toMap
     }
 
-    def queryParams: Map[String, List[String]] = request.url.queryParams
+    def queryParams: QueryParams = request.url.queryParams
 
     /** Uses https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.5
       */
@@ -57,7 +57,7 @@ package object util {
       forceLanguage:    Option[String]
     ): Locale = {
       val range = Locale.LanguageRange.parse(
-        forceLanguage.getOrElse(request.headerValue(HeaderNames.acceptLanguage).getOrElse(availableLocales.head.toLanguageTag))
+        forceLanguage.getOrElse(request.header(Header.AcceptLanguage).map(_.renderedValue).getOrElse(availableLocales.head.toLanguageTag))
       )
 
       Locale.lookup(range, availableLocales.toList.asJava).nn
@@ -65,10 +65,10 @@ package object util {
 
     def bodyAs[E: JsonDecoder]: ZIO[Any, Throwable, E] =
       for {
-        body <- request.bodyAsString
+        body <- request.body.asString
         obj <- ZIO
           .fromEither(body.fromJson[E])
-          .mapError(e => HttpError.BadRequest(e))
+          .mapError(e => Exception(e))
           .tapError { e =>
             ZIO.logErrorCause(s"Error parsing body.\n$body", Cause.die(e))
           }
@@ -79,9 +79,7 @@ package object util {
   object ResponseExt {
 
     def json[A: JsonEncoder](value: A): Response = Response.json(value.toJson)
-
-    def seeOther(location: String): Response = Response(Status.SeeOther, Headers.location(location))
-
+    
   }
 
   given JsonDecoder[Locale] =

@@ -19,45 +19,48 @@ package api.routes
 import api.Chuti.ChutiEnvironment
 import api.ChutiSession
 import api.auth.Auth.RequestWithSession
-import api.config.Config
-import caliban.ZHttpAdapter
-import dao.SessionContext
+import api.config.ConfigurationService
+import api.token.TokenHolder
+import caliban.{CalibanError, ZHttpAdapter}
+import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
+import chat.ChatService
 import game.{GameApi, GameService}
-import zhttp.http.*
+import dao.{Repository, SessionContext}
+import mail.Postman
+import zio.http.*
 import zio.*
 
 object GameRoutes {
 
-  lazy val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
-    Http.collectHttp[RequestWithSession[ChutiSession]] {
-      case _ -> !! / "api" / "game" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
+  import sttp.tapir.CodecFormat.*
+  import sttp.tapir.json.circe.*
+
+  lazy val route =
+    Routes(
+      Method.ANY / "api" / "game" -> handler { (req: RequestWithSession[ChutiSession]) =>
             for {
               interpreter <- GameService.interpreter
             } yield ZHttpAdapter
-              .makeHttpService(interpreter)
-              .provideSomeLayer[ChutiEnvironment, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "game" / "ws" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
+          .makeHttpService(HttpInterpreter(interpreter))
+          .provideSomeLayer[GameService & Repository & Postman & TokenHolder & ChatService, SessionContext, Throwable](SessionContext.live(req.session.get))
+          },
+      Method.ANY / "api" / "game" / "ws" -> handler { (req: RequestWithSession[ChutiSession]) =>
             for {
               interpreter <- GameService.interpreter
             } yield ZHttpAdapter
-              .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-              .provideSomeLayer[ChutiEnvironment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "game" / "schema" =>
-        Http.fromData(HttpData.fromString(GameApi.api.render))
-      case _ -> !! / "api" / "game" / "graphiql" =>
-        Http.fromFileZIO(
+              .makeWebSocketService(WebSocketInterpreter(interpreter, keepAliveTime = Option(5.minutes)))
+              .provideSomeLayer[GameService & Repository & Postman & TokenHolder & ChatService, SessionContext, Throwable](SessionContext.live(req.session.get))
+          },
+      Method.ANY / "api" / "game" / "schema" -> handler {
+        Response.text(GameApi.api.render)
+      },
+      Method.ANY / "api" / "game" / "graphiql" ->
+        Handler.fromFileZIO(
           for {
-            config <- ZIO.service[Config.Service]
+            config <- ZIO.service[ConfigurationService]
             staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
           } yield new java.io.File(s"$staticContentDir/graphiql.html")
         )
-    }
-  }
+)
 
 }

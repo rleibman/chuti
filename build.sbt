@@ -105,26 +105,27 @@ lazy val server = project
   .settings(debianSettings, commonSettings)
   .dependsOn(commonJVM)
   .settings(
-    name                                                 := "chuti-server",
+    name := "chuti-server",
 //    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2",
     libraryDependencies ++= Seq(
       // DB
       "mysql"        % "mysql-connector-java" % "8.0.33" withSources (),
       "io.getquill" %% "quill-jdbc-zio"       % quillVersion withSources (),
       // ZIO
-      "dev.zio"               %% "zio"                   % zioVersion withSources (),
-      "dev.zio"               %% "zio-cache"             % "0.2.3" withSources (),
-      "dev.zio"               %% "zio-config"            % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-derivation" % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-magnolia"   % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-typesafe"   % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j"     % "2.1.16" withSources (),
-      "dev.zio"               %% "izumi-reflect"         % "2.3.8" withSources (),
-      "com.github.ghostdogpr" %% "caliban"               % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-tapir"         % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-zio-http"      % calibanVersion withSources (),
-      "dev.zio"               %% "zio-http"              % zioHttpVersion withSources (),
-      "com.github.jwt-scala"  %% "jwt-circe"             % "9.4.5" withSources (),
+      "dev.zio"                     %% "zio"                   % zioVersion withSources (),
+      "dev.zio"                     %% "zio-cache"             % "0.2.3" withSources (),
+      "dev.zio"                     %% "zio-config"            % zioConfigVersion withSources (),
+      "dev.zio"                     %% "zio-config-derivation" % zioConfigVersion withSources (),
+      "dev.zio"                     %% "zio-config-magnolia"   % zioConfigVersion withSources (),
+      "dev.zio"                     %% "zio-config-typesafe"   % zioConfigVersion withSources (),
+      "dev.zio"                     %% "zio-logging-slf4j"     % "2.1.16" withSources (),
+      "dev.zio"                     %% "izumi-reflect"         % "2.3.8" withSources (),
+      "com.github.ghostdogpr"       %% "caliban"               % calibanVersion withSources (),
+      "com.github.ghostdogpr"       %% "caliban-tapir"         % calibanVersion withSources (),
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"      % "1.9.6" withSources (),
+      "com.github.ghostdogpr"       %% "caliban-zio-http"      % calibanVersion withSources (),
+      "dev.zio"                     %% "zio-http"              % zioHttpVersion withSources (),
+      "com.github.jwt-scala"        %% "jwt-circe"             % "9.4.5" withSources (),
       // Other random utilities
       ("com.github.pathikrit" %% "better-files"    % "3.9.2" withSources ()).cross(CrossVersion.for3Use2_13),
       "com.github.daddykotex" %% "courier"         % "3.2.0" withSources (),

@@ -16,20 +16,19 @@
 
 package game
 
-import caliban.GraphQL.graphQL
+import caliban.*
 import caliban.schema.{ArgBuilder, GenericSchema, Schema}
 import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{GraphQL, RootResolver}
 import chat.ChatApi.{Mutations, Queries, Subscriptions}
 import chat.ChatService
 import chuti.*
 import dao.{Repository, SessionContext}
 import game.GameService
 import game.GameService.GameLayer
+import zio.json.*
 import zio.logging.*
 import zio.stream.ZStream
 import zio.{Clock, Console, ZIO, *}
-import zio.json.*
 
 object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 

@@ -16,11 +16,11 @@
 
 package mail
 
-import api.config.Config
+import api.config.ConfigurationService
 import api.token.{TokenHolder, TokenPurpose}
 import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
-import zio.{RIO, Task, ZIO, *}
+import zio.*
 
 import javax.mail.internet.InternetAddress
 
@@ -118,7 +118,7 @@ trait Postman {
   */
 object CourierPostman {
 
-  def live(config: Config.Service): Postman =
+  def live(config: ConfigurationService): Postman =
     new Postman {
 
       lazy val mailer: Mailer = {

@@ -22,7 +22,7 @@ import api.auth.Auth.RequestWithSession
 import chuti.Search
 import dao.{CRUDOperations, RepositoryError, RepositoryIO, SessionContext}
 import util.*
-import zhttp.http.*
+import zio.http.*
 import zio.*
 import zio.logging.*
 import zio.json.*
@@ -119,7 +119,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
       ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
       ret <- ops.search(search)
     } yield ret
-
+  
   lazy private val authCRUD: Http[ChutiEnvironment & OpsService, Throwable, RequestWithSession[ChutiSession], Response] =
     Http.collectHttp[RequestWithSession[ChutiSession]] {
       case req @ (Method.POST | Method.PUT) -> !! / "api" / `url` if req.session.nonEmpty =>
