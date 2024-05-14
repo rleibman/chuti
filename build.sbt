@@ -8,7 +8,7 @@ lazy val buildTime: SettingKey[String] = SettingKey[String]("buildTime", "time o
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Global stuff
 Global / onChangedBuildSource := ReloadOnSourceChanges
-scalaVersion                  := "3.3.2-RC1"
+scalaVersion                  := "3.4.1"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shared settings
@@ -33,7 +33,7 @@ lazy val scala3Opts = Seq(
   //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
   "-Xmax-inlines",
-  "64",
+  "128",
   "-Yretain-trees" // Retain trees for debugging.
 )
 
@@ -41,19 +41,21 @@ enablePlugins(
   GitVersioning
 )
 
-val calibanVersion = "2.5.0"
-val zioVersion = "2.0.21"
-val quillVersion = "4.8.0"
-val zioHttpVersion = "3.0.0-RC4"
-val zioConfigVersion = "4.0.0"
-val testContainerVersion = "0.41.0"
+val calibanVersion = "2.6.0"
+val zioVersion = "2.1.1"
+val quillVersion = "4.8.4"
+val zioHttpVersion = "3.0.0-RC6"
+val zioConfigVersion = "4.0.2"
+val zioJsonVersion = "0.6.2"
+val testContainerVersion = "0.41.3"
+val tapirVersion = "1.10.6"
 
 lazy val commonSettings = Seq(
   organization     := "net.leibman",
-  scalaVersion     := "3.4.0-RC1",
-  startYear        := Some(2020),
+  scalaVersion     := "3.4.1",
+  startYear        := Some(2024),
   organizationName := "Roberto Leibman",
-  headerLicense    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
+  headerLicense    := Some(HeaderLicense.MIT("2024", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
   resolvers += Resolver.mavenLocal,
   scalacOptions ++= scala3Opts
 )
@@ -70,7 +72,7 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     BuildInfoPlugin
   )
   .settings(
-    scalaVersion     := "3.4.0-RC1",
+    scalaVersion     := "3.4.1",
     name             := "chuti-common",
     buildInfoPackage := "chuti"
   )
@@ -118,25 +120,25 @@ lazy val server = project
       "dev.zio"                     %% "zio-config-derivation" % zioConfigVersion withSources (),
       "dev.zio"                     %% "zio-config-magnolia"   % zioConfigVersion withSources (),
       "dev.zio"                     %% "zio-config-typesafe"   % zioConfigVersion withSources (),
-      "dev.zio"                     %% "zio-logging-slf4j"     % "2.1.16" withSources (),
-      "dev.zio"                     %% "izumi-reflect"         % "2.3.8" withSources (),
+      "dev.zio"                     %% "zio-logging-slf4j"     % "2.2.3" withSources (),
+      "dev.zio"                     %% "izumi-reflect"         % "2.3.9" withSources (),
       "com.github.ghostdogpr"       %% "caliban"               % calibanVersion withSources (),
       "com.github.ghostdogpr"       %% "caliban-tapir"         % calibanVersion withSources (),
-      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"      % "1.9.6" withSources (),
+      "com.softwaremill.sttp.tapir" %% "tapir-json-circe"      % "1.10.7" withSources (),
       "com.github.ghostdogpr"       %% "caliban-zio-http"      % calibanVersion withSources (),
       "dev.zio"                     %% "zio-http"              % zioHttpVersion withSources (),
-      "com.github.jwt-scala"        %% "jwt-circe"             % "9.4.5" withSources (),
+      "com.github.jwt-scala"        %% "jwt-circe"             % "10.0.1" withSources (),
       // Other random utilities
-      ("com.github.pathikrit" %% "better-files"    % "3.9.2" withSources ()).cross(CrossVersion.for3Use2_13),
-      "com.github.daddykotex" %% "courier"         % "3.2.0" withSources (),
-      "ch.qos.logback"         % "logback-classic" % "1.4.14" withSources (),
-      "commons-codec"          % "commons-codec"   % "1.16.0",
+      ("com.github.pathikrit" %% "better-files"               % "3.9.2" withSources ()).cross(CrossVersion.for3Use2_13),
+      "com.github.daddykotex" %% "courier"                    % "3.2.0" withSources (),
+      "ch.qos.logback"         % "logback-classic"            % "1.5.6" withSources (),
+      "commons-codec"          % "commons-codec"              % "1.17.0",
+      "com.dimafeng"          %% "testcontainers-scala-mysql" % testContainerVersion withSources (),
       // Testing
       "dev.zio"       %% "zio-test"                       % zioVersion           % "test" withSources (),
       "dev.zio"       %% "zio-test-sbt"                   % zioVersion           % "test" withSources (),
       "org.scalatest" %% "scalatest"                      % "3.3.0-alpha.1"      % "test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-scalatest" % testContainerVersion % "test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-mysql"     % testContainerVersion % "test" withSources ()
+      "com.dimafeng"  %% "testcontainers-scala-scalatest" % testContainerVersion % "test" withSources ()
     )
   )
 
@@ -222,7 +224,7 @@ lazy val debianSettings =
 ////////////////////////////////////////////////////////////////////////////////////
 // Web
 val scalajsReactVersion = "2.1.1"
-val reactVersion = "17.0.0"
+val reactVersion = "18.3.0"
 
 lazy val reactNpmDeps: Project => Project =
   _.settings(
@@ -231,17 +233,17 @@ lazy val reactNpmDeps: Project => Project =
       "@types/react-dom"  -> reactVersion,
       "react"             -> reactVersion,
       "@types/react"      -> reactVersion,
-      "csstype"           -> "2.6.11",
-      "@types/prop-types" -> "15.7.3",
-      "semantic-ui-react" -> "2.0.3"
+      "csstype"           -> "3.1.3",
+      "@types/prop-types" -> "15.7.12",
+      "semantic-ui-react" -> "2.1.5"
     )
   )
 
 lazy val bundlerSettings: Project => Project =
   _.enablePlugins(ScalaJSBundlerPlugin)
     .settings(
-      startWebpackDevServer / version := "3.1.10",
-      webpack / version               := "4.28.3",
+      startWebpackDevServer / version := "5.0.4",
+      webpack / version               := "5.91.0",
 //      Compile / fastOptJS / webpackExtraArgs += "--mode=development",
       Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
       Compile / fastOptJS / artifactPath := ((Compile / fastOptJS / crossTarget).value /
@@ -265,7 +267,7 @@ lazy val stLib = project
   .configure(reactNpmDeps)
   .settings(
     name                            := "chuti-stLib",
-    scalaVersion                    := "3.4.0-RC1",
+    scalaVersion                    := "3.4.1",
     useYarn                         := true,
     stOutputPackage                 := "net.leibman.chuti",
     stFlavour                       := Flavour.ScalajsReact,
@@ -347,21 +349,21 @@ lazy val commonWeb: Project => Project =
 //      "commons-io" % "commons-io" % "2.15.1" withSources(),
       "com.github.ghostdogpr" %%% "caliban-client"    % calibanVersion withSources (),
       "dev.zio" %%% "zio"                             % zioVersion withSources (),
-      "com.softwaremill.sttp.client3" %%% "core"      % "3.9.1" withSources (),
+      "com.softwaremill.sttp.client3" %%% "core"      % "3.9.6" withSources (),
       "io.github.cquiroz" %%% "scala-java-time"       % "2.5.0" withSources (),
       "io.github.cquiroz" %%% "scala-java-time-tzdb"  % "2.5.0" withSources (),
       "org.scala-js" %%% "scalajs-dom"                % "2.8.0" withSources (),
       "com.olvind" %%% "scalablytyped-runtime"        % "2.4.2",
       "com.github.japgolly.scalajs-react" %%% "core"  % "2.1.1" withSources (),
       "com.github.japgolly.scalajs-react" %%% "extra" % "2.1.1" withSources (),
-      "com.lihaoyi" %%% "scalatags"                   % "0.12.0" withSources (),
+      "com.lihaoyi" %%% "scalatags"                   % "0.13.1" withSources (),
       "com.github.japgolly.scalacss" %%% "core"       % "1.0.0" withSources (),
       "com.github.japgolly.scalacss" %%% "ext-react"  % "1.0.0" withSources ()
       //      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
     ),
     organizationName := "Roberto Leibman",
-    startYear        := Some(2020),
-    licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
+    startYear        := Some(2024),
+    licenses += ("MIT", url("http://opensource.org/licenses/MIT")),
     Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
     Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value),
     webpackDevServerPort                 := 8009
