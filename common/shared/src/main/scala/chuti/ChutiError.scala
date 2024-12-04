@@ -21,12 +21,25 @@
 
 package chuti
 
-import java.time.Instant
+object ChutiError {
 
-case class ChatMessage(
-  fromUser:  User,
-  msg:       String,
-  channelId: ChannelId,
-  date:      Instant,
-  toUser:    Option[User] = None
-)
+  def apply(t: Throwable): ChutiError = {
+    t match {
+      case t: ChutiError => t
+      case t => ChutiError("", Some(t))
+    }
+  }
+
+  def apply(
+    msg:   String = "",
+    cause: Option[Throwable] = None
+  ) = {
+    new ChutiError(msg, cause)
+  }
+
+}
+
+class ChutiError(
+  msg:   String = "",
+  cause: Option[Throwable] = None
+) extends Exception(msg, cause.orNull)

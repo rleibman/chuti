@@ -4,6 +4,7 @@ schema {
   subscription: Subscriptions
 }
 
+"An instantaneous point on the time-line represented by a standard date time string"
 scalar Instant
 
 input UserInput {
@@ -11,6 +12,7 @@ input UserInput {
   email: String!
   name: String!
   created: Instant!
+  lastUpdated: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
@@ -20,8 +22,8 @@ type ChatMessage {
   fromUser: User!
   msg: String!
   channelId: Int!
-  toUser: User
   date: Instant!
+  toUser: User
 }
 
 type Mutations {
@@ -33,7 +35,7 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream(channelId: Int!, connectionId: String!): ChatMessage
+  chatStream(channelId: Int!, connectionId: Int!): ChatMessage
 }
 
 type User {
@@ -41,6 +43,7 @@ type User {
   email: String!
   name: String!
   created: Instant!
+  lastUpdated: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

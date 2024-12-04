@@ -1,23 +1,29 @@
 /*
- * Copyright 2020 Roberto Leibman
+ * Copyright (c) 2024 Roberto Leibman
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 package chuti.bots
 
 import chuti.*
 import chuti.Triunfo.*
+import zio.*
 
 case object DumbChutiBot extends ChutiBot {
 
@@ -90,38 +96,43 @@ case object DumbChutiBot extends ChutiBot {
   private def pideInicial(
     jugador: Jugador,
     game:    Game
-  ): PlayEvent = {
-    val (_, triunfo) = calculaCanto(jugador, game)
-    val hypotheticalGame = game.copy(triunfo = Option(triunfo))
-    if (hypotheticalGame.puedesCaerte(jugador))
-      Caete(triunfo = Option(triunfo))
-    else {
-      Pide(
-        ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
-        triunfo = Option(triunfo),
-        estrictaDerecha = false
-      )
+  ): IO[GameError, PlayEvent] =
+    ZIO.succeed {
+      val (_, triunfo) = calculaCanto(jugador, game)
+      val hypotheticalGame = game.copy(triunfo = Option(triunfo))
+      if (hypotheticalGame.puedesCaerte(jugador))
+        Caete(triunfo = Option(triunfo))
+      else {
+        Pide(
+          ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
+          triunfo = Option(triunfo),
+          estrictaDerecha = false
+        )
+      }
     }
-  }
 
   private def pide(
     jugador: Jugador,
     game:    Game
-  ): Pide = {
+  ): IO[GameError, PlayEvent] = {
     game.triunfo match {
-      case None => throw GameException("Nuncamente!")
+      case None => ZIO.fail(GameError("Nuncamente!"))
       case Some(SinTriunfos) =>
-        Pide(
-          jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value).get,
-          triunfo = None,
-          estrictaDerecha = false
+        ZIO.succeed(
+          Pide(
+            jugador.fichas.maxByOption(ficha => if (ficha.esMula) 100 else ficha.arriba.value).get,
+            triunfo = None,
+            estrictaDerecha = false
+          )
         )
       case Some(TriunfoNumero(triunfo)) =>
-        Pide(
-          jugador.fichas
-            .maxByOption(ficha => (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value).get,
-          triunfo = None,
-          estrictaDerecha = false
+        ZIO.succeed(
+          Pide(
+            jugador.fichas
+              .maxByOption(ficha => (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value).get,
+            triunfo = None,
+            estrictaDerecha = false
+          )
         )
     }
   }
@@ -129,99 +140,105 @@ case object DumbChutiBot extends ChutiBot {
   private def da(
     jugador: Jugador,
     game:    Game
-  ): Da = {
-    if (game.enJuego.isEmpty)
-      throw GameException("Nuncamente")
-    val pide = game.enJuego.head
-    game.triunfo match {
-      case None => throw GameException("Nuncamente!")
-      case Some(SinTriunfos) =>
-        val pideNum = pide._2.arriba
-        Da(
-          jugador.fichas
-            .filter(_.es(pideNum))
-            .sortBy(_.other(pideNum).value)
-            .headOption
-            .getOrElse(jugador.fichas.minBy(f => if (f.esMula) 100 else f.value))
-        )
-      case Some(TriunfoNumero(triunfo)) =>
-        val pideNum =
-          if (pide._2.es(triunfo))
-            triunfo
-          else
-            pide._2.arriba
-        Da(
-          jugador.fichas
-            .filter(_.es(pideNum))
-            .sortBy(_.other(pideNum).value)
-            .headOption
-            .getOrElse(
-              jugador.fichas.minBy(f =>
-                if (f.es(triunfo))
-                  triunfo.value - 100 - f.other(triunfo).value
-                else if (f.esMula) 100
-                else f.value
-              )
+  ): IO[GameError, PlayEvent] = {
+    if (game.enJuego.isEmpty) ZIO.fail(GameError("Nuncamente"))
+    else {
+      val pide = game.enJuego.head
+      game.triunfo match {
+        case None => ZIO.fail(GameError("Nuncamente!"))
+        case Some(SinTriunfos) =>
+          val pideNum = pide._2.arriba
+          ZIO.succeed(
+            Da(
+              jugador.fichas
+                .filter(_.es(pideNum))
+                .sortBy(_.other(pideNum).value)
+                .headOption
+                .getOrElse(jugador.fichas.minBy(f => if (f.esMula) 100 else f.value))
             )
-        )
+          )
+        case Some(TriunfoNumero(triunfo)) =>
+          val pideNum =
+            if (pide._2.es(triunfo))
+              triunfo
+            else
+              pide._2.arriba
+          ZIO.succeed(
+            Da(
+              jugador.fichas
+                .filter(_.es(pideNum))
+                .sortBy(_.other(pideNum).value)
+                .headOption
+                .getOrElse(
+                  jugador.fichas.minBy(f =>
+                    if (f.es(triunfo))
+                      triunfo.value - 100 - f.other(triunfo).value
+                    else if (f.esMula) 100
+                    else f.value
+                  )
+                )
+            )
+          )
+      }
     }
   }
 
-  def caite(): Caete = Caete()
+  def caite(): IO[GameError, PlayEvent] = ZIO.succeed(Caete())
 
   def canta(
     jugador: Jugador,
     game:    Game
-  ): Canta = {
-    import CuantasCantas.*
-    val (cuantas, _) = calculaCanto(jugador, game)
+  ): IO[GameError, PlayEvent] =
+    ZIO.succeed {
+      import CuantasCantas.*
+      val (cuantas, _) = calculaCanto(jugador, game)
 
-    val cuantasCantas =
-      if (cuantas <= 4 && jugador.turno)
-        Casa
-      else if (cuantas <= 4)
-        Buenas
-      else CuantasCantas.byNum(cuantas)
+      val cuantasCantas =
+        if (cuantas <= 4 && jugador.turno)
+          Casa
+        else if (cuantas <= 4)
+          Buenas
+        else CuantasCantas.byNum(cuantas)
 
-    if (jugador.turno) Canta(cuantasCantas)
-    else {
-      val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
-      if (cuantasCantas.prioridad > prev.prioridad)
-        Canta(cuantasCantas)
-      else
-        Canta(Buenas)
+      if (jugador.turno) Canta(cuantasCantas)
+      else {
+        val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
+        if (cuantasCantas.prioridad > prev.prioridad)
+          Canta(cuantasCantas)
+        else
+          Canta(Buenas)
+      }
     }
-  }
 
   override def decideTurn(
     user: User,
     game: Game
-  ): Option[PlayEvent] = {
+  ): IO[GameError, PlayEvent] = {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
       case GameStatus.jugando =>
         if (game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty)
-          Option(pideInicial(jugador, game))
+          pideInicial(jugador, game)
         else if (jugador.mano && game.puedesCaerte(jugador))
-          Option(caite())
+          caite()
         else if (jugador.mano && game.enJuego.isEmpty)
-          Option(pide(jugador, game))
+          pide(jugador, game)
         else if (
           game.enJuego.isEmpty && game.jugadores.exists(
             _.cuantasCantas == Option(CuantasCantas.CantoTodas)
           )
         )
-          None // Skipping this,
+          ZIO.succeed(NoOpPlay()) // Skipping this,
         else
-          Option(da(jugador, game))
+          da(jugador, game)
       case GameStatus.cantando =>
-        Option(canta(jugador, game))
+        canta(jugador, game)
       case GameStatus.partidoTerminado | GameStatus.`requiereSopa` =>
         // Ya pa' que?
-        None
+        ZIO.succeed(NoOpPlay())
       case other =>
-        println(s"I'm too dumb to know what to do when $other")
-        None
+        ZIO.logInfo(s"I'm too dumb to know what to do when $other") *>
+          ZIO.succeed(NoOpPlay())
     }
   }
 

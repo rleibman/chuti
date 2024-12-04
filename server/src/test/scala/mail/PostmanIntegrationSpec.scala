@@ -43,9 +43,13 @@ object PostmanIntegrationSpec extends ZIOSpecDefault {
 
         zio.as(assert(true)(equalTo(true)))
       }
+<<<<<<<< HEAD:server/src/test/scala/mail/PostmanIntegrationSpec.scala
     ).provide(
       ZLayer.succeed(CourierPostman.live(config.live)),
       tokenLayer
     )
+========
+    ).provideLayer(ZLayer.succeed(CourierPostman.live(config.live)) ++ tokenLayer)
+>>>>>>>> origin/master:integrationTests/src/test/scala/mail/PostmanIntegrationSpec.scala
 
 }

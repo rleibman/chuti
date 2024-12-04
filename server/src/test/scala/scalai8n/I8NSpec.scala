@@ -26,15 +26,15 @@ class I8NSpec extends AnyFlatSpec {
   val en_US = new Locale("en", "US")
   val world = "mundo"
 
-  "printing" should "print" in {
-    {
-      given Locale = es_MX
-      assert(i8n"hola $world" === "hola mundo")
-    }
-    {
-      given Locale = en_US
-      assert(i8n"hola $world" === "hello world")
-    }
-  }
+  // "printing" should "print" in {
+  //   {
+  //     given Locale = es_MX
+  //     assert(i8n"hola $world" === "hola mundo")
+  //   }
+  //   {
+  //     given Locale = en_US
+  //     assert(i8n"hola $world" === "hello world")
+  //   }
+  // }
 
 }

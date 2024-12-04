@@ -1,23 +1,29 @@
 /*
- * Copyright 2020 Roberto Leibman
+ * Copyright (c) 2024 Roberto Leibman
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-import io.circe.{Decoder, Encoder}
+import chuti.Numero
 
 import java.time.{Instant, ZoneOffset}
 import scala.util.Random
+import zio.json.*
 
 package object chuti {
 
@@ -26,9 +32,10 @@ package object chuti {
   object UserId {
 
     def apply(userId: Int): UserId = userId
-    given Decoder[UserId] = Decoder.decodeInt
-    given Encoder[UserId] = Encoder.encodeInt
-    given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
+    given JsonDecoder[UserId] = JsonDecoder.int
+
+    given JsonEncoder[UserId] = JsonEncoder.int
+//    given zio.Tag[UserId] = zio.Tag.materialize[chuti.UserId]
 
   }
 
@@ -54,9 +61,8 @@ package object chuti {
 
     def apply(connectionId: Int): ConnectionId = connectionId
 
-    given Decoder[ConnectionId] = Decoder.decodeInt
-
-    given Encoder[ConnectionId] = Encoder.encodeInt
+    given JsonDecoder[ConnectionId] = JsonDecoder.int
+    given JsonEncoder[ConnectionId] = JsonEncoder.int
 
   }
 
@@ -72,9 +78,9 @@ package object chuti {
 
     def apply(gameId: Int): GameId = gameId
 
-    given Decoder[GameId] = Decoder.decodeInt
+    given JsonDecoder[GameId] = JsonDecoder.int
 
-    given Encoder[GameId] = Encoder.encodeInt
+    given JsonEncoder[GameId] = JsonEncoder.int
 
   }
 
@@ -90,9 +96,9 @@ package object chuti {
 
     def apply(channelId: Int): ChannelId = channelId
 
-    given Decoder[ChannelId] = Decoder.decodeInt
+    given JsonDecoder[ChannelId] = JsonDecoder.int
 
-    given Encoder[ChannelId] = Encoder.encodeInt
+    given JsonEncoder[ChannelId] = JsonEncoder.int
 
     // some special channels
     val lobbyChannel:  ChannelId = -1
