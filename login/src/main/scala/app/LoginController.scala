@@ -62,7 +62,7 @@ object LoginController {
       messageForScreen: Option[String]
     ): Callback = $.modState(s => s.copy(context = s.context.copy(mode = mode, messageForScreen = messageForScreen)))
 
-    def render(state: State) =
+    def render(state: State) = {
       LoginControllerState.ctx.provide(state.context) {
         <.div(
           Toast.render(),
@@ -76,6 +76,7 @@ object LoginController {
           }
         )
       }
+    }
 
   }
   private val component = ScalaComponent

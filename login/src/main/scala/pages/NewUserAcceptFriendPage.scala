@@ -1,28 +1,26 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package pages
 
 import app.{LoginControllerState, Mode}
 import chuti.{UpdateInvitedUserRequest, UpdateInvitedUserResponse, User}
+import io.circe.generic.auto.*
+import io.circe.parser.decode
+import io.circe.syntax.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -30,11 +28,10 @@ import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.HTMLButtonElement
 import org.scalajs.dom.window
 import react.Toast
-import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsButtonButtonMod.ButtonProps
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
-import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
-import zio.json.*
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 
 object NewUserAcceptFriendPage {
 
@@ -71,10 +68,9 @@ object NewUserAcceptFriendPage {
       Ajax("GET", s"/getInvitedUserByToken?token=${props.token.get}").send.asAsyncCallback
         .map { xhr =>
           if (xhr.status < 300) {
-            xhr.responseText
-              .fromJson[Option[User]]
+            decode[Option[User]](xhr.responseText)
               .fold(
-                e => Toast.error(e),
+                e => Toast.error(e.getLocalizedMessage.nn),
                 response => $.modState(_.copy(user = response))
               )
           } else
@@ -101,16 +97,15 @@ object NewUserAcceptFriendPage {
                     state.user.get,
                     state.passwordPair._1,
                     token = props.token.get
-                  ).toJson
+                  ).asJson.noSpaces
                 )
                 .asAsyncCallback
                 .map { xhr =>
                   if (xhr.status < 300) {
                     import scala.language.unsafeNulls
-                    xhr.responseText
-                      .fromJson[UpdateInvitedUserResponse]
+                    decode[UpdateInvitedUserResponse](xhr.responseText)
                       .fold(
-                        e => Toast.error(e),
+                        e => Toast.error(e.getLocalizedMessage),
                         response =>
                           response.error.fold(
                             context.onModeChanged(Mode.login, response.error) >> Toast.success(

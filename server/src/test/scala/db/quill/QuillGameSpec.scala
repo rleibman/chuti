@@ -52,8 +52,12 @@ object QuillGameSpec extends QuillSpec {
           assertTrue(updated.gameStatus == GameStatus.abandonado) &&
           assertTrue(updated == gottenUpdated.get) &&
           assertTrue(deleted) &&
+<<<<<<<< HEAD:server/src/test/scala/db/quill/QuillGameSpec.scala
+          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)).withClock(fixedClock)
+========
           assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size))
         // .withClock(fixedClock)
+>>>>>>>> origin/master:integrationTests/src/test/scala/db/quill/QuillGameSpec.scala
       }
     ).provideShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]

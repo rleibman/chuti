@@ -1,60 +1,60 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package dao.quill
 
-import api.ChutiSession
-import api.config.*
+import api.*
 import api.token.*
 import chuti.*
 import dao.*
 import game.GameService.godLayer
+import io.circe.parser.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
+import io.getquill.*
+import io.getquill.extras.*
+import io.getquill.{query as qquery, *}
+import zio.*
+import zio.cache.*
+import zio.Clock
+import zio.logging.*
 import io.getquill.extras.*
 import io.getquill.jdbczio.Quill
-import io.getquill.{query as qquery, *}
-import zio.{Clock, Random, *}
-import zio.cache.*
-import zio.logging.*
 
 import java.math.BigInteger
 import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
 import scala.annotation.targetName
+import zio.Random
 
 object QuillRepository {
 
-  val uncached: URLayer[ConfigurationService, Repository] =
+  val uncached: ZLayer[ConfigurationService, ConfigurationError, QuillRepository] =
     ZLayer.fromZIO(for {
-      config <- ZIO.service[ConfigurationService]
-    } yield QuillRepository(config))
+      configService <- ZIO.service[ConfigurationService]
+      appConfig     <- configService.appConfig
+    } yield QuillRepository(appConfig.chuti.db))
 
 }
 
-case class QuillRepository(config: ConfigurationService) extends Repository {
+case class QuillRepository(config: DbConfig) extends Repository {
 
   private object ctx extends MysqlZioJdbcContext(MysqlEscape)
 
-  import ctx.*
+  import ctx.{given, *}
 
   given MappedEncoding[UserId, Int] = MappedEncoding[UserId, Int](_.userId)
 
@@ -64,11 +64,14 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
 
   given MappedEncoding[Int, GameId] = MappedEncoding[Int, GameId](GameId.apply)
 
-  private given TimestampDecoder: ctx.Decoder[Timestamp] = JdbcDecoder((index: Index, row: ResultRow, _: Session) => row.getTimestamp(index).nn)
+  private given ctx.Encoder[io.circe.Json] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.noSpaces))
 
-  private given TimestampEncoder: ctx.Encoder[Timestamp] = encoder(Types.TIMESTAMP, (index, value, row) => row.setTimestamp(index, value))
+  private given ctx.Decoder[io.circe.Json] =
+    JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
+      parse(row.getString(index).nn).fold(e => throw RepositoryError(e), json => json)
+    }
 
-  private val godSession: ULayer[SessionContext] = SessionContext.live(ChutiSession(chuti.god))
+  private val godSession: ULayer[ChutiSession] = ChutiSession(chuti.god).toLayer
 
   inline private def users =
     quote {
@@ -105,14 +108,14 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
       querySchema[TokenRow]("token")
     }
 
-  private val dataSourceLayer = Quill.DataSource.fromConfig(config.config.getConfig("chuti.db").nn)
+  private val dataSourceLayer = Quill.DataSource.fromDataSource(config.dataSource)
 
-  private given GameStatusDecoder: ctx.Decoder[GameStatus] =
+  private given ctx.Decoder[GameStatus] =
     JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
       GameStatus.valueOf(row.getString(index).nn)
     }
 
-  private given GameStatusEncoder: ctx.Encoder[GameStatus] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.value))
+  private given ctx.Encoder[GameStatus] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.value))
 
   extension (inline a: Timestamp) {
 
@@ -126,9 +129,9 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
   private def assertAuth(
     authorized: ChutiSession => Boolean,
     errorFn:    ChutiSession => String
-  ): ZIO[SessionContext, RepositoryError, ChutiSession] = {
+  ): ZIO[ChutiSession, RepositoryError, ChutiSession] = {
     for {
-      session <- ZIO.service[SessionContext].map(_.session)
+      session <- ZIO.service[ChutiSession]
       _ <- ZIO
         .fail(RepositoryPermissionError(errorFn(session)))
         .when(!authorized(session))
@@ -137,7 +140,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
 
   override val userOperations: Repository.UserOperations = new Repository.UserOperations {
 
-    override def get(pk: UserId): RepositoryIO[Option[User]] =
+    override def get(pk: UserId): RepositoryIO[Option[User]] = {
       for {
         _ <- assertAuth(
           session => session.user == chuti.god || session.user == chuti.godless || session.user.id.fold(false)(_ == pk),
@@ -149,6 +152,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           .provideLayer(dataSourceLayer)
           .mapError(RepositoryError.apply)
       } yield res
+    }
 
     override def delete(
       pk:         UserId,
@@ -172,7 +176,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           }
         }
       } yield result
-    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    }.provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
       search
@@ -186,7 +190,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             )
           }
         }
-    }.map(_.map(_.toUser)).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    }.map(_.map(_.toUser)).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = {
       search.fold(ctx.run(users.filter(!_.deleted).size)) { s =>
@@ -194,7 +198,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           ctx.run(users.filter(u => (u.email like lift(s"%${s.text}%")) && !u.deleted).size)
         }
       }
-    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    }.provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def upsert(user: User): RepositoryIO[User] =
       (for {
@@ -233,13 +237,13 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             } yield saveMe.toUser
           }
         }
-      } yield upserted).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+      } yield upserted).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def firstLogin: RepositoryIO[Option[Instant]] =
       (for {
-        chutiSession <- ZIO.service[SessionContext].map(_.session)
+        chutiSession <- ZIO.service[ChutiSession]
         res <- ctx.run(userLogins.filter(_.userId === lift(chutiSession.user.id.fold(-1)(_.userId))).map(_.time).min).map(_.map(_.toInstant.nn))
-      } yield res).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+      } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def login(
       email:    String,
@@ -247,15 +251,15 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
     ): ZIO[Any, RepositoryError, Option[User]] = {
       inline def sql =
         quote(infix"""select u.id
-                 from `user` u
-                 where u.deleted = 0 and
-                 u.active = 1 and
-                 u.email = ${lift(email)} and
-                 u.hashedpassword = SHA2(${lift(password)}, 512)""".as[Query[Int]])
+               from `user` u
+               where u.deleted = 0 and
+               u.active = 1 and
+               u.email = ${lift(email)} and
+               u.hashedpassword = SHA2(${lift(password)}, 512)""".as[Query[Int]])
       (for {
         now    <- Clock.instant
         userId <- ctx.run(sql).map(_.headOption.map(UserId.apply))
-        user   <- ZIO.foreach(userId)(id => get(id)).provideLayer(godSession)
+        user   <- ZIO.foreach(userId)(id => get(id)).provide(godSession)
         saveTime = Timestamp.from(now).nn
         _ <- ZIO.foreachDiscard(userId)(id => ctx.run(userLogins.insertValue(UserLogRow(lift(id.userId), lift(saveTime)))))
       } yield user.flatten).provideLayer(dataSourceLayer).mapError(RepositoryError.apply)
@@ -272,7 +276,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
         )
         res <- ctx
           .run(quote(infix"update `user` set hashedPassword=SHA2(${lift(newPassword)}, 512) where id = ${lift(user.id)}".as[Update[Int]])).map(_ > 0)
-      } yield res).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+      } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] = {
       ctx
@@ -284,7 +288,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
 
     override def unfriend(enemy: User): RepositoryIO[Boolean] = {
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
+        session <- ZIO.service[ChutiSession]
         rowOpt = for {
           one <- session.user.id
           two <- enemy.id
@@ -298,13 +302,13 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             ).map(_ > 0)
         )
       } yield deleted)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
     }
 
     override def friend(friend: User): RepositoryIO[Boolean] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
+        session <- ZIO.service[ChutiSession]
         friends <- friends
         res <- friends
           .find(_.id == friend.id).fold {
@@ -319,12 +323,12 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             }
           }(_ => ZIO.succeed(true))
       } yield res)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def friends: RepositoryIO[Seq[User]] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
+        session <- ZIO.service[ChutiSession]
         res <- session.user.id.fold(ZIO.succeed(Seq.empty): ZIO[DataSource, SQLException, Seq[User]]) { id =>
           ctx
             .run {
@@ -335,12 +339,12 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             }.map(_.map(_._1.toUser))
         }
       } yield res)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def getWallet: RepositoryIO[Option[UserWallet]] =
       for {
-        session <- ZIO.service[SessionContext].map(_.session)
+        session <- ZIO.service[ChutiSession]
         wallet  <- session.user.id.fold(ZIO.none: RepositoryIO[Option[UserWallet]])(getWallet)
       } yield wallet
 
@@ -356,7 +360,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           ctx.run(userWallets.insertValue(lift(newWallet))).as(Option(newWallet.toUserWallet))
         }(w => ZIO.succeed(Option(w.toUserWallet)))
       } yield wallet)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] =
@@ -371,7 +375,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           ctx.run(userWallets.insertValue(lift(row)))
         }(_ => ctx.run(userWallets.filter(_.userId == lift(userWallet.userId.userId)).updateValue(lift(row))))
       } yield userWallet)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
   }
@@ -379,7 +383,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
   def unCachedGet(pk: GameId): RepositoryIO[Option[Game]] =
     ctx
       .run(games.filter(g => g.id == lift(pk.gameId) && !g.deleted))
-      .flatMap(r => ZIO.foreach(r.headOption)(_.toGame))
+      .map(_.headOption.map(_.toGame))
       .provideLayer(dataSourceLayer)
       .mapError(RepositoryError.apply)
 
@@ -387,8 +391,8 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
 
     override def getHistoricalUserGames: RepositoryIO[Seq[Game]] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
-        playerRows <- ctx
+        session <- ZIO.service[ChutiSession]
+        players <- ctx
           .run(
             gamePlayers
               .filter(p => p.userId == lift(session.user.id.fold(-1)(_.userId)) && !p.invited)
@@ -396,13 +400,12 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
                 players.gameId == game.id
               )
               .sortBy(_._2.lastUpdated)(Ord.descNullsLast)
-          )
-        historicalGames <- ZIO.foreach(playerRows)(_._2.toGame)
-      } yield historicalGames).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+          ).map(_.map(_._2.toGame))
+      } yield players).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
+        session <- ZIO.service[ChutiSession]
         ret <-
           if (session.user.isBot)
             ZIO.succeed(true)
@@ -410,7 +413,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             ctx.run(gamePlayers.filter(gp => gp.gameId == lift(id.gameId) && gp.userId == lift(session.user.id.fold(-1)(_.userId))).nonEmpty)
           }
 
-      } yield ret).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+      } yield ret).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def updatePlayers(game: Game): RepositoryIO[Game] = {
       def insertValues(players: List[GamePlayersRow]) =
@@ -439,30 +442,27 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           )
         )
       } yield game
-    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    }.provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def gameInvites: RepositoryIO[Seq[Game]] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
-        retRows <- ctx
+        session <- ZIO.service[ChutiSession]
+        ret <- ctx
           .run(
             gamePlayers
               .filter(player => player.userId == lift(session.user.id.fold(-1)(_.userId)) && player.invited)
               .join(games).on((player, game) => player.gameId == game.id).map(_._2)
-          )
-        ret <- ZIO.foreach(retRows)(_.toGame)
-      } yield ret).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+          ).map(_.map(_.toGame))
+      } yield ret).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = {
-      for {
-        retRows <- ctx
-          .run(
-            games
-              .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
-          )
-        ret <- ZIO.foreach(retRows)(_.toGame)
-      } yield ret
-    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
+      ctx
+        .run(
+          games
+            .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
+        )
+        .map(_.map(_.toGame))
+        .provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     private val runningGames: Set[GameStatus] = Set(
       GameStatus.comienzo,
@@ -476,8 +476,8 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
 
     override def getGameForUser: RepositoryIO[Option[Game]] =
       (for {
-        session <- ZIO.service[SessionContext].map(_.session)
-        retRows <-
+        session <- ZIO.service[ChutiSession]
+        ret <-
           ctx
             .run(
               gamePlayers
@@ -485,9 +485,8 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
                 .join(games.filter(g => liftQuery(runningGames).contains(g.status)))
                 .on(_.gameId == _.id)
                 .map(_._2)
-            )
-        ret <- ZIO.foreach(retRows.headOption)(_.toGame)
-      } yield ret).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+            ).map(_.headOption.map(_.toGame))
+      } yield ret).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def upsert(game: Game): RepositoryIO[Game] =
       (for {
@@ -520,16 +519,15 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             _ <- ZIO.fail(RepositoryError("Game not found")).when(updateCount == 0)
           } yield upsertMe
         }
-        res <- upserted.toGame
-      } yield res).provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+        res = upserted.toGame
+      } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] =
-      (for {
-        retRows <- ctx
-          .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted))
-          .provideLayer(dataSourceLayer)
-        ret <- ZIO.foreach(retRows.headOption)(_.toGame)
-      } yield ret).mapError(RepositoryError.apply)
+      ctx
+        .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted))
+        .map(_.headOption.map(_.toGame))
+        .provideLayer(dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
     override def delete(
       pk:         GameId,
@@ -550,21 +548,19 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           }
         }
       } yield result
-    }.provideSomeLayer[SessionContext](dataSourceLayer).mapError(RepositoryError.apply)
+    }.provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
-    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = {
-      for {
-        retRows <- ctx
-          .run(games.filter(!_.deleted))
-          .provideSomeLayer[SessionContext](dataSourceLayer)
-        ret <- ZIO.foreach(retRows)(_.toGame)
-      } yield ret
-    }.mapError(RepositoryError.apply)
+    override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
+      ctx
+        .run(games.filter(!_.deleted))
+        .map(_.map(_.toGame))
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
+        .mapError(RepositoryError.apply)
 
     override def count(search: Option[EmptySearch]): RepositoryIO[Long] =
       ctx
         .run(games.filter(!_.deleted).size)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
   }
@@ -575,7 +571,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
         now <- Clock.instant.map(a => Timestamp.from(a).nn)
         b   <- ctx.run(quote(tokens.filter(_.expireTime >= lift(now))).delete).map(_ > 0)
       } yield b)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def validateToken(
@@ -586,14 +582,14 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
         user <- peek(token, purpose)
         _    <- ctx.run(tokens.filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString)).delete)
       } yield user)
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def createToken(
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): ZIO[SessionContext, RepositoryError, Token] =
+    ): ZIO[ChutiSession, RepositoryError, Token] =
       (
         for {
           tok <- Random.nextBytes(8).map(r => new BigInteger(r.toArray).toString(32))
@@ -606,7 +602,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
           )
           inserted <- ctx.run(tokens.insertValue(lift(row))).as(Token(row.tok))
         } yield inserted
-      ).provideSomeLayer[SessionContext](dataSourceLayer)
+      ).provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def peek(
@@ -619,7 +615,7 @@ case class QuillRepository(config: ConfigurationService) extends Repository {
             .filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString))
             .join(users).on(_.userId == _.id).map(_._2)
         ).map(_.headOption.map(_.toUser))
-        .provideSomeLayer[SessionContext](dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
   }

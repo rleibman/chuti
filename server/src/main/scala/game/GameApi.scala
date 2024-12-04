@@ -1,72 +1,51 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package game
 
+import api.ChutiSession
 import caliban.*
-import caliban.schema.{ArgBuilder, GenericSchema, Schema}
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
+import caliban.CalibanError.ExecutionError
+import caliban.interop.zio.*
+import caliban.interop.zio.json.*
+import caliban.introspection.adt.__Type
+import caliban.schema.*
+import caliban.schema.ArgBuilder.auto.*
+import caliban.schema.Schema.auto.*
+import caliban.wrappers.Wrappers.*
 import chat.ChatApi.{Mutations, Queries, Subscriptions}
 import chat.ChatService
 import chuti.*
-import dao.{Repository, SessionContext}
+import dao.Repository
 import game.GameService
 import game.GameService.GameLayer
-import zio.json.*
+import io.circe.Json
+import io.circe.generic.auto.*
+import io.circe.syntax.*
 import zio.logging.*
 import zio.stream.ZStream
 import zio.{Clock, Console, ZIO, *}
 
 object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 
-  opaque type GameAsJson = String
-
-  object GameAsJson {
-
-    def fromGame(game: Game): GameAsJson = game.toJson
-
-  }
-
-  opaque type GameEventAsJson = String
-
-  object GameEventAsJson {
-
-    def fromGameEvent(gameEvent: GameEvent): GameEventAsJson = gameEvent.toJson
-
-  }
-
-  opaque type PlayEventAsJson = String
-
-  extension (playEvent: PlayEvent) def toPlayEventAsJson: PlayEventAsJson = playEvent.toJson
-
-  object PlayEventAsJson {
-
-    given JsonDecoder[PlayEventAsJson] = JsonDecoder.string
-    given JsonEncoder[PlayEventAsJson] = JsonEncoder.string
-
-  }
+  import caliban.interop.circe.json.*
 
   case class PlayArgs(
     gameId:    GameId,
-    playEvent: PlayEventAsJson
+    gameEvent: Json
   )
   case class GameInviteArgs(
     userId: UserId,
@@ -87,58 +66,58 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
   )
 
   case class Queries(
-    getGame:                GameId => ZIO[GameService & GameLayer, GameError, Option[GameAsJson]],
-    getGameForUser:         ZIO[GameService & GameLayer, GameError, Option[GameAsJson]],
-    getFriends:             ZIO[GameService & GameLayer, GameError, Seq[User]],
-    getGameInvites:         ZIO[GameService & GameLayer, GameError, Seq[GameAsJson]],
-    getLoggedInUsers:       ZIO[GameService & GameLayer, GameError, Seq[User]],
-    getHistoricalUserGames: ZIO[GameService & GameLayer, GameError, Seq[GameAsJson]]
+    getGame:                GameId => ZIO[GameService & GameLayer, GameException, Option[Json]],
+    getGameForUser:         ZIO[GameService & GameLayer, GameException, Option[Json]],
+    getFriends:             ZIO[GameService & GameLayer, GameException, Seq[User]],
+    getGameInvites:         ZIO[GameService & GameLayer, GameException, Seq[Json]],
+    getLoggedInUsers:       ZIO[GameService & GameLayer, GameException, Seq[User]],
+    getHistoricalUserGames: ZIO[GameService & GameLayer, GameException, Seq[Json]]
   )
   case class Mutations(
-    newGame: NewGameArgs => ZIO[GameService & GameLayer, GameError, GameAsJson],
+    newGame: NewGameArgs => ZIO[GameService & GameLayer, GameException, Json],
     newGameSameUsers: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameError,
-      GameAsJson
+      GameException,
+      Json
     ],
-    joinRandomGame: ZIO[GameService & GameLayer, GameError, GameAsJson],
-    abandonGame:    GameId => ZIO[GameService & GameLayer, GameError, Boolean],
+    joinRandomGame: ZIO[GameService & GameLayer, GameException, Json],
+    abandonGame:    GameId => ZIO[GameService & GameLayer, GameException, Boolean],
     inviteByEmail: InviteByEmailArgs => ZIO[
       GameService & GameLayer & ChatService,
-      GameError,
+      GameException,
       Boolean
     ],
-    startGame: GameId => ZIO[GameService & GameLayer, GameError, Boolean],
+    startGame: GameId => ZIO[GameService & GameLayer, GameException, Boolean],
     inviteToGame: GameInviteArgs => ZIO[
       GameService & GameLayer & ChatService,
-      GameError,
+      GameException,
       Boolean
     ],
-    acceptGameInvitation: GameId => ZIO[GameService & GameLayer, GameError, GameAsJson],
+    acceptGameInvitation: GameId => ZIO[GameService & GameLayer, GameException, Json],
     declineGameInvitation: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameError,
+      GameException,
       Boolean
     ],
     cancelUnacceptedInvitations: GameId => ZIO[
       GameService & GameLayer & ChatService,
-      GameError,
+      GameException,
       Boolean
     ],
-    friend:   UserId => ZIO[GameService & GameLayer & ChatService, GameError, Boolean],
-    unfriend: UserId => ZIO[GameService & GameLayer & ChatService, GameError, Boolean],
-    play:     PlayArgs => ZIO[GameService & GameLayer, GameError, Boolean]
+    friend:   UserId => ZIO[GameService & GameLayer & ChatService, GameException, Boolean],
+    unfriend: UserId => ZIO[GameService & GameLayer & ChatService, GameException, Boolean],
+    play:     PlayArgs => ZIO[GameService & GameLayer, GameException, Boolean]
   )
   case class Subscriptions(
-    gameStream: GameStreamArgs => ZStream[GameService & GameLayer, GameError, GameEventAsJson],
-    userStream: ConnectionId => ZStream[GameService & GameLayer, GameError, UserEvent]
+    gameStream: GameStreamArgs => ZStream[GameService & GameLayer, GameException, Json],
+    userStream: ConnectionId => ZStream[GameService & GameLayer, GameException, UserEvent]
   )
 
   private given Schema[Any, GameId] = Schema.intSchema.contramap(_.gameId)
   private given Schema[Any, UserId] = Schema.intSchema.contramap(_.userId)
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
-  private given Schema[Any, User] = Schema.gen[Any, User]
-  private given Schema[Any, Game] = Schema.gen[Any, Game]
+  private given Schema[Any, User] = gen[Any, User]
+  private given Schema[Any, Game] = gen[Any, Game]
   private given Schema[GameService & GameLayer, Queries] = Schema.gen[GameService & GameLayer, Queries]
   private given Schema[GameService & GameLayer & ChatService, Mutations] = Schema.gen[GameService & GameLayer & ChatService, Mutations]
   private given Schema[GameService & GameLayer & ChatService, Subscriptions] = Schema.gen[GameService & GameLayer & ChatService, Subscriptions]
@@ -163,9 +142,9 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       )
     )
 
-  def sanitizeGame(game: Game): ZIO[SessionContext, Nothing, Game] =
+  def sanitizeGame(game: Game): ZIO[ChutiSession, Nothing, Game] =
     for {
-      user <- ZIO.service[SessionContext].map(_.session.user)
+      user <- ZIO.serviceWith[ChutiSession](_.user)
     } yield sanitizeGame(game, user)
 
   lazy val api: GraphQL[GameService & GameLayer & ChatService] =
@@ -176,37 +155,37 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
             for {
               gameOpt  <- GameService.getGame(gameId)
               filtered <- ZIO.foreach(gameOpt)(sanitizeGame)
-            } yield filtered.map(GameAsJson.fromGame),
+            } yield filtered.map(_.asJson),
           getGameForUser = for {
             gameOpt  <- GameService.getGameForUser
             filtered <- ZIO.foreach(gameOpt)(sanitizeGame)
-          } yield filtered.map(GameAsJson.fromGame),
+          } yield filtered.map(_.asJson),
           getFriends = GameService.getFriends,
           getGameInvites = for {
             gameSeq  <- GameService.getGameInvites
             filtered <- ZIO.foreach(gameSeq)(sanitizeGame)
-          } yield filtered.map(GameAsJson.fromGame),
+          } yield filtered.map(_.asJson),
           getLoggedInUsers = GameService.getLoggedInUsers,
           getHistoricalUserGames = for {
             gameSeq  <- GameService.getHistoricalUserGames
             filtered <- ZIO.foreach(gameSeq)(sanitizeGame)
-          } yield filtered.map(GameAsJson.fromGame)
+          } yield filtered.map(_.asJson)
         ),
         Mutations(
           newGame = newGameArgs =>
             for {
               game     <- GameService.newGame(satoshiPerPoint = newGameArgs.satoshiPerPoint)
               filtered <- sanitizeGame(game)
-            } yield filtered.toJson,
+            } yield filtered.asJson,
           newGameSameUsers = gameId =>
             for {
               game     <- GameService.newGameSameUsers(gameId)
               filtered <- sanitizeGame(game)
-            } yield filtered.toJson,
+            } yield filtered.asJson,
           joinRandomGame = for {
             game     <- GameService.joinRandomGame()
             filtered <- sanitizeGame(game)
-          } yield filtered.toJson,
+          } yield filtered.asJson,
           abandonGame = gameId => GameService.abandonGame(gameId),
           inviteToGame = userInviteArgs => GameService.inviteToGame(userInviteArgs.userId, userInviteArgs.gameId),
           inviteByEmail = inviteByEmailArgs =>
@@ -220,21 +199,17 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
             for {
               game     <- GameService.acceptGameInvitation(gameId)
               filtered <- sanitizeGame(game)
-            } yield filtered.toJson,
+            } yield filtered.asJson,
           declineGameInvitation = gameId => GameService.declineGameInvitation(gameId),
           cancelUnacceptedInvitations = gameId => GameService.cancelUnacceptedInvitations(gameId),
           friend = userId => GameService.friend(userId),
           unfriend = userId => GameService.unfriend(userId),
-          play = playArgs =>
-            for {
-              playEvent <- ZIO.fromEither(playArgs.playEvent.fromJson[PlayEvent]).mapError(s => GameError(s))
-              played    <- GameService.play(playArgs.gameId, playEvent)
-            } yield played
+          play = playArgs => GameService.play(playArgs.gameId, playArgs.gameEvent.asJson)
         ),
         Subscriptions(
           gameStream = gameStreamArgs =>
             GameService
-              .gameStream(gameStreamArgs.gameId, gameStreamArgs.connectionId).map(GameEventAsJson.fromGameEvent),
+              .gameStream(gameStreamArgs.gameId, gameStreamArgs.connectionId).map(_.asJson),
           userStream = connectionId => GameService.userStream(connectionId)
         )
       )
@@ -247,7 +222,7 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
 //  @@ // wrapper that logs slow queries
 //      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
   val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Instant\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  startGame(value: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  `: [Json!]\n  getLoggedInUsers: [User!]\n  getHistoricalUserGames: [Json!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n  gameId: Int\n}"
+    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Instant\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  startGame(value: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n  getHistoricalUserGames: [Json!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n  gameId: Int\n}"
 
   // Generate client with
   // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala

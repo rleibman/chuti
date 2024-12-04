@@ -1,43 +1,40 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package pages
 
 import _root_.util.LocalizedMessages
 import app.{ChutiState, GameViewMode}
-import chuti.CuantasCantas.*
+import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.*
 import components.{Confirm, Toast}
-import game.GameClient.Mutations
+import caliban.client.scalajs.given
+import caliban.client.scalajs.GameClient.Mutations
+import io.circe.generic.auto.*
+import io.circe.syntax.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{^, _}
+import japgolly.scalajs.react.vdom.html_<^.{^, *}
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
-import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
-import net.leibman.chuti.semanticUiReact.imageImageMod.ImageProps
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
+import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 import pages.LobbyComponent.calibanCall
-import zio.json.*
 
 import scala.scalajs.js.JSConverters.*
 
@@ -82,7 +79,7 @@ object GameComponent {
       event:  PlayEvent
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.gameId, event.toJson),
+        Mutations.play(gameId.gameId, event.asJson),
         _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
       )
     }
@@ -556,12 +553,12 @@ object GameComponent {
   }
 
   import scala.language.unsafeNulls
-  given triunfoReuse:       Reusability[Triunfo] = Reusability.by(_.toString)
-  given gameReuse:          Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
-  given cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)
-  given fichasReuse:        Reusability[Ficha] = Reusability.by(_.toString)
-  given stateReuse:         Reusability[State] = Reusability.derive[State]
-  given propsReuse:         Reusability[Props] = Reusability.derive[Props]
+  given Reusability[Triunfo] = Reusability.by(_.toString)
+  given Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given Reusability[CuantasCantas] = Reusability.by(_.toString)
+  given Reusability[Ficha] = Reusability.by(_.toString)
+  given Reusability[State] = Reusability.derive[State]
+  given Reusability[Props] = Reusability.derive[Props]
 
   private val component = ScalaComponent
     .builder[Props]

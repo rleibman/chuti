@@ -20,11 +20,15 @@ import api.ChutiSession
 import api.token.{TokenHolder, TokenPurpose}
 import better.files.File
 import chat.ChatService
+import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
-import dao.InMemoryRepository.{now, user1, user2, user3, user4}
 import dao.Repository.GameOperations
-import dao.{InMemoryRepository, Repository, RepositoryIO, SessionContext}
+import dao.{InMemoryRepository, Repository, RepositoryIO}
 import game.GameService
+import io.circe.Printer
+import io.circe.generic.auto.*
+import io.circe.parser.decode
+import io.circe.syntax.*
 import mail.Postman
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
@@ -32,25 +36,20 @@ import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.logging.*
 import zio.test.{TestResult, assertTrue}
-import zio.json.*
+import dao.InMemoryRepository.*
 
 import java.time.Instant
 import java.util.UUID
 
 trait GameAbstractSpec {
 
-  import CuantasCantas.*
-
   val connectionId: ConnectionId = ConnectionId(5)
 
-  lazy final val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
-  lazy final val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
-  lazy final val GAME_WITH_2USERS = "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
-  lazy final val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
-
-  def WEIRD_GAME(prefix: String) =
-    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${java.lang.System
-        .currentTimeMillis() / 1000}.json"
+  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
+  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
+  val GAME_WITH_2USERS =
+    "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
+  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
 
   def writeGame(
     game:     Game,
@@ -58,29 +57,15 @@ trait GameAbstractSpec {
   ): Task[Unit] =
     ZIO.attempt {
       val file = File(filename)
-      file.write(game.toJson)
+      file.write(game.asJson.printWith(Printer.spaces2))
     }
 
   def readGame(filename: String): Task[Game] = {
-    ZIO
-      .fromEither {
-        import scala.language.unsafeNulls
-        val file = File(filename)
-        file.contentAsString.nn.fromJson[Game]
-      }.mapError(e => Exception(e))
-  }
-
-  def assertSoloUnoCanta(game: Game): TestResult = {
-    assertTrue(game.jugadores.count(_.cantante) === 1) &&
-    assertTrue(game.jugadores.count(_.mano) === 1) &&
-    assertTrue(game.jugadores.count(_.turno) === 1) &&
-    assertTrue(game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) === 1) &&
-    assertTrue(
-      game.jugadores
-        .find(_.cantante).fold(false)(
-          _.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad)
-        )
-    )
+    ZIO.attempt {
+      import scala.language.unsafeNulls
+      val file = File(filename)
+      decode[Game](file.contentAsString.nn)
+    }.absolve
   }
 
   def repositoryLayer(gameFiles: String*): ULayer[Repository] =
@@ -97,7 +82,7 @@ trait GameAbstractSpec {
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(chuti.god))
+            ChutiSession(chuti.god).toLayer
           )
       looped <-
         ZIO.iterate(start)(game => game.gameStatus == GameStatus.jugando)(_ => juegaMano(gameId))
@@ -136,7 +121,7 @@ trait GameAbstractSpec {
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(chuti.god))
+            ChutiSession(chuti.god).toLayer
           )
       mano = game.mano.get
       sigiuente1 = game.nextPlayer(mano)
@@ -145,22 +130,22 @@ trait GameAbstractSpec {
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(mano.user))
+            ChutiSession(mano.user).toLayer
           )
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(sigiuente1.user))
+            ChutiSession(sigiuente1.user).toLayer
           )
       _ <-
         bot
           .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(sigiuente2.user))
+            ChutiSession(sigiuente2.user).toLayer
           )
       afterPlayer4 <-
         bot
           .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(sigiuente3.user))
+            ChutiSession(sigiuente3.user).toLayer
           )
     } yield afterPlayer4
   }
@@ -176,11 +161,27 @@ trait GameAbstractSpec {
       ChatService.make()
     )
 
-  protected def userLayer(user: User): ULayer[SessionContext] = {
-    SessionContext.live(ChutiSession(user))
+  def WEIRD_GAME(prefix: String) =
+    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${java.lang.System
+        .currentTimeMillis() / 1000}.json"
+
+  protected def userLayer(user: User): ULayer[ChutiSession] = {
+    ChutiSession(user).toLayer
   }
-  protected def godLayer: ULayer[SessionContext] = {
-    SessionContext.live(ChutiSession(chuti.god))
+  protected def godLayer: ULayer[ChutiSession] = {
+    ChutiSession(chuti.god).toLayer
+  }
+
+  def assertSoloUnoCanta(game: Game): TestResult = {
+    val cantante = game.jugadores.find(_.cantante).get
+    assertTrue(
+      game.jugadores.count(_.cantante) == 1,
+      game.jugadores.count(_.mano) == 1,
+      game.jugadores.count(_.turno) == 1,
+      game.jugadores.count(j => j.cuantasCantas.fold(false)(_ != Buenas)) == 1,
+      cantante.mano,
+      cantante.cuantasCantas.fold(false)(c => c.prioridad > CuantasCantas.Buenas.prioridad)
+    )
   }
 
   def newGame(satoshiPerPoint: Int): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] =
@@ -238,7 +239,7 @@ trait GameAbstractSpec {
       g1 <-
         bot
           .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-            SessionContext.live(ChutiSession(quienCanta))
+            ChutiSession(quienCanta).toLayer
           )
       g2 <-
         if (g1.jugadores.exists(_.cuantasCantas == Option(CuantasCantas.CantoTodas)))
@@ -246,7 +247,7 @@ trait GameAbstractSpec {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-              SessionContext.live(ChutiSession(sigiuente1))
+              ChutiSession(sigiuente1).toLayer
             )
         }
       g3 <-
@@ -255,7 +256,7 @@ trait GameAbstractSpec {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-              SessionContext.live(ChutiSession(sigiuente2))
+              ChutiSession(sigiuente2).toLayer
             )
         }
       g4 <-
@@ -264,7 +265,7 @@ trait GameAbstractSpec {
         else {
           bot
             .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-              SessionContext.live(ChutiSession(sigiuente3))
+              ChutiSession(sigiuente3).toLayer
             )
         }
     } yield g4
@@ -285,7 +286,7 @@ trait GameAbstractSpec {
       gameStream =
         gameService
           .gameStream(start.id.get, connectionId)
-          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -308,14 +309,14 @@ trait GameAbstractSpec {
           .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
             Repository & Postman & TokenHolder & GameService & ChatService
           ](
-            SessionContext.live(ChutiSession(chuti.god))
+            ChutiSession(chuti.god).toLayer
           )
       gameEvents <- gameEventsFiber.join
       _ <- ZIO.succeed {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
         assert(gameEvents.nonEmpty)
       }
-    } yield played).provideLayer(testLayer())
+    } yield played).provide(testLayer())
 
   private def playRound(game: Game): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
     for {
@@ -359,7 +360,7 @@ trait GameAbstractSpec {
       gameStream =
         gameService
           .gameStream(game.id.get, connectionId)
-          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](SessionContext.live(ChutiSession(user1)))
+          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -373,7 +374,7 @@ trait GameAbstractSpec {
           .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
             Repository & Postman & TokenHolder & GameService & ChatService
           ](
-            SessionContext.live(ChutiSession(chuti.god))
+            ChutiSession(chuti.god).toLayer
           )
       gameEvents <- gameEventsFiber.join
       _ <- ZIO.succeed {
@@ -387,6 +388,6 @@ trait GameAbstractSpec {
       gameService <- ZIO.service[GameService]
       game   <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
       played <- juegaHastaElFinal(game.id.get)
-    } yield played).provideLayer(testLayer(filename))
+    } yield played).provide(testLayer(filename))
 
 }

@@ -22,6 +22,7 @@
 package util
 
 import java.util.Locale
+import scala.annotation.nowarn
 
 abstract class LocalizedMessages {
 
@@ -31,10 +32,11 @@ abstract class LocalizedMessages {
   )
   def bundles: Map[String, MessageBundle]
 
+  @nowarn
   def localized(
     key:          String,
     default:      String = ""
-  )(using locale: Locale = new Locale("es", "MX")
+  )(using locale: Locale = Locale("es", "MX")
   ): String = {
     println(s"locale $locale, key = $key")
     (for {

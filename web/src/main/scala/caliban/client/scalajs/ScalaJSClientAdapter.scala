@@ -1,37 +1,36 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package caliban.client.scalajs
 
 import _root_.util.Config
+import caliban.client
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.Operations.{IsOperation, RootSubscription}
-import caliban.client.{GraphQLRequest, GraphQLResponse, GraphQLResponseError, SelectionBuilder, __Value}
+import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
+import io.circe.generic.auto.*
+import io.circe.parser.*
+import io.circe.syntax.*
+import io.circe.{Decoder, Encoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
 import sttp.capabilities
 import sttp.client3.*
 import zio.*
-import zio.json.*
 
 import java.net.URI
 import java.time.Instant
@@ -46,30 +45,6 @@ trait WebSocketHandler {
 }
 
 trait ScalaJSClientAdapter extends TimerSupport {
-
-  // TODO, Caliban has an inner dependency on circe that would be nice to avoid. Oh well.
-  given JsonDecoder[__Value] = {
-    import io.circe.parser.*
-    import caliban.client.__Value.valueDecoder
-    JsonDecoder.string.mapOrFail(str => decode[__Value](str).left.map(_.toString))
-  }
-  given JsonEncoder[__Value] = {
-    import io.circe.syntax.*
-    import caliban.client.__Value.valueEncoder
-
-    JsonEncoder.string.contramap[__Value](_.asJson.noSpaces)
-  }
-
-  given JsonEncoder[io.circe.Json] = JsonEncoder.string.contramap[io.circe.Json](_.noSpaces)
-  given JsonDecoder[io.circe.Json] = {
-    import io.circe.parser.*
-    JsonDecoder.string.mapOrFail(str => parse(str).left.map(_.toString))
-  }
-
-  given JsonCodec[GraphQLRequest] = DeriveJsonCodec.gen[GraphQLRequest]
-  given JsonCodec[GraphQLResponse] = DeriveJsonCodec.gen[GraphQLResponse]
-  given JsonCodec[GraphQLResponseError.Location] = DeriveJsonCodec.gen[GraphQLResponseError.Location]
-  given JsonCodec[GraphQLResponseError] = DeriveJsonCodec.gen[GraphQLResponseError]
 
   val serverUri = uri"http://${Config.chutiHost}/api/game"
   given backend: SttpBackend[Future, capabilities.WebSockets] = FetchBackend()
@@ -89,15 +64,17 @@ trait ScalaJSClientAdapter extends TimerSupport {
       })
   }
 
-  def asyncCalibanCallThroughJsonOpt[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, Option[String]]
+  def asyncCalibanCallThroughJsonOpt[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Option[Json]]
   )(using ev:         IsOperation[Origin]
   ): AsyncCallback[Option[A]] =
-    asyncCalibanCall[Origin, Option[String]](selectionBuilder).map { jsonOpt =>
-      jsonOpt.map(_.fromJson[A]) match {
+    asyncCalibanCall[Origin, Option[Json]](selectionBuilder).map { jsonOpt =>
+      import scala.language.unsafeNulls
+      val decoder = summon[Decoder[A]]
+      jsonOpt.map(decoder.decodeJson) match {
         case Some(Right(value)) => Some(value)
         case Some(Left(error)) =>
-          Callback.throwException(RuntimeException(error)).runNow()
+          Callback.throwException(error).runNow()
           None
         case None => None
       }
@@ -129,16 +106,18 @@ trait ScalaJSClientAdapter extends TimerSupport {
       }
   }
 
-  def calibanCallThroughJsonOpt[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, Option[String]],
+  def calibanCallThroughJsonOpt[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Option[Json]],
     callback:         Option[A] => Callback
   )(using ev:         IsOperation[Origin]
   ): Callback =
-    calibanCall[Origin, Option[String]](
+    calibanCall[Origin, Option[Json]](
       selectionBuilder,
       {
         case Some(json) =>
-          json.fromJson[A] match {
+          import scala.language.unsafeNulls
+          val decoder = summon[Decoder[A]]
+          decoder.decodeJson(json) match {
             case Right(obj) => callback(Option(obj))
             case Left(error) =>
               Callback.log(s"3 Error: $error") // TODO handle error responses better
@@ -147,15 +126,17 @@ trait ScalaJSClientAdapter extends TimerSupport {
       }
     )
 
-  def calibanCallThroughJson[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, String],
+  def calibanCallThroughJson[Origin, A: Decoder](
+    selectionBuilder: SelectionBuilder[Origin, Json],
     callback:         A => Callback
   )(using ev:         IsOperation[Origin]
   ): Callback =
-    calibanCall[Origin, String](
+    calibanCall[Origin, Json](
       selectionBuilder,
       { json =>
-        json.fromJson[A] match {
+        import scala.language.unsafeNulls
+        val decoder = summon[Decoder[A]]
+        decoder.decodeJson(json) match {
           case Right(obj) => callback(obj)
           case Left(error) =>
             Callback.log(s"4 Error: $error") // TODO handle error responses better
@@ -168,7 +149,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
   case class GQLOperationMessage(
     `type`:  String,
     id:      Option[String] = None,
-    payload: Option[String] = None
+    payload: Option[Json] = None
   )
 
   object GQLOperationMessage {
@@ -187,30 +168,33 @@ trait ScalaJSClientAdapter extends TimerSupport {
     val GQL_ERROR = "error"
     val GQL_UNKNOWN = "unknown"
 
-    given JsonCodec[GQLOperationMessage] = DeriveJsonCodec.gen[GQLOperationMessage]
-
   }
 
   import scala.language.unsafeNulls
+
+  given Encoder[client.__Value] = Encoder.derived[client.__Value]
+  given Decoder[client.__Value] = Decoder.derived[client.__Value]
+  given graphQLDecoder: Decoder[GraphQLResponse] = Decoder.derived[GraphQLResponse]
+
   // TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
-  def makeWebSocketClient[A: JsonDecoder](
+  def makeWebSocketClient[A: Decoder](
     uriOrSocket:      Either[URI, WebSocket],
     query:            SelectionBuilder[RootSubscription, A],
     operationId:      String,
     connectionId:     String,
     onData:           (String, Option[A]) => Callback,
-    connectionParams: Option[String] = None,
+    connectionParams: Option[Json] = None,
     timeout: Duration = 8.minutes, // how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
-    onConnected:          (String, Option[String]) => Callback = { (_, _) => Callback.empty },
-    onReconnected:        (String, Option[String]) => Callback = { (_, _) => Callback.empty },
+    onConnected:          (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
+    onReconnected:        (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
     onReconnecting:       String => Callback = { _ => Callback.empty },
     onConnecting:         Callback = Callback.empty,
-    onDisconnected:       (String, Option[String]) => Callback = { (_, _) => Callback.empty },
-    onKeepAlive:          Option[String] => Callback = { _ => Callback.empty },
-    onServerError:        (String, Option[String]) => Callback = { (_, _) => Callback.empty },
-    onClientError:        String => Callback = { _ => Callback.empty }
+    onDisconnected:       (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
+    onKeepAlive:          Option[Json] => Callback = { _ => Callback.empty },
+    onServerError:        (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
+    onClientError:        Throwable => Callback = { _ => Callback.empty }
   ): WebSocketHandler =
     new WebSocketHandler {
 
@@ -218,7 +202,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
       def GQLConnectionInit(): GQLOperationMessage = GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
 
-      def GQLStart(query: GraphQLRequest): GQLOperationMessage = GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.toJson))
+      def GQLStart(query: GraphQLRequest): GQLOperationMessage = GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.asJson))
 
       def GQLStop(): GQLOperationMessage = GQLOperationMessage(GQL_STOP, Option(operationId))
 
@@ -246,13 +230,14 @@ trait ScalaJSClientAdapter extends TimerSupport {
         if (!connectionState.closed) {
           val sendMe = GQLConnectionInit()
           println(s"Sending: $sendMe")
-          socket.send(sendMe.toJson)
+          socket.send(sendMe.asJson.noSpaces)
         } else println("Connection is already closed")
       }
 
       socket.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
         val strMsg = e.data.toString
-        val msg: Either[String, GQLOperationMessage] = strMsg.fromJson[GQLOperationMessage]
+        val msg: Either[Error, GQLOperationMessage] =
+          decode[GQLOperationMessage](strMsg)
 //      println(s"Received: $strMsg")
         msg match {
           case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
@@ -275,7 +260,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
             } else onReconnected(id.getOrElse(""), payload).runNow()
             val sendMe = GQLStart(graphql)
             println(s"Sending: $sendMe")
-            socket.send(sendMe.toJson)
+            socket.send(sendMe.asJson.noSpaces)
           case Right(GQLOperationMessage(GQL_CONNECTION_ERROR, id, payload)) =>
             // if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
             onServerError(id.getOrElse(""), payload).runNow()
@@ -321,10 +306,10 @@ trait ScalaJSClientAdapter extends TimerSupport {
               val res = for {
                 payload <- payloadOpt.toRight(DecodingError("No payload"))
                 parsed <-
-                  payload
-                    .fromJson[GraphQLResponse]
+                  graphQLDecoder
+                    .decodeJson(payload)
                     .left
-                    .map(ex => DecodingError(s"Json deserialization error: $ex"))
+                    .map(ex => DecodingError("Json deserialization error", Some(ex)))
                 data <-
                   if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
                   else Right(parsed.data)
@@ -340,7 +325,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                   onData(id.getOrElse(""), Option(data)).runNow()
                 case Left(error) =>
                   error.printStackTrace()
-                  onClientError(error.getMessage).runNow()
+                  onClientError(error).runNow()
               }
             }
           case Right(GQLOperationMessage(GQL_ERROR, id, payload)) =>
@@ -353,12 +338,12 @@ trait ScalaJSClientAdapter extends TimerSupport {
             println(s"Unknown server operation! $typ $payload $id")
           case Left(error) =>
             onClientError(error)
-            println(error)
+            error.printStackTrace()
         }
       }
       socket.onerror = { (e: org.scalajs.dom.Event) =>
         println(s"Got error $e")
-        onClientError(s"We've got a socket error, no further info ($e)")
+        onClientError(new Exception(s"We've got a socket error, no further info ($e)"))
       }
       socket.onopen = { (_: org.scalajs.dom.Event) =>
         onConnecting.runNow()
@@ -375,8 +360,8 @@ trait ScalaJSClientAdapter extends TimerSupport {
           Callback.log(s"Closing socket: $query") >> Callback {
             connectionState = connectionState.copy(closed = true)
             connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
-            socket.send(GQLStop().toJson)
-            socket.send(GQLConnectionTerminate().toJson)
+            socket.send(GQLStop().asJson.noSpaces)
+            socket.send(GQLConnectionTerminate().asJson.noSpaces)
             socket.close()
           }
         } else

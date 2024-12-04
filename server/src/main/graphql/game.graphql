@@ -3,11 +3,9 @@ schema {
   mutation: Mutations
   subscription: Subscriptions
 }
-
 "An instantaneous point on the time-line represented by a standard date time string"
 scalar Instant
-scalar GameAsJson
-scalar PlayEventAsJson
+scalar Json
 
 enum UserEventType {
   AbandonedGame
@@ -18,33 +16,33 @@ enum UserEventType {
 }
 
 type Mutations {
-  newGame(satoshiPerPoint: Int!): GameAsJson
-  newGameSameUsers(value: Int!): GameAsJson
-  joinRandomGame: GameAsJson
+  newGame(satoshiPerPoint: Int!): Json
+  newGameSameUsers(value: Int!): Json
+  joinRandomGame: Json
   abandonGame(value: Int!): Boolean
   inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean
   startGame(value: Int!): Boolean
   inviteToGame(userId: Int!, gameId: Int!): Boolean
-  acceptGameInvitation(value: Int!): GameAsJson
+  acceptGameInvitation(value: Int!): Json
   declineGameInvitation(value: Int!): Boolean
   cancelUnacceptedInvitations(value: Int!): Boolean
   friend(value: Int!): Boolean
   unfriend(value: Int!): Boolean
-  play(gameId: Int!, playEvent: PlayEventAsJson!): Boolean
+  play(gameId: Int!, gameEvent: Json!): Boolean
 }
 
 type Queries {
-  getGame(value: Int!): GameAsJson
-  getGameForUser: GameAsJson
+  getGame(value: Int!): Json
+  getGameForUser: Json
   getFriends: [User!]
-  getGameInvites: [GameAsJson!]
+  getGameInvites: [Json!]
   getLoggedInUsers: [User!]
-  getHistoricalUserGames: [GameAsJson!]
+  getHistoricalUserGames: [Json!]
 }
 
 type Subscriptions {
-  gameStream(gameId: Int!, connectionId: Int!): String
-  userStream(value: Int!): UserEvent
+  gameStream(gameId: Int!, connectionId: String!): Json
+  userStream(value: String!): UserEvent
 }
 
 type User {

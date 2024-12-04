@@ -1,22 +1,17 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package app
@@ -28,23 +23,16 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
 import components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{
-  GameEventAsJson,
-  Queries,
-  Subscriptions,
-  User => CalibanUser,
-  UserEvent => CalibanUserEvent,
-  UserEventType => CalibanUserEventType
-}
+import caliban.client.scalajs.GameClient.{Queries, Subscriptions, User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType}
+import io.circe.*
+import io.circe.generic.auto.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.*
 import net.leibman.chuti.std.OnErrorEventHandlerNonNull
-import net.leibman.chuti.std.global.Audio
-import org.scalajs.dom.Event
-import org.scalajs.dom.window
+import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 import service.UserRESTClient
 import _root_.util.Config
@@ -53,8 +41,6 @@ import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
 import java.time.Instant
-import scala.util.Random
-import zio.json.*
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the router should be the main
   * content of the app, but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and presenting
@@ -62,11 +48,14 @@ import zio.json.*
   */
 object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSupport {
 
-  private val connectionId = Random.nextInt
+  private val connectionId = UUID.randomUUID().toString
 
   case class State(chutiState: ChutiState)
 
   class Backend($ : BackendScope[Unit, State]) {
+
+    import scala.language.unsafeNulls
+    private val gameEventDecoder: Decoder[GameEvent] = summon[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
       $.modState(s => {
@@ -120,7 +109,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         val moddedGame = s.chutiState.gameInProgress.flatMap { (currentGame: Game) =>
           gameEvent.index match {
             case None =>
-              throw GameError(
+              throw GameException(
                 "Esto es imposible (el evento no tiene indice)"
               )
             case Some(index) if index == currentGame.currentEventIndex =>
@@ -136,7 +125,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               Option(currentGame)
             case Some(index) =>
               // If it's past, mark an error, how could we have a past event???
-              throw GameError(
+              throw GameException(
                 s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
               )
           }
@@ -199,7 +188,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
     val audio = new Audio("")
-    audio.onended = ThisFunction.fromFunction2 { (_: Audio, _: Event) =>
+    audio.onended = { (_: Event) =>
       if (audioQueue.size > 4) {
         // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
         println("play queue got bigger than 4, clearing queue")
@@ -227,8 +216,6 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
           ()
         }
       }
-
-    audio.onerror = fn
 
     def playSound(url: String): Callback = {
       $.state.flatMap { s =>
@@ -378,6 +365,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       } yield $.modState { s =>
         import scala.language.unsafeNulls
         val copy = if (initial) {
+          // Special stuff needs to be done on initalization:
+          // - Create the userStream and connect to it
+          // - Set all methods that will be used by users of ChutiState to update pieces of the state, think of these as application level methods
+          // - Set the global User
           s.copy(
             chutiState = s.chutiState.copy(
               flipFicha = flipFicha,
@@ -420,16 +411,14 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               if (!needNewGameStream) copy.chutiState.gameStream
               else
                 gameInProgressOpt.map(game =>
-                  makeWebSocketClient[Option[GameEventAsJson]](
+                  makeWebSocketClient[Option[Json]](
                     uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                     query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
                     onData = { (_, data) =>
-                      data.flatten.fold(Callback.empty)(
-                        _.fromJson[GameEvent]
-                          .fold(
-                            failure => Callback.throwException(RuntimeException(failure)),
-                            g => onGameEvent(g)
-                          )
+                      data.flatten.fold(Callback.empty)(json =>
+                        gameEventDecoder
+                          .decodeJson(json)
+                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
                       )
                     },
                     operationId = "-",

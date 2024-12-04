@@ -1,52 +1,43 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package chuti.bots
 
-import chuti.*
-import dao.{Repository, SessionContext}
+import api.ChutiSession
+import chuti.{Game, GameId, PlayEvent, User}
+import dao.Repository
 import game.GameService
 import game.GameService.GameLayer
-import zio.*
+import zio.ZIO
 
 trait ChutiBot {
 
   def decideTurn(
     user: User,
     game: Game
-  ): IO[GameError, PlayEvent]
+  ): Option[PlayEvent]
 
   def takeTurn(gameId: GameId): ZIO[GameLayer & GameService, Exception, Game] = {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
-      user           <- ZIO.service[SessionContext].map(_.session.user)
+      user           <- ZIO.serviceWith[ChutiSession](_.user)
       game           <- gameOperations.get(gameId).map(_.get)
-      toPlay         <- decideTurn(user, game)
-      played <-
-        toPlay match {
-          case _: NoOpPlay => ZIO.succeed(game)
-          case _ => gameService.play(gameId, toPlay)
-        }
-    } yield played
+      played         <- ZIO.foreach(decideTurn(user, game))(gameService.play(gameId, _))
+    } yield played.getOrElse(game)
   }
 
 }

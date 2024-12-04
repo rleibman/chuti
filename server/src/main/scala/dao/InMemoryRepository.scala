@@ -1,22 +1,17 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package dao
@@ -28,7 +23,6 @@ import zio.logging.*
 import zio.*
 
 import java.time.Instant
-import java.util.UUID
 
 object InMemoryRepository {
 
@@ -54,10 +48,8 @@ object InMemoryRepository {
           UserId(4) -> user4
         )
       )
-      tokens  <- Ref.make(Map.empty[Token, (User, TokenPurpose, Instant)])
-      friends <- Ref.make(Seq.empty[(UserId, UserId)])
-      wallets <- Ref.make(Map.empty[UserId, UserWallet])
-    } yield InMemoryRepository(games, users, tokens, friends, wallets))
+      tokens <- Ref.make(Map.empty[String, Token])
+    } yield InMemoryRepository(games, users, tokens))
 
   val make: ULayer[Repository] = ZLayer.fromZIO(for {
     games <- Ref.make(Map.empty[GameId, Game])
@@ -69,19 +61,15 @@ object InMemoryRepository {
         UserId(4) -> user4
       )
     )
-    tokens  <- Ref.make(Map.empty[Token, (User, TokenPurpose, Instant)])
-    friends <- Ref.make(Seq.empty[(UserId, UserId)])
-    wallets <- Ref.make(Map.empty[UserId, UserWallet])
-  } yield InMemoryRepository(games, users, tokens, friends, wallets))
+    tokens <- Ref.make(Map.empty[String, Token])
+  } yield InMemoryRepository(games, users, tokens))
 
 }
 
 case class InMemoryRepository(
-  games:     Ref[Map[GameId, Game]],
-  users:     Ref[Map[UserId, User]],
-  tokens:    Ref[Map[Token, (User, TokenPurpose, Instant)]],
-  friendSeq: Ref[Seq[(UserId, UserId)]],
-  wallets:   Ref[Map[UserId, UserWallet]]
+  games:  Ref[Map[GameId, Game]],
+  users:  Ref[Map[UserId, User]],
+  tokens: Ref[Map[String, Token]]
 ) extends Repository {
 
   import InMemoryRepository.*
@@ -92,14 +80,9 @@ case class InMemoryRepository(
 
     override def gameInvites: RepositoryIO[Seq[Game]] = ???
 
-    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
-      games.get.map(_.collect { case (_, game) if game.jugadores.size < game.numPlayers => game }.toSeq)
+    override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = ???
 
-    override def getGameForUser: RepositoryIO[Option[Game]] =
-      for {
-        user <- ZIO.service[SessionContext].map(_.session.user)
-        res  <- games.get.map(_.find(_._2.jugadores.exists(_.id == user.id)).map(_._2))
-      } yield res
+    override def getGameForUser: RepositoryIO[Option[Game]] = ???
 
     override def upsert(game: Game): RepositoryIO[Game] =
       for {
@@ -130,40 +113,24 @@ case class InMemoryRepository(
     override def login(
       email:    String,
       password: String
-    ): ZIO[Any, RepositoryError, Option[User]] =
-      users.get.map(_.collectFirst { case (_, user) if user.email == email && password == "password" => user })
+    ): ZIO[Any, RepositoryError, Option[User]] = ???
 
-    override def userByEmail(email: String): RepositoryIO[Option[User]] =
-      users.get.map(_.collectFirst { case (_, user) if user.email == email => user })
+    override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
 
     override def changePassword(
       user:     User,
       password: String
-    ): RepositoryIO[Boolean] = ZIO.succeed(true)
+    ): RepositoryIO[Boolean] = ???
 
-    override def unfriend(enemy: User): RepositoryIO[Boolean] = ZIO.succeed(true)
+    override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
 
-    override def friend(friend: User): RepositoryIO[Boolean] = ZIO.succeed(true)
+    override def friend(friend: User): RepositoryIO[Boolean] = ???
 
-    override def friends: RepositoryIO[Seq[User]] =
-      for {
-        user <- ZIO.service[SessionContext].map(_.session.user)
-        fs <- friendSeq.get
-          .map(_.collect {
-            case (u1, u2) if user.id.contains(u1) => u2
-            case (u2, u1) if user.id.contains(u1) => u2
-          }).map(_.toSet)
-        ret <- users.get.map(_.collect { case (id, user) if fs.contains(id) => user })
-      } yield ret.toSeq
+    override def friends: RepositoryIO[Seq[User]] = ???
 
-    override def getWallet: RepositoryIO[Option[UserWallet]] =
-      for {
-        user <- ZIO.service[SessionContext].map(_.session.user)
-        w    <- wallets.get.map(_.collectFirst { case (id, wallet) if user.id.contains(id) => wallet })
-      } yield w
+    override def getWallet: RepositoryIO[Option[UserWallet]] = ???
 
-    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] =
-      wallets.update(ws => ws + (userWallet.userId -> userWallet)).as(userWallet)
+    override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
 
     override def upsert(user: User): RepositoryIO[User] =
       for {
@@ -177,16 +144,15 @@ case class InMemoryRepository(
     override def delete(
       pk:         UserId,
       softDelete: Boolean
-    ): RepositoryIO[Boolean] = users.update(_ - pk).as(true)
+    ): RepositoryIO[Boolean] = ???
 
-    override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = users.get.map(_.values.toSeq)
+    override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = ???
 
-    override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = users.get.map(_.size)
+    override def count(search: Option[PagedStringSearch]): RepositoryIO[Long] = ???
 
-    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] =
-      wallets.get.map(_.collectFirst { case (id, wallet) if id == userId => wallet })
+    override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] = ???
 
-    override def firstLogin: RepositoryIO[Option[Instant]] = ZIO.clock.flatMap(_.instant.map(Some.apply))
+    override def firstLogin: RepositoryIO[Option[Instant]] = ???
 
   }
   override val tokenOperations: Repository.TokenOperations = new TokenOperations {
@@ -194,39 +160,20 @@ case class InMemoryRepository(
     override def validateToken(
       token:   Token,
       purpose: TokenPurpose
-    ): RepositoryIO[Option[User]] =
-      tokens.modify(toks =>
-        (
-          toks.collectFirst {
-            case (tok, (user, purp, _)) if tok.tok == token.tok && purpose == purp => user
-          },
-          toks - token
-        )
-      )
+    ): RepositoryIO[Option[User]] = ???
 
     override def createToken(
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): RepositoryIO[Token] = {
-      val token = Token(UUID.randomUUID().toString)
-
-      for {
-        clock   <- ZIO.clock
-        instant <- ttl.fold(ZIO.succeed(Instant.MAX.nn))(d => clock.instant.map(_.plusMillis(d.toMillis).nn))
-        _       <- tokens.update(_ + (token -> (user, purpose, instant)))
-      } yield token
-    }
+    ): RepositoryIO[Token] = ???
 
     override def peek(
       token:   Token,
       purpose: TokenPurpose
-    ): RepositoryIO[Option[User]] =
-      tokens.get.map(_.collectFirst {
-        case (tok, (user, purp, _)) if tok.tok == token.tok && purpose == purp => user
-      })
+    ): RepositoryIO[Option[User]] = ???
 
-    override def cleanup: RepositoryIO[Boolean] = tokens.update(_ => Map.empty).as(true) // It should really only cleanup those that are ttld out
+    override def cleanup: RepositoryIO[Boolean] = ???
 
   }
 

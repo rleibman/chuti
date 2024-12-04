@@ -31,7 +31,9 @@ object LoginApp {
   @JSExport
   def main(args: Array[String]): Unit = {
 
-    val component = <.div(LoginController())
+    val component = <.div(
+      LoginController()
+    )
 
     component.renderIntoDOM(dom.document.getElementById("content"))
     ()

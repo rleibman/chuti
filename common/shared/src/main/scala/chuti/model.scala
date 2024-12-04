@@ -1,44 +1,39 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package chuti
 
-import chuti.CuantasCantas.*
 import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import zio.json.*
+import io.circe.{Decoder, Encoder}
 
 import java.time.Instant
 import scala.annotation.tailrec
 
-object GameError {
+object GameException {
 
-  def apply(cause: Throwable): GameError = GameError(cause = Option(cause))
+  def apply(cause: Throwable): GameException = new GameException(message = "", cause = Option(cause))
+  def apply(message: String):  GameException = new GameException(message = message, cause = None)
 
 }
 
-case class GameError(
-  msg:   String = "",
-  cause: Option[Throwable] = None
-) extends ChutiError(msg, cause)
+class GameException(
+  val message: String,
+  val cause:   Option[Throwable]
+) extends Exception(message, cause.getOrElse(null))
 
 enum Numero(val value: Int) {
 
@@ -67,31 +62,16 @@ object Numero {
 
   def apply(num: Int): Numero = values(num)
 
-  given JsonDecoder[Numero] = JsonDecoder.int.map(apply)
-  given JsonEncoder[Numero] = JsonEncoder.int.contramap(_.value)
+  given Decoder[Numero] = Decoder.forProduct1("value")(apply)
 
-}
-
-enum CuantasCantas(
-  val numFilas:          Int,
-  val score:             Int,
-  val prioridad:         Int,
-  override val toString: String
-) {
-
-  case Casa extends CuantasCantas(4, 4, 4, "Casa")
-  case Canto5 extends CuantasCantas(5, 5, 5, "Cinco")
-  case Canto6 extends CuantasCantas(6, 6, 6, "Seis")
-  case Canto7 extends CuantasCantas(7, 7, 7, "Siete (?!?)")
-  case CantoTodas extends CuantasCantas(7, 21, 8, "Chuti!")
-  case Buenas extends CuantasCantas(-1, 0, -1, "Buenas")
+  given Encoder[Numero] = Encoder.forProduct1("value")(_.value)
 
 }
 
 object CuantasCantas {
 
   def posibilidades(min: CuantasCantas): Seq[CuantasCantas] = {
-    values.toIndexedSeq.filter(_.prioridad >= min.prioridad)
+    values.filter(_.prioridad >= min.prioridad)
   }
 
   def byNum(cuantas: Int): CuantasCantas =
@@ -104,11 +84,44 @@ object CuantasCantas {
 
   def byPriority(prioridad: Int): CuantasCantas = (Buenas +: values).find(_.prioridad == prioridad).get
 
-  given JsonDecoder[CuantasCantas] =
-    JsonDecoder.string.mapOrFail(s =>
-      values.find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, CuantasCantas]
-    )
-  given JsonEncoder[CuantasCantas] = JsonEncoder.string.contramap(_.toString)
+  sealed abstract class CuantasCantas protected (
+    val numFilas:  Int,
+    val score:     Int,
+    val prioridad: Int
+  ) {}
+
+  case object Casa extends CuantasCantas(4, 4, 4) {
+
+    override def toString: String = "Casa"
+
+  }
+  case object Canto5 extends CuantasCantas(5, 5, 5) {
+
+    override def toString: String = "Cinco"
+
+  }
+  case object Canto6 extends CuantasCantas(6, 6, 6) {
+
+    override def toString: String = "Seis"
+
+  }
+  case object Canto7 extends CuantasCantas(7, 7, 7) {
+
+    override def toString: String = "Siete (?!?)"
+
+  }
+  case object CantoTodas extends CuantasCantas(7, 21, 8) {
+
+    override def toString: String = "Chuti!"
+
+  }
+  case object Buenas extends CuantasCantas(-1, 0, -1) {
+
+    override def toString: String = "Buenas"
+
+  }
+
+  val values: Seq[CuantasCantas] = Seq(Casa, Canto5, Canto6, Canto7, CantoTodas)
 
 }
 
@@ -123,26 +136,24 @@ object Ficha {
     FichaConocida(max, min)
   }
 
-  def apply(str: String): Ficha = {
+  def fromString(str: String): Ficha = {
     val splitted = str.split(":").nn.map {
       case s: String => Numero(s.toInt)
-      case null => throw GameError(s"Invalid ficha string: $str")
+      case null => throw GameException(s"Invalid ficha string: $str")
     }
     Ficha(splitted(0), splitted(1))
   }
 
-  private val pattern = "([X,0-6]):([X,0-6])".r
-  given JsonDecoder[Ficha] =
-    JsonDecoder.string.mapOrFail {
-      case pattern("X", _) | pattern(_, "X") => Right(FichaTapada)
-      case pattern(top, bottom)              => Right(FichaConocida(Numero(top.toInt), Numero(bottom.toInt)))
-      case other                             => Left(s"No se pudo decodificar $other como Ficha")
+  given Decoder[Ficha] =
+    Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
+      case ("tapada", _, _)                   => FichaTapada
+      case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
     }
 
-  given JsonEncoder[Ficha] =
-    JsonEncoder.string.contramap {
-      case FichaTapada         => "X:X"
-      case FichaConocida(a, b) => s"${a.value}:${b.value}"
+  given Encoder[Ficha] =
+    Encoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
+      case FichaTapada                  => ("tapada", Numero0, Numero0)
+      case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
     }
 
 }
@@ -160,12 +171,12 @@ sealed trait Ficha extends Product with Serializable {
 
 case object FichaTapada extends Ficha {
 
-  override def arriba:             Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def abajo:              Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def esMula:             Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def es(num: Numero):    Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def arriba:             Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def abajo:              Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def esMula:             Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def value:              Int = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def es(num: Numero):    Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def other(num: Numero): Numero = throw GameException("No puedes hacer esto con una ficha tapada")
   override def toString:           String = "?:?"
 
 }
@@ -189,9 +200,6 @@ object Fila {
     index:  Int,
     fichas: Ficha*
   ): Fila = new Fila(fichas.toSeq, index)
-
-  given JsonDecoder[Fila] = DeriveJsonDecoder.gen[Fila]
-  given JsonEncoder[Fila] = DeriveJsonEncoder.gen[Fila]
 
 }
 
@@ -228,13 +236,6 @@ object JugadorState {
 }
 import chuti.JugadorState.*
 
-object Jugador {
-
-  given JsonDecoder[Jugador] = DeriveJsonDecoder.gen[Jugador]
-  given JsonEncoder[Jugador] = DeriveJsonEncoder.gen[Jugador]
-
-}
-
 case class Jugador(
   user:             User,
   invited:          Boolean = false, // Should really reverse this and call it "accepted"
@@ -251,8 +252,8 @@ case class Jugador(
 
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
-      throw GameError("Si no canta no se puede hacer!!")
-    filas.size >= cuantasCantas.fold(throw GameError("Si no canta no se puede hacer!!"))(
+      throw GameException("Si no canta no se puede hacer!!")
+    filas.size >= cuantasCantas.fold(throw GameException("Si no canta no se puede hacer!!"))(
       _.numFilas
     )
   }
@@ -281,9 +282,6 @@ sealed trait Triunfo extends Product with Serializable
 
 object Triunfo {
 
-  given JsonDecoder[Triunfo] = JsonDecoder.string.map(Triunfo.apply)
-  given JsonEncoder[Triunfo] = JsonEncoder.string.contramap(_.toString)
-
   case object SinTriunfos extends Triunfo {
 
     override def toString: String = "SinTriunfos"
@@ -302,13 +300,6 @@ object Triunfo {
       case "SinTriunfos" => SinTriunfos
       case str           => TriunfoNumero(Numero(str.toInt))
     }
-
-}
-
-object GameStatus {
-
-  given JsonDecoder[GameStatus] = JsonDecoder.string.map(GameStatus.valueOf)
-  given JsonEncoder[GameStatus] = JsonEncoder.string.contramap(_.toString)
 
 }
 
@@ -355,18 +346,7 @@ enum Borlote(override val toString: String) {
 
 }
 
-object Borlote {
-
-  given JsonDecoder[Borlote] =
-    JsonDecoder.string.mapOrFail(s => values.find(_.toString == s).toRight(s"No se pudo decodificar $s como Borlote"): Either[String, Borlote])
-  given JsonEncoder[Borlote] = JsonEncoder.string.contramap(_.toString)
-
-}
-
 object Game {
-
-  given JsonDecoder[Game] = DeriveJsonDecoder.gen[Game]
-  given JsonEncoder[Game] = DeriveJsonEncoder.gen[Game]
 
   val laMulota:  Ficha = Ficha(Numero6, Numero6)
   val campanita: Ficha = Ficha(Numero0, Numero1)
@@ -416,7 +396,7 @@ case class Game(
   def jugadorState(jugador: Jugador): JugadorState = {
     gameStatus match {
       case GameStatus.comienzo =>
-        throw GameError("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
+        throw GameException("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
       case GameStatus.abandonado =>
         JugadorState.partidoTerminado
       case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
@@ -536,7 +516,7 @@ case class Game(
     da:   Ficha
   ): Int = {
     triunfo match {
-      case None => throw GameError("Nuncamente!")
+      case None => throw GameException("Nuncamente!")
       case Some(SinTriunfos) =>
         if (!da.es(pide.arriba))
           0 // Ni siquiera es lo que pediste.
@@ -615,7 +595,7 @@ case class Game(
 
   def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
     triunfo match {
-      case None              => throw GameError("Nuncamente!")
+      case None              => throw GameException("Nuncamente!")
       case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)
       case Some(TriunfoNumero(num)) =>
         fichas.maxByOption(f =>
@@ -651,7 +631,7 @@ case class Game(
   def jugador(id: Option[UserId]): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
-        throw GameError("Este usuario no esta jugando en este juego")
+        throw GameException("Este usuario no esta jugando en este juego")
       )
 
   def modifiedJugadores(
@@ -718,7 +698,7 @@ case class Game(
     // It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex)
-      throw GameError("Error! El evento no tenia el indice correcto")
+      throw GameException("Error! El evento no tenia el indice correcto")
     (processed._1.copy(currentEventIndex = nextIndex), processed._2)
   }
 
@@ -729,7 +709,7 @@ case class Game(
     val user = jugadores.find(_.user.id == event.userId).map(_.user)
     val processed = event.redoEvent(user, game = this)
     if (event.index.getOrElse(-1) != currentEventIndex)
-      throw GameError("Error! No puedes re-aplicar este evento al juego!")
+      throw GameException("Error! No puedes re-aplicar este evento al juego!")
     processed.copy(currentEventIndex = nextIndex)
   }
 
@@ -753,13 +733,6 @@ case class Game(
        |""".stripMargin
 
   }
-
-}
-
-object Cuenta {
-
-  given JsonDecoder[Cuenta] = DeriveJsonDecoder.gen[Cuenta]
-  given JsonEncoder[Cuenta] = DeriveJsonEncoder.gen[Cuenta]
 
 }
 

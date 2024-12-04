@@ -1,34 +1,36 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package chat
 
+import api.ChutiSession
 import caliban.*
-import caliban.schema.{ArgBuilder, GenericSchema, Schema}
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
+import caliban.CalibanError.ExecutionError
+import caliban.interop.zio.*
+import caliban.interop.zio.json.*
+import caliban.introspection.adt.__Type
+import caliban.schema.*
+import caliban.schema.ArgBuilder.auto.*
+import caliban.schema.Schema.auto.*
+import caliban.wrappers.Wrappers.*
 import chat.ChatService
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
-import dao.{Repository, SessionContext}
+import dao.Repository
 import zio.*
 import zio.logging.*
 import zio.stream.ZStream
@@ -39,7 +41,7 @@ case class SayRequest(
   toUser:    Option[User] = None
 )
 
-object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] {
+object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -47,19 +49,19 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameError, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & ChutiSession, GameException, Seq[
       ChatMessage
     ]]
   )
 
   case class Mutations(
-    say: SayRequest => URIO[ChatService & Repository & SessionContext, Boolean]
+    say: SayRequest => URIO[ChatService & Repository & ChutiSession, Boolean]
   )
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & Repository & SessionContext,
-      GameError,
+      ChatService & Repository & ChutiSession,
+      GameException,
       ChatMessage
     ]
   )
@@ -69,16 +71,15 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
-  private given Schema[ChatService & SessionContext, Queries] = Schema.gen[ChatService & SessionContext, Queries]
-  private given Schema[ChatService & Repository & SessionContext, Mutations] = Schema.gen[ChatService & Repository & SessionContext, Mutations]
-  private given Schema[ChatService & Repository & SessionContext, Subscriptions] =
-    Schema.gen[ChatService & Repository & SessionContext, Subscriptions]
+  private given Schema[ChatService & ChutiSession, Queries] = Schema.gen[ChatService & ChutiSession, Queries]
+  private given Schema[ChatService & Repository & ChutiSession, Mutations] = Schema.gen[ChatService & Repository & ChutiSession, Mutations]
+  private given Schema[ChatService & Repository & ChutiSession, Subscriptions] = Schema.gen[ChatService & Repository & ChutiSession, Subscriptions]
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
-  lazy val api: GraphQL[ChatService & Repository & SessionContext] =
+  lazy val api: GraphQL[ChatService & Repository & ChutiSession] =
     graphQL(
       RootResolver(
         Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
@@ -89,9 +90,10 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
           chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
         )
       )
-    )
-    @@ maxFields (22) // query analyzer that limit query fields
-    @@ maxDepth (30) // query analyzer that limit query depth
+    ) @@
+      maxFields(22) @@ // query analyzer that limit query fields
+      maxDepth(30)
+//      @@ // query analyzer that limit query depth
 //      timeout(3.seconds) @@ // wrapper that fails slow queries
 //      printSlowQueries(3.seconds)
 

@@ -1,47 +1,32 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-package game
+package caliban.client.scalajs
 
 import caliban.client.CalibanClientError.DecodingError
 import caliban.client.FieldBuilder._
 import caliban.client._
 import caliban.client.__Value._
-import zio.json.*
 
 object GameClient {
 
   type Instant = String
 
-  type GameAsJson = String // TODO switch to opaque type
-
-  type PlayEventAsJson = String // TODO switch to opaque type
-
-  type GameEventAsJson = String // TODO switch to opaque type
-
   sealed trait UserEventType extends scala.Product with scala.Serializable { def value: String }
-
   object UserEventType {
-
-    given JsonCodec[UserEventType] = DeriveJsonCodec.gen[UserEventType]
 
     case object AbandonedGame extends UserEventType { val value: String = "AbandonedGame" }
     case object Connected extends UserEventType { val value: String = "Connected" }
@@ -73,6 +58,25 @@ object GameClient {
   type User
   object User {
 
+    final case class UserView(
+      id:          scala.Option[Int],
+      email:       String,
+      name:        String,
+      created:     Instant,
+      lastUpdated: Instant,
+      active:      Boolean,
+      deleted:     Boolean,
+      isAdmin:     Boolean
+    )
+
+    type ViewSelection = SelectionBuilder[User, UserView]
+
+    def view: ViewSelection =
+      (id ~ email ~ name ~ created ~ lastUpdated ~ active ~ deleted ~ isAdmin).map {
+        case (id, email, name, created, lastUpdated, active, deleted, isAdmin) =>
+          UserView(id, email, name, created, lastUpdated, active, deleted, isAdmin)
+      }
+
     def id:          SelectionBuilder[User, scala.Option[Int]] = _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
     def email:       SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
     def name:        SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
@@ -87,6 +91,17 @@ object GameClient {
   type UserEvent
   object UserEvent {
 
+    final case class UserEventView[UserSelection](
+      user:          UserSelection,
+      userEventType: UserEventType,
+      gameId:        scala.Option[Int]
+    )
+
+    type ViewSelection[UserSelection] = SelectionBuilder[UserEvent, UserEventView[UserSelection]]
+
+    def view[UserSelection](userSelection: SelectionBuilder[User, UserSelection]): ViewSelection[UserSelection] =
+      (user(userSelection) ~ userEventType ~ gameId).map { case (user, userEventType, gameId) => UserEventView(user, userEventType, gameId) }
+
     def user[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[UserEvent, A] =
       _root_.caliban.client.SelectionBuilder.Field("user", Obj(innerSelection))
     def userEventType: SelectionBuilder[UserEvent, UserEventType] = _root_.caliban.client.SelectionBuilder.Field("userEventType", Scalar())
@@ -100,21 +115,21 @@ object GameClient {
     def getGame(
       value:             Int
     )(implicit encoder0: ArgEncoder[Int]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[GameAsJson]] =
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder.Field("getGame", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
-    def getGameForUser: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[GameAsJson]] =
+    def getGameForUser: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder.Field("getGameForUser", OptionOf(Scalar()))
     def getFriends[A](
       innerSelection: SelectionBuilder[User, A]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[A]]] =
       _root_.caliban.client.SelectionBuilder.Field("getFriends", OptionOf(ListOf(Obj(innerSelection))))
-    def getGameInvites: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[GameAsJson]]] =
+    def getGameInvites: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[io.circe.Json]]] =
       _root_.caliban.client.SelectionBuilder.Field("getGameInvites", OptionOf(ListOf(Scalar())))
     def getLoggedInUsers[A](
       innerSelection: SelectionBuilder[User, A]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[A]]] =
       _root_.caliban.client.SelectionBuilder.Field("getLoggedInUsers", OptionOf(ListOf(Obj(innerSelection))))
-    def getHistoricalUserGames: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[GameAsJson]]] =
+    def getHistoricalUserGames: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[io.circe.Json]]] =
       _root_.caliban.client.SelectionBuilder.Field("getHistoricalUserGames", OptionOf(ListOf(Scalar())))
 
   }
@@ -125,7 +140,7 @@ object GameClient {
     def newGame(
       satoshiPerPoint:   Int
     )(implicit encoder0: ArgEncoder[Int]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[GameAsJson]] =
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "newGame",
         OptionOf(Scalar()),
@@ -134,10 +149,10 @@ object GameClient {
     def newGameSameUsers(
       value:             Int
     )(implicit encoder0: ArgEncoder[Int]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[GameAsJson]] =
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder
         .Field("newGameSameUsers", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
-    def joinRandomGame: SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[GameAsJson]] =
+    def joinRandomGame: SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder.Field("joinRandomGame", OptionOf(Scalar()))
     def abandonGame(
       value:             Int
@@ -180,7 +195,7 @@ object GameClient {
     def acceptGameInvitation(
       value:             Int
     )(implicit encoder0: ArgEncoder[Int]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[GameAsJson]] =
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder
         .Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def declineGameInvitation(
@@ -210,17 +225,14 @@ object GameClient {
       _root_.caliban.client.SelectionBuilder.Field("unfriend", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
     def play(
       gameId:            Int,
-      playEvent:         PlayEventAsJson
+      gameEvent:         io.circe.Json
     )(implicit encoder0: ArgEncoder[Int],
-      encoder1:          ArgEncoder[PlayEventAsJson]
+      encoder1:          ArgEncoder[io.circe.Json]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "play",
         OptionOf(Scalar()),
-        arguments = List(
-          Argument("gameId", gameId, "Int!")(encoder0),
-          Argument("playEvent", playEvent, "PlayEventAsJson!")(encoder1)
-        )
+        arguments = List(Argument("gameId", gameId, "Int!")(encoder0), Argument("gameEvent", gameEvent, "Json!")(encoder1))
       )
 
   }
@@ -230,23 +242,30 @@ object GameClient {
 
     def gameStream(
       gameId:            Int,
-      connectionId:      Int
+      connectionId:      String
     )(implicit encoder0: ArgEncoder[Int],
-      encoder1:          ArgEncoder[Int]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[GameEventAsJson]] =
+      encoder1:          ArgEncoder[String]
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[io.circe.Json]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "gameStream",
         OptionOf(Scalar()),
-        arguments = List(Argument("gameId", gameId, "Int!")(encoder0), Argument("connectionId", connectionId, "Int!")(encoder1))
+        arguments = List(
+          Argument("gameId", gameId, "Int!")(encoder0),
+          Argument("connectionId", connectionId, "String!")(encoder1)
+        )
       )
     def userStream[A](
-      value: Int
+      value: String
     )(
       innerSelection:    SelectionBuilder[UserEvent, A]
-    )(implicit encoder0: ArgEncoder[Int]
+    )(implicit encoder0: ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[A]] =
       _root_.caliban.client.SelectionBuilder
-        .Field("userStream", OptionOf(Obj(innerSelection)), arguments = List(Argument("value", value, "Int!")(encoder0)))
+        .Field(
+          "userStream",
+          OptionOf(Obj(innerSelection)),
+          arguments = List(Argument("value", value, "String!")(encoder0))
+        )
 
   }
 

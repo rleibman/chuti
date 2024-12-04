@@ -19,6 +19,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+import api.ChutiSession
 import chuti.*
 import zio.{Clock, ZIO}
 import zio.logging.*
@@ -29,7 +30,7 @@ import java.sql.Timestamp
 package object dao {
 
   type RepositoryIO[E] =
-    ZIO[SessionContext, RepositoryError, E]
+    ZIO[ChutiSession, RepositoryError, E]
 
   case class FriendsRow(
     one: Int,
