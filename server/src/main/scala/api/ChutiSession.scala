@@ -17,6 +17,7 @@
 package api
 
 import chuti.User
+import zio.ULayer
 
 import java.util.Locale
 
@@ -28,5 +29,9 @@ object ChutiSession {
 
 case class ChutiSession(
   user:   User,
-  locale: Locale = new Locale("es", "MX")
-)
+  locale: Locale = Locale.of("es", "MX")
+) {
+
+  def toLayer: ULayer[ChutiSession] = zio.ZLayer.succeed(this)
+
+}

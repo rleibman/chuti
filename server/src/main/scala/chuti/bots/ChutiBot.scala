@@ -16,8 +16,9 @@
 
 package chuti.bots
 
+import api.ChutiSession
 import chuti.{Game, GameId, PlayEvent, User}
-import dao.{Repository, SessionContext}
+import dao.Repository
 import game.GameService
 import game.GameService.GameLayer
 import zio.ZIO
@@ -33,7 +34,7 @@ trait ChutiBot {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
-      user           <- ZIO.service[SessionContext].map(_.session.user)
+      user           <- ZIO.serviceWith[ChutiSession](_.user)
       game           <- gameOperations.get(gameId).map(_.get)
       played         <- ZIO.foreach(decideTurn(user, game))(gameService.play(gameId, _))
     } yield played.getOrElse(game)

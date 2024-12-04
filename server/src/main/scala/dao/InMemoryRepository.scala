@@ -37,32 +37,40 @@ object InMemoryRepository {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
-  def fromGames(games: Seq[Game]): ULayer[Repository] = ZLayer.fromZIO(for {
-    games <- Ref.make(games.map(g => g.id.get -> g).toMap)
-    users <- Ref.make(Map(
-      UserId(1) -> user1,
-      UserId(2) -> user2,
-      UserId(3) -> user3,
-      UserId(4) -> user4
-    ))
-    tokens <- Ref.make(Map.empty[String, Token])
-  } yield InMemoryRepository(games, users, tokens))
+  def fromGames(games: Seq[Game]): ULayer[Repository] =
+    ZLayer.fromZIO(for {
+      games <- Ref.make(games.map(g => g.id.get -> g).toMap)
+      users <- Ref.make(
+        Map(
+          UserId(1) -> user1,
+          UserId(2) -> user2,
+          UserId(3) -> user3,
+          UserId(4) -> user4
+        )
+      )
+      tokens <- Ref.make(Map.empty[String, Token])
+    } yield InMemoryRepository(games, users, tokens))
 
   val make: ULayer[Repository] = ZLayer.fromZIO(for {
     games <- Ref.make(Map.empty[GameId, Game])
-    users <- Ref.make(Map(
-      UserId(1) -> user1,
-      UserId(2) -> user2,
-      UserId(3) -> user3,
-      UserId(4) -> user4
-    ))
+    users <- Ref.make(
+      Map(
+        UserId(1) -> user1,
+        UserId(2) -> user2,
+        UserId(3) -> user3,
+        UserId(4) -> user4
+      )
+    )
     tokens <- Ref.make(Map.empty[String, Token])
   } yield InMemoryRepository(games, users, tokens))
 
 }
 
-case class InMemoryRepository(games: Ref[Map[GameId, Game]], users: Ref[Map[UserId, User]], tokens: Ref[Map[String, Token]]) extends Repository {
-
+case class InMemoryRepository(
+  games:  Ref[Map[GameId, Game]],
+  users:  Ref[Map[UserId, User]],
+  tokens: Ref[Map[String, Token]]
+) extends Repository {
 
   import InMemoryRepository.*
 
@@ -76,18 +84,19 @@ case class InMemoryRepository(games: Ref[Map[GameId, Game]], users: Ref[Map[User
 
     override def getGameForUser: RepositoryIO[Option[Game]] = ???
 
-    override def upsert(game: Game): RepositoryIO[Game] = for {
-      id <- zio.Random.nextInt
-      newGame = game.copy(id = game.id.orElse(Some(GameId(id))))
-      _ <- games.update(map => map + (newGame.id.get -> newGame))
-    } yield newGame
+    override def upsert(game: Game): RepositoryIO[Game] =
+      for {
+        id <- zio.Random.nextInt
+        newGame = game.copy(id = game.id.orElse(Some(GameId(id))))
+        _ <- games.update(map => map + (newGame.id.get -> newGame))
+      } yield newGame
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] = games.get.map(_.get(pk))
 
     override def delete(
-                         pk: GameId,
-                         softDelete: Boolean
-                       ): RepositoryIO[Boolean] = games.update(_ - pk).as(true)
+      pk:         GameId,
+      softDelete: Boolean
+    ): RepositoryIO[Boolean] = games.update(_ - pk).as(true)
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = games.get.map(_.values.toSeq)
 
@@ -123,11 +132,12 @@ case class InMemoryRepository(games: Ref[Map[GameId, Game]], users: Ref[Map[User
 
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] = ???
 
-    override def upsert(user: User): RepositoryIO[User] = for {
-      id <- zio.Random.nextInt
-      newUser = user.copy(id = user.id.orElse(Some(UserId(id))))
-      _ <- users.update(map => map + (newUser.id.get -> newUser))
-    } yield newUser
+    override def upsert(user: User): RepositoryIO[User] =
+      for {
+        id <- zio.Random.nextInt
+        newUser = user.copy(id = user.id.orElse(Some(UserId(id))))
+        _ <- users.update(map => map + (newUser.id.get -> newUser))
+      } yield newUser
 
     override def get(pk: UserId): RepositoryIO[Option[User]] = users.get.map(_.get(pk))
 

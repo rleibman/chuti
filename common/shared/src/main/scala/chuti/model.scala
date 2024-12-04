@@ -25,18 +25,15 @@ import scala.annotation.tailrec
 
 object GameException {
 
-  def apply(cause: Throwable): GameException = GameException(cause = Option(cause))
+  def apply(cause: Throwable): GameException = new GameException(message = "", cause = Option(cause))
+  def apply(message: String):  GameException = new GameException(message = message, cause = None)
 
 }
 
-case class GameException(
-  msg:   String = "",
-  cause: Option[Throwable] = None
-) extends Exception(msg, cause.orNull) {
-
-  this.printStackTrace()
-
-}
+class GameException(
+  val message: String,
+  val cause:   Option[Throwable]
+) extends Exception(message, cause.getOrElse(null))
 
 enum Numero(val value: Int) {
 

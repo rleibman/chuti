@@ -16,15 +16,21 @@
 
 package chat
 
-import caliban.GraphQL.graphQL
-import caliban.schema.{ArgBuilder, GenericSchema, Schema}
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{GraphQL, RootResolver}
+import api.ChutiSession
+import caliban.*
+import caliban.CalibanError.ExecutionError
+import caliban.interop.zio.*
+import caliban.interop.zio.json.*
+import caliban.introspection.adt.__Type
+import caliban.schema.*
+import caliban.schema.ArgBuilder.auto.*
+import caliban.schema.Schema.auto.*
+import caliban.wrappers.Wrappers.*
 import chat.ChatService
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
-import dao.{Repository, SessionContext}
+import dao.Repository
 import zio.*
 import zio.logging.*
 import zio.stream.ZStream
@@ -35,7 +41,7 @@ case class SayRequest(
   toUser:    Option[User] = None
 )
 
-object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] {
+object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -43,18 +49,18 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & SessionContext, GameException, Seq[
+    getRecentMessages: ChannelId => ZIO[ChatService & ChutiSession, GameException, Seq[
       ChatMessage
     ]]
   )
 
   case class Mutations(
-    say: SayRequest => URIO[ChatService & Repository & SessionContext, Boolean]
+    say: SayRequest => URIO[ChatService & Repository & ChutiSession, Boolean]
   )
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & Repository & SessionContext,
+      ChatService & Repository & ChutiSession,
       GameException,
       ChatMessage
     ]
@@ -65,29 +71,28 @@ object ChatApi extends GenericSchema[ChatService & Repository & SessionContext] 
   private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
-  private given Schema[ChatService & SessionContext, Queries] = Schema.gen[ChatService & SessionContext, Queries]
-  private given Schema[ChatService & Repository & SessionContext, Mutations] = Schema.gen[ChatService & Repository & SessionContext, Mutations]
-  private given Schema[ChatService & Repository & SessionContext, Subscriptions] =
-    Schema.gen[ChatService & Repository & SessionContext, Subscriptions]
+  private given Schema[ChatService & ChutiSession, Queries] = Schema.gen[ChatService & ChutiSession, Queries]
+  private given Schema[ChatService & Repository & ChutiSession, Mutations] = Schema.gen[ChatService & Repository & ChutiSession, Mutations]
+  private given Schema[ChatService & Repository & ChutiSession, Subscriptions] = Schema.gen[ChatService & Repository & ChutiSession, Subscriptions]
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
 
-  lazy val api: GraphQL[ChatService & Repository & SessionContext] = 
+  lazy val api: GraphQL[ChatService & Repository & ChutiSession] =
     graphQL(
-    RootResolver(
-      Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
-      Mutations(
-        say = sayRequest => ChatService.say(sayRequest).as(true)
-      ),
-      Subscriptions(
-        chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
+      RootResolver(
+        Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
+        Mutations(
+          say = sayRequest => ChatService.say(sayRequest).as(true)
+        ),
+        Subscriptions(
+          chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
+        )
       )
-    )
-  ) @@
-    maxFields(22) @@ // query analyzer that limit query fields
-    maxDepth(30)
+    ) @@
+      maxFields(22) @@ // query analyzer that limit query fields
+      maxDepth(30)
 //      @@ // query analyzer that limit query depth
 //      timeout(3.seconds) @@ // wrapper that fails slow queries
 //      printSlowQueries(3.seconds)

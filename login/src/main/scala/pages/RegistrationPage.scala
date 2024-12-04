@@ -30,10 +30,10 @@ import japgolly.scalajs.react.{ReactMouseEventFrom, _}
 import org.scalajs.dom.HTMLButtonElement
 import org.scalajs.dom.window
 import react.Toast
-import net.leibman.chuti.semanticUiReact.buttonButtonMod.ButtonProps
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsButtonButtonMod.ButtonProps
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
-import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 
 object RegistrationPage {
 

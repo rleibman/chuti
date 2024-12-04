@@ -20,7 +20,7 @@ import java.time.format.DateTimeFormatter
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
-import game.GameClient.Queries
+import caliban.client.scalajs.GameClient.Queries
 import io.circe.generic.auto.*
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted

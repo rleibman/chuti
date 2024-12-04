@@ -19,7 +19,7 @@ package chat
 import _root_.util.Config
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.{ScalaJSClientAdapter, WebSocketHandler}
-import chat.ChatClient.{ChatMessage as CalibanChatMessage, Instant as CalibanInstant, Mutations, Queries, Subscriptions, User as CalibanUser}
+import caliban.client.scalajs.ChatClient.{ChatMessage as CalibanChatMessage, Instant as CalibanInstant, Mutations, Queries, Subscriptions, User as CalibanUser}
 import chuti.{ChannelId, ChatMessage, User}
 import components.Toast
 import io.circe.generic.auto.*
@@ -27,7 +27,6 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Ref as ReactRef, *}
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.textAreaTextAreaMod.TextAreaProps
 import org.scalajs.dom.html.Div
 import sttp.client3.*
 
@@ -39,6 +38,7 @@ import scala.util.{Failure, Success}
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
+import net.leibman.chuti.semanticUiReact.distCommonjsAddonsTextAreaTextAreaMod.TextAreaProps
 
 object ChatComponent extends ScalaJSClientAdapter {
 

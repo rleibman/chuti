@@ -1,6 +1,5 @@
 package mail
 
-import api.config
 import api.token.*
 import chuti.User
 import courier.{Envelope, Text}
@@ -18,8 +17,6 @@ object PostmanIntegrationSpec extends ZIOSpecDefault {
   override def spec =
     suite("PostmanIntegrationSpec")(
       test("sending an email") {
-//        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
-//        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
           postman <- ZIO.service[Postman]
           delivered <- postman
@@ -47,7 +44,8 @@ object PostmanIntegrationSpec extends ZIOSpecDefault {
         zio.as(assert(true)(equalTo(true)))
       }
     ).provide(
-      ZLayer.succeed(CourierPostman.live(config.live)) , tokenLayer
+      ZLayer.succeed(CourierPostman.live(config.live)),
+      tokenLayer
     )
 
 }

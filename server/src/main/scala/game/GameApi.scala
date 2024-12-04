@@ -16,14 +16,20 @@
 
 package game
 
-import caliban.GraphQL.graphQL
-import caliban.schema.{ArgBuilder, GenericSchema, Schema}
-import caliban.wrappers.Wrappers.{maxDepth, maxFields, printSlowQueries, timeout}
-import caliban.{GraphQL, RootResolver}
+import api.ChutiSession
+import caliban.*
+import caliban.CalibanError.ExecutionError
+import caliban.interop.zio.*
+import caliban.interop.zio.json.*
+import caliban.introspection.adt.__Type
+import caliban.schema.*
+import caliban.schema.ArgBuilder.auto.*
+import caliban.schema.Schema.auto.*
+import caliban.wrappers.Wrappers.*
 import chat.ChatApi.{Mutations, Queries, Subscriptions}
 import chat.ChatService
 import chuti.*
-import dao.{Repository, SessionContext}
+import dao.Repository
 import game.GameService
 import game.GameService.GameLayer
 import io.circe.Json
@@ -136,9 +142,9 @@ object GameApi extends GenericSchema[GameService & GameLayer & ChatService] {
       )
     )
 
-  def sanitizeGame(game: Game): ZIO[SessionContext, Nothing, Game] =
+  def sanitizeGame(game: Game): ZIO[ChutiSession, Nothing, Game] =
     for {
-      user <- ZIO.service[SessionContext].map(_.session.user)
+      user <- ZIO.serviceWith[ChutiSession](_.user)
     } yield sanitizeGame(game, user)
 
   lazy val api: GraphQL[GameService & GameLayer & ChatService] =

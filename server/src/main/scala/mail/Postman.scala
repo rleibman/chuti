@@ -16,7 +16,7 @@
 
 package mail
 
-import api.config.Config
+import api.{ConfigurationService, SmtpConfig}
 import api.token.{TokenHolder, TokenPurpose}
 import chuti.{Game, User}
 import courier.{Envelope, Mailer, Multipart}
@@ -118,34 +118,27 @@ trait Postman {
   */
 object CourierPostman {
 
-  def live(config: Config.Service): Postman =
+  def live(config: SmtpConfig): Postman =
     new Postman {
 
       lazy val mailer: Mailer = {
-        val localhost = config.config.getString(s"${config.configKey}.smtp.localhost").nn
-        java.lang.System.setProperty("mail.smtp.localhost", localhost)
-        java.lang.System.setProperty("mail.smtp.localaddress", localhost)
-        val auth = config.config.getBoolean(s"${config.configKey}.smtp.auth").nn
-        if (auth)
-          Mailer(
-            config.config.getString(s"${config.configKey}.smtp.host").nn,
-            config.config.getInt(s"${config.configKey}.smtp.port").nn
-          ).auth(auth)
+        java.lang.System.setProperty("mail.smtp.localhost", config.localhost)
+        java.lang.System.setProperty("mail.smtp.localaddress", config.localhost)
+        if (config.auth)
+          Mailer(config.host, config.port)
+            .auth(config.auth)
             .as(
-              config.config.getString(s"${config.configKey}.smtp.user").nn,
-              config.config.getString(s"${config.configKey}.smtp.password").nn
+              config.user,
+              config.password
             )
-            .startTls(config.config.getBoolean(s"${config.configKey}.smtp.startTTLS").nn)()
+            .startTls(config.startTTLS)()
         else
-          Mailer(
-            config.config.getString(s"${config.configKey}.smtp.host").nn,
-            config.config.getInt(s"${config.configKey}.smtp.port").nn
-          ).auth(auth)()
+          Mailer(config.host, config.port).auth(config.auth)()
       }
 
       override def deliver(email: Envelope): Task[Unit] = ZIO.fromFuture(implicit ec => mailer(email))
 
-      override def webHostName: String = config.config.getString(s"${config.configKey}.webhostname").nn
+      override def webHostName: String = config.webHostname
 
     }
 

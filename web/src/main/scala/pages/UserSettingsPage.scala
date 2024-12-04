@@ -21,13 +21,13 @@ import chuti.User
 import components.Toast
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^.{<, _}
+import japgolly.scalajs.react.vdom.html_<^.{<, *}
 import org.scalajs.dom.window
 import service.UserRESTClient
-import net.leibman.chuti.semanticUiReact.components.{FormGroup, _}
-import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
-import net.leibman.chuti.semanticUiReact.genericMod.SemanticWIDTHS
-import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.components.{FormGroup, *}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 
 object UserSettingsPage extends ChutiPage {
 

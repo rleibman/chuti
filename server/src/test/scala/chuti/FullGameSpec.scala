@@ -20,15 +20,13 @@ import api.token.TokenHolder
 import chat.ChatService
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
 import chuti.Triunfo.TriunfoNumero
-import dao.InMemoryRepository.{user1, user2, user3, user4}
+import dao.InMemoryRepository.*
 import dao.Repository
 import game.GameService
 import mail.Postman
 import org.scalatest.Assertions.*
-import org.scalatest.flatspec.AsyncFlatSpecLike
-import org.scalatest.{Assertion, Succeeded}
 import org.testcontainers.shaded.org.bouncycastle.util.test.TestResult
-import zio.test.{ZIOSpecDefault, assertCompletes}
+import zio.test.{ZIOSpecDefault, assertCompletes, assertTrue}
 import zio.{Unsafe, ZIO}
 
 import java.time.Instant
@@ -47,12 +45,12 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
   object GameTester {
 
     def apply(
-               description: String,
-               hands: Seq[String],
-               triunfo: Option[Triunfo],
-               cuantasCantas: CuantasCantas,
-               testEndState: Game => Assertion
-             ): GameTester = {
+      description:   String,
+      hands:         Seq[String],
+      triunfo:       Option[Triunfo],
+      cuantasCantas: CuantasCantas,
+      testEndState:  Game => TestResult
+    ): GameTester = {
       val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
       assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
       val otherHands = Random.shuffle(Game.todaLaFicha.diff(parsedHands.flatten)).grouped(7).toList
@@ -94,35 +92,38 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
       Seq("3:3,5:3,4:3,3:2,3:1,6:6,6:4", "6:3,4:5,1:2,2:0,1:4,1:5,6:5"),
       None,
       Canto7,
-      game => {
-        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
-        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
-        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == 7)
-      }
+      game =>
+        assertTrue(
+          game.triunfo == Option(TriunfoNumero(Numero.Numero3)),
+          game.gameStatus == GameStatus.requiereSopa,
+          game.quienCanta.get.cuenta.map(_.puntos).sum == 7
+        )
     ),
     GameTester(
       "cantar 7 pero no de caida (estan pegadas)",
       Seq("3:3,5:3,4:3,3:2,3:1,6:6,6:4", "6:3,1:0,2:1,6:0,6:1,6:2,6:5"),
       None,
       Canto7,
-      game => {
-        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
-        assertTrue(game.gameStatus == GameStatus.requiereSopa) &&
-        assertTrue(game.quienCanta.get.cuenta.head.esHoyo) &&
-        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == -7)
-      }
+      game =>
+        assertTrue(
+          game.triunfo == Option(TriunfoNumero(Numero.Numero3)),
+          game.gameStatus == GameStatus.requiereSopa,
+          game.quienCanta.get.cuenta.head.esHoyo,
+          game.quienCanta.get.cuenta.map(_.puntos).sum == -7
+        )
     ),
     GameTester(
       "cantar chuti pero no de caida (no estan pegadas)",
       Seq("3:3,3:5,3:4,3:2,3:1,1:1,2:2", "3:6,4:5,1:2,2:0,1:4,1:5,1:6"),
       None,
       CantoTodas,
-      game => {
-        assertTrue(game.triunfo == Option(TriunfoNumero(Numero.Numero3))) &&
-        assertTrue(game.gameStatus == GameStatus.partidoTerminado) &&
-        assertTrue(game.quienCanta.get.cuenta.map(_.puntos).sum == 21) &&
-        assertTrue(game.gameStatus == GameStatus.partidoTerminado)
-      }
+      game =>
+        assertTrue(
+          game.triunfo == Option(TriunfoNumero(Numero.Numero3)),
+          game.gameStatus == GameStatus.partidoTerminado,
+          game.quienCanta.get.cuenta.map(_.puntos).sum == 21,
+          game.gameStatus == GameStatus.partidoTerminado
+        )
     ),
     GameTester(
       "cantar chuti pero no de caida (estan pegadas)",
@@ -162,8 +163,8 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
           saved <-
             gameOperations
               .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-              godLayer
-            )
+                godLayer
+              )
           played <- juegaHastaElFinal(saved.id.get)
         } yield tester.testEndState(played)
       )

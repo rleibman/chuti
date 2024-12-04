@@ -16,83 +16,106 @@
 
 package routes
 
-import api.Chuti.ChutiEnvironment
-import api.ChutiSession
-import api.auth.Auth.RequestWithSession
-import api.config.Config
-import zhttp.http.*
+import api.{ChutiEnvironment, ChutiSession, ConfigurationService}
 import zio.*
+import zio.http.*
 
 import java.nio.file.{Files, Paths as JPaths}
 
 object StaticHTMLRoutes {
 
   lazy val authNotRequired: Set[String] = Set(
-    "/login.html",
-    "/css/chuti.css",
-    "/css/app-sui-theme.css",
-    "/chuti-login-opt-bundle.js",
-    "/chuti-login-opt-bundle.js.map",
-    "/css/app.css",
-    "/images/favicon.ico",
-    "/images/logo.png",
-    "/favicon.ico",
-    "/webfonts/fa-solid-900.woff2",
-    "/webfonts/fa-solid-900.woff",
-    "/webfonts/fa-solid-900.ttf"
+    "login.html",
+    "css/chuti.css",
+    "css/app-sui-theme.css",
+    "chuti-login-opt-bundle.js",
+    "chuti-login-opt-bundle.js.map",
+    "css/app.css",
+    "images/favicon.ico",
+    "images/logo.png",
+    "favicon.ico",
+    "webfonts/fa-solid-900.woff2",
+    "webfonts/fa-solid-900.woff",
+    "webfonts/fa-solid-900.ttf"
   )
 
   private def file(
     fileName: String,
     request:  Request
-  ): ZIO[Any, HttpError, HttpData] = {
+  ): IO[Exception, java.io.File] = {
     JPaths.get(fileName) match {
-      case path: java.nio.file.Path if !Files.exists(path) => ZIO.fail(HttpError.NotFound(request.path))
-      case path: java.nio.file.Path                        => ZIO.succeed(HttpData.fromFile(path.toFile.nn))
-      case null => ZIO.fail(HttpError.InternalServerError(s"Could not find file $fileName"))
+      case path: java.nio.file.Path if !Files.exists(path) => ZIO.fail(Exception(s"NotFound(${request.path})"))
+      case path: java.nio.file.Path                        => ZIO.succeed(path.toFile.nn)
+      case null => ZIO.fail(Exception(s"HttpError.InternalServerError(Could not find file $fileName))"))
     }
   }
 
-  val unauthRoute: Http[ChutiEnvironment, Throwable, Request, Response] = Http.collectZIO[Request] {
-    case request @ Method.GET -> !! / "loginForm" =>
-      for {
-        config <- ZIO.service[Config.Service]
-        staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-        data <- file(s"$staticContentDir/login.html", request)
-      } yield Response(data = data)
-    case request @ (Method.GET | Method.PUT | Method.POST) -> "unauth" /: somethingElse =>
-      if (authNotRequired(somethingElse.toString())) {
+  val unauthRoute: Routes[ChutiEnvironment, Throwable] = Routes(
+    Method.GET / "loginForm" -> handler { (request: Request) =>
+      Handler.fromFileZIO {
         for {
-          config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          data <- file(s"$staticContentDir/${somethingElse.toString()}", request)
-        } yield Response(data = data)
-      } else {
-        ZIO.succeed(Response(Status.Unauthorized))
+          staticContentDir <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
+          data             <- file(s"$staticContentDir/login.html", request)
+        } yield data
       }
-  }
+    }.flatten,
+    Method.ANY / "unauth" / trailing -> handler { (path: Path, request: Request) =>
+      if (authNotRequired(path.toString)) {
+        Handler.fromFileZIO {
+          for {
+            staticContentDir <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
+            data             <- file(s"$staticContentDir/${path.toString()}", request)
+          } yield data
+        }
+      } else {
+        Handler.succeed(Response(Status.Unauthorized))
+      }
+    }.flatten
+  )
 
-  val authRoute: Http[ChutiEnvironment, Throwable, RequestWithSession[ChutiSession], Response] =
-    Http.collectZIO[RequestWithSession[ChutiSession]] {
-      case request @ Method.GET -> somethingElse if somethingElse == Path.decode("/") =>
-        for {
-          config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          data <- file(s"$staticContentDir/index.html", request)
-        } yield Response(data = data)
-      case request @ Method.GET -> !! / "index.html" =>
-        for {
-          config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          data <- file(s"$staticContentDir/index.html", request)
-        } yield Response(data = data)
-      case request @ Method.GET -> somethingElse =>
-        for {
-          config <- ZIO.service[Config.Service]
-          staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          data <- file(s"$staticContentDir/$somethingElse", request)
-        } yield Response(data = data)
-      case request => ZIO.fail(HttpError.NotFound(request.path))
-    }
+  val authRoute: Routes[ChutiEnvironment & ChutiSession, Throwable] =
+    Routes(
+      Method.GET / "index.html" -> handler { (request: Request) =>
+        Handler.fromFileZIO {
+          for {
+            config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+            staticContentDir = config.chuti.httpConfig.staticContentDir
+            file <- file(s"$staticContentDir/index.html", request)
+          } yield file
+        }
+      }.flatten,
+      Method.GET / "" -> handler { (request: Request) =>
+        Handler.fromFileZIO {
+          for {
+            config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+            staticContentDir = config.chuti.httpConfig.staticContentDir
+            file <- file(s"$staticContentDir/index.html", request)
+          } yield file
+        }
+      }.flatten,
+      Method.GET / trailing -> handler {
+        (
+          path:    Path,
+          request: Request
+        ) =>
+          Handler.fromFileZIO {
+            val somethingElse = path.toString.trim.nn
+
+            if (somethingElse == "/" || somethingElse.isEmpty) {
+              for {
+                config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                staticContentDir = config.chuti.httpConfig.staticContentDir
+                file <- file(s"$staticContentDir/index.html", request)
+              } yield file
+            } else {
+              for {
+                config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                staticContentDir = config.chuti.httpConfig.staticContentDir
+                file <- file(s"$staticContentDir/$somethingElse", request)
+              } yield file
+            }
+          }
+      }.flatten
+    )
 
 }

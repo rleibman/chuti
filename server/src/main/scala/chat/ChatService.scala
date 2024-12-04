@@ -16,14 +16,15 @@
 
 package chat
 
+import api.ChutiSession
 import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.*
 import chuti.ChannelId.*
-import dao.{Repository, SessionContext}
+import dao.Repository
 import game.GameService.runtime
-import zio.{Clock, Console, *}
 import zio.logging.*
 import zio.stream.ZStream
+import zio.{Clock, Console, *}
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -32,15 +33,15 @@ trait ChatService {
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[SessionContext, GameException, Seq[ChatMessage]]
+  ): ZIO[ChutiSession, GameException, Seq[ChatMessage]]
 
-  def say(msg: SayRequest): URIO[Repository & SessionContext, ChatMessage]
+  def say(msg: SayRequest): URIO[Repository & ChutiSession, ChatMessage]
 
   def chatStream(
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    Repository & SessionContext,
+    Repository & ChutiSession,
     GameException,
     ChatMessage
   ]
@@ -55,14 +56,14 @@ object ChatService {
 
   given runtime: zio.Runtime[Any] = zio.Runtime.default
 
-  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & SessionContext, CalibanError]] = ChatApi.api.interpreter
+  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & ChutiSession, CalibanError]] = ChatApi.api.interpreter
 
   def sendMessage(
     msg:       String,
     channelId: ChannelId,
     toUser:    Option[User]
   ): ZIO[
-    ChatService & Repository & SessionContext,
+    ChatService & Repository & ChutiSession,
     Nothing,
     ChatMessage
   ] =
@@ -72,7 +73,7 @@ object ChatService {
     } yield sent
 
   def say(request: SayRequest): URIO[
-    ChatService & Repository & SessionContext,
+    ChatService & Repository & ChutiSession,
     ChatMessage
   ] = ZIO.service[ChatService].flatMap(_.say(request))
 
@@ -80,14 +81,14 @@ object ChatService {
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    ChatService & Repository & SessionContext,
+    ChatService & Repository & ChutiSession,
     GameException,
     ChatMessage
   ] = ZStream.service[ChatService].flatMap(_.chatStream(channelId, connectionId))
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & SessionContext, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
+  ): ZIO[ChatService & ChutiSession, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -100,7 +101,7 @@ object ChatService {
     msg:     ChatMessage
   ): Boolean = msg.date.isAfter(timeAgo)
 
-  def make(): URLayer[Any, ChatService] = 
+  def make(): URLayer[Any, ChatService] =
     ZLayer.fromZIO {
       for {
         chatMessageQueue <- Ref.make(List.empty[MessageQueue])
@@ -110,7 +111,7 @@ object ChatService {
 
         def getRecentMessages(
           channelId: ChannelId
-        ): ZIO[SessionContext, GameException, Seq[ChatMessage]] = {
+        ): ZIO[ChutiSession, GameException, Seq[ChatMessage]] = {
           for {
             now <- Clock.instant
             res <- recentMessages.get.map { seq =>
@@ -121,14 +122,14 @@ object ChatService {
         }
 
         override def say(request: SayRequest): ZIO[
-          Repository & SessionContext,
+          Repository & ChutiSession,
           Nothing,
           ChatMessage
         ] =
           for {
             allSubscriptions <- chatMessageQueue.get
             now              <- Clock.instant
-            user             <- ZIO.service[SessionContext].map(_.session.user)
+            user             <- ZIO.serviceWith[ChutiSession](_.user)
             _                <- ZIO.logInfo(s"Sending ${request.msg}")
             sent <- {
               // TODO make sure the user has rights to send messages on the channel,
@@ -160,13 +161,13 @@ object ChatService {
           channelId:    ChannelId,
           connectionId: ConnectionId
         ): ZStream[
-          Repository & SessionContext,
+          Repository & ChutiSession,
           GameException,
           ChatMessage
         ] =
           ZStream.unwrap {
             for {
-              user    <- ZIO.service[SessionContext].map(_.session.user)
+              user    <- ZIO.serviceWith[ChutiSession](_.user)
               gameOps <- ZIO.service[Repository].map(_.gameOperations)
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game

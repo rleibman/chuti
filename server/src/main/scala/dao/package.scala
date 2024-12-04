@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import api.ChutiSession
 import chuti.*
 import io.circe.*
 import io.circe.generic.auto.*
@@ -26,7 +27,7 @@ import java.sql.Timestamp
 package object dao {
 
   type RepositoryIO[E] =
-    ZIO[SessionContext, RepositoryError, E]
+    ZIO[ChutiSession, RepositoryError, E]
 
   case class FriendsRow(
     one: Int,

@@ -16,8 +16,8 @@
 
 package api
 
-import chuti.{User, UserId}
-import dao.{Repository, SessionContext}
+import chuti.{GameException, User, UserId}
+import dao.Repository
 import game.GameService
 import zio.*
 import zio.cache.Cache
@@ -40,18 +40,18 @@ package object token {
     def peek(
       token:   Token,
       purpose: TokenPurpose
-    ): Task[Option[User]]
+    ): IO[GameException, Option[User]]
 
     def createToken(
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration] = Option(5.hours)
-    ): Task[Token]
+    ): IO[GameException, Token]
 
     def validateToken(
       token:   Token,
       purpose: TokenPurpose
-    ): Task[Option[User]]
+    ): IO[GameException, Option[User]]
 
   }
 
@@ -63,18 +63,18 @@ package object token {
         override def peek(
           token:   Token,
           purpose: TokenPurpose
-        ): Task[Option[User]] = ZIO.none
+        ): IO[GameException, Option[User]] = ZIO.none
 
         override def createToken(
           user:    User,
           purpose: TokenPurpose,
           ttl:     Option[Duration]
-        ): Task[Token] = ZIO.succeed(Token(""))
+        ): IO[GameException, Token] = ZIO.succeed(Token(""))
 
         override def validateToken(
           token:   Token,
           purpose: TokenPurpose
-        ): Task[Option[User]] = ZIO.none
+        ): IO[GameException, Option[User]] = ZIO.none
 
       })
 
@@ -90,18 +90,18 @@ package object token {
           override def peek(
             token:   Token,
             purpose: TokenPurpose
-          ): Task[Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
+          ): IO[GameException, Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
 
           override def createToken(
             user:    User,
             purpose: TokenPurpose,
             ttl:     Option[Duration]
-          ): Task[Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
+          ): IO[GameException, Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
 
           override def validateToken(
             token:   Token,
             purpose: TokenPurpose
-          ): Task[Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
+          ): IO[GameException, Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
         }
       })
 
@@ -114,7 +114,7 @@ package object token {
           user:    User,
           purpose: TokenPurpose,
           ttl:     Option[Duration] = Option(3.hours)
-        ): Task[Token] = {
+        ): IO[GameException, Token] = {
           val t = new BigInteger(12 * 5, random).toString(32)
           cache.get((t, purpose)).as(Token(t))
         }
@@ -122,7 +122,7 @@ package object token {
         override def validateToken(
           token:   Token,
           purpose: TokenPurpose
-        ): Task[Option[User]] = {
+        ): IO[GameException, Option[User]] = {
           for {
             contains <- cache.contains((token.tok, purpose))
             u <-
@@ -136,7 +136,7 @@ package object token {
         override def peek(
           token:   Token,
           purpose: TokenPurpose
-        ): Task[Option[User]] = {
+        ): IO[GameException, Option[User]] = {
           for {
             contains <- cache.contains((token.tok, purpose))
             u <-

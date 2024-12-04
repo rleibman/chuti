@@ -20,7 +20,7 @@ import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
 import components.{Confirm, Toast}
-import game.GameClient.{Mutations, Queries}
+import caliban.client.scalajs.GameClient.{Mutations, Queries}
 import io.circe.generic.auto.*
 import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.*
@@ -30,8 +30,8 @@ import japgolly.scalajs.react.vdom.html_<^.{<, *}
 import org.scalajs.dom.HTMLInputElement
 import net.leibman.chuti.react.reactStrings.center
 import net.leibman.chuti.semanticUiReact.components.{ModalActions, *}
-import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
-import net.leibman.chuti.semanticUiReact.inputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {

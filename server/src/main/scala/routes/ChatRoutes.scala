@@ -16,48 +16,31 @@
 
 package routes
 
-import api.Chuti.ChutiEnvironment
-import api.ChutiSession
-import api.auth.Auth.RequestWithSession
-import api.config.Config
-import caliban.ZHttpAdapter
+import api.{ChutiEnvironment, ChutiSession}
+import caliban.{GraphiQLHandler, QuickAdapter, ZHttpAdapter}
 import chat.{ChatApi, ChatService}
-import dao.SessionContext
-import zhttp.http.*
+import dao.Repository
+import zio.http.*
 import zio.*
 
 object ChatRoutes {
 
-  lazy val authRoute: Http[ChutiEnvironment & Clock, Throwable, RequestWithSession[ChutiSession], Response] = {
-    Http.collectHttp[RequestWithSession[ChutiSession]] {
-      case _ -> !! / "api" / "chat" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
-            for {
-              interpreter <- ChatService.interpreter
-            } yield ZHttpAdapter
-              .makeHttpService(interpreter)
-              .provideSomeLayer[ChutiEnvironment, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "chat" / "ws" =>
-        Http
-          .collectZIO[RequestWithSession[ChutiSession]] { req =>
-            for {
-              interpreter <- ChatService.interpreter
-            } yield ZHttpAdapter
-              .makeWebSocketService(interpreter, skipValidation = false, keepAliveTime = Option(5.minutes))
-              .provideSomeLayer[ChutiEnvironment & Clock, SessionContext, Throwable](SessionContext.live(req.session.get))
-          }.flatten
-      case _ -> !! / "api" / "chat" / "schema" =>
-        Http.fromData(HttpData.fromString(ChatApi.api.render))
-      case _ -> !! / "api" / "chat" / "graphiql" =>
-        Http.fromFileZIO(
-          for {
-            config <- ZIO.service[Config.Service]
-            staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          } yield new java.io.File(s"$staticContentDir/graphiql.html")
-        )
+  lazy val authRoute: ZIO[Any, Throwable, Routes[ChatService & Repository & ChutiSession, Nothing]] =
+    for {
+      interpreter <- ChatService.interpreter
+    } yield {
+      Routes(
+        Method.ANY / "api" / "chat" ->
+          QuickAdapter(interpreter).handlers.api,
+        Method.ANY / "api" / "chat" / "ws" ->
+          QuickAdapter(interpreter).handlers.webSocket,
+        Method.ANY / "api" / "chat" / "graphiql" ->
+          GraphiQLHandler.handler(apiPath = "/api/chat"),
+        Method.GET / "api" / "chat" / "schema" ->
+          Handler.fromBody(Body.fromCharSequence(ChatApi.api.render)),
+        Method.POST / "api" / "chat" / "upload" ->
+          QuickAdapter(interpreter).handlers.upload
+      )
     }
-  }
 
 }

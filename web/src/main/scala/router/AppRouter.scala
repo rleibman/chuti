@@ -28,8 +28,8 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.scalajs.dom.*
 import pages.{RulesPage, *}
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.genericMod.SemanticICONS
-import net.leibman.chuti.semanticUiReact.menuMenuMod.MenuProps
+import net.leibman.chuti.semanticUiReact.distCommonjsCollectionsMenuMenuMod.MenuProps
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticICONS
 
 import java.time.ZoneId
 import scala.annotation.unused
@@ -229,7 +229,7 @@ object AppRouter extends ChutiComponent {
                     Callback {
                       document.location.href = "/api/auth/doLogout"
                     }
-                  }("Cerrar sesión"), // TODO I8n
+                  }("Cerrar sesión"), // TODO I8n`
                   MenuItem().onClick((e, _) => page.setEH(UserSettingsAppPage)(e))(
                     "Administración de usuario" // TODO I8n
                   ),

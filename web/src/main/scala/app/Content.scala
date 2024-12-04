@@ -23,17 +23,16 @@ import caliban.client.scalajs.ScalaJSClientAdapter
 import chuti.*
 import components.ChutiComponent
 import components.{Confirm, Toast}
-import game.GameClient.{Queries, Subscriptions, User => CalibanUser, UserEvent => CalibanUserEvent, UserEventType => CalibanUserEventType}
-import io.circe.*, io.circe.generic.auto.*
+import caliban.client.scalajs.GameClient.{Queries, Subscriptions, User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType}
+import io.circe.*
+import io.circe.generic.auto.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.*
 import net.leibman.chuti.std.OnErrorEventHandlerNonNull
-import net.leibman.chuti.std.global.Audio
-import org.scalajs.dom.Event
-import org.scalajs.dom.window
+import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 import service.UserRESTClient
 import _root_.util.Config
@@ -189,7 +188,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
     val audio = new Audio("")
-    audio.onended = ThisFunction.fromFunction2 { (_: Audio, _: Event) =>
+    audio.onended = { (_: Event) =>
       if (audioQueue.size > 4) {
         // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
         println("play queue got bigger than 4, clearing queue")
@@ -217,8 +216,6 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
           ()
         }
       }
-
-    audio.onerror = fn
 
     def playSound(url: String): Callback = {
       $.state.flatMap { s =>
@@ -368,6 +365,10 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       } yield $.modState { s =>
         import scala.language.unsafeNulls
         val copy = if (initial) {
+          // Special stuff needs to be done on initalization:
+          // - Create the userStream and connect to it
+          // - Set all methods that will be used by users of ChutiState to update pieces of the state, think of these as application level methods
+          // - Set the global User
           s.copy(
             chutiState = s.chutiState.copy(
               flipFicha = flipFicha,

@@ -16,30 +16,28 @@
 
 package dao
 
+import chuti.GameException
+
 object RepositoryError {
 
   def apply(t: Throwable): RepositoryError = {
     t match {
       case t: RepositoryError => t
-      case t => RepositoryError("", Some(t))
+      case t => RepositoryError(t.getMessage, Some(t))
     }
   }
   def apply(
-    msg:   String = "",
-    cause: Option[Throwable] = None
+    message: String = "",
+    cause:   Option[Throwable] = None
   ) = {
-    new RepositoryError(msg, cause)
+    new RepositoryError(message, cause)
   }
 
 }
 
 sealed class RepositoryError(
-  msg:   String = "",
-  cause: Option[Throwable] = None
-) extends Exception(msg, cause.orNull) {
+  override val message: String = "",
+  override val cause:   Option[Throwable] = None
+) extends GameException(message, cause)
 
-  printStackTrace()
-
-}
-
-case class RepositoryPermissionError(msg: String = "") extends RepositoryError(msg)
+case class RepositoryPermissionError(override val message: String = "") extends RepositoryError(message)

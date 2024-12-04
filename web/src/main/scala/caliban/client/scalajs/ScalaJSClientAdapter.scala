@@ -17,13 +17,14 @@
 package caliban.client.scalajs
 
 import _root_.util.Config
+import caliban.client
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.Operations.{IsOperation, RootSubscription}
 import caliban.client.{GraphQLRequest, GraphQLResponse, SelectionBuilder}
 import io.circe.generic.auto.*
 import io.circe.parser.*
 import io.circe.syntax.*
-import io.circe.{Decoder, Error, Json}
+import io.circe.{Decoder, Encoder, Error, Json}
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
@@ -170,7 +171,10 @@ trait ScalaJSClientAdapter extends TimerSupport {
   }
 
   import scala.language.unsafeNulls
-  lazy private[caliban] val graphQLDecoder = summon[Decoder[GraphQLResponse]]
+
+  given Encoder[client.__Value] = Encoder.derived[client.__Value]
+  given Decoder[client.__Value] = Decoder.derived[client.__Value]
+  given graphQLDecoder: Decoder[GraphQLResponse] = Decoder.derived[GraphQLResponse]
 
   // TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: Decoder](

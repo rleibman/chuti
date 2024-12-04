@@ -3,10 +3,9 @@ schema {
   mutation: Mutations
   subscription: Subscriptions
 }
-
-scalar Json
-
+"An instantaneous point on the time-line represented by a standard date time string"
 scalar Instant
+scalar Json
 
 enum UserEventType {
   AbandonedGame
@@ -51,6 +50,7 @@ type User {
   email: String!
   name: String!
   created: Instant!
+  lastUpdated: Instant!
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!

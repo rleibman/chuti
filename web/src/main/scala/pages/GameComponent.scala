@@ -22,17 +22,18 @@ import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.*
 import components.{Confirm, Toast}
-import game.GameClient.Mutations
+import caliban.client.scalajs.given
+import caliban.client.scalajs.GameClient.Mutations
 import io.circe.generic.auto.*
 import io.circe.syntax.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{^, _}
+import japgolly.scalajs.react.vdom.html_<^.{^, *}
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.dropdownItemMod.DropdownItemProps
-import net.leibman.chuti.semanticUiReact.genericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
-import net.leibman.chuti.semanticUiReact.imageImageMod.ImageProps
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
+import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 import pages.LobbyComponent.calibanCall
 
 import scala.scalajs.js.JSConverters.*
@@ -552,12 +553,12 @@ object GameComponent {
   }
 
   import scala.language.unsafeNulls
-  given triunfoReuse:       Reusability[Triunfo] = Reusability.by(_.toString)
-  given gameReuse:          Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
-  given cuantasCantasReuse: Reusability[CuantasCantas] = Reusability.by(_.toString)
-  given fichasReuse:        Reusability[Ficha] = Reusability.by(_.toString)
-  given stateReuse:         Reusability[State] = Reusability.derive[State]
-  given propsReuse:         Reusability[Props] = Reusability.derive[Props]
+  given Reusability[Triunfo] = Reusability.by(_.toString)
+  given Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given Reusability[CuantasCantas] = Reusability.by(_.toString)
+  given Reusability[Ficha] = Reusability.by(_.toString)
+  given Reusability[State] = Reusability.derive[State]
+  given Reusability[Props] = Reusability.derive[Props]
 
   private val component = ScalaComponent
     .builder[Props]

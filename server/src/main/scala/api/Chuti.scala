@@ -17,11 +17,10 @@
 package api
 
 import api.auth.Auth
-import api.auth.Auth.SessionStorage
-import api.config.Config
+import api.auth.Auth.{SessionStorage, SessionTransport}
 import api.token.TokenHolder
 import chat.ChatService
-import chuti.{PagedStringSearch, User, UserId}
+import chuti.{GameException, PagedStringSearch, User, UserId}
 import dao.quill.QuillRepository
 import dao.{CRUDOperations, Repository}
 import game.GameService
@@ -29,129 +28,142 @@ import io.circe.generic.auto.*
 import io.circe.{Decoder, DecodingFailure, Encoder}
 import mail.{CourierPostman, Postman}
 import routes.*
-import zhttp.http.*
-import zhttp.http.middleware.HttpMiddleware
-import zhttp.service.*
-import zhttp.service.server.ServerChannelFactory
+import zio.http.*
 import zio.logging.*
 import zio.logging.backend.SLF4J
-import zio.{Clock, Console, *}
+import zio.*
 
+import java.util.concurrent.TimeUnit
 import java.util.Locale
 
-object Chuti extends zio.ZIOAppDefault {
-  private lazy val slf4jLogger = SLF4J.slf4j(zio.LogLevel.Debug, LogFormat.line |-| LogFormat.cause)
+object Chuti extends ZIOApp {
+
+  override type Environment = ChutiEnvironment
+  override val environmentTag: EnvironmentTag[Environment] = EnvironmentTag[ChutiEnvironment]
+
+  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.live.orDie
+
   import api.auth.Auth.*
-
-  given Decoder[Locale] =
-    Decoder.decodeString.map(s =>
-      Locale.forLanguageTag(s) match {
-        case l: Locale => l
-        case null => throw DecodingFailure(s"invalid locale $s", List.empty)
-      }
-    )
-
-  given Encoder[Locale] = Encoder.encodeString.contramap(_.toString)
-
-  type ChutiEnvironment = GameService & ChatService & Config & Repository & Postman & TokenHolder &
-    SessionStorage[
-      ChutiSession,
-      String
-    ] & SessionTransport[ChutiSession]
-
-  private lazy val configLayer: ULayer[Config] = ZLayer.succeed(api.config.live)
-  private lazy val postmanLayer = ZLayer.fromZIO(for {config <- ZIO.service[Config]} yield CourierPostman.live(config))
-  private lazy val uncachedRepository: ULayer[Repository] = configLayer >>> QuillRepository.uncached
-  private lazy val repositoryLayer: ULayer[Repository] = uncachedRepository >>> Repository.cached
 
   import scala.language.unsafeNulls
 
-  final def logRequest: HttpMiddleware[Any, Nothing] =
-    Middleware.interceptZIOPatch(req => zio.Clock.nanoTime.map(start => (req.method, req.url, start))) { case (response, (method, url, start)) =>
-      for {
-        end <- Clock.nanoTime
-        _ <- ZIO.logInfo(s"${response.status.asJava.code()} $method ${url.encode} ${(end - start) / 1000000}ms")
-      } yield Patch.empty
-    }
-
-  lazy val unauthRoute: RHttpApp[ChutiEnvironment & AuthRoutes.OpsService] =
+  lazy val unauthRoute: Routes[ChutiEnvironment, Throwable] =
     Seq(
       AuthRoutes.unauthRoute,
       StaticHTMLRoutes.unauthRoute
-    ).reduce(_ ++ _)
+    ).reduce(_ ++ _) @@ Middleware.debug
 
-  def authRoutes(sessionTransport: SessionTransport[ChutiSession]): HttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock, Nothing] =
-    Seq(
+  def authRoutes(
+    sessionTransport: SessionTransport[ChutiSession]
+  ): ZIO[Any, Throwable, Routes[GameService & ChatService & ChutiEnvironment, Throwable]] = {
+    for {
+      gameRoutes <- GameRoutes.authRoute
+      chatRoutes <- ChatRoutes.authRoute
+    } yield Seq(
       AuthRoutes.authRoute,
-      GameRoutes.authRoute,
-      ChatRoutes.authRoute,
+      gameRoutes,
+      chatRoutes,
       StaticHTMLRoutes.authRoute
-    )
-      .reduce(_ ++ _)
-      .catchAll {
-        case e: HttpError =>
-          e.printStackTrace()
-          Http.succeed(Response.fromHttpError(e))
-        case e: Throwable =>
-          e.printStackTrace()
-          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
-      } @@ sessionTransport.auth
+    ).reduce(_ ++ _) @@ sessionTransport.bearerAuthWithContext @@ Middleware.debug
 
-  private lazy val appZIO: URIO[ChutiEnvironment & AuthRoutes.OpsService & Clock, RHttpApp[ChutiEnvironment & AuthRoutes.OpsService & Clock]] = for {
-    sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
-  } yield {
-    ((
-      unauthRoute ++ authRoutes(sessionTransport)
-      ) @@ logRequest)
-      .tapErrorZIO { e =>
-        ZIO.logErrorCause(s"Error", Cause.die(e))
-      }
-      .catchSome {
-        case e: HttpError =>
-          e.printStackTrace()
-          Http.succeed(Response.fromHttpError(e))
-        case e: Throwable =>
-          e.printStackTrace()
-          Http.succeed(Response.fromHttpError(HttpError.InternalServerError(e.getMessage.nn, Some(e))))
-      }
   }
 
-  override def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = {
+  def mapError(e: Cause[Throwable]): UIO[Response] = {
+    lazy val contentTypeJson: Headers = Headers(Header.ContentType(MediaType.application.json).untyped)
+    e.squash match {
+      case e: GameException =>
+        val body =
+          s"""{
+            "exceptionMessage": ${e.getMessage},
+            "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
+          }"""
+
+        ZIO.logError(body).as(Response.apply(body = Body.fromString(body), status = Status.BadGateway, headers = contentTypeJson))
+      case e =>
+        val body =
+          s"""{
+            "exceptionMessage": ${e.getMessage},
+            "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
+          }"""
+        ZIO.logError(body).as(Response.apply(body = Body.fromString(body), status = Status.InternalServerError, headers = contentTypeJson))
+
+    }
+  }
+
+  lazy private val zapp: ZIO[Environment, Throwable, Routes[Environment & GameService & ChatService, Nothing]] =
+    for {
+      _                <- ZIO.log("Initializing Routes")
+      sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
+      authRoute        <- authRoutes(sessionTransport)
+    } yield (
+      (unauthRoute ++ authRoute) @@ Middleware.debug
+    ).handleErrorCauseZIO(mapError)
+
+  override def run: ZIO[Environment & ZIOAppArgs & Scope, Throwable, ExitCode] = {
     ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
       ChatService.make().memoize.flatMap { chatServiceLayer =>
         (for {
-          config <- ZIO.service[Config.Service]
-          app <- appZIO
-          server = Server.bind(
-            config.config.getString(s"${config.configKey}.host").nn,
-            config.config.getInt(s"${config.configKey}.port").nn
-          ) ++
-            Server.enableObjectAggregator(maxRequestSize = 210241024) ++
-            Server.app(app)
-          started <- ZIO.scoped(
-            server.make.flatMap(start =>
-              // Waiting for the server to start
-              Console.printLine(s"Server started on port ${start.port}") *> ZIO.never
-              // Ensures the server doesn't die after printing
+          config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+          app    <- zapp
+          _      <- ZIO.logInfo(s"Starting application with config $config")
+          server <- {
+            val serverConfig = ZLayer.succeed(
+              Server.Config.default
+                .binding(config.chuti.httpConfig.hostName, config.chuti.httpConfig.port)
             )
-          )
-        } yield started).exitCode
-          .provide(
-            slf4jLogger,
-            ZLayer.succeed(Clock.ClockLive),
-            gameServiceLayer,
-            chatServiceLayer,
-            configLayer,
-            repositoryLayer,
-            postmanLayer,
-            TokenHolder.liveLayer,
-            Auth.SessionStorage.tokenEncripted[ChutiSession],
-            Auth.SessionTransport.cookieSessionTransport[ChutiSession],
-            ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations)),
-            ServerChannelFactory.auto,
-            EventLoopGroup.auto()
-          )
+
+            Server
+              .serve(app)
+              .zipLeft(ZIO.logDebug(s"Server Started on ${config.chuti.httpConfig.port}"))
+              .tapErrorCause(ZIO.logErrorCause(s"Server on port ${config.chuti.httpConfig.port} has unexpectedly stopped", _))
+              .provideSome[Environment](serverConfig, Server.live, gameServiceLayer, chatServiceLayer)
+              .foldCauseZIO(
+                cause => ZIO.logErrorCause("err when booting server", cause).exitCode,
+                _ => ZIO.logError("app quit unexpectedly...").exitCode
+              )
+          }
+        } yield server)
       }
     })
   }
+
+//  def runa: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = {
+//    ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
+//      ChatService.make().memoize.flatMap { chatServiceLayer =>
+//        (for {
+//          config <- ZIO.service[Config.Service]
+//          app    <- zapp
+//          server = Server.bind(
+//            config.config.getString(s"${config.configKey}.host").nn,
+//            config.config.getInt(s"${config.configKey}.port").nn
+//          ) ++
+//            Server.enableObjectAggregator(maxRequestSize = 210241024) ++
+//            Server.app(app)
+//          started <- ZIO.scoped(
+//            server.make.flatMap(start =>
+//              // Waiting for the server to start
+//              Console.printLine(s"Server started on port ${start.port}") *> ZIO.never
+//              // Ensures the server doesn't die after printing
+//            )
+//          )
+//        } yield started).exitCode
+//          .provide(
+//            slf4jLogger,
+//            ZLayer.succeed(Clock.ClockLive),
+//            gameServiceLayer,
+//            chatServiceLayer,
+//            configLayer,
+//            repositoryLayer,
+//            postmanLayer,
+//            TokenHolder.liveLayer,
+//            Auth.SessionStorage.tokenEncripted[ChutiSession],
+//            Auth.SessionTransport.cookieSessionTransport[ChutiSession],
+//            ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations)),
+//            ServerChannelFactory.auto,
+//            EventLoopGroup.auto()
+//          )
+//      }
+//    })
+//  }
+
 }

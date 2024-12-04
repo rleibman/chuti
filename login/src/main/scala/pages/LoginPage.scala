@@ -21,21 +21,19 @@ import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.window
-import net.leibman.chuti.react.reactStrings.submit
+import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.submit
 import net.leibman.chuti.semanticUiReact.components.*
-import net.leibman.chuti.semanticUiReact.genericMod.SemanticCOLORS
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticCOLORS
 
 object LoginPage {
 
-  case class State()
+  class Backend($ : BackendScope[Props, Unit]) {
 
-  class Backend($ : BackendScope[Props, State]) {
-
-    val query: String = window.location.search.substring(1).nn
+    val query: String = if (window.location.search.isEmpty) "" else window.location.search.substring(1).nn
     val isBad: Boolean = query.contains("bad=true")
     def render(
-      P: Props
-    ): VdomElement =
+      props: Props
+    ): VdomElement = {
       LoginControllerState.ctx.consume { context =>
         <.div(
           <.div(<.img(^.src := "/unauth/images/logo.png")),
@@ -47,7 +45,7 @@ object LoginPage {
               "Contraseña errónea! Tu correo electrónico y contraseña no están en el sistema (o no han sido activados), intentalo de nuevo!"
             )
           ).when(isBad),
-          P.messageForScreen.fold(EmptyVdom: VdomNode)(str => <.span(Message()(str))),
+          props.messageForScreen.fold(EmptyVdom: VdomNode)(str => <.span(Message()(str))),
           <.form(
             ^.action    := "doLogin",
             ^.method    := "post",
@@ -77,17 +75,17 @@ object LoginPage {
             }("Perdí mi Contraseña")
         )
       }
+    }
 
   }
 
   val component = ScalaComponent
     .builder[Props]("LoginPage")
-    .initialState(State())
     .renderBackend[Backend]
     .build
 
   case class Props(messageForScreen: Option[String])
 
-  def apply(messageForScreen: Option[String]): Unmounted[Props, State, Backend] = component(Props(messageForScreen))
+  def apply(messageForScreen: Option[String]): Unmounted[Props, Unit, Backend] = component(Props(messageForScreen))
 
 }

@@ -41,7 +41,7 @@ package object scalai8n {
     def i8n(args: Any*): I8NString = {
       println(sc.parts.map(s => s"'$s'").mkString(","))
       println(args.mkString(":"))
-      sc.s(args: _*)
+      sc.s(args*)
     }
 
   }

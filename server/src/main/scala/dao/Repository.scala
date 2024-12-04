@@ -16,6 +16,7 @@
 
 package dao
 
+import api.ChutiSession
 import api.token.{Token, TokenPurpose}
 import chuti.*
 import dao.Repository.{GameOperations, TokenOperations, UserOperations}
@@ -153,7 +154,7 @@ object Repository {
       user:    User,
       purpose: TokenPurpose,
       ttl:     Option[Duration]
-    ): ZIO[SessionContext, RepositoryError, Token]
+    ): ZIO[ChutiSession, RepositoryError, Token]
 
     def peek(
       token:   Token,
