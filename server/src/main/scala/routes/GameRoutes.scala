@@ -26,7 +26,8 @@ import zio.http.*
 
 object GameRoutes {
 
-  lazy val authRoute: ZIO[Any, Throwable, Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, Nothing]] =
+  lazy val authRoute
+    : ZIO[Any, Throwable, Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, Nothing]] =
     for {
       interpreter <- GameService.interpreter
     } yield {

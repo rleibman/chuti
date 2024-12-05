@@ -19,12 +19,20 @@ package pages
 import java.time.format.DateTimeFormatter
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.{given, *}
+import chuti.{*, given}
 import caliban.client.scalajs.GameClient.Queries
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody, TableCell, TableHeader, TableHeaderCell, TableRow}
+import net.leibman.chuti.semanticUiReact.components.{
+  Container,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHeaderCell,
+  TableRow
+}
 
 import java.time.ZoneId
 import java.util.Locale
@@ -32,7 +40,8 @@ import zio.json.*
 import zio.json.ast.Json
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
+  private val df =
+    DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
   case class State(games: Seq[Game] = Seq.empty)
 
   class Backend($ : BackendScope[Unit, State]) {
@@ -82,40 +91,41 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
                       TableHeaderCell()("Satoshi") // TODO i8n
                     )
                   ),
-                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray { case ((jugador, puntos, satoshi), jugadorIndex) =>
-                    TableRow()
+                  TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                    case ((jugador, puntos, satoshi), jugadorIndex) =>
+                      TableRow()
 //                        key = s"cuenta$jugadorIndex",
-                      .className(
-                        if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
-                      )(
-                        TableCell()(jugador.user.name),
-                        TableCell()(
-                          jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                        .className(
+                          if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                        )(
+                          TableCell()(jugador.user.name),
+                          TableCell()(
+                            jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                              <.span(
+                                ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
+                                ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
+                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                              )
+                            },
                             <.span(
-                              ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
-                              ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                              s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                              ^.fontSize := "large",
+                              ^.color    := "blue",
+                              if (jugador.ganadorDePartido) "➠" else ""
                             )
-                          },
-                          <.span(
-                            ^.fontSize := "large",
-                            ^.color    := "blue",
-                            if (jugador.ganadorDePartido) "➠" else ""
-                          )
-                        ),
-                        TableCell()(
-                          <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
-                        ),
-                        TableCell()(
-                          <.span(
+                          ),
+                          TableCell()(
+                            <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                          ),
+                          TableCell()(
                             <.span(
-                              ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                              satoshi
+                              <.span(
+                                ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
+                                satoshi
+                              )
+                                .when(game.gameStatus == GameStatus.partidoTerminado)
                             )
-                              .when(game.gameStatus == GameStatus.partidoTerminado)
                           )
                         )
-                      )
                   })
                 )
               )

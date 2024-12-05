@@ -34,9 +34,11 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
         //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
         //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
         val zio = for {
-          postman   <- ZIO.service[Postman]
-          now       <- Clock.instant
-          envelope  <- postman.registrationEmail(User(id = None, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now))
+          postman <- ZIO.service[Postman]
+          now     <- Clock.instant
+          envelope <- postman.registrationEmail(
+            User(id = None, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
+          )
           delivered <- postman.deliver(envelope).fork
         } yield delivered
 
@@ -45,6 +47,7 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
     )
 
   override def bootstrap: ULayer[ChutiEnvironment & ChutiSession] =
-    ZLayer.make[ChutiEnvironment & ChutiSession](EnvironmentBuilder.withContainer.orDie, ChutiSession.adminSession.toLayer)
+    ZLayer
+      .make[ChutiEnvironment & ChutiSession](EnvironmentBuilder.withContainer.orDie, ChutiSession.adminSession.toLayer)
 
 }

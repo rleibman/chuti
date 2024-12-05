@@ -28,7 +28,7 @@ import org.scalajs.dom.WebSocket
 import sttp.capabilities
 import sttp.client3.*
 import zio.*
-import chuti.{given, *}
+import chuti.{*, given}
 
 import java.net.URI
 import java.time.Instant
@@ -192,27 +192,49 @@ trait ScalaJSClientAdapter extends TimerSupport {
     timeout: Duration = 8.minutes, // how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
-    onConnected:          (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
-    onReconnected:        (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
-    onReconnecting:       String => Callback = { _ => Callback.empty },
-    onConnecting:         Callback = Callback.empty,
-    onDisconnected:       (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
-    onKeepAlive:          Option[Json] => Callback = { _ => Callback.empty },
-    onServerError:        (String, Option[Json]) => Callback = { (_, _) => Callback.empty },
-    onClientError:        Throwable => Callback = { _ => Callback.empty }
+    onConnected: (String, Option[Json]) => Callback = {
+      (
+        _,
+        _
+      ) => Callback.empty
+    },
+    onReconnected: (String, Option[Json]) => Callback = {
+      (
+        _,
+        _
+      ) => Callback.empty
+    },
+    onReconnecting: String => Callback = { _ => Callback.empty },
+    onConnecting:   Callback = Callback.empty,
+    onDisconnected: (String, Option[Json]) => Callback = {
+      (
+        _,
+        _
+      ) => Callback.empty
+    },
+    onKeepAlive: Option[Json] => Callback = { _ => Callback.empty },
+    onServerError: (String, Option[Json]) => Callback = {
+      (
+        _,
+        _
+      ) => Callback.empty
+    },
+    onClientError: Throwable => Callback = { _ => Callback.empty }
   ): WebSocketHandler =
     new WebSocketHandler {
 
       override val id: String = connectionId
 
-      def GQLConnectionInit(): GQLOperationMessage = GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
+      def GQLConnectionInit(): GQLOperationMessage =
+        GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
 
       def GQLStart(query: GraphQLRequest): GQLOperationMessage =
         GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.toJsonAST.toOption.get))
 
       def GQLStop(): GQLOperationMessage = GQLOperationMessage(GQL_STOP, Option(operationId))
 
-      def GQLConnectionTerminate(): GQLOperationMessage = GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
+      def GQLConnectionTerminate(): GQLOperationMessage =
+        GQLOperationMessage(GQL_CONNECTION_TERMINATE, Option(operationId))
 
       private val graphql: GraphQLRequest = query.toGraphQL()
 

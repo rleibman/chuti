@@ -141,7 +141,14 @@ object NewUserAcceptFriendPage {
             FormField().width(SemanticWIDTHS.`3`)(
               Label()("Nombre"),
               Input()
-                .onChange(onUserInputChange((user, value) => user.copy(name = value)))
+                .onChange(
+                  onUserInputChange(
+                    (
+                      user,
+                      value
+                    ) => user.copy(name = value)
+                  )
+                )
                 .value(u.name)()
             )
           ),
@@ -162,8 +169,14 @@ object NewUserAcceptFriendPage {
                 .name("password")
                 .`type`("password")
                 .value(state.passwordPair._1)
-                .onChange { (_, obj) =>
-                  $.modState(state => state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)))
+                .onChange {
+                  (
+                    _,
+                    obj
+                  ) =>
+                    $.modState(state =>
+                      state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2))
+                    )
                 }()
             ),
             FormField().width(SemanticWIDTHS.`3`)(
@@ -172,8 +185,14 @@ object NewUserAcceptFriendPage {
                 .`type`("password")
                 .name("password")
                 .value(state.passwordPair._2)
-                .onChange { (_, obj) =>
-                  $.modState(state => state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])))
+                .onChange {
+                  (
+                    _,
+                    obj
+                  ) =>
+                    $.modState(state =>
+                      state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String]))
+                    )
                 }()
             )
           ),
@@ -185,8 +204,12 @@ object NewUserAcceptFriendPage {
             Button()
               .compact(true)
               .basic(true)
-              .onClick { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-                Callback(window.location.replace("/"))
+              .onClick {
+                (
+                  _: ReactMouseEventFrom[HTMLButtonElement],
+                  _: ButtonProps
+                ) =>
+                  Callback(window.location.replace("/"))
               }("Cancelar")
           )
         )

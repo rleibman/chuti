@@ -19,7 +19,7 @@ package routes
 import api.auth.Auth.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import api.{ChutiEnvironment, ChutiSession, token}
-import chuti.{given, *}
+import chuti.{*, given}
 import chuti.UserId.*
 import dao.{CRUDOperations, Repository}
 import mail.Postman
@@ -40,7 +40,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
   given localeEncoder: JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
 
   // TODO get from config
-  val availableLocales: NonEmptyList[Locale] = NonEmptyList("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
+  val availableLocales: NonEmptyList[Locale] =
+    NonEmptyList("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
 
   override type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
 
@@ -67,7 +68,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           locale           <- req.body.asString
           session          <- ZIO.service[ChutiSession]
           sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
-          response         <- sessionTransport.refreshSession(session.copy(locale = Locale.forLanguageTag(locale).nn), ResponseExt.json(true))
+          response <- sessionTransport
+            .refreshSession(session.copy(locale = Locale.forLanguageTag(locale).nn), ResponseExt.json(true))
         } yield response
       },
       Method.GET / "api" / "auth" / "whoami" -> handler { (_: Request) =>
@@ -99,7 +101,8 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           session          <- ZIO.service[ChutiSession]
           sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
           loginFormURL     <- ZIO.fromEither(URL.decode("/loginForm")).mapError(GameError.apply)
-          response         <- sessionTransport.invalidateSession(session, Response(Status.SeeOther, Headers(Header.Location(loginFormURL))))
+          response <- sessionTransport
+            .invalidateSession(session, Response(Status.SeeOther, Headers(Header.Location(loginFormURL))))
         } yield response
       }
     )
@@ -114,7 +117,7 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           formData <- req.formData
           token = formData.get("token")
           password = formData.get("password")
-          _           <- ZIO.fail(SessionError("You need to pass a token and password")).when(token.isEmpty || password.isEmpty)
+          _ <- ZIO.fail(SessionError("You need to pass a token and password")).when(token.isEmpty || password.isEmpty)
           userOps     <- ZIO.service[Repository].map(_.userOperations)
           tokenHolder <- ZIO.service[TokenHolder]
           userOpt <-
@@ -139,7 +142,10 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           userOps   <- ZIO.service[Repository].map(_.userOperations)
           postman   <- ZIO.service[Postman]
           userOpt   <- userOps.userByEmail(email)
-          _         <- ZIO.foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope => ZIO.foreach(envelope)(postman.deliver)).forkDaemon
+          _ <- ZIO
+            .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope =>
+              ZIO.foreach(envelope)(postman.deliver)
+            ).forkDaemon
         } yield Response.ok)
           .provideSomeLayer[ChutiEnvironment & OpsService](ChutiSession.adminSession.toLayer)
       },
@@ -238,9 +244,9 @@ object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
           email    <- ZIO.fromOption(formData.get("email")).orElseFail(GameError("Missing email"))
           password <- ZIO.fromOption(formData.get("password")).orElseFail(GameError("Missing Password"))
 
-          userOps          <- ZIO.service[Repository].map(_.userOperations)
-          login            <- userOps.login(email, password)
-          _                <- login.fold(ZIO.logDebug(s"Bad login for $email"))(_ => ZIO.logDebug(s"Good Login for $email"))
+          userOps <- ZIO.service[Repository].map(_.userOperations)
+          login   <- userOps.login(email, password)
+          _       <- login.fold(ZIO.logDebug(s"Bad login for $email"))(_ => ZIO.logDebug(s"Good Login for $email"))
           sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
           logingFormUrl    <- ZIO.fromEither(URL.decode("/loginForm?bad=true")).mapError(GameError.apply)
           rootUrl          <- ZIO.fromEither(URL.decode("/")).mapError(GameError.apply)

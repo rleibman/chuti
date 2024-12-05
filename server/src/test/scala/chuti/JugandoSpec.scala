@@ -48,7 +48,9 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         mano1 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+              ChutiEnvironment & GameService & ChatService
+            ](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join
@@ -84,7 +86,9 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         mano4 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+              ChutiEnvironment & GameService & ChatService
+            ](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join
@@ -116,7 +120,9 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         end <- juegaHastaElFinal(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+              ChutiEnvironment & GameService & ChatService
+            ](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join

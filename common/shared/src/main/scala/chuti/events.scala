@@ -28,7 +28,7 @@ sealed trait EventInfo[T <: GameEvent] {
   def canDo(
     jugador: Jugador,
     game:    Game
-  ): Boolean
+  ):          Boolean
   val values: Seq[EventInfo[?]] = Seq(NoOp)
 
 }
@@ -49,7 +49,7 @@ sealed trait GameEvent {
   val gameStatusString: Option[String]
   def soundUrl: Option[String]
   val jugadorStatusString: Seq[(UserId, String)]
-  val reapplyMode: ReapplyMode = reapply
+  val reapplyMode:    ReapplyMode = reapply
   def expectedStatus: Option[GameStatus]
   def redoEvent(
     userOpt: Option[User],
@@ -102,7 +102,9 @@ sealed trait PlayEvent extends GameEvent {
   ): (Game, GameEvent) = {
     userOpt.fold(throw GameError("Eventos de juego requieren un usuario")) { user =>
       if (expectedStatus.fold(false)(_ != game.gameStatus))
-        throw GameError(s"doEvent: No es el momento de ${game.gameStatus}, que onda? expectedStatus = $expectedStatus, Event = $this")
+        throw GameError(
+          s"doEvent: No es el momento de ${game.gameStatus}, que onda? expectedStatus = $expectedStatus, Event = $this"
+        )
 
       doEvent(game.jugador(user.id), game)
     }
@@ -734,7 +736,9 @@ final case class Pide(
       throw GameError("No puedes jugar una ficha que no tienes!")
     if (game.enJuego.nonEmpty)
       throw GameError("No puedes pedir si hay fichas en la mesa")
-    triunfo.fold(pide(ficha, estrictaDerecha, jugador, game))(triunfo => pideInicial(ficha, triunfo, estrictaDerecha, jugador, game))
+    triunfo.fold(pide(ficha, estrictaDerecha, jugador, game))(triunfo =>
+      pideInicial(ficha, triunfo, estrictaDerecha, jugador, game)
+    )
   }
 
   def redoPide(
@@ -781,7 +785,9 @@ final case class Pide(
     jugador: Jugador,
     game:    Game
   ): Game = {
-    triunfo.fold(redoPide(ficha, estrictaDerecha, jugador, game))(triunfo => redoPideInicial(ficha, triunfo, estrictaDerecha, jugador, game))
+    triunfo.fold(redoPide(ficha, estrictaDerecha, jugador, game))(triunfo =>
+      redoPideInicial(ficha, triunfo, estrictaDerecha, jugador, game)
+    )
   }
 
 }
@@ -1204,7 +1210,9 @@ final case class TerminaJuego(
         { victima =>
           if (game.quienCanta.fold(false)(_.yaSeHizo)) {
             victima.copy(cuenta =
-              victima.cuenta ++ victima.filas.headOption.map(_ => Cuenta(Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score))))
+              victima.cuenta ++ victima.filas.headOption.map(_ =>
+                Cuenta(Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)))
+              )
             )
           } else {
             // Ya fue hoyo!
@@ -1269,8 +1277,9 @@ final case class TerminaJuego(
           soundUrl = if (fueHoyo) Option("sounds/hoyo.mp3") else Option("sounds/gano.mp3"),
           gameId = game.id,
           userId = jugador.id,
-          gameStatusString =
-            leTocaLaSopa.map(_ => s"$statusStr Se termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa")
+          gameStatusString = leTocaLaSopa.map(_ =>
+            s"$statusStr Se termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa"
+          )
         )
       )
     }

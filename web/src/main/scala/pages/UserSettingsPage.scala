@@ -108,7 +108,14 @@ object UserSettingsPage extends ChutiPage {
           FormField().width(SemanticWIDTHS.`3`)(
             Label()("Nombre"), // TODO i8n
             Input()
-              .onChange(onUserInputChange((user, value) => user.copy(name = value)))
+              .onChange(
+                onUserInputChange(
+                  (
+                    user,
+                    value
+                  ) => user.copy(name = value)
+                )
+              )
               .value(state.user.fold("")(_.name))()
           )
         ),
@@ -117,7 +124,14 @@ object UserSettingsPage extends ChutiPage {
             Label()("Correo Electrónico"), // TODO i8n
             Input()
               .`type`("email")
-              .onChange(onUserInputChange((user, value) => user.copy(email = value)))
+              .onChange(
+                onUserInputChange(
+                  (
+                    user,
+                    value
+                  ) => user.copy(email = value)
+                )
+              )
               .value(state.user.fold("")(_.email))()
           )
         ),
@@ -129,8 +143,12 @@ object UserSettingsPage extends ChutiPage {
               .fluid(true)
               .selection(true)
               .value(state.locale)
-              .onChange { (_, dropDownProps) =>
-                $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))
+              .onChange {
+                (
+                  _,
+                  dropDownProps
+                ) =>
+                  $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))
               }
               .options(
                 scalajs.js.Array(
@@ -150,7 +168,12 @@ object UserSettingsPage extends ChutiPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick((_, _) => doUpdate(state, chutiState))("Guardar") // TODO i8n
+            .onClick(
+              (
+                _,
+                _
+              ) => doUpdate(state, chutiState)
+            )("Guardar") // TODO i8n
         ),
         Divider()(),
         FormGroup()(
@@ -161,8 +184,14 @@ object UserSettingsPage extends ChutiPage {
               .name("password")
               .`type`("password")
               .value(state.passwordPair._1)
-              .onChange { (_, obj) =>
-                $.modState(state => state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)))
+              .onChange {
+                (
+                  _,
+                  obj
+                ) =>
+                  $.modState(state =>
+                    state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2))
+                  )
               }()
           ),
           FormField().width(SemanticWIDTHS.`3`)(
@@ -171,8 +200,14 @@ object UserSettingsPage extends ChutiPage {
               .`type`("password")
               .name("password")
               .value(state.passwordPair._2)
-              .onChange { (_, obj) =>
-                $.modState(state => state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])))
+              .onChange {
+                (
+                  _,
+                  obj
+                ) =>
+                  $.modState(state =>
+                    state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String]))
+                  )
               }()
           )
         ),
@@ -180,7 +215,12 @@ object UserSettingsPage extends ChutiPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick((_, _) => doChangePassword(state))("Cambiar Contraseña") // TODO i8n
+            .onClick(
+              (
+                _,
+                _
+              ) => doChangePassword(state)
+            )("Cambiar Contraseña") // TODO i8n
         ),
         Divider()(),
         <.h2("Cartera"), // TODO i8n

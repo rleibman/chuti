@@ -20,8 +20,8 @@ import java.time.LocalDate
 
 import scala.scalajs.js
 
-/** An abstract component trait from which all components in the app should derive. A good place to put in global implicits, common code that should
-  * be in all pages, etc.
+/** An abstract component trait from which all components in the app should derive. A good place to put in global
+  * implicits, common code that should be in all pages, etc.
   */
 trait ChutiComponent {
 

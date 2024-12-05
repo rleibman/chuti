@@ -26,8 +26,8 @@ import scala.annotation.tailrec
 
 object GameError {
 
-  def apply(cause: Throwable): GameError = new GameError(message = "", cause = Option(cause))
-  def apply(message: String):  GameError = new GameError(message = message, cause = None)
+  def apply(cause:   Throwable): GameError = new GameError(message = "", cause = Option(cause))
+  def apply(message: String):    GameError = new GameError(message = message, cause = None)
 
 }
 
@@ -65,7 +65,8 @@ object Numero {
 
   given JsonDecoder[Numero] =
     JsonDecoder[Json].mapOrFail(json =>
-      json.asObject.flatMap(_.get("value")).flatMap(_.asNumber).map(_.value.intValue).map(apply).toRight("Error decoding Numero")
+      json.asObject
+        .flatMap(_.get("value")).flatMap(_.asNumber).map(_.value.intValue).map(apply).toRight("Error decoding Numero")
     )
 
   given JsonEncoder[Numero] =
@@ -185,13 +186,13 @@ sealed trait Ficha extends Product with Serializable {
 
 case object FichaTapada extends Ficha {
 
-  override def arriba:             Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def abajo:              Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def esMula:             Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def es(num: Numero):    Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def arriba: Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def abajo:  Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def esMula: Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def value:  Int = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def es(num:    Numero): Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
   override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def toString:           String = "?:?"
+  override def toString: String = "?:?"
 
 }
 
@@ -200,11 +201,11 @@ case class FichaConocida private[chuti] (
   abajo:  Numero
 ) extends Ficha {
 
-  lazy override val esMula:        Boolean = arriba == abajo
-  lazy override val value:         Int = arriba.value + abajo.value
-  override def es(num: Numero):    Boolean = arriba == num || abajo == num
+  lazy override val esMula: Boolean = arriba == abajo
+  lazy override val value:  Int = arriba.value + abajo.value
+  override def es(num:    Numero): Boolean = arriba == num || abajo == num
   override def other(num: Numero): Numero = { if (arriba == num) abajo else arriba }
-  override def toString:           String = s"${arriba.value}:${abajo.value}"
+  override def toString: String = s"${arriba.value}:${abajo.value}"
 
 }
 
@@ -226,7 +227,8 @@ import chuti.CuantasCantas.*
 
 enum JugadorState {
 
-  case dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado, invitedNotAnswered,
+  case dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado,
+    invitedNotAnswered,
     waitingOthersAcceptance
 
 }
@@ -366,7 +368,9 @@ object Game {
   val campanita: Ficha = Ficha(Numero0, Numero1)
 
   lazy val todaLaFicha: List[Ficha] = (0 to 6)
-    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i => Ficha(Numero(i), Numero(i)))
+    .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>
+    Ficha(Numero(i), Numero(i))
+  )
 
   def calculaJugadorGanador(
     fichas:   Seq[(UserId, Ficha)],
@@ -522,8 +526,8 @@ case class Game(
   }
 
   /** @return
-    *   1100 + valor si pides otra cosa y te ganan con triunfo 1000 + valor si te gana 100 + valor si no te gana, pero por lo menos te dio lo que
-    *   pediste 0 si ni siquiera es lo que pediste
+    *   1100 + valor si pides otra cosa y te ganan con triunfo 1000 + valor si te gana 100 + valor si no te gana, pero
+    *   por lo menos te dio lo que pediste 0 si ni siquiera es lo que pediste
     */
   def score(
     pide: Ficha,

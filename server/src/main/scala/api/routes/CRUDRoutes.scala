@@ -139,19 +139,27 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
           res    <- countOperation(Some(search))
         } yield Response.json(res.toJson)
       },
-      Method.GET / "api" / self.url / trailing -> handler { (path: Path, req: Request) =>
-        for {
-          pk  <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
-          res <- getOperation(pk)
-        } yield Response.json(res.toJson)
+      Method.GET / "api" / self.url / trailing -> handler {
+        (
+          path: Path,
+          req:  Request
+        ) =>
+          for {
+            pk  <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
+            res <- getOperation(pk)
+          } yield Response.json(res.toJson)
       },
-      Method.DELETE / "api" / self.url / trailing -> handler { (path: Path, req: Request) =>
-        for {
-          pk     <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
-          getted <- getOperation(pk)
-          res    <- deleteOperation(getted)
-          _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
-        } yield Response.json(res.toJson)
+      Method.DELETE / "api" / self.url / trailing -> handler {
+        (
+          path: Path,
+          req:  Request
+        ) =>
+          for {
+            pk     <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
+            getted <- getOperation(pk)
+            res    <- deleteOperation(getted)
+            _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
+          } yield Response.json(res.toJson)
       }
     )
 

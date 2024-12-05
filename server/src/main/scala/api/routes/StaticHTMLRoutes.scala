@@ -63,18 +63,22 @@ object StaticHTMLRoutes {
         } yield file
       }
     }.flatten,
-    Method.ANY / "unauth" / string("somethingElse") -> handler { (somethingElse: String, request: Request) =>
-      if (authNotRequired(somethingElse)) {
-        Handler.fromFileZIO {
-          for {
-            config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-            staticContentDir = config.chuti.httpConfig.staticContentDir
-            file <- file(s"$staticContentDir/$somethingElse", request)
-          } yield file
+    Method.ANY / "unauth" / string("somethingElse") -> handler {
+      (
+        somethingElse: String,
+        request:       Request
+      ) =>
+        if (authNotRequired(somethingElse)) {
+          Handler.fromFileZIO {
+            for {
+              config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+              staticContentDir = config.chuti.httpConfig.staticContentDir
+              file <- file(s"$staticContentDir/$somethingElse", request)
+            } yield file
+          }
+        } else {
+          Handler.error(Status.Unauthorized)
         }
-      } else {
-        Handler.error(Status.Unauthorized)
-      }
     }.flatten
   )
 
@@ -89,22 +93,26 @@ object StaticHTMLRoutes {
           } yield file
         }
       }.flatten,
-      Method.GET / string("somethingElse") -> handler { (somethingElse: String, request: Request) =>
-        Handler.fromFileZIO {
-          if (somethingElse == "/") {
-            for {
-              config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-              staticContentDir = config.chuti.httpConfig.staticContentDir
-              file <- file(s"$staticContentDir/index.html", request)
-            } yield file
-          } else {
-            for {
-              config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-              staticContentDir = config.chuti.httpConfig.staticContentDir
-              file <- file(s"$staticContentDir/$somethingElse", request)
-            } yield file
+      Method.GET / string("somethingElse") -> handler {
+        (
+          somethingElse: String,
+          request:       Request
+        ) =>
+          Handler.fromFileZIO {
+            if (somethingElse == "/") {
+              for {
+                config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                staticContentDir = config.chuti.httpConfig.staticContentDir
+                file <- file(s"$staticContentDir/index.html", request)
+              } yield file
+            } else {
+              for {
+                config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                staticContentDir = config.chuti.httpConfig.staticContentDir
+                file <- file(s"$staticContentDir/$somethingElse", request)
+              } yield file
+            }
           }
-        }
       }.flatten
     )
 

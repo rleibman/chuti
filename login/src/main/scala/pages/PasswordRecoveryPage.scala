@@ -71,8 +71,12 @@ object PasswordRecoveryPage {
                 Button()
                   .compact(true)
                   .basic(true)
-                  .onClick { (_, _) =>
-                    $.modState(_.copy(submitted = false))
+                  .onClick {
+                    (
+                      _,
+                      _
+                    ) =>
+                      $.modState(_.copy(submitted = false))
                   }("Intenta de nuevo")
               )
             )
@@ -87,15 +91,23 @@ object PasswordRecoveryPage {
                     .name("email")
                     .`type`("email")
                     .value(state.email)
-                    .onChange { (_: ReactEventFrom[HTMLInputElement], data: InputOnChangeData) =>
-                      $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
+                    .onChange {
+                      (
+                        _:    ReactEventFrom[HTMLInputElement],
+                        data: InputOnChangeData
+                      ) =>
+                        $.modState(_.copy(email = data.value.get.asInstanceOf[String]))
                     }()
                 ),
                 Button()
                   .compact(true)
                   .basic(true)
-                  .onClick { (_, _) =>
-                    onSubmitEmailAddress(state.email)
+                  .onClick {
+                    (
+                      _,
+                      _
+                    ) =>
+                      onSubmitEmailAddress(state.email)
                   }("Aceptar")
               )
             )

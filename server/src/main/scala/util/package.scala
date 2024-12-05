@@ -42,7 +42,9 @@ package object util {
       for {
         str <- request.body.asString
         _ <- ZIO
-          .fail(GameError(s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"))
+          .fail(
+            GameError(s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})")
+          )
           .when(!contentTypeStr.contains(MediaType.application.`x-www-form-urlencoded`.subType))
       } yield str
         .split("&").map(_.split("="))
@@ -59,7 +61,10 @@ package object util {
       forceLanguage:    Option[String]
     ): Locale = {
       val range = Locale.LanguageRange.parse(
-        forceLanguage.orElse(request.header(Header.AcceptLanguage).map(_.renderedValue)).getOrElse(availableLocales.head.toLanguageTag)
+        forceLanguage
+          .orElse(request.header(Header.AcceptLanguage).map(_.renderedValue)).getOrElse(
+            availableLocales.head.toLanguageTag
+          )
       )
 
       Locale.lookup(range, availableLocales.toList.asJava).nn

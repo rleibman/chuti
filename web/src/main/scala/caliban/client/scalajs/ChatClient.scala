@@ -35,21 +35,24 @@ object ChatClient {
       toUser:    scala.Option[ToUserSelection]
     )
 
-    type ViewSelection[FromUserSelection, ToUserSelection] = SelectionBuilder[ChatMessage, ChatMessageView[FromUserSelection, ToUserSelection]]
+    type ViewSelection[FromUserSelection, ToUserSelection] =
+      SelectionBuilder[ChatMessage, ChatMessageView[FromUserSelection, ToUserSelection]]
 
     def view[FromUserSelection, ToUserSelection](
       fromUserSelection: SelectionBuilder[User, FromUserSelection],
       toUserSelection:   SelectionBuilder[User, ToUserSelection]
     ): ViewSelection[FromUserSelection, ToUserSelection] =
-      (fromUser(fromUserSelection) ~ msg ~ channelId ~ date ~ toUser(toUserSelection)).map { case (fromUser, msg, channelId, date, toUser) =>
-        ChatMessageView(fromUser, msg, channelId, date, toUser)
+      (fromUser(fromUserSelection) ~ msg ~ channelId ~ date ~ toUser(toUserSelection)).map {
+        case (fromUser, msg, channelId, date, toUser) =>
+          ChatMessageView(fromUser, msg, channelId, date, toUser)
       }
 
     def fromUser[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, A] =
       _root_.caliban.client.SelectionBuilder.Field("fromUser", Obj(innerSelection))
-    def msg:       SelectionBuilder[ChatMessage, String] = _root_.caliban.client.SelectionBuilder.Field("msg", Scalar())
-    def channelId: SelectionBuilder[ChatMessage, Int] = _root_.caliban.client.SelectionBuilder.Field("channelId", Scalar())
-    def date:      SelectionBuilder[ChatMessage, Instant] = _root_.caliban.client.SelectionBuilder.Field("date", Scalar())
+    def msg: SelectionBuilder[ChatMessage, String] = _root_.caliban.client.SelectionBuilder.Field("msg", Scalar())
+    def channelId: SelectionBuilder[ChatMessage, Int] =
+      _root_.caliban.client.SelectionBuilder.Field("channelId", Scalar())
+    def date: SelectionBuilder[ChatMessage, Instant] = _root_.caliban.client.SelectionBuilder.Field("date", Scalar())
     def toUser[A](innerSelection: SelectionBuilder[User, A]): SelectionBuilder[ChatMessage, scala.Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field("toUser", OptionOf(Obj(innerSelection)))
 
@@ -77,14 +80,16 @@ object ChatClient {
           UserView(id, email, name, created, lastUpdated, active, deleted, isAdmin)
       }
 
-    def id:          SelectionBuilder[User, scala.Option[Int]] = _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
-    def email:       SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
-    def name:        SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
-    def created:     SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
-    def lastUpdated: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("lastUpdated", Scalar())
-    def active:      SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("active", Scalar())
-    def deleted:     SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("deleted", Scalar())
-    def isAdmin:     SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("isAdmin", Scalar())
+    def id: SelectionBuilder[User, scala.Option[Int]] =
+      _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
+    def email:   SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
+    def name:    SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
+    def created: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
+    def lastUpdated: SelectionBuilder[User, Instant] =
+      _root_.caliban.client.SelectionBuilder.Field("lastUpdated", Scalar())
+    def active:  SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("active", Scalar())
+    def deleted: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("deleted", Scalar())
+    def isAdmin: SelectionBuilder[User, Boolean] = _root_.caliban.client.SelectionBuilder.Field("isAdmin", Scalar())
 
   }
 
@@ -140,12 +145,13 @@ object ChatClient {
   object Mutations {
 
     def say(
-      msg:               String,
-      channelId:         Int,
-      toUser:            scala.Option[UserInput] = None
-    )(implicit encoder0: ArgEncoder[String],
-      encoder1:          ArgEncoder[Int],
-      encoder2:          ArgEncoder[scala.Option[UserInput]]
+      msg:       String,
+      channelId: Int,
+      toUser:    scala.Option[UserInput] = None
+    )(implicit
+      encoder0: ArgEncoder[String],
+      encoder1: ArgEncoder[Int],
+      encoder2: ArgEncoder[scala.Option[UserInput]]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Boolean] =
       _root_.caliban.client.SelectionBuilder.Field(
         "say",
@@ -166,9 +172,10 @@ object ChatClient {
       channelId:    Int,
       connectionId: String
     )(
-      innerSelection:    SelectionBuilder[ChatMessage, A]
-    )(implicit encoder0: ArgEncoder[Int],
-      encoder1:          ArgEncoder[String]
+      innerSelection: SelectionBuilder[ChatMessage, A]
+    )(implicit
+      encoder0: ArgEncoder[Int],
+      encoder1: ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "chatStream",

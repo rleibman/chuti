@@ -27,12 +27,15 @@ package object service {
 
     case object UserClientService extends LiveClientService {
 
-      def isFirstLoginToday(): AsyncCallback[Boolean] = RESTOperation[String, Boolean]("get", s"$baseUrl/isFirstLoginToday", None)
-      def whoami():            AsyncCallback[Option[User]] = RESTOperation[String, Option[User]]("get", s"$baseUrl/whoami", None)
-      def wallet():            AsyncCallback[Option[UserWallet]] = RESTOperation[String, Option[UserWallet]]("get", s"$baseUrl/userWallet", None)
+      def isFirstLoginToday(): AsyncCallback[Boolean] =
+        RESTOperation[String, Boolean]("get", s"$baseUrl/isFirstLoginToday", None)
+      def whoami(): AsyncCallback[Option[User]] = RESTOperation[String, Option[User]]("get", s"$baseUrl/whoami", None)
+      def wallet(): AsyncCallback[Option[UserWallet]] =
+        RESTOperation[String, Option[UserWallet]]("get", s"$baseUrl/userWallet", None)
       def changePassword(password: String): AsyncCallback[Boolean] =
         RESTOperation[String, Boolean]("post", s"$baseUrl/changePassword", Option(password))
-      def setLocale(languageTag: String): AsyncCallback[Boolean] = RESTOperation[String, Boolean]("put", s"$baseUrl/locale", Option(languageTag))
+      def setLocale(languageTag: String): AsyncCallback[Boolean] =
+        RESTOperation[String, Boolean]("put", s"$baseUrl/locale", Option(languageTag))
 
     }
     override def remoteSystem: UserClientService.type = UserClientService

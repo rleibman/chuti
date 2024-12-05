@@ -64,14 +64,22 @@ object LoginPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick { (_, _) =>
-              context.onModeChanged(Mode.registration, None)
+            .onClick {
+              (
+                _,
+                _
+              ) =>
+                context.onModeChanged(Mode.registration, None)
             }("Registrarse por primera vez"),
           Button()
             .compact(true)
             .basic(true)
-            .onClick { (_, _) =>
-              context.onModeChanged(Mode.passwordRecoveryRequest, None)
+            .onClick {
+              (
+                _,
+                _
+              ) =>
+                context.onModeChanged(Mode.passwordRecoveryRequest, None)
             }("Perdí mi Contraseña")
         )
       }
