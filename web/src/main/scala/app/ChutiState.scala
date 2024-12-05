@@ -39,10 +39,13 @@ enum GlobalDialog {
 }
 
 case class ChutiState(
-  flipFicha:        Ficha => Callback = _ => Callback.empty,
-  ultimoBorlote:    Option[Borlote] = None,
-  flippedFichas:    Set[Ficha] = Set.empty,
-  onSessionChanged: (Option[User], String) => Callback = (_, _) => Callback.empty,
+  flipFicha:     Ficha => Callback = _ => Callback.empty,
+  ultimoBorlote: Option[Borlote] = None,
+  flippedFichas: Set[Ficha] = Set.empty,
+  onSessionChanged: (Option[User], String) => Callback = (
+    _,
+    _
+  ) => Callback.empty,
   languageTag: String = {
     val loc: String | Null = window.sessionStorage.getItem("languageTag")
     println(s"languageTag = $loc")
@@ -50,12 +53,15 @@ case class ChutiState(
       "es-MX"
     else loc
   },
-  user:                  Option[User] = None,
-  isFirstLogin:          Boolean = false,
-  wallet:                Option[UserWallet] = None,
-  serverVersion:         Option[String] = None,
-  gameInProgress:        Option[Game] = None,
-  modGameInProgress:     (Game => Game, Callback) => Callback = (_, c) => c,
+  user:           Option[User] = None,
+  isFirstLogin:   Boolean = false,
+  wallet:         Option[UserWallet] = None,
+  serverVersion:  Option[String] = None,
+  gameInProgress: Option[Game] = None,
+  modGameInProgress: (Game => Game, Callback) => Callback = (
+    _,
+    c
+  ) => c,
   onRequestGameRefresh:  () => Callback = { () => Callback.empty },
   gameStream:            Option[WebSocketHandler] = None,
   gameViewMode:          GameViewMode = GameViewMode.lobby,
@@ -71,7 +77,8 @@ case class ChutiState(
 ) {
 
   lazy val locale: Locale =
-    if (Locale.forLanguageTag(languageTag) == null) Locale.forLanguageTag("es-MX").nn else Locale.forLanguageTag(languageTag).nn
+    if (Locale.forLanguageTag(languageTag) == null) Locale.forLanguageTag("es-MX").nn
+    else Locale.forLanguageTag(languageTag).nn
 
   def isFlipped(ficha: Ficha): Boolean = flippedFichas.contains(ficha)
 

@@ -88,7 +88,8 @@ object RESTClient {
 
 }
 
-abstract class LiveRESTClient[E: JsonDecoder: JsonEncoder, PK, SEARCH <: Search: JsonEncoder] extends RESTClient[E, PK, SEARCH] {
+abstract class LiveRESTClient[E: JsonDecoder: JsonEncoder, PK, SEARCH <: Search: JsonEncoder]
+    extends RESTClient[E, PK, SEARCH] {
 
   val baseUrl: String
 
@@ -96,15 +97,19 @@ abstract class LiveRESTClient[E: JsonDecoder: JsonEncoder, PK, SEARCH <: Search:
 
   class LiveClientService extends RESTClient.Service[E, PK, SEARCH] {
 
-    override def get(id: PK): AsyncCallback[Option[E]] = RESTOperation[String, Option[E]]("GET", s"$baseUrl/${id.toString}", None)
+    override def get(id: PK): AsyncCallback[Option[E]] =
+      RESTOperation[String, Option[E]]("GET", s"$baseUrl/${id.toString}", None)
 
-    override def delete(id: PK): AsyncCallback[Boolean] = RESTOperation[String, Boolean]("DELETE", s"$baseUrl/${id.toString}", None)
+    override def delete(id: PK): AsyncCallback[Boolean] =
+      RESTOperation[String, Boolean]("DELETE", s"$baseUrl/${id.toString}", None)
 
     override def upsert(obj: E): AsyncCallback[E] = RESTOperation[E, E]("POST", s"$baseUrl", Option(obj))
 
-    override def search(searchObj: Option[SEARCH]): AsyncCallback[Seq[E]] = RESTOperation[SEARCH, Seq[E]]("POST", s"$baseUrl/search", searchObj)
+    override def search(searchObj: Option[SEARCH]): AsyncCallback[Seq[E]] =
+      RESTOperation[SEARCH, Seq[E]]("POST", s"$baseUrl/search", searchObj)
 
-    override def count(searchObj: Option[SEARCH]): AsyncCallback[Int] = RESTOperation[SEARCH, Int]("POST", s"$baseUrl/count", searchObj)
+    override def count(searchObj: Option[SEARCH]): AsyncCallback[Int] =
+      RESTOperation[SEARCH, Int]("POST", s"$baseUrl/count", searchObj)
 
   }
 

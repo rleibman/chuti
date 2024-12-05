@@ -76,14 +76,20 @@ object Chuti extends ZIOApp {
             "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
           }"""
 
-        ZIO.logError(body).as(Response.apply(body = Body.fromString(body), status = Status.BadGateway, headers = contentTypeJson))
+        ZIO
+          .logError(body).as(
+            Response.apply(body = Body.fromString(body), status = Status.BadGateway, headers = contentTypeJson)
+          )
       case e =>
         val body =
           s"""{
             "exceptionMessage": ${e.getMessage},
             "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
           }"""
-        ZIO.logError(body).as(Response.apply(body = Body.fromString(body), status = Status.InternalServerError, headers = contentTypeJson))
+        ZIO
+          .logError(body).as(
+            Response.apply(body = Body.fromString(body), status = Status.InternalServerError, headers = contentTypeJson)
+          )
 
     }
   }
@@ -100,7 +106,7 @@ object Chuti extends ZIOApp {
   override def run: ZIO[Environment & ZIOAppArgs & Scope, Throwable, ExitCode] = {
     ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
       ChatService.make().memoize.flatMap { chatServiceLayer =>
-        (for {
+        for {
           config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
           app    <- zapp
           _      <- ZIO.logInfo(s"Starting application with config $config")
@@ -113,14 +119,16 @@ object Chuti extends ZIOApp {
             Server
               .serve(app)
               .zipLeft(ZIO.logDebug(s"Server Started on ${config.chuti.httpConfig.port}"))
-              .tapErrorCause(ZIO.logErrorCause(s"Server on port ${config.chuti.httpConfig.port} has unexpectedly stopped", _))
+              .tapErrorCause(
+                ZIO.logErrorCause(s"Server on port ${config.chuti.httpConfig.port} has unexpectedly stopped", _)
+              )
               .provideSome[Environment](serverConfig, Server.live, gameServiceLayer, chatServiceLayer)
               .foldCauseZIO(
                 cause => ZIO.logErrorCause("err when booting server", cause).exitCode,
                 _ => ZIO.logError("app quit unexpectedly...").exitCode
               )
           }
-        } yield server)
+        } yield server
       }
     })
   }

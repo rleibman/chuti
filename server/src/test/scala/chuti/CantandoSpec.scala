@@ -43,8 +43,12 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     test("Cantando casa sin salve should get it done")(
       for {
         gameService <- ZIO.service[GameService].provide(GameService.make())
-        gameStream = gameService.gameStream(GameId(1), connectionId).provideSomeLayer[Repository & Postman & TokenHolder](ChutiSession(user1).toLayer)
-        userStream = gameService.userStream(connectionId).provideSomeLayer[Repository & Postman & TokenHolder](ChutiSession(user1).toLayer)
+        gameStream = gameService
+          .gameStream(GameId(1), connectionId).provideSomeLayer[Repository & Postman & TokenHolder](
+            ChutiSession(user1).toLayer
+          )
+        userStream = gameService
+          .userStream(connectionId).provideSomeLayer[Repository & Postman & TokenHolder](ChutiSession(user1).toLayer)
         gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
         userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
         _               <- Clock.sleep(1.second)

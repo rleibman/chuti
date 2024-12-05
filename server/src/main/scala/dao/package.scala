@@ -15,7 +15,7 @@
  */
 
 import api.ChutiSession
-import chuti.{given, *}
+import chuti.{*, given}
 import zio.{Clock, ZIO}
 import zio.logging.*
 import zio.json.*
@@ -124,7 +124,8 @@ package object dao {
 
   object UserWalletRow {
 
-    def fromUserWallet(value: UserWallet): UserWalletRow = UserWalletRow(userId = value.userId.userId, amount = value.amount)
+    def fromUserWallet(value: UserWallet): UserWalletRow =
+      UserWalletRow(userId = value.userId.userId, amount = value.amount)
 
   }
   case class UserWalletRow(

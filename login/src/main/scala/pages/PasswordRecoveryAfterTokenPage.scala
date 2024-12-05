@@ -59,8 +59,12 @@ object PasswordRecoveryAfterTokenPage {
           Form()
             .action("passwordReset")
             .method("post")
-            .onSubmit { (event, _) =>
-              handleSubmit(state, event)
+            .onSubmit {
+              (
+                event,
+                _
+              ) =>
+                handleSubmit(state, event)
             }(
               FormField()(
                 Label()("Contraseña"),
@@ -69,8 +73,12 @@ object PasswordRecoveryAfterTokenPage {
                   .name("password")
                   .`type`("password")
                   .value(state.password)
-                  .onChange { (_, data) =>
-                    $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
+                  .onChange {
+                    (
+                      _,
+                      data
+                    ) =>
+                      $.modState(_.copy(password = data.value.get.asInstanceOf[String]))
                   }()
               ),
               FormField()(
@@ -80,8 +88,12 @@ object PasswordRecoveryAfterTokenPage {
                   .name("passwordAgain")
                   .`type`("password")
                   .value(state.passwordAgain)
-                  .onChange { (_, data) =>
-                    $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
+                  .onChange {
+                    (
+                      _,
+                      data
+                    ) =>
+                      $.modState(_.copy(passwordAgain = data.value.get.asInstanceOf[String]))
                   }()
               ),
               <.input(
@@ -97,8 +109,12 @@ object PasswordRecoveryAfterTokenPage {
               Button()
                 .compact(true)
                 .basic(true)
-                .onClick { (_, _) =>
-                  Callback(window.location.replace("/"))
+                .onClick {
+                  (
+                    _,
+                    _
+                  ) =>
+                    Callback(window.location.replace("/"))
                 }("Cancel")
             )
         )

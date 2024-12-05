@@ -42,9 +42,18 @@ object Confirm {
           .cancelButton(state.cancelText)
           .confirmButton(state.confirmText)
           .header(state.header.getOrElse("").toString)
-          .onConfirm((_, _) => $.modState(s => s.copy(open = false), state.onConfirm))
-          .onCancel { (_, _) =>
-            $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
+          .onConfirm(
+            (
+              _,
+              _
+            ) => $.modState(s => s.copy(open = false), state.onConfirm)
+          )
+          .onCancel {
+            (
+              _,
+              _
+            ) =>
+              $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
           }()
       )
 
@@ -82,6 +91,8 @@ object Confirm {
     header:      Option[String] = None
   ): Callback =
     ref.get
-      .flatMap(_.fold(Callback.empty)(_.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header)))
+      .flatMap(
+        _.fold(Callback.empty)(_.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header))
+      )
 
 }

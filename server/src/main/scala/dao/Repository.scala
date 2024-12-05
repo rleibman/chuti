@@ -76,7 +76,8 @@ object Repository {
 
         override def gameInvites: RepositoryIO[Seq[Game]] = repository.gameOperations.gameInvites
 
-        override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] = repository.gameOperations.gamesWaitingForPlayers()
+        override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
+          repository.gameOperations.gamesWaitingForPlayers()
 
         override def getGameForUser: RepositoryIO[Option[Game]] = repository.gameOperations.getGameForUser
 
@@ -93,7 +94,8 @@ object Repository {
           gameCache.invalidate(pk) *>
             repository.gameOperations.delete(pk, softDelete)
 
-        override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = repository.gameOperations.search(search)
+        override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
+          repository.gameOperations.search(search)
 
         override def count(search: Option[EmptySearch]): RepositoryIO[Long] = repository.gameOperations.count(search)
 

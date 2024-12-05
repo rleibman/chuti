@@ -41,7 +41,7 @@ import java.time.{Instant, ZoneId}
 import java.time.format.DateTimeFormatter
 import java.util.{Locale, UUID}
 import scala.util.{Failure, Success}
-import chuti.{given, *}
+import chuti.{*, given}
 import chuti.ChannelId.*
 import chuti.UserId.*
 import net.leibman.chuti.semanticUiReact.distCommonjsAddonsTextAreaTextAreaMod.TextAreaProps
@@ -50,7 +50,8 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   private val connectionId = UUID.randomUUID().toString
   override val serverUri = uri"http://${Config.chutiHost}/api/chat"
-  private val df = DateTimeFormatter.ofPattern("MM/dd HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
+  private val df =
+    DateTimeFormatter.ofPattern("MM/dd HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
 
   case class State(
     chatMessages: List[ChatMessage] = Nil,
@@ -62,10 +63,17 @@ object ChatComponent extends ScalaJSClientAdapter {
 
   class Backend($ : BackendScope[Props, State]) {
 
-    def close(): Callback = $.state.flatMap(s => s.ws.fold(Callback.empty)(handler => Callback.log("Closing chat ws handler") >> handler.close()))
+    def close(): Callback =
+      $.state.flatMap(s =>
+        s.ws.fold(Callback.empty)(handler => Callback.log("Closing chat ws handler") >> handler.close())
+      )
 
-    private def onMessageInFluxChange = { (_: ReactEventFromTextArea, obj: TextAreaProps) =>
-      $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
+    private def onMessageInFluxChange = {
+      (
+        _:   ReactEventFromTextArea,
+        obj: TextAreaProps
+      ) =>
+        $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
     }
 
     private def onSend(
@@ -136,7 +144,12 @@ object ChatComponent extends ScalaJSClientAdapter {
             .compact(true)
             .basic(true)
             .disabled(s.msgInFlux.trim.nn.isEmpty)
-            .onClick((_, _) => onSend(p, s))("Send")
+            .onClick(
+              (
+                _,
+                _
+              ) => onSend(p, s)
+            )("Send")
         )
       )
 
@@ -158,7 +171,9 @@ object ChatComponent extends ScalaJSClientAdapter {
                 msg = msg,
                 channelId = p.channel,
                 date = Instant.parse(date).nn,
-                toUser = toUsername.map(name => User(None, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn))
+                toUser = toUsername.map(name =>
+                  User(None, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn)
+                )
               )
           )
       (for {
@@ -180,17 +195,23 @@ object ChatComponent extends ScalaJSClientAdapter {
                   .chatStream(p.channel.channelId, connectionId)(
                     chatSelectionBuilder
                   ),
-                onData = { (_, data) =>
-                  val flatted = data.flatten
-                  Callback.log(s"got data! $flatted") >>
-                    flatted
-                      .fold(Callback.empty) { msg =>
-                        msg.toUser.fold(
-                          $.props.flatMap(_.onMessage(msg)) >> $.modState(s => s.copy(s.chatMessages :+ msg)) >> scrollToBottom
-                        ) { _ =>
-                          $.props.flatMap(_.onPrivateMessage(msg))
+                onData = {
+                  (
+                    _,
+                    data
+                  ) =>
+                    val flatted = data.flatten
+                    Callback.log(s"got data! $flatted") >>
+                      flatted
+                        .fold(Callback.empty) { msg =>
+                          msg.toUser.fold(
+                            $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
+                              s.copy(s.chatMessages :+ msg)
+                            ) >> scrollToBottom
+                          ) { _ =>
+                            $.props.flatMap(_.onPrivateMessage(msg))
+                          }
                         }
-                      }
                 },
                 operationId = s"chat$chatId",
                 connectionId = s"$chatId-${p.channel.channelId}"
@@ -211,15 +232,18 @@ object ChatComponent extends ScalaJSClientAdapter {
   )
 
   import scala.language.unsafeNulls
-  given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
-  given propsReuse:   Reusability[Props] = Reusability.by(_.channel.channelId)
-  given stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")
+  given messageReuse: Reusability[ChatMessage] =
+    Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
+  given propsReuse: Reusability[Props] = Reusability.by(_.channel.channelId)
+  given stateReuse: Reusability[State] = Reusability.caseClassExcept("ws")
 
   private val component = ScalaComponent
     .builder[Props]("content")
     .initialState(State())
     .renderBackend[Backend]
-    .componentDidMount($ => Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props))
+    .componentDidMount($ =>
+      Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
+    )
     .componentWillUnmount($ => $.backend.close())
     .configure(Reusability.shouldComponentUpdate)
     .build

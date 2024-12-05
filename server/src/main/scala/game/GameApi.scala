@@ -29,7 +29,7 @@ import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
 import chat.ChatApi.{Mutations, Queries, Subscriptions}
 import chat.ChatService
-import chuti.{given, *}
+import chuti.{*, given}
 import dao.Repository
 import game.GameService
 import mail.Postman

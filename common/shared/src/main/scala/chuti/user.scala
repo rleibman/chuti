@@ -64,7 +64,8 @@ object UserEventType {
 
   given JsonDecoder[UserEventType] =
     JsonDecoder.string.mapOrFail(s =>
-      values.find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, UserEventType]
+      values
+        .find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, UserEventType]
     )
 
   given JsonEncoder[UserEventType] = JsonEncoder.string.contramap(_.toString)

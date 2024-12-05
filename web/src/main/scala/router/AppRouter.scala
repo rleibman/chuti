@@ -36,7 +36,8 @@ import scala.annotation.unused
 
 object AppRouter extends ChutiComponent {
 
-  private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
+  private val df =
+    DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
 
   sealed trait AppPage
 
@@ -81,38 +82,39 @@ object AppRouter extends ChutiComponent {
                           TableHeaderCell()(localized("Chuti.satoshi"))
                         )
                       ),
-                      TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray { case ((jugador, puntos, satoshi), jugadorIndex) =>
-                        TableRow()
+                      TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                        case ((jugador, puntos, satoshi), jugadorIndex) =>
+                          TableRow()
 //                          key(s"cuenta$jugadorIndex",
-                          .className(if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else "")(
-                            TableCell()(jugador.user.name),
-                            TableCell()(
-                              jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                            .className(if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else "")(
+                              TableCell()(jugador.user.name),
+                              TableCell()(
+                                jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                                  <.span(
+                                    ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
+                                    ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
+                                    s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                                  )
+                                },
                                 <.span(
-                                  ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
-                                  ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                                  s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                                  ^.fontSize := "large",
+                                  ^.color    := "blue",
+                                  if (jugador.ganadorDePartido) "➠" else ""
                                 )
-                              },
-                              <.span(
-                                ^.fontSize := "large",
-                                ^.color    := "blue",
-                                if (jugador.ganadorDePartido) "➠" else ""
-                              )
-                            ),
-                            TableCell()(
-                              <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
-                            ),
-                            TableCell()(
-                              <.span(
+                              ),
+                              TableCell()(
+                                <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                              ),
+                              TableCell()(
                                 <.span(
-                                  ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                                  satoshi
+                                  <.span(
+                                    ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
+                                    satoshi
+                                  )
+                                    .when(game.gameStatus == GameStatus.partidoTerminado)
                                 )
-                                  .when(game.gameStatus == GameStatus.partidoTerminado)
                               )
                             )
-                          )
                       })
                     ),
                     if (game.gameStatus == GameStatus.partidoTerminado) {
@@ -144,8 +146,12 @@ object AppRouter extends ChutiComponent {
                     Button()
                       .compact(true)
                       .basic(true)
-                      .onClick { (_, _) =>
-                        chutiState.showDialog(GlobalDialog.none)
+                      .onClick {
+                        (
+                          _,
+                          _
+                        ) =>
+                          chutiState.showDialog(GlobalDialog.none)
                       }("Ok") // TODO I8n
                   )
                 )
@@ -200,41 +206,76 @@ object AppRouter extends ChutiComponent {
                       VdomArray(
                         MenuItem()
 //                          key("menuEntrarAlJuego",
-                          .onClick { (e, _) =>
-                            chutiState
-                              .onGameViewModeChanged(GameViewMode.game) >> page
-                              .setEH(GameAppPage)(e)
+                          .onClick {
+                            (
+                              e,
+                              _
+                            ) =>
+                              chutiState
+                                .onGameViewModeChanged(GameViewMode.game) >> page
+                                .setEH(GameAppPage)(e)
                           }(localized("Chuti.entrarAlJuego")),
                         MenuItem()
 //                          key("menuCuentas",
-                          .onClick { (_, _) =>
-                            chutiState.showDialog(GlobalDialog.cuentas)
+                          .onClick {
+                            (
+                              _,
+                              _
+                            ) =>
+                              chutiState.showDialog(GlobalDialog.cuentas)
                           }("Cuentas") // TODO I8n
                       )
                     },
                   MenuItem()
 //                    key("menuLobby",
-                    .onClick { (e, _) =>
-                      chutiState
-                        .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
+                    .onClick {
+                      (
+                        e,
+                        _
+                      ) =>
+                        chutiState
+                          .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
                     }("Lobby"), // TODO I8n
                   MenuItem()
 //                    key("history",
-                    .onClick { (e, _) =>
-                      page.setEH(GameHistoryAppPage)(e)
+                    .onClick {
+                      (
+                        e,
+                        _
+                      ) =>
+                        page.setEH(GameHistoryAppPage)(e)
                     }("Historia de juegos"), // TODO I8n
                   Divider()(),
-                  MenuItem().onClick((e, _) => page.setEH(RulesAppPage)(e))("Reglas de Chuti"), // TODO I8n
-                  MenuItem().onClick { (_, _) =>
-                    Callback {
-                      document.location.href = "/api/auth/doLogout"
-                    }
+                  MenuItem().onClick(
+                    (
+                      e,
+                      _
+                    ) => page.setEH(RulesAppPage)(e)
+                  )("Reglas de Chuti"), // TODO I8n
+                  MenuItem().onClick {
+                    (
+                      _,
+                      _
+                    ) =>
+                      Callback {
+                        document.location.href = "/api/auth/doLogout"
+                      }
                   }("Cerrar sesión"), // TODO I8n`
-                  MenuItem().onClick((e, _) => page.setEH(UserSettingsAppPage)(e))(
+                  MenuItem().onClick(
+                    (
+                      e,
+                      _
+                    ) => page.setEH(UserSettingsAppPage)(e)
+                  )(
                     "Administración de usuario" // TODO I8n
                   ),
                   Divider()(),
-                  MenuItem().onClick((_, _) => chutiState.toggleSound)(
+                  MenuItem().onClick(
+                    (
+                      _,
+                      _
+                    ) => chutiState.toggleSound
+                  )(
                     Icon().name(
                       if (chutiState.muted) SemanticICONS.`volume up`
                       else SemanticICONS.`volume off`
@@ -242,8 +283,18 @@ object AppRouter extends ChutiComponent {
                     if (chutiState.muted) "Con Sonido" else "Sin Sonido" // TODO I8n
                   ),
                   Divider()(),
-                  MenuItem().onClick((e, _) => page.setEH(ChangeLogAppPage)(e))("ChangeLog"), // TODO I8n
-                  MenuItem().onClick((e, _) => page.setEH(AboutAppPage)(e))(
+                  MenuItem().onClick(
+                    (
+                      e,
+                      _
+                    ) => page.setEH(ChangeLogAppPage)(e)
+                  )("ChangeLog"), // TODO I8n
+                  MenuItem().onClick(
+                    (
+                      e,
+                      _
+                    ) => page.setEH(AboutAppPage)(e)
+                  )(
                     "Acerca de chuti.fun" // TODO I8n
                   )
                 )

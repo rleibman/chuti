@@ -53,7 +53,8 @@ object ChatService {
 
   lazy private val ttl: Duration = 15.minutes
 
-  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & ChutiSession, CalibanError]] = ChatApi.api.interpreter
+  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & ChutiSession, CalibanError]] =
+    ChatApi.api.interpreter
 
   def sendMessage(
     msg:       String,
@@ -85,7 +86,8 @@ object ChatService {
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & ChutiSession, GameError, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
+  ): ZIO[ChatService & ChutiSession, GameError, Seq[ChatMessage]] =
+    ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,

@@ -20,7 +20,7 @@ import _root_.util.LocalizedMessages
 import app.{ChutiState, GameViewMode}
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import chuti.{given, *}
+import chuti.{*, given}
 import components.{Confirm, Toast}
 import caliban.client.scalajs.given
 import caliban.client.scalajs.GameClient.Mutations
@@ -30,7 +30,12 @@ import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.{^, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
+  SemanticCOLORS,
+  SemanticICONS,
+  SemanticSIZES,
+  SemanticShorthandItem
+}
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 import pages.LobbyComponent.calibanCall
 import zio.json.*
@@ -199,20 +204,28 @@ object GameComponent {
                             .selection(true)
                             .value(s.cuantasCantas.getOrElse(defaultCuantas).prioridad.toDouble)
                             .options(cantasOptions)
-                            .onChange { (_, dropDownProps) =>
-                              val value = dropDownProps.value.asInstanceOf[Double].toInt
-                              $.modState(
-                                _.copy(cuantasCantas = Option(CuantasCantas.byPriority(value)))
-                              )
+                            .onChange {
+                              (
+                                _,
+                                dropDownProps
+                              ) =>
+                                val value = dropDownProps.value.asInstanceOf[Double].toInt
+                                $.modState(
+                                  _.copy(cuantasCantas = Option(CuantasCantas.byPriority(value)))
+                                )
                             }(),
                           Button
                             .compact(true)
                             .basic(true)
-                            .onClick { (_, _) =>
-                              play(
-                                game.id.get,
-                                Canta(s.cuantasCantas.getOrElse(defaultCuantas))
-                              )
+                            .onClick {
+                              (
+                                _,
+                                _
+                              ) =>
+                                play(
+                                  game.id.get,
+                                  Canta(s.cuantasCantas.getOrElse(defaultCuantas))
+                                )
                             }("Canta") // TODO i8n
                         )
                       case JugadorState.dando =>
@@ -220,8 +233,12 @@ object GameComponent {
                           .compact(true)
                           .basic(true)
                           .disabled(s.fichaSeleccionada.isEmpty)
-                          .onClick { (_, _) =>
-                            play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
+                          .onClick {
+                            (
+                              _,
+                              _
+                            ) =>
+                              play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
                           }("Dá") // TODO i8n
                       case jugadorState @ (JugadorState.pidiendo | JugadorState.pidiendoInicial) =>
                         <.span(
@@ -247,9 +264,13 @@ object GameComponent {
                                 .labeled(true)
                                 .placeholder("Triunfo") // TODO i8n
                                 .value(s.triunfo.fold("")(_.toString))
-                                .onChange { (_, dropDownProps) =>
-                                  val value = dropDownProps.value.asInstanceOf[String]
-                                  $.modState(_.copy(triunfo = Option(Triunfo(value))))
+                                .onChange {
+                                  (
+                                    _,
+                                    dropDownProps
+                                  ) =>
+                                    val value = dropDownProps.value.asInstanceOf[String]
+                                    $.modState(_.copy(triunfo = Option(Triunfo(value))))
                                 }
                                 .options(
                                   Triunfo.posibilidades.map { triunfo =>
@@ -278,10 +299,14 @@ object GameComponent {
                               .toggle(true)
                               .label("Estricta Derecha") // TODO i8n
                               .checked(s.estrictaDerecha)
-                              .onChange { (_, checkBoxProps) =>
-                                $.modState(
-                                  _.copy(estrictaDerecha = checkBoxProps.checked.getOrElse(false))
-                                )
+                              .onChange {
+                                (
+                                  _,
+                                  checkBoxProps
+                                ) =>
+                                  $.modState(
+                                    _.copy(estrictaDerecha = checkBoxProps.checked.getOrElse(false))
+                                  )
                               }(),
                             Button
                               .compact(true)
@@ -290,15 +315,19 @@ object GameComponent {
                                 s.fichaSeleccionada.isEmpty ||
                                   (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty))
                               )
-                              .onClick { (_, _) =>
-                                play(
-                                  game.id.get,
-                                  Pide(
-                                    ficha = s.fichaSeleccionada.get,
-                                    triunfo = s.triunfo,
-                                    estrictaDerecha = s.estrictaDerecha
+                              .onClick {
+                                (
+                                  _,
+                                  _
+                                ) =>
+                                  play(
+                                    game.id.get,
+                                    Pide(
+                                      ficha = s.fichaSeleccionada.get,
+                                      triunfo = s.triunfo,
+                                      estrictaDerecha = s.estrictaDerecha
+                                    )
                                   )
-                                )
                               }("Pide"), // TODO i8n
                             if (
                               s.triunfo.nonEmpty && game
@@ -308,8 +337,12 @@ object GameComponent {
                                 .compact(true)
                                 .basic(true)
                                 .primary(true)
-                                .onClick { (_, _) =>
-                                  play(game.id.get, Caete(triunfo = s.triunfo))
+                                .onClick {
+                                  (
+                                    _,
+                                    _
+                                  ) =>
+                                    play(game.id.get, Caete(triunfo = s.triunfo))
                                 }("Cáete") // TODO i8n
                             } else
                               EmptyVdom
@@ -319,8 +352,12 @@ object GameComponent {
                         Button
                           .compact(true)
                           .basic(true)
-                          .onClick { (_, _) =>
-                            play(game.id.get, Sopa())
+                          .onClick {
+                            (
+                              _,
+                              _
+                            ) =>
+                              play(game.id.get, Sopa())
                           }("Sopa") // TODO i8n
                       case JugadorState.esperandoCanto   => EmptyVdom
                       case JugadorState.esperando        => EmptyVdom
@@ -331,11 +368,15 @@ object GameComponent {
                       Button
                         .compact(true)
                         .basic(true)
-                        .onClick { (_, _) =>
-                          Confirm.confirm(
-                            question = "Estas seguro que te quieres rendir?", // TODO i8n
-                            onConfirm = play(game.id.get, MeRindo())
-                          )
+                        .onClick {
+                          (
+                            _,
+                            _
+                          ) =>
+                            Confirm.confirm(
+                              question = "Estas seguro que te quieres rendir?", // TODO i8n
+                              onConfirm = play(game.id.get, MeRindo())
+                            )
                         }("Me Rindo") // TODO i8n
                     } else
                       EmptyVdom
@@ -490,9 +531,13 @@ object GameComponent {
                   ^.className := "dominoEnJuego",
                   Button
                     .basic(true)
-                    .onClick { (_, _) =>
-                      chutiState
-                        .onGameViewModeChanged(GameViewMode.lobby)
+                    .onClick {
+                      (
+                        _,
+                        _
+                      ) =>
+                        chutiState
+                          .onGameViewModeChanged(GameViewMode.lobby)
                     }("Regresa al Lobby") // TODO i8n
                 )
               )

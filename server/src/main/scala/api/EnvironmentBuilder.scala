@@ -57,7 +57,8 @@ object EnvironmentBuilder {
     appConfig     <- configService.appConfig
   } yield CourierPostman.live(appConfig.chuti.smtpConfig))
 
-  val repoLayer: ZLayer[ConfigurationService, ConfigurationError, Repository] = QuillRepository.uncached >>> Repository.cached
+  val repoLayer: ZLayer[ConfigurationService, ConfigurationError, Repository] =
+    QuillRepository.uncached >>> Repository.cached
 
   val live: Layer[GameError, ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
     ConfigurationService.live,
@@ -104,7 +105,8 @@ object EnvironmentBuilder {
       repositoryLayer,
       ZLayer.succeed(new MockPostman),
       ZLayer.fromZIO(for {
-        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
+        cache <- Cache
+          .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
       } yield TokenHolder.tempCache(cache)),
       Auth.SessionStorage.tokenEncripted[ChutiSession],
       Auth.SessionTransport.cookieSessionTransport[ChutiSession],

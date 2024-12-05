@@ -54,22 +54,28 @@ object StaticHTMLRoutes {
     Method.GET / "loginForm" -> handler { (request: Request) =>
       Handler.fromFileZIO {
         for {
-          staticContentDir <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
-          data             <- file(s"$staticContentDir/login.html", request)
+          staticContentDir <- ZIO
+            .serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
+          data <- file(s"$staticContentDir/login.html", request)
         } yield data
       }
     }.flatten,
-    Method.ANY / "unauth" / trailing -> handler { (path: Path, request: Request) =>
-      if (authNotRequired(path.toString)) {
-        Handler.fromFileZIO {
-          for {
-            staticContentDir <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
-            data             <- file(s"$staticContentDir/${path.toString()}", request)
-          } yield data
+    Method.ANY / "unauth" / trailing -> handler {
+      (
+        path:    Path,
+        request: Request
+      ) =>
+        if (authNotRequired(path.toString)) {
+          Handler.fromFileZIO {
+            for {
+              staticContentDir <- ZIO
+                .serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.httpConfig.staticContentDir)
+              data <- file(s"$staticContentDir/${path.toString()}", request)
+            } yield data
+          }
+        } else {
+          Handler.succeed(Response(Status.Unauthorized))
         }
-      } else {
-        Handler.succeed(Response(Status.Unauthorized))
-      }
     }.flatten
   )
 

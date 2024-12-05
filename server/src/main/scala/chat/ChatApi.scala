@@ -72,8 +72,10 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
   private given Schema[ChatService & ChutiSession, Queries] = Schema.gen[ChatService & ChutiSession, Queries]
-  private given Schema[ChatService & Repository & ChutiSession, Mutations] = Schema.gen[ChatService & Repository & ChutiSession, Mutations]
-  private given Schema[ChatService & Repository & ChutiSession, Subscriptions] = Schema.gen[ChatService & Repository & ChutiSession, Subscriptions]
+  private given Schema[ChatService & Repository & ChutiSession, Mutations] =
+    Schema.gen[ChatService & Repository & ChutiSession, Mutations]
+  private given Schema[ChatService & Repository & ChutiSession, Subscriptions] =
+    Schema.gen[ChatService & Repository & ChutiSession, Subscriptions]
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)

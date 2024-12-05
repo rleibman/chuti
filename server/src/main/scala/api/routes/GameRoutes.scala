@@ -31,7 +31,8 @@ object GameRoutes {
 
   lazy private val interpreter = GameApi.api.interpreter
 
-  lazy val authRoute: IO[CalibanError.ValidationError, Routes[GameService & ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
+  lazy val authRoute
+    : IO[CalibanError.ValidationError, Routes[GameService & ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
     for {
       interpreter <- interpreter
     } yield {

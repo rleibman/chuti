@@ -182,6 +182,8 @@ object Toast {
     onClose:   () => Callback = { () => Callback.empty }
   ): Callback =
     toastRef.get
-      .flatMap(_.fold(Callback.empty)(_.backend.toastMsg(message, icon, className, duration, position, autoHide, onClose)))
+      .flatMap(
+        _.fold(Callback.empty)(_.backend.toastMsg(message, icon, className, duration, position, autoHide, onClose))
+      )
 
 }

@@ -2,7 +2,7 @@ package db.quill
 
 import api.ChutiEnvironment
 import better.files.File
-import chuti.{given, *}
+import chuti.{*, given}
 import dao.*
 // import db.quill.QuillUserSpec.fixedClock
 import zio.*
@@ -31,7 +31,7 @@ object QuillGameSpec extends QuillSpec {
   override def spec =
     suite("Quill Game Suite")(
       test("CRUD") {
-        (for {
+        for {
           gameRepo            <- ZIO.service[Repository].map(_.gameOperations)
           game                <- readGame(GAME_NEW)
           inserted            <- gameRepo.upsert(game.copy(id = None))
@@ -52,7 +52,7 @@ object QuillGameSpec extends QuillSpec {
           updated == gottenUpdated.get,
           deleted,
           allGamesAfterDelete.size < allGamesAfterInsert.size
-        ))
+        )
       }
     ).provideSomeLayerShared[ChutiEnvironment](godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]

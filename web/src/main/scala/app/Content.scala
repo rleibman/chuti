@@ -20,7 +20,7 @@ import java.net.URI
 import java.util.UUID
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.{given, *}
+import chuti.{*, given}
 import components.ChutiComponent
 import components.{Confirm, Toast}
 import caliban.client.scalajs.GameClient.{
@@ -48,9 +48,9 @@ import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
 import java.time.Instant
 
-/** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the router should be the main
-  * content of the app, but having a middle piece that loads app state makes some sense, that way the router is in charge of routing and presenting
-  * the app menu.
+/** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the
+  * router should be the main content of the app, but having a middle piece that loads app state makes some sense, that
+  * way the router is in charge of routing and presenting the app menu.
   */
 object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSupport {
 
@@ -103,7 +103,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         updateGame >> {
           gameEvent match {
             case e: TerminaJuego if e.partidoTerminado =>
-              refresh(initial = false)() >> $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas)))
+              refresh(initial = false)() >> $.modState(s =>
+                s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
+              )
             case _ => Callback.empty
           }
         }
@@ -262,9 +264,12 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       }
 
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
-      Callback.log("============== onGameViewModeChanged") >> $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
+      Callback.log("============== onGameViewModeChanged") >> $.modState(s =>
+        s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode))
+      )
 
-    def showDialog(dlg: GlobalDialog): Callback = $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
+    def showDialog(dlg: GlobalDialog): Callback =
+      $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
 
     def onUserStreamData(
       currentUser:   User,
@@ -326,7 +331,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         }
       )
 
-    lazy private val userEventSelectionBuilder: SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
+    lazy private val userEventSelectionBuilder
+      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
       val t: SelectionBuilder[CalibanUserEvent, (Option[Int], String, String, CalibanUserEventType, Option[Int])] =
         CalibanUserEvent.user(CalibanUser.id) ~
           CalibanUserEvent.user(CalibanUser.name) ~
@@ -336,7 +342,13 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
 
       t.map { case (idOpt, name, email, eventType, gameIdOpt) =>
         (
-          User(id = idOpt.map(UserId.apply), name = name, email = email, created = Instant.now.nn, lastUpdated = Instant.now.nn),
+          User(
+            id = idOpt.map(UserId.apply),
+            name = name,
+            email = email,
+            created = Instant.now.nn,
+            lastUpdated = Instant.now.nn
+          ),
           eventType,
           gameIdOpt.map(GameId.apply)
         )
@@ -374,7 +386,8 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
           given JsonDecoder[CalibanUserEventType] =
             DeriveJsonDecoder
               .gen[UserEventType].mapOrFail(a =>
-                CalibanUserEventType.values.find(b => a.toString == b.value).toRight(s"Coudn't find $a in ${CalibanUserEventType.values}")
+                CalibanUserEventType.values
+                  .find(b => a.toString == b.value).toRight(s"Coudn't find $a in ${CalibanUserEventType.values}")
               )
 
           // Special stuff needs to be done on initalization:
@@ -400,8 +413,14 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                     .userStream(connectionId)(
                       userEventSelectionBuilder
                     ),
-                  onData = { (_, data) =>
-                    whoami.fold(Callback.empty)(currentUser => onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten))
+                  onData = {
+                    (
+                      _,
+                      data
+                    ) =>
+                      whoami.fold(Callback.empty)(currentUser =>
+                        onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten)
+                      )
                   },
                   operationId = "-",
                   connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.userId)}"
@@ -425,12 +444,16 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                   makeWebSocketClient[Option[Json]](
                     uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
                     query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
-                    onData = { (_, data) =>
-                      data.flatten.fold(Callback.empty)(json =>
-                        json
-                          .as[GameEvent]
-                          .fold(failure => Callback.throwException(GameError(failure)), g => onGameEvent(g))
-                      )
+                    onData = {
+                      (
+                        _,
+                        data
+                      ) =>
+                        data.flatten.fold(Callback.empty)(json =>
+                          json
+                            .as[GameEvent]
+                            .fold(failure => Callback.throwException(GameError(failure)), g => onGameEvent(g))
+                        )
                     },
                     operationId = "-",
                     connectionId = s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.gameId)}"

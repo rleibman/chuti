@@ -124,7 +124,9 @@ case object DumbChutiBot extends ChutiBot {
         ZIO.succeed(
           Pide(
             jugador.fichas
-              .maxByOption(ficha => (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value).get,
+              .maxByOption(ficha =>
+                (if (ficha.es(triunfo)) 200 else if (ficha.esMula) 100 else 0) + ficha.arriba.value
+              ).get,
             triunfo = None,
             estrictaDerecha = false
           )

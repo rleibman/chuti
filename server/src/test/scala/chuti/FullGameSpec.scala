@@ -174,6 +174,10 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
   )
 
   override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
-    ZLayer.make[ChutiEnvironment & GameService & ChatService](EnvironmentBuilder.testLayer(), GameService.make(), ChatService.make())
+    ZLayer.make[ChutiEnvironment & GameService & ChatService](
+      EnvironmentBuilder.testLayer(),
+      GameService.make(),
+      ChatService.make()
+    )
 
 }

@@ -35,16 +35,18 @@ import java.io.{File, IOException}
 import java.net.InetAddress
 import java.time.Instant
 
-/** This is a collection of utilities for authenticating users. Authentication is parametrized on a given Session Type, and we assume you're using
-  * circe to convert it to/from JSON. We divide the authentication into SessionTransport and SessionStorage, currently I've written these:
-  *   - CookieSessionTransport: uses cookies to store the session TODO: Currently, we only support the session cookie, we do not yet support the
-  *     refresh cookie.
-  *   - TokenEncryptedSessionStorage: The session is not stored as such, instead, the session is stored in a JWT and then encrypted. It works decently
-  *     and uses little memory, but in order to support session invalidation we do have to keep invalidated sessions in memory Possible enhancements
+/** This is a collection of utilities for authenticating users. Authentication is parametrized on a given Session Type,
+  * and we assume you're using circe to convert it to/from JSON. We divide the authentication into SessionTransport and
+  * SessionStorage, currently I've written these:
+  *   - CookieSessionTransport: uses cookies to store the session TODO: Currently, we only support the session cookie,
+  *     we do not yet support the refresh cookie.
+  *   - TokenEncryptedSessionStorage: The session is not stored as such, instead, the session is stored in a JWT and
+  *     then encrypted. It works decently and uses little memory, but in order to support session invalidation we do
+  *     have to keep invalidated sessions in memory Possible enhancements
   *   - TODO: HeaderSessionTransport: uses headers (bearer token) to store the session
   *   - TODO: InMemorySessionStorage - Store the session in memory.
-  *   - InDiskSessionStorage - Store the session in disk. I don't think we can write this generically, since each system would use a different
-  *     database. TODO: provide an example
+  *   - InDiskSessionStorage - Store the session in disk. I don't think we can write this generically, since each system
+  *     would use a different database. TODO: provide an example
   *   - TODO It'd be nice to have an easy, slam dunk integration with OAuth2
   */
 object Auth {
@@ -137,7 +139,10 @@ object Auth {
     for {
       configService <- ZIO.service[ConfigurationService]
       config        <- configService.appConfig.mapBoth(e => SessionError("", Option(e)), _.chuti.sessionConfig)
-      tok           <- ZIO.fromTry(Jwt.decode(token, config.secretKey.key, Seq(JwtAlgorithm.HS512))).mapError(e => SessionError("", Option(e)))
+      tok <- ZIO
+        .fromTry(Jwt.decode(token, config.secretKey.key, Seq(JwtAlgorithm.HS512))).mapError(e =>
+          SessionError("", Option(e))
+        )
     } yield tok
 
   protected def jwtExpire[SessionType: JsonEncoder](
@@ -157,9 +162,8 @@ object Auth {
 
   object SessionTransport {
 
-    def cookieSessionTransport[
-      SessionType: JsonEncoder: JsonDecoder: Tag
-    ]: ZLayer[SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
+    def cookieSessionTransport[SessionType: JsonEncoder: JsonDecoder: Tag]
+      : ZLayer[SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
       ZLayer.fromZIO(
         for {
           invalidSessions <- Ref.make(Map.empty[SessionType, Instant])
@@ -205,11 +209,13 @@ object Auth {
 
   object SessionStorage {
 
-    def tokenEncripted[SessionType: JsonEncoder: JsonDecoder: Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
+    def tokenEncripted[SessionType: JsonEncoder: JsonDecoder: Tag]
+      : ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
       ZLayer.succeed {
         new SessionStorage[SessionType, String] {
 
-          override def storeSession(session: SessionType): ZIO[ConfigurationService, SessionError, String] = jwtEncode(session)
+          override def storeSession(session: SessionType): ZIO[ConfigurationService, SessionError, String] =
+            jwtEncode(session)
 
           override def getSession(sessionId: String): ZIO[ConfigurationService, SessionError, Option[SessionType]] =
             for {
@@ -217,7 +223,8 @@ object Auth {
               session <- decoded.session
             } yield Option(session)
 
-          override def deleteSession(sessionId: String): ZIO[ConfigurationService, SessionError, Boolean] = ZIO.succeed(true)
+          override def deleteSession(sessionId: String): ZIO[ConfigurationService, SessionError, Boolean] =
+            ZIO.succeed(true)
 
         }
       }
@@ -279,14 +286,17 @@ object Auth {
 
     override def cleanUp: UIO[Unit] = invalidSessions.update(_.filter(_._2.isAfter(Instant.now)))
 
-    override def isValid(session: SessionType): ZIO[ConfigurationService, Nothing, Boolean] = invalidSessions.get.map(!_.exists(_._1 == session))
+    override def isValid(session: SessionType): ZIO[ConfigurationService, Nothing, Boolean] =
+      invalidSessions.get.map(!_.exists(_._1 == session))
 
     override def getSession(request: Request): ZIO[ConfigurationService, SessionError, Option[SessionType]] =
       for {
         configService <- ZIO.service[ConfigurationService]
         config        <- configService.appConfig.mapBoth(e => SessionError("", Option(e)), _.chuti.sessionConfig)
         str <- ZIO
-          .fromOption(request.cookies.find(_.name == config.sessionName).map(_.content)).orElseFail(SessionError("No session cookie found"))
+          .fromOption(request.cookies.find(_.name == config.sessionName).map(_.content)).orElseFail(
+            SessionError("No session cookie found")
+          )
         session <- sessionStorage.getSession(str)
       } yield session
 
@@ -302,8 +312,9 @@ object Auth {
           // No bearer token, let's see if we have a session cookie
           case _ =>
             for {
-              session           <- getSession(request).mapError(e => Response.internalServerError(e.getMessage))
-              loginFormRedirect <- ResponseExt.seeOther("/loginForm").mapError(e => Response.internalServerError(e.getMessage))
+              session <- getSession(request).mapError(e => Response.internalServerError(e.getMessage))
+              loginFormRedirect <- ResponseExt
+                .seeOther("/loginForm").mapError(e => Response.internalServerError(e.getMessage))
               r <-
                 session match {
                   case _ if request.path.startsWith(Path.decode("/loginForm")) =>

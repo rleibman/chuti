@@ -101,7 +101,8 @@ package object token {
           override def validateToken(
             token:   Token,
             purpose: TokenPurpose
-          ): IO[GameError, Option[User]] = repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
+          ): IO[GameError, Option[User]] =
+            repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
         }
       })
 

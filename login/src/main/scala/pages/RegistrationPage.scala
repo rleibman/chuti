@@ -109,7 +109,14 @@ object RegistrationPage {
           FormField().width(SemanticWIDTHS.`3`)(
             Label()("Nombre"),
             Input()
-              .onChange(onUserInputChange((user, value) => user.copy(name = value)))
+              .onChange(
+                onUserInputChange(
+                  (
+                    user,
+                    value
+                  ) => user.copy(name = value)
+                )
+              )
               .value(state.user.name)()
           )
         ),
@@ -118,7 +125,14 @@ object RegistrationPage {
             Label()("Correo Electrónico"),
             Input()
               .`type`("email")
-              .onChange(onUserInputChange((user, value) => user.copy(email = value)))
+              .onChange(
+                onUserInputChange(
+                  (
+                    user,
+                    value
+                  ) => user.copy(email = value)
+                )
+              )
               .value(state.user.email)()
           )
         ),
@@ -130,8 +144,14 @@ object RegistrationPage {
               .name("password")
               .`type`("password")
               .value(state.passwordPair._1)
-              .onChange { (_, obj) =>
-                $.modState(state => state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)))
+              .onChange {
+                (
+                  _,
+                  obj
+                ) =>
+                  $.modState(state =>
+                    state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2))
+                  )
               }()
           ),
           FormField().width(SemanticWIDTHS.`3`)(
@@ -140,8 +160,14 @@ object RegistrationPage {
               .`type`("password")
               .name("password")
               .value(state.passwordPair._2)
-              .onChange { (_, obj) =>
-                $.modState(state => state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])))
+              .onChange {
+                (
+                  _,
+                  obj
+                ) =>
+                  $.modState(state =>
+                    state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String]))
+                  )
               }()
           )
         ),
@@ -153,8 +179,12 @@ object RegistrationPage {
           Button()
             .compact(true)
             .basic(true)
-            .onClick { (_: ReactMouseEventFrom[HTMLButtonElement], _: ButtonProps) =>
-              Callback(window.location.replace("/"))
+            .onClick {
+              (
+                _: ReactMouseEventFrom[HTMLButtonElement],
+                _: ButtonProps
+              ) =>
+                Callback(window.location.replace("/"))
             }("Cancelar")
         )
       )
