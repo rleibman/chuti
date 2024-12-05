@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package chuti
+package util
 
 import courier.Envelope
 import mail.Postman

@@ -1,5 +1,6 @@
 package mail
 
+import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
 import api.token.*
 import chuti.User
 import courier.{Envelope, Text}
@@ -10,9 +11,7 @@ import zio.test.*
 
 import javax.mail.internet.InternetAddress
 
-object PostmanIntegrationSpec extends ZIOSpecDefault {
-
-  val tokenLayer: ULayer[TokenHolder] = ???
+object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
 
   override def spec =
     suite("PostmanIntegrationSpec")(
@@ -43,13 +42,9 @@ object PostmanIntegrationSpec extends ZIOSpecDefault {
 
         zio.as(assert(true)(equalTo(true)))
       }
-<<<<<<<< HEAD:server/src/test/scala/mail/PostmanIntegrationSpec.scala
-    ).provide(
-      ZLayer.succeed(CourierPostman.live(config.live)),
-      tokenLayer
     )
-========
-    ).provideLayer(ZLayer.succeed(CourierPostman.live(config.live)) ++ tokenLayer)
->>>>>>>> origin/master:integrationTests/src/test/scala/mail/PostmanIntegrationSpec.scala
+
+  override def bootstrap: ULayer[ChutiEnvironment & ChutiSession] =
+    ZLayer.make[ChutiEnvironment & ChutiSession](EnvironmentBuilder.withContainer.orDie, ChutiSession.adminSession.toLayer)
 
 }

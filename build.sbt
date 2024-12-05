@@ -41,7 +41,7 @@ enablePlugins(
   CalibanPlugin
 )
 
-val circeVersion = "0.14.10"
+//val circeVersion = "0.14.10"
 val calibanVersion = "2.9.0"
 val zioVersion = "2.1.13"
 val quillVersion = "4.8.6"
@@ -49,24 +49,18 @@ val zioHttpVersion = "3.0.1"
 val zioConfigVersion = "4.0.2"
 val zioJsonVersion = "0.7.3"
 val testContainerVersion = "0.41.4"
+val SCALA = "3.5.2"
 
 lazy val commonSettings = Seq(
   organization                     := "net.leibman",
-  scalaVersion                     := "3.5.2",
+  scalaVersion                     := SCALA,
   startYear                        := Some(2020),
   organizationName                 := "Roberto Leibman",
   headerLicense                    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
   libraryDependencies += "dev.zio" %% "zio" % zioVersion withSources (),
-  libraryDependencies ++= Seq(
-    "io.circe" %% "circe-core",
-    "io.circe" %% "circe-generic",
-    "io.circe" %% "circe-parser",
-    "io.circe" %% "circe-literal"
-  ).map(_ % circeVersion),
   scalacOptions ++= scala3Opts
 )
 
-lazy val commonVmSettings = commonSettings
 
 ////////////////////////////////////////////////////////////////////////////////////
 // common (i.e. model)
@@ -80,15 +74,17 @@ lazy val common = crossProject(JSPlatform, JVMPlatform)
     BuildInfoPlugin
   )
   .settings(
-    scalaVersion     := "3.1.3",
+    scalaVersion     := SCALA,
     name             := "chuti-common",
     buildInfoPackage := "chuti"
   )
   .jvmSettings(
-    commonVmSettings
+    commonSettings,
+    libraryDependencies ++= Seq("dev.zio" %% "zio-json" % zioJsonVersion withSources ())
   )
   .jsSettings(
-    commonSettings
+    commonSettings,
+    libraryDependencies ++= Seq("dev.zio" %%% "zio-json" % zioJsonVersion withSources ())
   )
 
 lazy val server = project
@@ -104,7 +100,7 @@ lazy val server = project
     SystemdPlugin
   )
   .settings(debianSettings)
-  .settings(commonVmSettings)
+  .settings(commonSettings)
   .dependsOn(commonJVM)
   .settings(
     name := "chuti-server",
@@ -114,33 +110,32 @@ lazy val server = project
       "mysql"        % "mysql-connector-java" % "8.0.33" withSources (),
       "io.getquill" %% "quill-jdbc-zio"       % quillVersion withSources (),
       // ZIO
-      "dev.zio"               %% "zio"                   % zioVersion withSources (),
-      "dev.zio"               %% "zio-nio"               % "2.0.2" withSources (),
-      "dev.zio"               %% "zio-cache"             % "0.2.3" withSources (),
-      "dev.zio"               %% "zio-config"            % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-derivation" % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-magnolia"   % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-typesafe"   % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j"     % "2.4.0" withSources (),
-      "dev.zio"               %% "izumi-reflect"         % "2.3.10" withSources (),
-      "dev.zio"               %% "zio-json"              % zioJsonVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban"               % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-tapir"         % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-zio-http"      % calibanVersion withSources (),
-      "dev.zio"               %% "zio-http"              % zioHttpVersion withSources (),
-      "com.github.jwt-scala"  %% "jwt-circe"             % "10.0.1" withSources (),
-      // Other random utilities
-      ("com.github.pathikrit" %% "better-files"    % "3.9.2" withSources ()).cross(CrossVersion.for3Use2_13),
-      "com.github.daddykotex" %% "courier"         % "3.2.0" withSources (),
-      "ch.qos.logback"         % "logback-classic" % "1.5.12" withSources (),
-      "commons-codec"          % "commons-codec"   % "1.17.1",
+      "dev.zio"               %% "zio"                            % zioVersion withSources (),
+      "dev.zio"               %% "zio-nio"                        % "2.0.2" withSources (),
+      "dev.zio"               %% "zio-cache"                      % "0.2.3" withSources (),
+      "dev.zio"               %% "zio-config"                     % zioConfigVersion withSources (),
+      "dev.zio"               %% "zio-config-derivation"          % zioConfigVersion withSources (),
+      "dev.zio"               %% "zio-config-magnolia"            % zioConfigVersion withSources (),
+      "dev.zio"               %% "zio-config-typesafe"            % zioConfigVersion withSources (),
+      "dev.zio"               %% "zio-logging-slf4j"              % "2.4.0" withSources (),
+      "dev.zio"               %% "izumi-reflect"                  % "2.3.10" withSources (),
+      "dev.zio"               %% "zio-json"                       % zioJsonVersion withSources (),
+      "com.github.ghostdogpr" %% "caliban"                        % calibanVersion withSources (),
+      "com.github.ghostdogpr" %% "caliban-tapir"                  % calibanVersion withSources (),
+      "com.github.ghostdogpr" %% "caliban-zio-http"               % calibanVersion withSources (),
+      "dev.zio"               %% "zio-http"                       % zioHttpVersion withSources (),
+      "com.github.jwt-scala"  %% "jwt-zio-json"                   % "10.0.1" withSources (), // Other random utilities
+      "com.github.pathikrit"  %% "better-files"                   % "3.9.2" withSources (),
+      "com.github.daddykotex" %% "courier"                        % "3.2.0" withSources (),
+      "ch.qos.logback"         % "logback-classic"                % "1.5.12" withSources (),
+      "commons-codec"          % "commons-codec"                  % "1.17.1",
+      "com.dimafeng"          %% "testcontainers-scala-scalatest" % testContainerVersion withSources (),
+      "com.dimafeng"          %% "testcontainers-scala-mysql"     % testContainerVersion withSources (),
       // Testing
-      "dev.zio"       %% "zio-test"                       % zioVersion           % "it, test" withSources (),
-      "dev.zio"       %% "zio-test-sbt"                   % zioVersion           % "it, test" withSources (),
-      "org.scalatest" %% "scalatest"                      % "3.2.19"             % "it, test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-scalatest" % testContainerVersion % "it, test" withSources (),
-      "com.dimafeng"  %% "testcontainers-scala-mysql"     % testContainerVersion % "it, test" withSources ()
-//      "io.d11" %% "zhttp-test" % zioHttpVersion % "it, test" withSources()
+      "dev.zio"       %% "zio-test"     % zioVersion % "test" withSources (),
+      "dev.zio"       %% "zio-test-sbt" % zioVersion % "test" withSources (),
+      "org.scalatest" %% "scalatest"    % "3.2.19"   % "test" withSources ()
+//      "io.d11" %% "zhttp-test" % zioHttpVersion % "test" withSources()
     ),
     testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
@@ -326,14 +321,8 @@ lazy val web: Project = project
 lazy val commonWeb: Project => Project =
   _.settings(
     libraryDependencies ++= Seq(
-      "io.circe" %%% "circe-core",
-      "io.circe" %%% "circe-generic",
-      "io.circe" %%% "circe-parser",
-      "io.circe" %%% "circe-literal"
-    ).map(_ % circeVersion),
-    libraryDependencies ++= Seq(
       "net.leibman" %%% "chuti-stlib"              % "0.2.0-SNAPSHOT" withSources (),
-      "commons-io"                                 % "commons-io" % "2.11.0" withSources (),
+      "commons-io"                                 % "commons-io" % "2.18.0" withSources (),
       "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources (),
       "dev.zio" %%% "zio"                          % zioVersion withSources (),
       "com.softwaremill.sttp.client3" %%% "core"   % "3.10.1" withSources (),

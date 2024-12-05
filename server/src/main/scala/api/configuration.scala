@@ -17,7 +17,7 @@
 package api
 
 import api.auth.Auth.{SecretKey, SessionConfig}
-import chuti.GameException
+import chuti.GameError
 import com.typesafe.config.{Config as TypesafeConfig, ConfigFactory}
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import zio.*
@@ -30,9 +30,9 @@ import java.io.File
 case class ConfigurationError(
   override val message: String = "",
   override val cause:   Option[Throwable] = None
-) extends GameException(message, cause)
+) extends GameError(message, cause)
 
-case class DataSourceConfig(
+case class DbConfig(
   driver:                String,
   url:                   String,
   user:                  String,
@@ -43,24 +43,18 @@ case class DataSourceConfig(
   maximumPoolSize:       Int = 20,
   minimumIdle:           Int = 1000,
   connectionTimeoutMins: Long = 5
-)
-
-case class DbConfig(
-  dataSourceName:   String = "com.mysql.cj.jdbc.MysqlDataSource",
-  maximumPoolSize:  Int = 10,
-  dataSourceConfig: DataSourceConfig
 ) {
 
   def dataSource: HikariDataSource = {
     val dsConfig = HikariConfig()
-    dsConfig.setDriverClassName(dataSourceConfig.driver)
-    dsConfig.setJdbcUrl(dataSourceConfig.url)
-    dsConfig.setUsername(dataSourceConfig.user)
-    dsConfig.setPassword(dataSourceConfig.password)
-    dsConfig.setMaximumPoolSize(dataSourceConfig.maximumPoolSize)
-    dsConfig.setMinimumIdle(dataSourceConfig.minimumIdle)
+    dsConfig.setDriverClassName(driver)
+    dsConfig.setJdbcUrl(url)
+    dsConfig.setUsername(user)
+    dsConfig.setPassword(password)
+    dsConfig.setMaximumPoolSize(maximumPoolSize)
+    dsConfig.setMinimumIdle(minimumIdle)
     dsConfig.setAutoCommit(true)
-    dsConfig.setConnectionTimeout(dataSourceConfig.connectionTimeoutMins * 60 * 1000)
+    dsConfig.setConnectionTimeout(connectionTimeoutMins * 60 * 1000)
 
     HikariDataSource(dsConfig)
   }

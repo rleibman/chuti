@@ -18,19 +18,20 @@ package chuti
 
 import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import io.circe.{Decoder, Encoder}
+import zio.json.*
+import zio.json.ast.Json
 
 import java.time.Instant
 import scala.annotation.tailrec
 
-object GameException {
+object GameError {
 
-  def apply(cause: Throwable): GameException = new GameException(message = "", cause = Option(cause))
-  def apply(message: String):  GameException = new GameException(message = message, cause = None)
+  def apply(cause: Throwable): GameError = new GameError(message = "", cause = Option(cause))
+  def apply(message: String):  GameError = new GameError(message = message, cause = None)
 
 }
 
-class GameException(
+class GameError(
   val message: String,
   val cause:   Option[Throwable]
 ) extends Exception(message, cause.getOrElse(null))
@@ -62,9 +63,15 @@ object Numero {
 
   def apply(num: Int): Numero = values(num)
 
-  given Decoder[Numero] = Decoder.forProduct1("value")(apply)
+  given JsonDecoder[Numero] =
+    JsonDecoder[Json].mapOrFail(json =>
+      json.asObject.flatMap(_.get("value")).flatMap(_.asNumber).map(_.value.intValue).map(apply).toRight("Error decoding Numero")
+    )
 
-  given Encoder[Numero] = Encoder.forProduct1("value")(_.value)
+  given JsonEncoder[Numero] =
+    JsonEncoder[Json].contramap { (num: Numero) =>
+      s"""{"value": ${num.value}""".fromJson[Json].toOption.get
+    }
 
 }
 
@@ -139,21 +146,28 @@ object Ficha {
   def fromString(str: String): Ficha = {
     val splitted = str.split(":").nn.map {
       case s: String => Numero(s.toInt)
-      case null => throw GameException(s"Invalid ficha string: $str")
+      case null => throw GameError(s"Invalid ficha string: $str")
     }
     Ficha(splitted(0), splitted(1))
   }
 
-  given Decoder[Ficha] =
-    Decoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
-      case ("tapada", _, _)                   => FichaTapada
-      case (_, arriba: Numero, abajo: Numero) => apply(arriba, abajo)
+  given JsonDecoder[Ficha] =
+    JsonDecoder[Json].mapOrFail { json =>
+      for {
+        obj     <- json.asObject.toRight("Not an object")
+        theType <- obj.get("type").flatMap(_.asString).toRight("No type")
+        arriba  <- obj.get("arriba").toRight("No arriba").flatMap(_.as[Numero])
+        abajo   <- obj.get("abajo").toRight("No abajo").flatMap(_.as[Numero])
+      } yield if (theType.equals("tapada")) FichaTapada else apply(arriba, abajo)
     }
 
-  given Encoder[Ficha] =
-    Encoder.forProduct3[Ficha, String, Numero, Numero]("type", "arriba", "abajo") {
-      case FichaTapada                  => ("tapada", Numero0, Numero0)
-      case FichaConocida(arriba, abajo) => ("conocida", arriba, abajo)
+  given JsonEncoder[Ficha] =
+    JsonEncoder[Json].contramap { (ficha: Ficha) =>
+      s"""{
+        "type": "${if (ficha == FichaTapada) "tapada" else "conocida"}",
+        "arriba": ${if (ficha == FichaTapada) Numero0 else ficha.arriba}},
+        "abajo": ${if (ficha == FichaTapada) Numero0 else ficha.abajo}
+       }""".fromJson[Json].toOption.get
     }
 
 }
@@ -171,12 +185,12 @@ sealed trait Ficha extends Product with Serializable {
 
 case object FichaTapada extends Ficha {
 
-  override def arriba:             Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def abajo:              Numero = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def esMula:             Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def value:              Int = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def es(num: Numero):    Boolean = throw GameException("No puedes hacer esto con una ficha tapada")
-  override def other(num: Numero): Numero = throw GameException("No puedes hacer esto con una ficha tapada")
+  override def arriba:             Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def abajo:              Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def esMula:             Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def es(num: Numero):    Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
   override def toString:           String = "?:?"
 
 }
@@ -252,8 +266,8 @@ case class Jugador(
 
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
-      throw GameException("Si no canta no se puede hacer!!")
-    filas.size >= cuantasCantas.fold(throw GameException("Si no canta no se puede hacer!!"))(
+      throw GameError("Si no canta no se puede hacer!!")
+    filas.size >= cuantasCantas.fold(throw GameError("Si no canta no se puede hacer!!"))(
       _.numFilas
     )
   }
@@ -396,7 +410,7 @@ case class Game(
   def jugadorState(jugador: Jugador): JugadorState = {
     gameStatus match {
       case GameStatus.comienzo =>
-        throw GameException("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
+        throw GameError("Porque estas preguntando el estatus del jugador si no ha pasado nada?")
       case GameStatus.abandonado =>
         JugadorState.partidoTerminado
       case GameStatus.esperandoJugadoresInvitados | GameStatus.esperandoJugadoresAzar =>
@@ -516,7 +530,7 @@ case class Game(
     da:   Ficha
   ): Int = {
     triunfo match {
-      case None => throw GameException("Nuncamente!")
+      case None => throw GameError("Nuncamente!")
       case Some(SinTriunfos) =>
         if (!da.es(pide.arriba))
           0 // Ni siquiera es lo que pediste.
@@ -595,7 +609,7 @@ case class Game(
 
   def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
     triunfo match {
-      case None              => throw GameException("Nuncamente!")
+      case None              => throw GameError("Nuncamente!")
       case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)
       case Some(TriunfoNumero(num)) =>
         fichas.maxByOption(f =>
@@ -631,7 +645,7 @@ case class Game(
   def jugador(id: Option[UserId]): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
-        throw GameException("Este usuario no esta jugando en este juego")
+        throw GameError("Este usuario no esta jugando en este juego")
       )
 
   def modifiedJugadores(
@@ -698,7 +712,7 @@ case class Game(
     // It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(userOpt, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex)
-      throw GameException("Error! El evento no tenia el indice correcto")
+      throw GameError("Error! El evento no tenia el indice correcto")
     (processed._1.copy(currentEventIndex = nextIndex), processed._2)
   }
 
@@ -709,7 +723,7 @@ case class Game(
     val user = jugadores.find(_.user.id == event.userId).map(_.user)
     val processed = event.redoEvent(user, game = this)
     if (event.index.getOrElse(-1) != currentEventIndex)
-      throw GameException("Error! No puedes re-aplicar este evento al juego!")
+      throw GameError("Error! No puedes re-aplicar este evento al juego!")
     processed.copy(currentEventIndex = nextIndex)
   }
 

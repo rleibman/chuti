@@ -17,17 +17,16 @@
 package routes
 
 import api.{ChutiEnvironment, ChutiSession}
-import caliban.{GraphiQLHandler, QuickAdapter, ZHttpAdapter}
+import caliban.{GraphiQLHandler, QuickAdapter}
 import chat.ChatService
 import dao.Repository
-import game.GameService.GameLayer
 import game.{GameApi, GameService}
 import zio.*
 import zio.http.*
 
 object GameRoutes {
 
-  lazy val authRoute: ZIO[Any, Throwable, Routes[GameService & GameLayer & ChatService, Nothing]] =
+  lazy val authRoute: ZIO[Any, Throwable, Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, Nothing]] =
     for {
       interpreter <- GameService.interpreter
     } yield {

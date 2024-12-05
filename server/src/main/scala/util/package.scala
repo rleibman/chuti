@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-import cats.data.NonEmptyList
-import chuti.GameException
-import io.circe.Decoder
-import io.circe.parser.parse
-import io.circe.syntax.*
+import chuti.GameError
 import io.netty.handler.codec.http.QueryStringDecoder
 import zio.http.*
 import zio.*
 import zio.http.Body.ContentType
 import zio.http.Header.HeaderType
 import zio.http.Status.BadRequest
+import zio.json.*
+import zio.json.ast.Json
 import zio.logging.*
+import zio.prelude.NonEmptyList
 
 import java.net.MalformedURLException
 import java.util.Locale
@@ -43,7 +42,7 @@ package object util {
       for {
         str <- request.body.asString
         _ <- ZIO
-          .fail(GameException(s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"))
+          .fail(GameError(s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"))
           .when(!contentTypeStr.contains(MediaType.application.`x-www-form-urlencoded`.subType))
       } yield str
         .split("&").map(_.split("="))
@@ -66,28 +65,28 @@ package object util {
       Locale.lookup(range, availableLocales.toList.asJava).nn
     }
 
-    def bodyAs[E: Decoder]: ZIO[Any, Throwable, E] =
+    def bodyAs[E: JsonDecoder]: ZIO[Any, Throwable, E] =
       for {
         body <- request.body.asString
         obj <- ZIO
-          .fromEither(parse(body).flatMap(_.as[E]))
+          .fromEither(body.fromJson[E])
           .tapError { e =>
-            ZIO.logErrorCause(s"Error parsing body.\n$body", Cause.die(e))
+            ZIO.logError(s"Error parsing body.\n$e\n$body")
           }
-          .mapError(GameException.apply)
+          .mapError(GameError.apply)
       } yield obj
 
   }
 
   object ResponseExt {
 
-    def json(value: io.circe.Json): Response = Response.json(value.noSpaces)
+    def json(value: Json): Response = Response.json(value.toString)
 
-    def json[A: io.circe.Encoder](value: A): Response = Response.json(value.asJson.noSpaces)
+    def json[A: JsonEncoder](value: A): Response = Response.json(value.toJson)
 
-    def seeOther(location: String): ZIO[Any, GameException, Response] =
+    def seeOther(location: String): ZIO[Any, GameError, Response] =
       for {
-        url <- ZIO.fromEither(URL.decode(location)).mapError(GameException.apply)
+        url <- ZIO.fromEither(URL.decode(location)).mapError(GameError.apply)
       } yield Response(Status.SeeOther, Headers(Header.Location(url)))
 
   }

@@ -17,27 +17,27 @@
 package chuti.bots
 
 import api.ChutiSession
-import chuti.{Game, GameId, PlayEvent, User}
+import chuti.*
 import dao.Repository
 import game.GameService
-import game.GameService.GameLayer
-import zio.ZIO
+import zio.{IO, ZIO}
 
 trait ChutiBot {
 
   def decideTurn(
     user: User,
     game: Game
-  ): Option[PlayEvent]
+  ): IO[GameError, PlayEvent]
 
-  def takeTurn(gameId: GameId): ZIO[GameLayer & GameService, Exception, Game] = {
+  def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & Repository, GameError, Game] = {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
       user           <- ZIO.serviceWith[ChutiSession](_.user)
       game           <- gameOperations.get(gameId).map(_.get)
-      played         <- ZIO.foreach(decideTurn(user, game))(gameService.play(gameId, _))
-    } yield played.getOrElse(game)
+      turn           <- decideTurn(user, game)
+      played         <- gameService.play(gameId, turn)
+    } yield played
   }
 
 }

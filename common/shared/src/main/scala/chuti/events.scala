@@ -1,22 +1,17 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package chuti
@@ -25,7 +20,6 @@ import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 
 import scala.annotation.tailrec
 import scala.util.Random
-import zio.json.*
 
 //////////////////////////////////////////////////////////////////////////////////////
 // General stuff and parents
@@ -72,12 +66,7 @@ sealed trait GameEvent {
 
 }
 
-object GameEvent {
-
-  given JsonEncoder[GameEvent] = DeriveJsonEncoder.gen[GameEvent]
-  given JsonDecoder[GameEvent] = DeriveJsonDecoder.gen[GameEvent]
-
-}
+object GameEvent {}
 
 sealed trait PreGameEvent extends GameEvent
 sealed trait PlayEvent extends GameEvent {
@@ -121,12 +110,7 @@ sealed trait PlayEvent extends GameEvent {
 
 }
 
-object PlayEvent {
-
-  given JsonEncoder[PlayEvent] = DeriveJsonEncoder.gen[PlayEvent]
-  given JsonDecoder[PlayEvent] = DeriveJsonDecoder.gen[PlayEvent]
-
-}
+object PlayEvent {}
 
 object NoOp extends EventInfo[NoOp] {
 
@@ -137,7 +121,7 @@ object NoOp extends EventInfo[NoOp] {
 
 }
 
-case class NoOp(
+final case class NoOp(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -169,7 +153,7 @@ case class NoOp(
 
 }
 
-case class NoOpPlay(
+final case class NoOpPlay(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -197,7 +181,7 @@ case class NoOpPlay(
 
 }
 
-case class BorloteEvent(
+final case class BorloteEvent(
   borlote:             Borlote,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -234,7 +218,7 @@ case class BorloteEvent(
 }
 
 //This event ends the game and shuts down the server... it can only be called by god
-case class PoisonPill(
+final case class PoisonPill(
   gameId: Option[GameId] = None,
   userId: Option[UserId] = None
 ) extends GameEvent {
@@ -266,7 +250,7 @@ case class PoisonPill(
 
 //////////////////////////////////////////////////////////////////////////////////////
 // Start game and invitations
-case class AbandonGame(
+final case class AbandonGame(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -309,7 +293,7 @@ case class AbandonGame(
 
 }
 
-case class DeclineInvite(
+final case class DeclineInvite(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -342,7 +326,7 @@ case class DeclineInvite(
 
 }
 
-case class InviteToGame(
+final case class InviteToGame(
   invited:             User,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -380,7 +364,7 @@ case class InviteToGame(
 
 }
 
-case class JoinGame(
+final case class JoinGame(
   joinedUser:          Option[User] = None,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -436,7 +420,7 @@ case class JoinGame(
 
 }
 
-case class NuevoPartido(
+final case class NuevoPartido(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -481,7 +465,7 @@ case class NuevoPartido(
 }
 
 //If you want to be able to store and replay events, Sopa needs to carry the whole new game after it's done.
-case class Sopa(
+final case class Sopa(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -560,7 +544,7 @@ case class Sopa(
 
 import chuti.CuantasCantas.*
 
-case class Canta(
+final case class Canta(
   cuantasCantas:       CuantasCantas,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -656,7 +640,7 @@ case class Canta(
 //////////////////////////////////////////////////////////////////////////////////////
 // Jugando
 
-case class Pide(
+final case class Pide(
   ficha:               Ficha,
   estrictaDerecha:     Boolean,
   triunfo:             Option[Triunfo] = None,
@@ -802,7 +786,7 @@ case class Pide(
 
 }
 
-case class Da(
+final case class Da(
   ficha:               Ficha,
   ganador:             Option[UserId] = None,
   hoyoTecnico:         Option[String] = None,
@@ -954,7 +938,7 @@ case class Da(
 }
 
 //Acuerdate de los regalos
-case class Caete(
+final case class Caete(
   regalos:             Seq[(UserId, Seq[Fila])] = Seq.empty,
   deCaida:             Seq[Fila] = Seq.empty,
   triunfo:             Option[Triunfo] = None,
@@ -1103,7 +1087,7 @@ case class Caete(
 
 }
 
-case class MeRindo(
+final case class MeRindo(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,
@@ -1150,7 +1134,7 @@ case class MeRindo(
 
 }
 
-case class HoyoTecnico(
+final case class HoyoTecnico(
   razon:               String,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -1198,7 +1182,7 @@ case class HoyoTecnico(
 
 //////////////////////////////////////////////////////////////////////////////////////
 // Game End
-case class TerminaJuego(
+final case class TerminaJuego(
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
   index:               Option[Int] = None,

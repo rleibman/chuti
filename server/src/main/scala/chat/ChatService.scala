@@ -21,7 +21,6 @@ import caliban.{CalibanError, GraphQLInterpreter}
 import chuti.*
 import chuti.ChannelId.*
 import dao.Repository
-import game.GameService.runtime
 import zio.logging.*
 import zio.stream.ZStream
 import zio.{Clock, Console, *}
@@ -33,7 +32,7 @@ trait ChatService {
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChutiSession, GameException, Seq[ChatMessage]]
+  ): ZIO[ChutiSession, GameError, Seq[ChatMessage]]
 
   def say(msg: SayRequest): URIO[Repository & ChutiSession, ChatMessage]
 
@@ -42,7 +41,7 @@ trait ChatService {
     connectionId: ConnectionId
   ): ZStream[
     Repository & ChutiSession,
-    GameException,
+    GameError,
     ChatMessage
   ]
 
@@ -53,8 +52,6 @@ object ChatService {
   import GameId.*
 
   lazy private val ttl: Duration = 15.minutes
-
-  given runtime: zio.Runtime[Any] = zio.Runtime.default
 
   lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & ChutiSession, CalibanError]] = ChatApi.api.interpreter
 
@@ -82,13 +79,13 @@ object ChatService {
     connectionId: ConnectionId
   ): ZStream[
     ChatService & Repository & ChutiSession,
-    GameException,
+    GameError,
     ChatMessage
   ] = ZStream.service[ChatService].flatMap(_.chatStream(channelId, connectionId))
 
   def getRecentMessages(
     channelId: ChannelId
-  ): ZIO[ChatService & ChutiSession, GameException, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
+  ): ZIO[ChatService & ChutiSession, GameError, Seq[ChatMessage]] = ZIO.service[ChatService].flatMap(_.getRecentMessages(channelId))
 
   case class MessageQueue(
     user:         User,
@@ -111,7 +108,7 @@ object ChatService {
 
         def getRecentMessages(
           channelId: ChannelId
-        ): ZIO[ChutiSession, GameException, Seq[ChatMessage]] = {
+        ): ZIO[ChutiSession, GameError, Seq[ChatMessage]] = {
           for {
             now <- Clock.instant
             res <- recentMessages.get.map { seq =>
@@ -162,7 +159,7 @@ object ChatService {
           connectionId: ConnectionId
         ): ZStream[
           Repository & ChutiSession,
-          GameException,
+          GameError,
           ChatMessage
         ] =
           ZStream.unwrap {
@@ -172,12 +169,12 @@ object ChatService {
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
               // admins can listen in on games.
-              userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameException.apply)
+              userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameError.apply)
               _ <-
                 if (channelId == ChannelId.directChannel)
-                  throw GameException("No te puedes subscribir a un canal directo!")
+                  throw GameError("No te puedes subscribir a un canal directo!")
                 else if (!user.isAdmin && channelId != ChannelId.lobbyChannel && !userInGame)
-                  throw GameException("El usuario no esta en este canal")
+                  throw GameError("El usuario no esta en este canal")
                 else
                   ZIO.succeed(true)
               queue <- Queue.sliding[ChatMessage](requestedCapacity = 100)

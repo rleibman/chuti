@@ -19,10 +19,8 @@ package pages
 import java.time.format.DateTimeFormatter
 import app.ChutiState
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.*
+import chuti.{given, *}
 import caliban.client.scalajs.GameClient.Queries
-import io.circe.generic.auto.*
-import io.circe.{Decoder, Json}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
@@ -30,7 +28,8 @@ import net.leibman.chuti.semanticUiReact.components.{Container, Table, TableBody
 
 import java.time.ZoneId
 import java.util.Locale
-
+import zio.json.*
+import zio.json.ast.Json
 object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
 
   private val df = DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
@@ -39,7 +38,6 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
   class Backend($ : BackendScope[Unit, State]) {
 
     import scala.language.unsafeNulls
-    private val gameDecoder = summon[Decoder[Game]]
 
     def init: Callback = {
       calibanCall[Queries, Option[List[Json]]](
@@ -48,9 +46,9 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
           $.modState(
             _.copy(games =
               jsonGames.toList.flatten.map(json =>
-                gameDecoder.decodeJson(json) match {
+                json.as[Game] match {
                   case Right(game) => game
-                  case Left(error) => throw error
+                  case Left(error) => throw GameError(error)
                 }
               )
             )

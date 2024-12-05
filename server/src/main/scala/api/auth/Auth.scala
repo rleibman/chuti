@@ -17,11 +17,8 @@
 package api.auth
 
 import api.{ChutiEnvironment, ConfigurationError, ConfigurationService}
-import chuti.GameException
+import chuti.GameError
 import com.typesafe.config.{Config as TypesafeConfig, ConfigFactory}
-import io.circe.parser.*
-import io.circe.syntax.*
-import io.circe.{Decoder, Encoder}
 import io.netty.channel.ChannelHandlerContext
 import io.netty.handler.codec.http.{DefaultFullHttpRequest, HttpRequest}
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim}
@@ -32,6 +29,7 @@ import zio.config.*
 import zio.config.magnolia.*
 import zio.config.typesafe.*
 import zio.*
+import zio.json.*
 
 import java.io.{File, IOException}
 import java.net.InetAddress
@@ -54,7 +52,7 @@ object Auth {
   case class SessionError(
     override val message: String,
     override val cause:   Option[Throwable] = None
-  ) extends GameException(message, cause)
+  ) extends GameError(message, cause)
 
   opaque type SecretKey = String
 
@@ -115,12 +113,12 @@ object Auth {
   // None, it'd be nice if JwtClaim was parametrized on Content, but this works
   extension (claim: JwtClaim) {
 
-    def session[SessionType: Decoder]: ZIO[Any, SessionError, SessionType] =
-      ZIO.fromEither(decode[SessionType](claim.content)).mapError(e => SessionError(e.getMessage.nn, Some(e)))
+    def session[SessionType: JsonDecoder]: ZIO[Any, SessionError, SessionType] =
+      ZIO.fromEither(claim.content.fromJson[SessionType]).mapError(SessionError(_))
 
   }
 
-  private def jwtEncode[SessionType: Encoder](
+  private def jwtEncode[SessionType: JsonEncoder](
     session: SessionType
   ): ZIO[ConfigurationService, SessionError, String] =
     for {
@@ -128,7 +126,7 @@ object Auth {
       config        <- configService.appConfig.mapBoth(e => SessionError("", Option(e)), _.chuti.sessionConfig)
       now           <- Clock.instant
     } yield {
-      val json = session.asJson.noSpaces
+      val json = session.toJson
       val claim = JwtClaim(json)
         .issuedAt(now.getEpochSecond)
         .expiresAt(now.getEpochSecond + 300)
@@ -142,7 +140,7 @@ object Auth {
       tok           <- ZIO.fromTry(Jwt.decode(token, config.secretKey.key, Seq(JwtAlgorithm.HS512))).mapError(e => SessionError("", Option(e)))
     } yield tok
 
-  protected def jwtExpire[SessionType: Encoder](
+  protected def jwtExpire[SessionType: JsonEncoder](
     mySession: SessionType
   ): ZIO[ConfigurationService, SessionError, String] =
     for {
@@ -150,7 +148,7 @@ object Auth {
       config        <- configService.appConfig.mapBoth(e => SessionError("", Option(e)), _.chuti.sessionConfig)
       now           <- Clock.instant
     } yield {
-      val json = mySession.asJson.noSpaces
+      val json = mySession.toJson
       val claim = JwtClaim(json)
         .issuedAt(now.getEpochSecond)
         .expiresAt(now.getEpochSecond)
@@ -160,7 +158,7 @@ object Auth {
   object SessionTransport {
 
     def cookieSessionTransport[
-      SessionType: Encoder: Decoder: Tag
+      SessionType: JsonEncoder: JsonDecoder: Tag
     ]: ZLayer[SessionStorage[SessionType, String], Nothing, SessionTransport[SessionType]] =
       ZLayer.fromZIO(
         for {
@@ -207,7 +205,7 @@ object Auth {
 
   object SessionStorage {
 
-    def tokenEncripted[SessionType: Encoder: Decoder: Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
+    def tokenEncripted[SessionType: JsonEncoder: JsonDecoder: Tag]: ZLayer[Any, Nothing, SessionStorage[SessionType, String]] =
       ZLayer.succeed {
         new SessionStorage[SessionType, String] {
 
@@ -226,7 +224,7 @@ object Auth {
 
   }
 
-  private case class CookieSessionTransport[SessionType: Encoder: Decoder: Tag](
+  private case class CookieSessionTransport[SessionType: JsonEncoder: JsonDecoder: Tag](
     sessionStorage:  SessionStorage[SessionType, String],
     invalidSessions: Ref[Map[SessionType, Instant]]
   ) extends SessionTransport[SessionType] {

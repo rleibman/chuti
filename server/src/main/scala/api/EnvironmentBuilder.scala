@@ -18,19 +18,18 @@ package api
 
 import api.auth.Auth
 import api.auth.Auth.{SessionStorage, SessionTransport}
-import api.token.TokenHolder
+import api.routes.AuthRoutes
+import api.token.{TokenHolder, TokenPurpose}
 import chat.*
-import chuti.GameException
+import chuti.{Game, GameError, User}
 import dao.*
 import dao.quill.QuillRepository
 import game.*
-import io.circe.{Codec, Decoder, DecodingFailure, Encoder}
 import mail.*
+import util.{ChutiContainer, MockPostman}
 import zio.*
-import zio.logging.*
-import zio.logging.backend.SLF4J
-import io.circe.generic.auto.*
-import routes.AuthRoutes
+import zio.cache.{Cache, Lookup}
+import zio.json.*
 
 import java.util.Locale
 
@@ -40,27 +39,27 @@ type ChutiEnvironment = ConfigurationService & Repository & Postman & TokenHolde
     String
   ] & SessionTransport[ChutiSession] & AuthRoutes.OpsService
 
-given Codec[Locale] =
-  Codec.from(
-    Decoder.decodeString.map(s =>
+given JsonCodec[Locale] =
+  JsonCodec(
+    JsonEncoder.string.contramap(_.toString),
+    JsonDecoder.string.mapOrFail(s =>
       Locale.forLanguageTag(s) match {
-        case l: Locale => l
-        case null => throw DecodingFailure(s"invalid locale $s", List.empty)
+        case l: Locale => Right(l)
+        case null => Left(s"invalid locale $s")
       }
-    ),
-    Encoder.encodeString.contramap(_.toString)
+    )
   )
 
 object EnvironmentBuilder {
 
-  lazy private val postmanLayer: ZLayer[ConfigurationService, GameException, Postman] = ZLayer.fromZIO(for {
+  lazy private val postmanLayer: ZLayer[ConfigurationService, GameError, Postman] = ZLayer.fromZIO(for {
     configService <- ZIO.service[ConfigurationService]
     appConfig     <- configService.appConfig
   } yield CourierPostman.live(appConfig.chuti.smtpConfig))
 
   val repoLayer: ZLayer[ConfigurationService, ConfigurationError, Repository] = QuillRepository.uncached >>> Repository.cached
 
-  val live: ZLayer[Any, GameException, ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
+  val live: Layer[GameError, ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
     ConfigurationService.live,
     repoLayer,
     postmanLayer,
@@ -69,5 +68,48 @@ object EnvironmentBuilder {
     Auth.SessionTransport.cookieSessionTransport[ChutiSession],
     ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
   )
+
+  val withContainer: Layer[GameError, ChutiEnvironment] = {
+
+    ZLayer.make[ChutiEnvironment](
+      ChutiContainer.containerLayer,
+      ConfigurationService.live >>> ChutiContainer.configLayer,
+      repoLayer,
+      postmanLayer,
+      TokenHolder.liveLayer,
+      Auth.SessionStorage.tokenEncripted[ChutiSession],
+      Auth.SessionTransport.cookieSessionTransport[ChutiSession],
+      ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
+    )
+  }
+
+  final def testLayer(gameFiles: String*): ULayer[ChutiEnvironment] = {
+    import better.files.File
+    import chuti.given
+
+    def readGame(filename: String): Task[Game] = {
+      val file = File(filename)
+      ZIO.fromEither(file.contentAsString.fromJson[Game]).mapError(e => GameError(e))
+    }
+
+    val repositoryLayer = ZLayer.fromZIO {
+      ZIO
+        .foreachPar(gameFiles)(filename => readGame(filename))
+        .map(games => InMemoryRepository.fromGames(games))
+        .orDie
+    }.flatten
+
+    ZLayer.make[ChutiEnvironment](
+      ConfigurationService.live,
+      repositoryLayer,
+      ZLayer.succeed(new MockPostman),
+      ZLayer.fromZIO(for {
+        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
+      } yield TokenHolder.tempCache(cache)),
+      Auth.SessionStorage.tokenEncripted[ChutiSession],
+      Auth.SessionTransport.cookieSessionTransport[ChutiSession],
+      ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
+    )
+  }
 
 }

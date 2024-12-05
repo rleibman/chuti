@@ -20,12 +20,16 @@ import java.net.URI
 import java.util.UUID
 import caliban.client.SelectionBuilder
 import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.*
+import chuti.{given, *}
 import components.ChutiComponent
 import components.{Confirm, Toast}
-import caliban.client.scalajs.GameClient.{Queries, Subscriptions, User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType}
-import io.circe.*
-import io.circe.generic.auto.*
+import caliban.client.scalajs.GameClient.{
+  Queries,
+  Subscriptions,
+  User as CalibanUser,
+  UserEvent as CalibanUserEvent,
+  UserEventType as CalibanUserEventType
+}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
@@ -36,6 +40,8 @@ import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 import service.UserRESTClient
 import _root_.util.Config
+import zio.json.*
+import zio.json.ast.Json
 
 import scala.collection.mutable
 import scala.scalajs.js
@@ -55,7 +61,6 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
   class Backend($ : BackendScope[Unit, State]) {
 
     import scala.language.unsafeNulls
-    private val gameEventDecoder: Decoder[GameEvent] = summon[Decoder[GameEvent]]
 
     def flipFicha(ficha: Ficha): Callback =
       $.modState(s => {
@@ -109,7 +114,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
         val moddedGame = s.chutiState.gameInProgress.flatMap { (currentGame: Game) =>
           gameEvent.index match {
             case None =>
-              throw GameException(
+              throw GameError(
                 "Esto es imposible (el evento no tiene indice)"
               )
             case Some(index) if index == currentGame.currentEventIndex =>
@@ -125,7 +130,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               Option(currentGame)
             case Some(index) =>
               // If it's past, mark an error, how could we have a past event???
-              throw GameException(
+              throw GameError(
                 s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
               )
           }
@@ -365,6 +370,13 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
       } yield $.modState { s =>
         import scala.language.unsafeNulls
         val copy = if (initial) {
+
+          given JsonDecoder[CalibanUserEventType] =
+            DeriveJsonDecoder
+              .gen[UserEventType].mapOrFail(a =>
+                CalibanUserEventType.values.find(b => a.toString == b.value).toRight(s"Coudn't find $a in ${CalibanUserEventType.values}")
+              )
+
           // Special stuff needs to be done on initalization:
           // - Create the userStream and connect to it
           // - Set all methods that will be used by users of ChutiState to update pieces of the state, think of these as application level methods
@@ -397,8 +409,7 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
               )
             )
           )
-        } else
-          s
+        } else s
 
         import scala.language.unsafeNulls
         copy.copy(chutiState =
@@ -416,9 +427,9 @@ object Content extends ChutiComponent with ScalaJSClientAdapter with TimerSuppor
                     query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
                     onData = { (_, data) =>
                       data.flatten.fold(Callback.empty)(json =>
-                        gameEventDecoder
-                          .decodeJson(json)
-                          .fold(failure => Callback.throwException(failure), g => onGameEvent(g))
+                        json
+                          .as[GameEvent]
+                          .fold(failure => Callback.throwException(GameError(failure)), g => onGameEvent(g))
                       )
                     },
                     operationId = "-",
