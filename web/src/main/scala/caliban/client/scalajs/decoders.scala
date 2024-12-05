@@ -20,16 +20,18 @@ import caliban.client.CalibanClientError.DecodingError
 import caliban.client.{ArgEncoder, ScalarDecoder, __Value}
 import caliban.client.__Value.__ObjectValue
 import com.github.plokhotnyuk.jsoniter_scala.core.{readFromString, writeToString}
-import io.circe.Json
+import zio.json.ast.Json
+import zio.json.*
 
 import java.time.LocalDateTime
 import scala.util.Try
 
-
 given ScalarDecoder[Json] = {
-  case input: __ObjectValue => io.circe.parser.parse(writeToString(input)).left.map(e => DecodingError(e.message, Option(e)))
+  case input: __ObjectValue =>
+    writeToString(input).fromJson[Json].left.map(DecodingError(_))
   case _ => Left(DecodingError("Expected an object"))
 }
+
 given ScalarDecoder[LocalDateTime] = {
   case __Value.__StringValue(value) =>
     Try(LocalDateTime.parse(value)).toEither.left.map(e => DecodingError("Error parsing date", Option(e)))
@@ -38,6 +40,6 @@ given ScalarDecoder[LocalDateTime] = {
 
 given ArgEncoder[Json] = { (json: Json) =>
   ArgEncoder.json.encode {
-    readFromString[__ObjectValue](json.noSpaces)
+    readFromString[__ObjectValue](json.toJson)
   }
 }

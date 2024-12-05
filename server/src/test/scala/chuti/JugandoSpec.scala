@@ -16,7 +16,7 @@
 
 package chuti
 
-import api.ChutiSession
+import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
 import api.token.TokenHolder
 import chat.ChatService
 import dao.InMemoryRepository.*
@@ -25,9 +25,9 @@ import game.GameService
 import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
-import zio.test.ZIOSpecDefault
+import zio.test.{ZIOSpec, ZIOSpecDefault, assertTrue}
 
-object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
+object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractSpec {
 
   val spec = suite("Jugando")(
     test("primera mano") {
@@ -37,7 +37,7 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         gameStream =
           gameService
             .gameStream(gameId, connectionId)
-            .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
+            .provideSomeLayer[ChutiEnvironment & GameService & ChatService](ChutiSession(user1).toLayer)
         gameEventsFiber <-
           gameStream
             .takeUntil {
@@ -48,19 +48,19 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         mano1 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join
       } yield {
         val ganador = mano1.jugadores.maxBy(_.filas.size)
         println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
-        assertTrue(mano1.id === Option(gameId)) &&
-        assertTrue(mano1.jugadores.count(_.fichas.size == 6) === 4) && // Todos dieron una ficha.
         assertTrue(
-          gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size === 5
+          mano1.id == Option(gameId),
+          mano1.jugadores.count(_.fichas.size == 6) == 4, // Todos dieron una ficha.
+          gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size == 5
         ) // Including the poison pill
-      }).provide(testLayer(GAME_CANTO4))
+      }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     },
     test("jugando 4 manos") {
       val gameId = GameId(1)
@@ -70,7 +70,7 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         gameStream =
           gameService
             .gameStream(gameId, connectionId)
-            .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
+            .provideSomeLayer[ChutiEnvironment & GameService & ChatService](ChutiSession(user1).toLayer)
         gameEventsFiber <-
           gameStream
             .takeUntil {
@@ -84,21 +84,19 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         mano4 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join
       } yield {
         val numFilas = mano4.jugadores.map(_.filas.size).sum
         if (mano4.quienCanta.get.yaSeHizo)
-          println(s"${man4.quienCanta.get.user.name} se hizo con ${mano4.quienCanta.get.filas.size}!")
+          println(s"${mano4.quienCanta.get.user.name} se hizo con ${mano4.quienCanta.get.filas.size}!")
         else
           println(s"Fue hoyo para ${mano4.quienCanta.get.user.name}!")
-        assertTrue(mano4.id === Option(gameId)) &&
-        assertTrue(mano4.quienCanta.get.fichas.size + numFilas === 7) &&
-        assertTrue(gameEvents.nonEmpty)
+        assertTrue(mano4.id == Option(gameId), mano4.quienCanta.get.fichas.size + numFilas == 7, gameEvents.nonEmpty)
 
-      }).provide(testLayer(GAME_CANTO4))
+      }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     },
     test("jugando hasta que se haga o sea hoyo") {
       val gameId = GameId(1)
@@ -107,7 +105,7 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         gameStream =
           gameService
             .gameStream(gameId, connectionId)
-            .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
+            .provideSomeLayer[ChutiEnvironment & GameService & ChatService](ChutiSession(user1).toLayer)
         gameEventsFiber <-
           gameStream
             .takeWhile {
@@ -118,18 +116,22 @@ object JugandoSpec extends ZIOSpecDefault with GameAbstractSpec {
         end <- juegaHastaElFinal(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(chuti.god).toLayer
             )
         gameEvents <- gameEventsFiber.join
       } yield {
         val ganador = end.jugadores.maxBy(_.filas.size)
         println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
-        assertTrue(end.id === Option(endId)) &&
-        assertTrue(end.gameStatus === GameStatus.requiereSopa) &&
-        assertTrue(gameEvents.nonEmpty)
-      }).provide(testLayer(GAME_CANTO4))
+        assertTrue(end.id == Option(gameId), end.gameStatus == GameStatus.requiereSopa, gameEvents.nonEmpty)
+      }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     }
   )
+
+  override def bootstrap: ZLayer[Any, Any, GameService & ChatService] =
+    ZLayer.make[GameService & ChatService](
+      GameService.make(),
+      ChatService.make()
+    )
 
 }

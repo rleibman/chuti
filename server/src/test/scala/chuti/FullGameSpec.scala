@@ -16,6 +16,7 @@
 
 package chuti
 
+import api.{ChutiEnvironment, EnvironmentBuilder}
 import api.token.TokenHolder
 import chat.ChatService
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
@@ -24,15 +25,13 @@ import dao.InMemoryRepository.*
 import dao.Repository
 import game.GameService
 import mail.Postman
-import org.scalatest.Assertions.*
-import org.testcontainers.shaded.org.bouncycastle.util.test.TestResult
-import zio.test.{ZIOSpecDefault, assertCompletes, assertTrue}
-import zio.{Unsafe, ZIO}
+import zio.test.{TestResult, ZIOSpec, assertCompletes, assertTrue, test}
+import zio.{Unsafe, ZIO, ZLayer}
 
 import java.time.Instant
 import scala.util.Random
 
-object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
+object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService] with GameAbstractSpec {
 
   //  "Playing a specific game" should "look all nice" in {
   //    val game =
@@ -150,24 +149,31 @@ object FullGameSpec extends ZIOSpecDefault with GameAbstractSpec {
     )
   )
 
-  test("Play a bunch of games")(
-    ZIO
-      .foreachPar(1 to 100) { _ =>
-        playFullGame
-      }.as(assertCompletes)
-  ) ++
-    gamesToTest.foreach { tester =>
-      test(tester.description)(
-        for {
-          gameOperations <- ZIO.service[Repository].map(_.gameOperations)
-          saved <-
-            gameOperations
-              .upsert(tester.game).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
-                godLayer
-              )
-          played <- juegaHastaElFinal(saved.id.get)
-        } yield tester.testEndState(played)
-      )
-    }
+  val spec = suite("Full Game tests")(
+    (
+      test("Play a bunch of games")(
+        ZIO
+          .foreachPar(1 to 100) { _ =>
+            playFullGame
+          }.as(assertCompletes)
+      ) +:
+        gamesToTest.map { tester =>
+          test(tester.description)(
+            for {
+              gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+              saved <-
+                gameOperations
+                  .upsert(tester.game).provideSomeLayer[ChutiEnvironment](
+                    godLayer
+                  )
+              played <- juegaHastaElFinal(saved.id.get)
+            } yield tester.testEndState(played)
+          )
+        }
+    )*
+  )
+
+  override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
+    ZLayer.make[ChutiEnvironment & GameService & ChatService](EnvironmentBuilder.testLayer(), GameService.make(), ChatService.make())
 
 }

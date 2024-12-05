@@ -1,11 +1,28 @@
-package db.quill
+/*
+ * Copyright 2020 Roberto Leibman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import api.config.ConfigurationService
+package util
+
+import api.*
 import com.dimafeng.testcontainers.MySQLContainer
 import com.typesafe.config
 import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
 import io.getquill.context.ZioJdbc.DataSourceLayer
+import io.getquill.jdbczio.Quill
 import zio.*
 import zio.logging.*
 
@@ -76,19 +93,18 @@ object ChutiContainer {
 
   }
 
-  val containerLayer: ZLayer[Any, RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
+  val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
     _ <- ZIO.logDebug("Creating container")
     c <- ZIO.succeed {
       val c = MySQLContainer()
       c.container.start()
       c
     }
-    config = getConfig(c).nn
     _ <- ZIO.logDebug("Migrating container")
     _ <-
       (Migrator("server/src/main/sql").migrate()
         *> Migrator("server/src/it/sql").migrate())
-        .provideLayer(DataSourceLayer.fromConfig(config.getConfig("chuti.db").nn))
+        .provideLayer(Quill.DataSource.fromDataSource(getConfig(c).dataSource))
         .mapError(RepositoryError.apply)
   } yield new ChutiContainer {
 
@@ -96,28 +112,20 @@ object ChutiContainer {
 
   }).mapError(RepositoryError.apply))
 
-  private def getConfig(container: MySQLContainer): config.Config =
-    ConfigFactory
-      .parseString(s"""
-      chuti.db.dataSourceClassName=com.mysql.cj.jdbc.MysqlDataSource
-      chuti.db.dataSource.url="${container.container.getJdbcUrl}?logger=com.mysql.cj.log.Slf4JLogger&profileSQL=true&serverTimezone=UTC&useLegacyDatetimeCode=false"
-      chuti.db.dataSource.user="${container.container.getUsername}"
-      chuti.db.dataSource.password="${container.container.getPassword}"
-      chuti.db.dataSource.cachePrepStmts=true
-      chuti.db.dataSource.prepStmtCacheSize=250
-      chuti.db.dataSource.prepStmtCacheSqlLimit=2048
-      chuti.db.maximumPoolSize=10
-    """).nn
+  private def getConfig(container: MySQLContainer) = {
+    DbConfig(
+      driver = "com.mysql.cj.jdbc.Driver",
+      url = container.container.getJdbcUrl.nn,
+      user = container.container.getUsername.nn,
+      password = container.container.getPassword.nn
+    )
+  }
 
-  val configLayer: URLayer[ChutiContainer & ConfigurationService, ConfigurationService] = ZLayer.fromZIO {
+  val configLayer: ZLayer[ConfigurationService & ChutiContainer, ConfigurationError, ConfigurationService] = ZLayer.fromZIO {
     for {
       container  <- ZIO.service[ChutiContainer].map(_.container)
-      baseConfig <- ZIO.service[ConfigurationService].map(_.config)
-    } yield {
-      new api.config.ConfigurationService {
-        lazy override val config: com.typesafe.config.Config = getConfig(container).withFallback(baseConfig).nn
-      }
-    }
+      baseConfig <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+    } yield ConfigurationService.withConfig(baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container))))
   }
 
 }

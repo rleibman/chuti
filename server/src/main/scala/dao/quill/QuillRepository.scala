@@ -21,12 +21,12 @@ import api.token.*
 import chuti.*
 import dao.*
 import game.GameService.godLayer
-import io.circe.parser.*
 import io.getquill.context.ZioJdbc.DataSourceLayer
 import io.getquill.*
 import io.getquill.extras.*
 import io.getquill.{query as qquery, *}
 import zio.*
+import zio.json.*
 import zio.cache.*
 import zio.Clock
 import zio.logging.*
@@ -39,6 +39,7 @@ import java.time.*
 import javax.sql.DataSource
 import scala.annotation.targetName
 import zio.Random
+import zio.json.ast.Json
 
 object QuillRepository {
 
@@ -64,11 +65,11 @@ case class QuillRepository(config: DbConfig) extends Repository {
 
   given MappedEncoding[Int, GameId] = MappedEncoding[Int, GameId](GameId.apply)
 
-  private given ctx.Encoder[io.circe.Json] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.noSpaces))
+  private given ctx.Encoder[Json] = encoder(Types.VARCHAR, (index, value, row) => row.setString(index, value.toString))
 
-  private given ctx.Decoder[io.circe.Json] =
+  private given ctx.Decoder[Json] =
     JdbcDecoder { (index: Index, row: ResultRow, _: Session) =>
-      parse(row.getString(index).nn).fold(e => throw RepositoryError(e), json => json)
+      row.getString(index).fromJson[Json].fold(e => throw RepositoryError(e), json => json)
     }
 
   private val godSession: ULayer[ChutiSession] = ChutiSession(chuti.god).toLayer
@@ -147,7 +148,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
           session => s"${session.user} Not authorized"
         )
         res <- ctx
-          .run(users.filter(u => u.id === lift(pk.userId) && !u.deleted))
+          .run(users.filter(u => u.id == lift(pk.userId) && !u.deleted))
           .map(_.headOption.map(_.toUser))
           .provideLayer(dataSourceLayer)
           .mapError(RepositoryError.apply)
@@ -169,10 +170,10 @@ case class QuillRepository(config: DbConfig) extends Repository {
             ctx
               .run(
                 users
-                  .filter(u => u.id === lift(pk.userId) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now).nn)))
+                  .filter(u => u.id == lift(pk.userId) && !u.deleted).update(_.deleted -> true, _.deletedDate -> Some(lift(Timestamp.from(now).nn)))
               ).map(_ > 0)
           } else {
-            ctx.run(users.filter(_.id === lift(pk.userId)).delete).map(_ > 0)
+            ctx.run(users.filter(_.id == lift(pk.userId)).delete).map(_ > 0)
           }
         }
       } yield result
@@ -212,7 +213,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
           user.id.fold {
             // It's an insert, make sure te user does not exist by email
             for {
-              exists <- ctx.run(users.filter(u => u.email === lift(user.email) && !u.deleted).nonEmpty)
+              exists <- ctx.run(users.filter(u => u.email == lift(user.email) && !u.deleted).nonEmpty)
               _ <- ZIO
                 .fail(RepositoryError(s"Insert Error: A user with the email ${user.email} already exists, choose a different one"))
                 .when(exists)
@@ -223,14 +224,14 @@ case class QuillRepository(config: DbConfig) extends Repository {
           } { id =>
             // It's an update, make sure that if the email has changed, it doesn't already exist
             for {
-              exists <- ctx.run(users.filter(u => u.id != lift(id.userId) && u.email === lift(user.email) && !u.deleted).nonEmpty)
+              exists <- ctx.run(users.filter(u => u.id != lift(id.userId) && u.email == lift(user.email) && !u.deleted).nonEmpty)
               _ <- ZIO
                 .fail(RepositoryError(s"Update error: A user with the email ${user.email} already exists, choose a different one"))
                 .when(exists)
               saveMe = UserRow.fromUser(user.copy(lastUpdated = now))
               updateCount <- ctx.run(
                 users
-                  .filter(u => u.id === lift(id.userId) && !u.deleted)
+                  .filter(u => u.id == lift(id.userId) && !u.deleted)
                   .updateValue(lift(saveMe))
               )
               _ <- ZIO.fail(RepositoryError("User not found")).when(updateCount == 0)
@@ -242,7 +243,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
     override def firstLogin: RepositoryIO[Option[Instant]] =
       (for {
         chutiSession <- ZIO.service[ChutiSession]
-        res <- ctx.run(userLogins.filter(_.userId === lift(chutiSession.user.id.fold(-1)(_.userId))).map(_.time).min).map(_.map(_.toInstant.nn))
+        res <- ctx.run(userLogins.filter(_.userId == lift(chutiSession.user.id.fold(-1)(_.userId))).map(_.time).min).map(_.map(_.toInstant.nn))
       } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def login(
@@ -297,7 +298,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
           ctx
             .run(
               friendRows
-                .filter(r => (r.one === lift(row.one) && r.two === lift(row.two)) || (r.one === lift(row.two) && r.two === lift(row.one)))
+                .filter(r => (r.one == lift(row.one) && r.two == lift(row.two)) || (r.one == lift(row.two) && r.two == lift(row.one)))
                 .delete
             ).map(_ > 0)
         )
@@ -333,7 +334,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
           ctx
             .run {
               users
-                .join(friendRows).on((a, b) => a.id === b.one || a.id === b.two).filter { case (u, f) =>
+                .join(friendRows).on((a, b) => a.id == b.one || a.id == b.two).filter { case (u, f) =>
                   (f.one == lift(id.userId) || f.two == lift(id.userId)) && u.id != lift(id.userId)
                 }
             }.map(_.map(_._1.toUser))
@@ -383,7 +384,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
   def unCachedGet(pk: GameId): RepositoryIO[Option[Game]] =
     ctx
       .run(games.filter(g => g.id == lift(pk.gameId) && !g.deleted))
-      .map(_.headOption.map(_.toGame))
+      .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))
       .provideLayer(dataSourceLayer)
       .mapError(RepositoryError.apply)
 
@@ -400,7 +401,8 @@ case class QuillRepository(config: DbConfig) extends Repository {
                 players.gameId == game.id
               )
               .sortBy(_._2.lastUpdated)(Ord.descNullsLast)
-          ).map(_.map(_._2.toGame))
+          )
+          .flatMap(a => ZIO.foreach(a)(_._2.toGame))
       } yield players).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] =
@@ -452,7 +454,8 @@ case class QuillRepository(config: DbConfig) extends Repository {
             gamePlayers
               .filter(player => player.userId == lift(session.user.id.fold(-1)(_.userId)) && player.invited)
               .join(games).on((player, game) => player.gameId == game.id).map(_._2)
-          ).map(_.map(_.toGame))
+          )
+          .flatMap(a => ZIO.foreach(a)(_.toGame))
       } yield ret).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
@@ -461,7 +464,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
           games
             .filter(g => g.status == lift(GameStatus.esperandoJugadoresAzar: GameStatus) && !g.deleted)
         )
-        .map(_.map(_.toGame))
+        .flatMap(a => ZIO.foreach(a)(_.toGame))
         .provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     private val runningGames: Set[GameStatus] = Set(
@@ -485,7 +488,8 @@ case class QuillRepository(config: DbConfig) extends Repository {
                 .join(games.filter(g => liftQuery(runningGames).contains(g.status)))
                 .on(_.gameId == _.id)
                 .map(_._2)
-            ).map(_.headOption.map(_.toGame))
+            )
+            .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))
       } yield ret).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def upsert(game: Game): RepositoryIO[Game] =
@@ -519,13 +523,13 @@ case class QuillRepository(config: DbConfig) extends Repository {
             _ <- ZIO.fail(RepositoryError("Game not found")).when(updateCount == 0)
           } yield upsertMe
         }
-        res = upserted.toGame
+        res <- upserted.toGame
       } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] =
       ctx
-        .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted))
-        .map(_.headOption.map(_.toGame))
+        .run(games.filter(g => g.id == lift(pk.gameId) && !g.deleted))
+        .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))
         .provideLayer(dataSourceLayer)
         .mapError(RepositoryError.apply)
 
@@ -541,10 +545,10 @@ case class QuillRepository(config: DbConfig) extends Repository {
         result <- {
           if (softDelete) {
             ctx
-              .run(games.filter(g => g.id === lift(pk.gameId) && !g.deleted).update(_.deleted -> true))
+              .run(games.filter(g => g.id == lift(pk.gameId) && !g.deleted).update(_.deleted -> true))
               .map(_ > 0)
           } else {
-            ctx.run(games.filter(_.id === lift(pk.gameId)).delete).map(_ > 0)
+            ctx.run(games.filter(_.id == lift(pk.gameId)).delete).map(_ > 0)
           }
         }
       } yield result
@@ -553,7 +557,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
       ctx
         .run(games.filter(!_.deleted))
-        .map(_.map(_.toGame))
+        .flatMap(a => ZIO.foreach(a)(_.toGame))
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 

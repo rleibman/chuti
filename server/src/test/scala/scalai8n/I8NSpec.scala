@@ -22,8 +22,8 @@ import java.util.Locale
 
 class I8NSpec extends AnyFlatSpec {
 
-  val es_MX = new Locale("es", "MX")
-  val en_US = new Locale("en", "US")
+  val es_MX: Locale = Locale.of("es", "MX")
+  val en_US: Locale = Locale.of("en", "US")
   val world = "mundo"
 
   // "printing" should "print" in {

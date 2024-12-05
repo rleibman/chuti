@@ -1,74 +1,50 @@
 /*
- * Copyright (c) 2024 Roberto Leibman
+ * Copyright 2020 Roberto Leibman
  *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package api.routes
 
-import api.Chuti.ChutiEnvironment
-import api.ChutiSession
-import api.auth.Auth.RequestWithSession
-import api.config.ConfigurationService
-import caliban.{CalibanError, ZHttpAdapter}
+import api.token.TokenHolder
+import api.{ChutiEnvironment, ChutiSession}
 import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
+import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
+import chat.ChatService
+import dao.Repository
 import chat.{ChatApi, ChatService}
-import dao.{Repository, SessionContext}
-import zio.http.*
+import mail.Postman
 import zio.*
+import zio.http.*
 
 object ChatRoutes {
 
-  import sttp.tapir.CodecFormat.*
-  import sttp.tapir.json.circe.*
+  lazy private val interpreter = ChatApi.api.interpreter
 
-  extension (req: Request) {
-
-    def session: Option[ChutiSession] = ???
-
-  }
-
-  lazy val route =
-    Routes(
-      Method.ANY / "api" / "chat" -> handler { (req: Request) =>
-        for {
-          interpreter <- ChatService.interpreter
-        } yield ZHttpAdapter
-          .makeHttpService(HttpInterpreter(interpreter))
-          .provideSomeLayer[ChatService & Repository, SessionContext, Throwable](SessionContext.live(req.session.get))
-      }.flatten,
-      Method.ANY / "api" / "chat" / "ws" -> handler { (req: Request) =>
-        for {
-          interpreter <- ChatService.interpreter
-        } yield ZHttpAdapter
-          .makeWebSocketService(WebSocketInterpreter(interpreter, keepAliveTime = Option(5.minutes)))
-          .provideSomeLayer[ChatService & Repository, SessionContext, Throwable](SessionContext.live(req.session.get))
-      }.flatten,
-      Method.ANY / "api" / "chat" / "schema" -> handler {
-        Response.text(ChatApi.api.render)
-      },
-      Method.ANY / "api" / "chat" / "graphiql" ->
-        Handler.fromFileZIO(
-          for {
-            config <- ZIO.service[ConfigurationService]
-            staticContentDir = config.config.getString(s"${config.configKey}.staticContentDir").nn
-          } yield new java.io.File(s"$staticContentDir/graphiql.html")
-        )
-    )
+  lazy val authRoute: IO[CalibanError.ValidationError, Routes[ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
+    for {
+      interpreter <- interpreter
+    } yield {
+      Routes(
+        Method.ANY / "api" / "chat" ->
+          QuickAdapter(interpreter).handlers.api,
+        Method.ANY / "api" / "chat" / "graphiql" ->
+          GraphiQLHandler.handler(apiPath = "/api/chat"),
+        Method.GET / "api" / "chat" / "schema" ->
+          Handler.fromBody(Body.fromCharSequence(ChatApi.api.render)),
+        Method.POST / "api" / "chat" / "upload" ->
+          QuickAdapter(interpreter).handlers.upload
+      )
+    }
 
 }

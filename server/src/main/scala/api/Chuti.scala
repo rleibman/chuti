@@ -20,12 +20,10 @@ import api.auth.Auth
 import api.auth.Auth.{SessionStorage, SessionTransport}
 import api.token.TokenHolder
 import chat.ChatService
-import chuti.{GameException, PagedStringSearch, User, UserId}
+import chuti.{GameError, PagedStringSearch, User, UserId}
 import dao.quill.QuillRepository
 import dao.{CRUDOperations, Repository}
 import game.GameService
-import io.circe.generic.auto.*
-import io.circe.{Decoder, DecodingFailure, Encoder}
 import mail.{CourierPostman, Postman}
 import routes.*
 import zio.http.*
@@ -71,7 +69,7 @@ object Chuti extends ZIOApp {
   def mapError(e: Cause[Throwable]): UIO[Response] = {
     lazy val contentTypeJson: Headers = Headers(Header.ContentType(MediaType.application.json).untyped)
     e.squash match {
-      case e: GameException =>
+      case e: GameError =>
         val body =
           s"""{
             "exceptionMessage": ${e.getMessage},

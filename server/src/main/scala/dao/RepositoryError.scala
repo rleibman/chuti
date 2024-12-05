@@ -16,7 +16,7 @@
 
 package dao
 
-import chuti.GameException
+import chuti.GameError
 
 object RepositoryError {
 
@@ -38,6 +38,6 @@ object RepositoryError {
 sealed class RepositoryError(
   override val message: String = "",
   override val cause:   Option[Throwable] = None
-) extends GameException(message, cause)
+) extends GameError(message, cause)
 
 case class RepositoryPermissionError(override val message: String = "") extends RepositoryError(message)

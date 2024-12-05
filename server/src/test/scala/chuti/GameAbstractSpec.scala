@@ -16,27 +16,24 @@
 
 package chuti
 
-import api.ChutiSession
 import api.token.{TokenHolder, TokenPurpose}
+import api.{ChutiEnvironment, ChutiSession}
 import better.files.File
 import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
+import dao.InMemoryRepository.*
 import dao.Repository.GameOperations
 import dao.{InMemoryRepository, Repository, RepositoryIO}
 import game.GameService
-import io.circe.Printer
-import io.circe.generic.auto.*
-import io.circe.parser.decode
-import io.circe.syntax.*
 import mail.Postman
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import zio.*
 import zio.cache.{Cache, Lookup}
+import zio.json.*
 import zio.logging.*
 import zio.test.{TestResult, assertTrue}
-import dao.InMemoryRepository.*
 
 import java.time.Instant
 import java.util.UUID
@@ -55,33 +52,22 @@ trait GameAbstractSpec {
     game:     Game,
     filename: String
   ): Task[Unit] =
-    ZIO.attempt {
+    ZIO.succeed {
       val file = File(filename)
-      file.write(game.asJson.printWith(Printer.spaces2))
+      file.write(game.toJson)
     }
 
   def readGame(filename: String): Task[Game] = {
-    ZIO.attempt {
-      import scala.language.unsafeNulls
-      val file = File(filename)
-      decode[Game](file.contentAsString.nn)
-    }.absolve
+    val file = File(filename)
+    ZIO.fromEither(file.contentAsString.fromJson[Game]).mapError(e => GameError(e))
   }
 
-  def repositoryLayer(gameFiles: String*): ULayer[Repository] =
-    ZLayer.fromZIO {
-      ZIO
-        .foreachPar(gameFiles)(filename => readGame(filename))
-        .map(games => InMemoryRepository.fromGames(games))
-        .orDie
-    }.flatten
-
-  def juegaHastaElFinal(gameId: GameId): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] = {
+  def juegaHastaElFinal(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       start <-
         gameOperations
-          .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(chuti.god).toLayer
           )
       looped <-
@@ -114,13 +100,13 @@ trait GameAbstractSpec {
     } yield looped
   }
 
-  def juegaMano(gameId: GameId): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] = {
+  def juegaMano(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     val bot = DumbChutiBot
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       game <-
         gameOperations
-          .get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(chuti.god).toLayer
           )
       mano = game.mano.get
@@ -129,37 +115,26 @@ trait GameAbstractSpec {
       sigiuente3 = game.nextPlayer(sigiuente2)
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(mano.user).toLayer
           )
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente1.user).toLayer
           )
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente2.user).toLayer
           )
       afterPlayer4 <-
         bot
-          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente3.user).toLayer
           )
     } yield afterPlayer4
   }
-
-  final protected def testLayer(gameFiles: String*): ULayer[Repository & Postman & TokenHolder & GameService & ChatService] =
-    ZLayer.make[Repository & Postman & TokenHolder & GameService & ChatService](
-      repositoryLayer(gameFiles: _*),
-      ZLayer.succeed(new MockPostman),
-      ZLayer.fromZIO(for {
-        cache <- Cache.make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
-      } yield TokenHolder.tempCache(cache)),
-      GameService.make(),
-      ChatService.make()
-    )
 
   def WEIRD_GAME(prefix: String) =
     s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${java.lang.System
@@ -184,53 +159,53 @@ trait GameAbstractSpec {
     )
   }
 
-  def newGame(satoshiPerPoint: Int): RIO[Repository & Postman & TokenHolder & GameService & ChatService, Game] =
+  def newGame(satoshiPerPoint: Int): ZIO[ChutiEnvironment & GameService & ChatService, GameError, Game] =
     for {
       gameService <- ZIO.service[GameService]
       // Start the game
-      game <- gameService.newGame(satoshiPerPoint).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user1))
+      game <- gameService.newGame(satoshiPerPoint).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user1))
     } yield game
 
-  def getReadyToPlay(gameId: GameId): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+  def getReadyToPlay(gameId: GameId): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
-      game <- gameOperations.get(gameId).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
+      game           <- gameOperations.get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
       // Invite people
       _ <-
         gameService
-          .inviteToGame(user2.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .inviteToGame(user2.id.get, game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             userLayer(user1)
           )
       _ <-
         gameService
-          .inviteToGame(user3.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .inviteToGame(user3.id.get, game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             userLayer(user1)
           )
       _ <-
         gameService
-          .inviteToGame(user4.id.get, game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .inviteToGame(user4.id.get, game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             userLayer(user1)
           )
       // they accept
       _ <-
         gameService
-          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user2))
+          .acceptGameInvitation(game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user2))
       _ <-
         gameService
-          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user3))
+          .acceptGameInvitation(game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user3))
       _ <-
         gameService
-          .acceptGameInvitation(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](userLayer(user4))
-      result <- gameOperations.get(game.id.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
+          .acceptGameInvitation(game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user4))
+      result <- gameOperations.get(game.id.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
     } yield result.get
   }
 
-  def canto(gameId: GameId): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+  def canto(gameId: GameId): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     val bot = DumbChutiBot
     for {
       gameService <- ZIO.service[GameService]
-      game        <- gameService.getGame(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer).map(_.get)
+      game        <- gameService.getGame(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer).map(_.get)
       quienCanta = game.jugadores.find(_.turno).map(_.user).get
       sigiuente1 = game.nextPlayer(quienCanta).user
       sigiuente2 = game.nextPlayer(sigiuente1).user
@@ -238,7 +213,7 @@ trait GameAbstractSpec {
       // Una vez que alguien ya canto chuti, pasa a los demas.
       g1 <-
         bot
-          .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             ChutiSession(quienCanta).toLayer
           )
       g2 <-
@@ -246,7 +221,7 @@ trait GameAbstractSpec {
           ZIO.succeed(g1)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente1).toLayer
             )
         }
@@ -255,7 +230,7 @@ trait GameAbstractSpec {
           ZIO.succeed(g2)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente2).toLayer
             )
         }
@@ -264,15 +239,15 @@ trait GameAbstractSpec {
           ZIO.succeed(g3)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente3).toLayer
             )
         }
     } yield g4
   }
 
-  def playFullGame: ZIO[Any, Throwable, Game] =
-    (for {
+  def playFullGame =
+    for {
       gameService <- ZIO.service[GameService]
       start       <- newGame(satoshiPerPoint = 100)
       _           <- zio.Console.printLine(s"Game ${start.id.get} started")
@@ -286,7 +261,7 @@ trait GameAbstractSpec {
       gameStream =
         gameService
           .gameStream(start.id.get, connectionId)
-          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
+          .provideSomeLayer[ChutiEnvironment & GameService & ChatService](ChutiSession(user1).toLayer)
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -307,7 +282,7 @@ trait GameAbstractSpec {
       _ <-
         gameService
           .broadcastGameEvent(PoisonPill(Option(start.id.get))).provideSomeLayer[
-            Repository & Postman & TokenHolder & GameService & ChatService
+            ChutiEnvironment & GameService & ChatService
           ](
             ChutiSession(chuti.god).toLayer
           )
@@ -316,15 +291,15 @@ trait GameAbstractSpec {
         assert(!gameEvents.exists(_.isInstanceOf[HoyoTecnico]))
         assert(gameEvents.nonEmpty)
       }
-    } yield played).provide(testLayer())
+    } yield played
 
-  private def playRound(game: Game): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] = {
+  private def playRound(game: Game): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     for {
       gameService <- ZIO.service[GameService]
       start <-
         if (game.gameStatus == GameStatus.requiereSopa) {
           gameService
-            .play(game.id.get, Sopa()).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+            .play(game.id.get, Sopa()).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               userLayer(game.jugadores.find(_.turno).get.user)
             )
         } else
@@ -340,19 +315,19 @@ trait GameAbstractSpec {
 
   def playGame(
     gameToPlay: Game
-  ): ZIO[Repository & Postman & TokenHolder & GameService & ChatService, Throwable, Game] =
+  ): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] =
     for {
       gameService    <- ZIO.service[GameService]
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       getGame <-
         ZIO
-          .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](
+          .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             godLayer
           )
       game <-
         getGame.flatten
           .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[
-            Repository & Postman & TokenHolder & GameService & ChatService
+            ChutiEnvironment & GameService & ChatService
           ](
             godLayer
           )
@@ -360,7 +335,7 @@ trait GameAbstractSpec {
       gameStream =
         gameService
           .gameStream(game.id.get, connectionId)
-          .provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](ChutiSession(user1).toLayer)
+          .provideSomeLayer[ChutiEnvironment & GameService & ChatService](ChutiSession(user1).toLayer)
       gameEventsFiber <-
         gameStream
           .takeUntil {
@@ -372,7 +347,7 @@ trait GameAbstractSpec {
       _ <-
         gameService
           .broadcastGameEvent(PoisonPill(Option(game.id.get))).provideSomeLayer[
-            Repository & Postman & TokenHolder & GameService & ChatService
+            ChutiEnvironment & GameService & ChatService
           ](
             ChutiSession(chuti.god).toLayer
           )
@@ -383,11 +358,11 @@ trait GameAbstractSpec {
       }
     } yield played
 
-  def playRound(filename: String): ZIO[Any, Throwable, Game] =
-    (for {
+  def playRound(filename: String): ZIO[ChutiEnvironment & GameService & ChatService, Exception, Game] =
+    for {
       gameService <- ZIO.service[GameService]
-      game   <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[Repository & Postman & TokenHolder & GameService & ChatService](godLayer)
-      played <- juegaHastaElFinal(game.id.get)
-    } yield played).provide(testLayer(filename))
+      game        <- gameService.getGame(GameId(1)).map(_.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
+      played      <- juegaHastaElFinal(game.id.get)
+    } yield played
 
 }

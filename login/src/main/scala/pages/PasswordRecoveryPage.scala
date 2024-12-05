@@ -17,7 +17,6 @@
 package pages
 
 import app.LoginControllerState
-import io.circe.syntax.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.extra.Ajax
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -27,7 +26,7 @@ import net.leibman.chuti.semanticUiReact.components.{Button, Form, FormField, In
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 
 import scala.util.{Failure, Success}
-
+import zio.json.*
 object PasswordRecoveryPage {
 
   case class State(
@@ -41,7 +40,7 @@ object PasswordRecoveryPage {
       Ajax("POST", s"/passwordRecoveryRequest")
         .and(_.withCredentials = true)
         .setRequestContentTypeJson
-        .send(email.asJson.noSpaces)
+        .send(email.toJson)
         .asAsyncCallback
         .completeWith {
           case Success(xhr) if xhr.status < 300 =>

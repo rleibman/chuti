@@ -1,7 +1,8 @@
 package db.quill
 
+import api.ChutiEnvironment
 import better.files.File
-import chuti.*
+import chuti.{given, *}
 import dao.*
 // import db.quill.QuillUserSpec.fixedClock
 import zio.*
@@ -31,35 +32,29 @@ object QuillGameSpec extends QuillSpec {
     suite("Quill Game Suite")(
       test("CRUD") {
         (for {
-          testUser             <- testUserZIO
-          userRepo             <- ZIO.service[Repository].map(_.userOperations)
-          gameRepo             <- ZIO.service[Repository].map(_.gameOperations)
-          allGamesBeforeInsert <- gameRepo.search()
-          game                 <- readGame(GAME_NEW)
-          inserted             <- gameRepo.upsert(game.copy(id = None))
-          gotten               <- gameRepo.get(inserted.id.get)
-          allGamesAfterInsert  <- gameRepo.search()
-          allGamesCount        <- gameRepo.count()
-          updated              <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
-          gottenUpdated        <- gameRepo.get(inserted.id.get)
-          deleted              <- gameRepo.delete(inserted.id.get)
-          allGamesAfterDelete  <- gameRepo.search()
-        } yield assertTrue(inserted.id.nonEmpty) &&
-          assertTrue(gotten.nonEmpty) &&
-          assertTrue(allGamesAfterInsert.nonEmpty) &&
-          assertTrue(inserted == gotten.get) &&
-          assertTrue(allGamesAfterInsert.size.toLong == allGamesCount) &&
-          assertTrue(updated.gameStatus == GameStatus.abandonado) &&
-          assertTrue(updated == gottenUpdated.get) &&
-          assertTrue(deleted) &&
-<<<<<<<< HEAD:server/src/test/scala/db/quill/QuillGameSpec.scala
-          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size)).withClock(fixedClock)
-========
-          assertTrue(allGamesAfterDelete.size < allGamesAfterInsert.size))
-        // .withClock(fixedClock)
->>>>>>>> origin/master:integrationTests/src/test/scala/db/quill/QuillGameSpec.scala
+          gameRepo            <- ZIO.service[Repository].map(_.gameOperations)
+          game                <- readGame(GAME_NEW)
+          inserted            <- gameRepo.upsert(game.copy(id = None))
+          gotten              <- gameRepo.get(inserted.id.get)
+          allGamesAfterInsert <- gameRepo.search()
+          allGamesCount       <- gameRepo.count()
+          updated             <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
+          gottenUpdated       <- gameRepo.get(inserted.id.get)
+          deleted             <- gameRepo.delete(inserted.id.get)
+          allGamesAfterDelete <- gameRepo.search()
+        } yield assertTrue(
+          inserted.id.nonEmpty,
+          gotten.nonEmpty,
+          allGamesAfterInsert.nonEmpty,
+          inserted == gotten.get,
+          allGamesAfterInsert.size.toLong == allGamesCount,
+          updated.gameStatus == GameStatus.abandonado,
+          updated == gottenUpdated.get,
+          deleted,
+          allGamesAfterDelete.size < allGamesAfterInsert.size
+        ))
       }
-    ).provideShared(containerLayer, configLayer, quillLayer, loggingLayer, godSession)
+    ).provideSomeLayerShared[ChutiEnvironment](godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]
   //  def userInGame(id:      GameId): RepositoryIO[Boolean]
   //  def updatePlayers(game: Game):   RepositoryIO[Game]
