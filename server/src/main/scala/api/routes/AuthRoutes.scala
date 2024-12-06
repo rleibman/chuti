@@ -19,41 +19,42 @@ package api.routes
 import api.auth.Auth.*
 import api.token.{Token, TokenHolder, TokenPurpose}
 import api.{ChutiEnvironment, ChutiSession, token}
-import chuti.*
+import chuti.UserId.*
+import chuti.{*, given}
 import dao.{CRUDOperations, Repository, RepositoryError, RepositoryIO}
 import mail.Postman
+import routes.CRUDRoutes
 import util.*
 import zio.http.*
-import zio.{Clock, ZIO}
-import zio.logging.*
 import zio.json.*
+import zio.logging.*
+import zio.prelude.NonEmptyList
+import zio.{Clock, ZIO}
 
 import java.time.Instant
 import java.util.Locale
 import scala.language.unsafeNulls
-import UserId.*
-import zio.prelude.NonEmptyList
 
-object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
+object AuthRoutes extends CRUDRoutes[User, UserId, PagedStringSearch] {
 
   given localeEncoder: JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
 
   // TODO get from config
   lazy val availableLocales: NonEmptyList[Locale] =
     NonEmptyList("es_MX", "es", "en-US", "en", "eo").map(t => Locale.forLanguageTag(t).nn)
-  val defaultSoftDelete: Boolean = false
+  override val defaultSoftDelete: Boolean = false
 
-  type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
+  override type OpsService = CRUDOperations[User, UserId, PagedStringSearch]
 
-  val url: String = "auth"
+  override val url: String = "auth"
 
-  def getPK(obj: User): UserId = obj.id.get
+  override def getPK(obj: User): UserId = obj.id.get
 
-  def authOther: Routes[ChutiEnvironment & OpsService & ChutiSession, Throwable] =
+  override def authOther: Routes[ChutiEnvironment & ChutiSession, Throwable] =
     Routes(
-      Method.GET / "api" / "auth" / "isFirstLoginToday" -> handler { (req: Request) =>
+      Method.GET / "api" / "auth" / "isFirstLoginToday" -> handler { (_: Request) =>
         for {
-          userOps       <- ZIO.service[Repository].map(_.userOperations)
+          userOps       <- ZIO.serviceWith[Repository](_.userOperations)
           now           <- Clock.instant
           firstLoginOpt <- userOps.firstLogin
         } yield ResponseExt.json(firstLoginOpt.fold(true)(_.isAfter(now.minus(java.time.Duration.ofDays(1)).nn)))
@@ -70,10 +71,10 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
             .refreshSession(session.copy(locale = Locale.forLanguageTag(locale).nn), ResponseExt.json(true))
         } yield response
       },
-      Method.GET / "api" / "auth" / "whoami" -> handler { (req: Request) =>
-        ZIO.serviceWith[ChutiSession](s => ResponseExt.json(s.user))
+      Method.GET / "api" / "auth" / "whoami" -> handler { (_: Request) =>
+        ZIO.serviceWith[ChutiSession](session => ResponseExt.json(session.user))
       },
-      Method.GET / "api" / "auth" / "userWallet" -> handler { (req: Request) =>
+      Method.GET / "api" / "auth" / "userWallet" -> handler { (_: Request) =>
         for {
           userOps <- ZIO.service[Repository].map(_.userOperations)
           wallet  <- userOps.getWallet
@@ -81,31 +82,31 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       },
       Method.POST / "api" / "auth" / "changePassword" -> handler { (req: Request) =>
         for {
-          session <- ZIO.service[ChutiSession]
           userOps <- ZIO.service[Repository].map(_.userOperations)
-          body    <- req.body.asString
-          ret     <- userOps.changePassword(session.user, body)
+          session <- ZIO.service[ChutiSession]
+          newPass <- req.body.asString
+          ret     <- userOps.changePassword(session.user, newPass)
         } yield ResponseExt.json(ret)
       },
-      Method.GET / "api" / "auth" / "refreshToken" -> handler { (req: Request) =>
+      Method.GET / "api" / "auth" / "refreshToken" -> handler { (_: Request) =>
         for {
-          sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
           session          <- ZIO.service[ChutiSession]
+          sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
           response         <- sessionTransport.refreshSession(session, ResponseExt.json(true))
         } yield response
       },
-      Method.GET / "api" / "auth" / "doLogout" -> handler { (req: Request) =>
+      Method.GET / "api" / "auth" / "doLogout" -> handler { (_: Request) =>
         for {
-          sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
           session          <- ZIO.service[ChutiSession]
-          loginFormUrl     <- ZIO.fromEither(URL.decode("/loginForm")).mapError(GameError.apply)
+          sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
+          loginFormURL     <- ZIO.fromEither(URL.decode("/loginForm")).mapError(GameError.apply)
           response <- sessionTransport
-            .invalidateSession(session, Response(Status.SeeOther, Headers(Header.Location(loginFormUrl))))
+            .invalidateSession(session, Response(Status.SeeOther, Headers(Header.Location(loginFormURL))))
         } yield response
       }
     )
 
-  def unauthRoute =
+  override def unauthRoute: Routes[ChutiEnvironment, Throwable] =
     Routes(
       Method.GET / "serverVersion" -> handler {
         Response.json(chuti.BuildInfo.version)
@@ -129,10 +130,11 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       },
       Method.POST / "passwordRecoveryRequest" -> handler { (req: Request) =>
         (for {
-          email   <- req.body.asString
-          userOps <- ZIO.service[Repository].map(_.userOperations)
-          postman <- ZIO.service[Postman]
-          userOpt <- userOps.userByEmail(email)
+          emailJson <- req.body.asString
+          email     <- ZIO.fromEither(emailJson.fromJson[String]).mapError(GameError.apply)
+          userOps   <- ZIO.service[Repository].map(_.userOperations)
+          postman   <- ZIO.service[Postman]
+          userOpt   <- userOps.userByEmail(email)
           _ <-
             ZIO
               .foreach(userOpt)(postman.lostPasswordEmail).flatMap(envelope =>
@@ -255,13 +257,13 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       }
     )
 
-  def getOperation(id: UserId): ZIO[ChutiSession & OpsService, RepositoryError, Option[User]] =
+  override def getOperation(id: UserId): ZIO[ChutiSession & OpsService, RepositoryError, Option[User]] =
     for {
       ops <- ZIO.service[OpsService]
       ret <- ops.get(id)
     } yield ret
 
-  def deleteOperation(
+  override def deleteOperation(
     objOpt: Option[User]
   ): ZIO[ChutiSession & OpsService, Throwable, Boolean] =
     for {
@@ -269,7 +271,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
     } yield ret
 
-  def upsertOperation(obj: User): ZIO[
+  override def upsertOperation(obj: User): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
     User
@@ -280,7 +282,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
     } yield ret
   }
 
-  def countOperation(search: Option[PagedStringSearch]): ZIO[
+  override def countOperation(search: Option[PagedStringSearch]): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
     Long
@@ -290,7 +292,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       ret <- ops.count(search)
     } yield ret
 
-  def searchOperation(search: Option[PagedStringSearch]): ZIO[
+  override def searchOperation(search: Option[PagedStringSearch]): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
     Seq[User]
@@ -352,7 +354,7 @@ object AuthRoutes { // extends CRUDRoutes[User, UserId, PagedStringSearch] {
       }
     )
 
-  lazy val authRoute: Routes[ChutiSession & ChutiEnvironment, Throwable] =
+  lazy override val authRoute: Routes[ChutiSession & ChutiEnvironment, Throwable] =
     authOther ++ authCRUD
 
 }

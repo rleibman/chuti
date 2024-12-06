@@ -16,29 +16,26 @@
 
 package api.routes
 
-import api.token.TokenHolder
 import api.{ChutiEnvironment, ChutiSession}
-import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
 import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
 import chat.ChatService
 import dao.Repository
 import game.{GameApi, GameService}
-import mail.Postman
 import zio.*
 import zio.http.*
 
 object GameRoutes {
 
-  lazy private val interpreter = GameApi.api.interpreter
-
   lazy val authRoute
-    : IO[CalibanError.ValidationError, Routes[GameService & ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
+    : IO[CalibanError.ValidationError, Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, Nothing]] =
     for {
-      interpreter <- interpreter
+      interpreter <- GameApi.api.interpreter
     } yield {
       Routes(
         Method.ANY / "api" / "game" ->
           QuickAdapter(interpreter).handlers.api,
+        Method.ANY / "api" / "game" / "ws" ->
+          QuickAdapter(interpreter).handlers.webSocket,
         Method.ANY / "api" / "game" / "graphiql" ->
           GraphiQLHandler.handler(apiPath = "/api/game"),
         Method.GET / "api" / "game" / "schema" ->

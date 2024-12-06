@@ -20,24 +20,23 @@ import api.token.TokenHolder
 import api.{ChutiEnvironment, ChutiSession}
 import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
 import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
-import chat.ChatService
-import dao.Repository
 import chat.{ChatApi, ChatService}
+import dao.Repository
 import mail.Postman
 import zio.*
 import zio.http.*
 
 object ChatRoutes {
 
-  lazy private val interpreter = ChatApi.api.interpreter
-
   lazy val authRoute: IO[CalibanError.ValidationError, Routes[ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
     for {
-      interpreter <- interpreter
+      interpreter <- ChatApi.api.interpreter
     } yield {
       Routes(
         Method.ANY / "api" / "chat" ->
           QuickAdapter(interpreter).handlers.api,
+        Method.ANY / "api" / "chat" / "ws" ->
+          QuickAdapter(interpreter).handlers.webSocket,
         Method.ANY / "api" / "chat" / "graphiql" ->
           GraphiQLHandler.handler(apiPath = "/api/chat"),
         Method.GET / "api" / "chat" / "schema" ->

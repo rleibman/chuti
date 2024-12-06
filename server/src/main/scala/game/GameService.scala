@@ -109,10 +109,6 @@ object GameService {
   lazy val godlessLayer: ULayer[ChutiSession] =
     ChutiSession(chuti.godless).toLayer
 
-  lazy val interpreter
-    : IO[Throwable, GraphQLInterpreter[ChutiEnvironment & ChutiSession & GameService & ChatService, CalibanError]] =
-    GameApi.api.interpreter
-
   def joinRandomGame(): ZIO[GameService & ChutiSession & Repository, GameError, Game] =
     ZIO.serviceWithZIO[GameService](_.joinRandomGame())
 

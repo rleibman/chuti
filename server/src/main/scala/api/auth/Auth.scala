@@ -293,11 +293,8 @@ object Auth {
       for {
         configService <- ZIO.service[ConfigurationService]
         config        <- configService.appConfig.mapBoth(e => SessionError("", Option(e)), _.chuti.sessionConfig)
-        str <- ZIO
-          .fromOption(request.cookies.find(_.name == config.sessionName).map(_.content)).orElseFail(
-            SessionError("No session cookie found")
-          )
-        session <- sessionStorage.getSession(str)
+        sessionCookieOpt = request.cookies.find(_.name == config.sessionName).map(_.content)
+        session <- sessionCookieOpt.fold(ZIO.none)(str => sessionStorage.getSession(str))
       } yield session
 
     override val bearerAuthWithContext: HandlerAspect[ConfigurationService, SessionType] =
@@ -318,6 +315,7 @@ object Auth {
               r <-
                 session match {
                   case _ if request.path.startsWith(Path.decode("/loginForm")) =>
+                    // I think we should never get here
                     ZIO.fail(Response.unauthorized.addHeaders(Headers(Header.WWWAuthenticate.Bearer(realm = "Access"))))
                   case Some(s) => ZIO.succeed((request, s))
                   case None    => ZIO.fail(loginFormRedirect)
