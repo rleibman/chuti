@@ -45,7 +45,8 @@ case class DbConfig(
   connectionTimeoutMins: Long = 5
 ) {
 
-  def dataSource: HikariDataSource = {
+  // SUPER IMPORTANT!!! this has to be a val, not a def!
+  lazy val dataSource: HikariDataSource = {
     val dsConfig = HikariConfig()
     dsConfig.setDriverClassName(driver)
     dsConfig.setJdbcUrl(url)

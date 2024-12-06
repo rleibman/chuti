@@ -55,7 +55,12 @@ case class QuillRepository(config: DbConfig) extends Repository {
 
   private object ctx extends MysqlZioJdbcContext(MysqlEscape)
 
-  import ctx.{*, given}
+  import ctx.*
+
+  private val dataSourceLayer: TaskLayer[DataSource] = {
+    println("=========================== dataSourceLayerCreation should only happen once!")
+    Quill.DataSource.fromDataSource(config.dataSource)
+  }
 
   given MappedEncoding[UserId, Int] = MappedEncoding[UserId, Int](_.userId)
 
@@ -121,8 +126,6 @@ case class QuillRepository(config: DbConfig) extends Repository {
     quote {
       querySchema[TokenRow]("token")
     }
-
-  private val dataSourceLayer = Quill.DataSource.fromDataSource(config.dataSource)
 
   private given ctx.Decoder[GameStatus] =
     JdbcDecoder {
@@ -206,7 +209,9 @@ case class QuillRepository(config: DbConfig) extends Repository {
           }
         }
       } yield result
-    }.provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
+    }
+      .provideSomeLayer[ChutiSession](dataSourceLayer)
+      .mapError(RepositoryError.apply)
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = {
       search
@@ -695,7 +700,7 @@ case class QuillRepository(config: DbConfig) extends Repository {
             .filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString))
             .join(users).on(_.userId == _.id).map(_._2)
         ).map(_.headOption.map(_.toUser))
-        .provideSomeLayer[ChutiSession](dataSourceLayer)
+        .provideLayer(dataSourceLayer)
         .mapError(RepositoryError.apply)
 
   }

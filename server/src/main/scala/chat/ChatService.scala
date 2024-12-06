@@ -53,9 +53,6 @@ object ChatService {
 
   lazy private val ttl: Duration = 15.minutes
 
-  lazy val interpreter: IO[Throwable, GraphQLInterpreter[ChatService & Repository & ChutiSession, CalibanError]] =
-    ChatApi.api.interpreter
-
   def sendMessage(
     msg:       String,
     channelId: ChannelId,
