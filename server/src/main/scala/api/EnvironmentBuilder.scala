@@ -16,12 +16,11 @@
 
 package api
 
-import api.auth.Auth
-import api.auth.Auth.{SessionStorage, SessionTransport}
-import api.routes.AuthRoutes
 import api.token.{TokenHolder, TokenPurpose}
+import auth.*
+import auth.oauth.{OAuthService, OAuthStateStore}
 import chat.*
-import chuti.{Game, GameError, User}
+import chuti.*
 import dao.*
 import dao.quill.QuillRepository
 import game.*
@@ -33,11 +32,13 @@ import zio.json.*
 
 import java.util.Locale
 
-type ChutiEnvironment = ConfigurationService & Repository & Postman & TokenHolder &
-  SessionStorage[
-    ChutiSession,
-    String
-  ] & SessionTransport[ChutiSession] & AuthRoutes.OpsService
+type ChutiEnvironment = AuthConfig & Repository & ConfigurationService & Postman &
+  AuthServer[User, UserId, ConnectionId] & TokenHolder & OAuthService & OAuthStateStore
+//  RateLimiter &
+//  RateLimitConfig &
+//  FlywayMigration &
+//net.leibman.analytics.AnalyticsZIORepository &
+//  net.leibman.analytics.AnalyticsCleanupService
 
 given JsonCodec[Locale] =
   JsonCodec(
@@ -55,20 +56,18 @@ object EnvironmentBuilder {
   lazy private val postmanLayer: ZLayer[ConfigurationService, GameError, Postman] = ZLayer.fromZIO(for {
     configService <- ZIO.service[ConfigurationService]
     appConfig     <- configService.appConfig
-  } yield CourierPostman.live(appConfig.chuti.smtpConfig))
+  } yield CourierPostman.live(appConfig.chuti.smtp))
 
   val repoLayer: ZLayer[ConfigurationService, ConfigurationError, Repository] =
     QuillRepository.uncached >>> Repository.cached
 
-  val live: Layer[GameError, ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
+  val live: ULayer[ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
     ConfigurationService.live,
     repoLayer,
     postmanLayer,
     TokenHolder.liveLayer,
-    Auth.SessionStorage.tokenEncripted[ChutiSession],
-    Auth.SessionTransport.cookieSessionTransport[ChutiSession],
     ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
-  )
+  ).orDie
 
   val withContainer: Layer[GameError, ChutiEnvironment] = {
 
@@ -78,8 +77,6 @@ object EnvironmentBuilder {
       repoLayer,
       postmanLayer,
       TokenHolder.liveLayer,
-      Auth.SessionStorage.tokenEncripted[ChutiSession],
-      Auth.SessionTransport.cookieSessionTransport[ChutiSession],
       ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
     )
   }
@@ -108,8 +105,6 @@ object EnvironmentBuilder {
         cache <- Cache
           .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
       } yield TokenHolder.tempCache(cache)),
-      Auth.SessionStorage.tokenEncripted[ChutiSession],
-      Auth.SessionTransport.cookieSessionTransport[ChutiSession],
       ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
     )
   }

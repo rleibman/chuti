@@ -2,6 +2,7 @@
 lib_managed
 project/project
 target
+.bsp
 
 # Worksheets (Eclipse or IntelliJ)
 *.sc
@@ -50,10 +51,17 @@ dist
 debugDist
 dist
 /.env
+/.deploy-config
 /.bloop/
 /.metals/
 /project/metals.sbt
 /project/.bloop/
 
-.bsp
 /tree.txt
+/chuti-stLib
+/temp
+/fileStore
+/dice_roller/wasm-out/
+*.deb
+/stLib/node_modules/.yarn-integrity
+/landing/build/

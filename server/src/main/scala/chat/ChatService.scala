@@ -125,7 +125,8 @@ object ChatService {
           for {
             allSubscriptions <- chatMessageQueue.get
             now              <- Clock.instant
-            user             <- ZIO.serviceWith[ChutiSession](_.user)
+            userOpt          <- ZIO.serviceWith[ChutiSession](_.user)
+            user             <- ZIO.fromOption(userOpt).orElseFail(GameError("Authenticated User required")).orDie
             _                <- ZIO.logInfo(s"Sending ${request.msg}")
             sent <- {
               // TODO make sure the user has rights to send messages on the channel,
@@ -163,12 +164,13 @@ object ChatService {
         ] =
           ZStream.unwrap {
             for {
-              user    <- ZIO.serviceWith[ChutiSession](_.user)
+              userOpt       <- ZIO.serviceWith[ChutiSession](_.user)
+              user          <- ZIO.fromOption(userOpt).orElseFail(GameError("Authenticated User required")).orDie
               gameOps <- ZIO.service[Repository].map(_.gameOperations)
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
               // admins can listen in on games.
-              userInGame <- gameOps.userInGame(GameId(channelId.channelId)).mapError(GameError.apply)
+              userInGame <- gameOps.userInGame(GameId(channelId.value)).mapError(GameError.apply)
               _ <-
                 if (channelId == ChannelId.directChannel)
                   throw GameError("No te puedes subscribir a un canal directo!")
@@ -193,7 +195,7 @@ object ChatService {
                   (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty)
               ).catchAllCause { c =>
                 c.prettyPrint
-              ZStream.failCause(c)
+                ZStream.failCause(c)
               }
 
           }

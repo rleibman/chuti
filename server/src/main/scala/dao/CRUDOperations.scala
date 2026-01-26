@@ -33,7 +33,7 @@ trait CRUDOperations[E, PK, SEARCH <: Search] {
   def delete(
     pk:         PK,
     softDelete: Boolean = false
-  ): RepositoryIO[Boolean]
+  ):                                         RepositoryIO[Boolean]
   def search(search: Option[SEARCH] = None): RepositoryIO[Seq[E]]
   def count(search:  Option[SEARCH] = None): RepositoryIO[Long]
 

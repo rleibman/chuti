@@ -26,7 +26,6 @@ import caliban.schema.*
 import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
-import chat.ChatService
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
@@ -66,9 +65,9 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
     ]
   )
 
-  private given Schema[Any, UserId] = Schema.intSchema.contramap(_.userId)
-  private given Schema[Any, ChannelId] = Schema.intSchema.contramap(_.channelId)
-  private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
+  private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
+  private given Schema[Any, ChannelId] = Schema.longSchema.contramap(_.value)
+  private given Schema[Any, ConnectionId] = Schema.stringSchema.contramap(_.value)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
   private given Schema[ChatService & ChutiSession, Queries] = Schema.gen[ChatService & ChutiSession, Queries]
@@ -79,7 +78,7 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
-  private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
+  private given ArgBuilder[ConnectionId] = ArgBuilder.string.map(ConnectionId.apply)
 
   lazy val api: GraphQL[ChatService & Repository & ChutiSession] =
     graphQL(

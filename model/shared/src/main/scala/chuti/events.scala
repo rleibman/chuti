@@ -235,7 +235,7 @@ final case class PoisonPill(
     userOpt: Option[User],
     game:    Game
   ): (Game, GameEvent) = {
-    if (userOpt.fold(false)(_.id != Option(godUserId)))
+    if (userOpt.fold(false)(_.id != Option(UserId.godUserId)))
       throw GameError("Solo dios puede administrar veneno")
     (
       game,

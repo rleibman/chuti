@@ -17,7 +17,7 @@
 package pages
 
 import app.ChutiState
-import caliban.client.scalajs.ScalaJSClientAdapter
+import caliban.ScalaJSClientAdapter
 import chuti.{*, given}
 import components.{Confirm, Toast}
 import caliban.client.scalajs.GameClient.{Mutations, Queries}
@@ -678,7 +678,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                               ) =>
                                                 calibanCall[Mutations, Option[Boolean]](
                                                   Mutations
-                                                    .inviteToGame(playerId.userId, gameId.gameId),
+                                                    .inviteToGame(playerId.userId, gameId.value),
                                                   res =>
                                                     if (res.getOrElse(false))
                                                       Toast.success("Jugador Invitado!") // TODO i8n

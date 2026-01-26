@@ -16,160 +16,146 @@
 
 package api
 
-import api.auth.Auth
-import api.auth.Auth.{SessionStorage, SessionTransport}
+import api.routes.*
 import api.token.TokenHolder
+import auth.{AuthServer, Session}
 import chat.ChatService
 import chuti.{GameError, PagedStringSearch, User, UserId}
 import dao.quill.QuillRepository
 import dao.{CRUDOperations, Repository}
 import game.GameService
 import mail.{CourierPostman, Postman}
-import routes.*
+import zio.*
 import zio.http.*
 import zio.logging.*
 import zio.logging.backend.SLF4J
-import zio.*
 
-import java.util.concurrent.TimeUnit
+import java.io.{PrintWriter, StringWriter}
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 object Chuti extends ZIOApp {
 
   override type Environment = ChutiEnvironment
   override val environmentTag: EnvironmentTag[Environment] = EnvironmentTag[ChutiEnvironment]
 
-  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.live.orDie
+  // Configure ZIO to use SLF4J (logback) instead of console logging
+  // This routes all ZIO logs through logback, which writes to both file and console
+  override def bootstrap: ULayer[ChutiEnvironment] =
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> EnvironmentBuilder.live
 
-  import api.auth.Auth.*
+  object TestRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  import scala.language.unsafeNulls
+    /** These routes represent the api, the are intended to be used thorough ajax-type calls they require a session
+      */
+    override def api: ZIO[
+      ChutiEnvironment,
+      GameError,
+      Routes[ChutiEnvironment & ChutiSession, GameError]
+    ] =
+      ZIO.succeed(
+        Routes(
+          Method.GET / "api" / "test" -> handler((_: Request) => Handler.html(s"<html>Test API Ok!</html>")).flatten
+        )
+      )
 
-  lazy val unauthRoute: Routes[ChutiEnvironment, Throwable] =
-    Seq(
-      AuthRoutes.unauthRoute,
-      StaticHTMLRoutes.unauthRoute
-    ).reduce(_ ++ _) @@ Middleware.debug
-
-  def authRoutes(
-    sessionTransport: SessionTransport[ChutiSession]
-  ): ZIO[Any, Throwable, Routes[GameService & ChatService & ChutiEnvironment, Throwable]] = {
-    for {
-      gameRoutes <- GameRoutes.authRoute
-      chatRoutes <- ChatRoutes.authRoute
-    } yield Seq(
-      AuthRoutes.authRoute,
-      gameRoutes,
-      chatRoutes,
-      StaticHTMLRoutes.authRoute
-    ).reduce(_ ++ _) @@ sessionTransport.bearerAuthWithContext @@ Middleware.debug
+    override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
+      ZIO.succeed(
+        Routes(
+          Method.GET / "unauth" / "unauthtest.html" -> handler((_: Request) =>
+            Handler.html(s"<html>Test Unauth Ok!</html>")
+          ).flatten
+        )
+      )
 
   }
 
-  def mapError(e: Cause[Throwable]): UIO[Response] = {
+  object AllTogether extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
+
+    private val routes: Seq[AppRoutes[ChutiEnvironment, ChutiSession, GameError]] =
+      Seq(
+        ChutiRoutes,
+        TestRoutes,
+        StaticRoutes
+      )
+
+    override def api: ZIO[
+      ChutiEnvironment,
+      GameError,
+      Routes[ChutiEnvironment & ChutiSession, GameError]
+    ] = ZIO.foreach(routes)(_.api).map(_.reduce(_ ++ _) @@ Middleware.debug)
+
+    override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
+      ZIO.foreach(routes)(_.unauth).map(_.reduce(_ ++ _) @@ Middleware.debug)
+
+  }
+
+  def mapError(original: Cause[Throwable]): UIO[Response] = {
     lazy val contentTypeJson: Headers = Headers(Header.ContentType(MediaType.application.json).untyped)
-    e.squash match {
-      case e: GameError =>
-        val body =
-          s"""{
-            "exceptionMessage": ${e.getMessage},
-            "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
-          }"""
 
-        ZIO
-          .logError(body).as(
-            Response.apply(body = Body.fromString(body), status = Status.BadGateway, headers = contentTypeJson)
-          )
-      case e =>
-        val body =
-          s"""{
-            "exceptionMessage": ${e.getMessage},
-            "stackTrace": [${e.getStackTrace.nn.map(s => s"\"${s.toString}\"").mkString(",")}]
-          }"""
-        ZIO
-          .logError(body).as(
-            Response.apply(body = Body.fromString(body), status = Status.InternalServerError, headers = contentTypeJson)
-          )
+    val squashed = original.squash
+    val sw = StringWriter()
+    val pw = PrintWriter(sw)
+    squashed.printStackTrace(pw)
 
+    val body = "Error in Chuti"
+    // We really don't want details
+
+    val status = squashed match {
+      case _: NotFoundError                    => Status.NotFound
+      case e: RepositoryError if e.isTransient => Status.BadGateway
+      case _: GameError                    => Status.InternalServerError
+      case _ => Status.InternalServerError
     }
+    ZIO
+      .logErrorCause("Error in Chuti", original).as(
+        Response.apply(body = Body.fromString(body), status = status, headers = contentTypeJson)
+      )
   }
 
-  lazy private val zapp: ZIO[Environment, Throwable, Routes[Environment & GameService & ChatService, Nothing]] =
+  lazy val zapp: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, Nothing]] = for {
+    _                <- ZIO.log("Initializing Routes")
+    authServer       <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
+    authServerApi    <- authServer.authRoutes
+    authServerUnauth <- authServer.unauthRoutes
+    unauth           <- AllTogether.unauth
+    api              <- AllTogether.api
+  } yield (
+    ((api ++ authServerApi) @@ authServer.bearerSessionProvider) ++
+      authServerUnauth ++ unauth
+  )
+    .handleErrorCauseZIO(mapError)
+
+  override def run: ZIO[Environment & ZIOAppArgs & Scope, GameError, Unit] = {
+    // Configure thread count using CLI
     for {
-      _                <- ZIO.log("Initializing Routes")
-      sessionTransport <- ZIO.service[SessionTransport[ChutiSession]]
-      authRoute        <- authRoutes(sessionTransport)
-    } yield (
-      (unauthRoute ++ authRoute) @@ Middleware.debug
-    ).handleErrorCauseZIO(mapError)
+      config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+      // Run Flyway migrations first, before anything else
+//      _           <- FlywayMigration.runMigrations
+      rateLimiter <- ZIO.service[RateLimiter]
+      _           <- RateLimiter.cleanupSchedule(rateLimiter)
+      _           <- ZIO.logInfo("Rate limiter cleanup schedule started")
+      app         <- zapp
+      _           <- ZIO.logInfo(s"Starting application with config $config")
+      server <- {
+        // Configure server with request streaming enabled for large uploads
+        val serverConfig = ZLayer.succeed(
+          Server.Config.default
+            .binding(config.chuti.http.hostName, config.chuti.http.port)
+            .copy(requestStreaming = Server.RequestStreaming.Enabled)
+        )
 
-  override def run: ZIO[Environment & ZIOAppArgs & Scope, Throwable, ExitCode] = {
-    ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
-      ChatService.make().memoize.flatMap { chatServiceLayer =>
-        for {
-          config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-          app    <- zapp
-          _      <- ZIO.logInfo(s"Starting application with config $config")
-          server <- {
-            val serverConfig = ZLayer.succeed(
-              Server.Config.default
-                .binding(config.chuti.httpConfig.hostName, config.chuti.httpConfig.port)
-            )
-
-            Server
-              .serve(app)
-              .zipLeft(ZIO.logDebug(s"Server Started on ${config.chuti.httpConfig.port}"))
-              .tapErrorCause(
-                ZIO.logErrorCause(s"Server on port ${config.chuti.httpConfig.port} has unexpectedly stopped", _)
-              )
-              .provideSome[Environment](serverConfig, Server.live, gameServiceLayer, chatServiceLayer)
-              .foldCauseZIO(
-                cause => ZIO.logErrorCause("err when booting server", cause).exitCode,
-                _ => ZIO.logError("app quit unexpectedly...").exitCode
-              )
-          }
-        } yield server
+        Server
+          .serve(app)
+          .zipLeft(ZIO.logDebug(s"Server Started on ${config.chuti.http.port}"))
+          .tapErrorCause(ZIO.logErrorCause(s"Server on port ${config.chuti.http.port} has unexpectedly stopped", _))
+          .provideSome[Environment](serverConfig, Server.live)
+          .foldCauseZIO(
+            cause => ZIO.logErrorCause("err when booting server", cause),
+            _ => ZIO.logError("app quit unexpectedly...")
+          )
       }
-    })
+    } yield server
   }
-
-//  def runa: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = {
-//    ZIO.scoped(GameService.make().memoize.flatMap { gameServiceLayer =>
-//      ChatService.make().memoize.flatMap { chatServiceLayer =>
-//        (for {
-//          config <- ZIO.service[Config.Service]
-//          app    <- zapp
-//          server = Server.bind(
-//            config.config.getString(s"${config.configKey}.host").nn,
-//            config.config.getInt(s"${config.configKey}.port").nn
-//          ) ++
-//            Server.enableObjectAggregator(maxRequestSize = 210241024) ++
-//            Server.app(app)
-//          started <- ZIO.scoped(
-//            server.make.flatMap(start =>
-//              // Waiting for the server to start
-//              Console.printLine(s"Server started on port ${start.port}") *> ZIO.never
-//              // Ensures the server doesn't die after printing
-//            )
-//          )
-//        } yield started).exitCode
-//          .provide(
-//            slf4jLogger,
-//            ZLayer.succeed(Clock.ClockLive),
-//            gameServiceLayer,
-//            chatServiceLayer,
-//            configLayer,
-//            repositoryLayer,
-//            postmanLayer,
-//            TokenHolder.liveLayer,
-//            Auth.SessionStorage.tokenEncripted[ChutiSession],
-//            Auth.SessionTransport.cookieSessionTransport[ChutiSession],
-//            ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations)),
-//            ServerChannelFactory.auto,
-//            EventLoopGroup.auto()
-//          )
-//      }
-//    })
-//  }
 
 }

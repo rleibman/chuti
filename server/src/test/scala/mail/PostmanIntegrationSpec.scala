@@ -48,6 +48,6 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
 
   override def bootstrap: ULayer[ChutiEnvironment & ChutiSession] =
     ZLayer
-      .make[ChutiEnvironment & ChutiSession](EnvironmentBuilder.withContainer.orDie, ChutiSession.adminSession.toLayer)
+      .make[ChutiEnvironment & ChutiSession](EnvironmentBuilder.withContainer.orDie, ChutiSession.godSession.toLayer)
 
 }

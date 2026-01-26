@@ -16,74 +16,107 @@
 
 package api
 
-import api.auth.Auth.{SecretKey, SessionConfig}
+import auth.oauth.OAuthProviderConfig
+import auth.{AuthConfig, SecretKey}
 import chuti.GameError
-import com.typesafe.config.{Config as TypesafeConfig, ConfigFactory}
-import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import com.typesafe.config.{ConfigFactory, Config as TypesafeConfig}
+import com.zaxxer.hikari.*
 import zio.*
 import zio.config.magnolia.DeriveConfig
-import zio.config.typesafe.TypesafeConfigProvider
+import zio.config.typesafe.*
 import zio.nio.file.Path
 
 import java.io.File
 
 case class ConfigurationError(
-  override val message: String = "",
-  override val cause:   Option[Throwable] = None
-) extends GameError(message, cause)
+  override val msg:   String = "",
+  override val cause: Option[Throwable] = None
+) extends GameError(msg, cause)
 
-case class DbConfig(
+case class DataSourceConfig(
   driver:                String,
   url:                   String,
   user:                  String,
   password:              String,
-  cachePrepStmts:        Boolean = true,
-  prepStmtCacheSize:     Int = 250,
-  prepStmtCacheSqlLimit: Int = 2048,
   maximumPoolSize:       Int = 20,
   minimumIdle:           Int = 1000,
   connectionTimeoutMins: Long = 5
 ) {
 
-  // SUPER IMPORTANT!!! this has to be a val, not a def!
-  lazy val dataSource: HikariDataSource = {
-    val dsConfig = HikariConfig()
-    dsConfig.setDriverClassName(driver)
-    dsConfig.setJdbcUrl(url)
-    dsConfig.setUsername(user)
-    dsConfig.setPassword(password)
-    dsConfig.setMaximumPoolSize(maximumPoolSize)
-    dsConfig.setMinimumIdle(minimumIdle)
-    dsConfig.setAutoCommit(true)
-    dsConfig.setConnectionTimeout(connectionTimeoutMins * 60 * 1000)
-
-    HikariDataSource(dsConfig)
+  def createDataSource: HikariDataSource = {
+    val config = new HikariConfig()
+    config.setDriverClassName(driver)
+    config.setJdbcUrl(url)
+    config.setUsername(user)
+    config.setPassword(password)
+    config.setMaximumPoolSize(maximumPoolSize)
+    config.setMinimumIdle(minimumIdle)
+    config.setConnectionTimeout(connectionTimeoutMins * 60 * 1000)
+    new HikariDataSource(config)
   }
 
 }
 
+case class DatabaseConfig(
+  dataSourceConfig: DataSourceConfig
+) {}
+
 case class SmtpConfig(
-  localhost:   String,
   host:        String,
   auth:        Boolean = false,
   port:        Int = 25,
   user:        String = "",
   password:    String = "",
   startTTLS:   Boolean = false,
-  webHostname: String = "localhost"
+  webHostname: String = "www.chuti.fun",
+  fromEmail:   String = "administrator@chuti.fun",
+  fromName:    String = "Chuti Administrator",
+  bccEmail:    String = "roberto@leibman.net"
 )
 
 case class HttpConfig(
   hostName:         String,
-  port:             Int = 8079,
-  staticContentDir: String = "/Volumes/Personal/projects/chuti/debugDist"
+  port:             Int,
+  staticContentDir: String
+)
+
+case class RateLimitConfig(
+  enabled:               Boolean = true,
+  maxRequests:           Int = 100,
+  windowDurationSeconds: Long = 60
+) {
+
+  def windowDuration: scala.concurrent.duration.Duration =
+    scala.concurrent.duration.Duration(windowDurationSeconds, scala.concurrent.duration.SECONDS)
+
+}
+
+case class FlywayConfig(
+  locations:           List[String] = List("classpath:sql"),
+  enabled:             Boolean = true,
+  cleanDisabled:       Boolean = true,
+  validateOnMigrate:   Boolean = true,
+  mixed:               Boolean = false,
+  target:              String = "",
+  baselineOnMigrate:   Boolean = true,
+  baselineVersion:     String = "016",
+  baselineDescription: String = "Existing database baseline (V001-V016 already applied)"
+)
+
+case class AnalyticsConfig(
+  retentionDays:        Int = 7,
+  cleanupIntervalHours: Int = 24
 )
 
 case class ChutiConfig(
-  db:            DbConfig,
-  smtpConfig:    SmtpConfig,
-  httpConfig:    HttpConfig,
-  sessionConfig: SessionConfig
+  db:        DatabaseConfig,
+  smtp:      SmtpConfig,
+  http:      HttpConfig,
+  session:   AuthConfig,
+  rateLimit: RateLimitConfig,
+  flyway:    FlywayConfig,
+  oauth:     Map[String, OAuthProviderConfig],
+  analytics: AnalyticsConfig
 )
 
 object AppConfig {
@@ -102,7 +135,13 @@ object AppConfig {
 
 case class AppConfig(
   chuti: ChutiConfig
-)
+) {
+
+  lazy val dataSource: HikariDataSource = {
+    chuti.db.dataSourceConfig.createDataSource
+  }
+
+}
 
 trait ConfigurationService {
 
@@ -110,7 +149,6 @@ trait ConfigurationService {
 
 }
 
-// utility to read config
 object ConfigurationService {
 
   def withConfig(typesafeConfig: TypesafeConfig): ConfigurationService =

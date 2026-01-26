@@ -125,21 +125,21 @@ object Repository {
 
     def unfriend(enemy: User): RepositoryIO[Boolean]
     def friend(friend:  User): RepositoryIO[Boolean]
-    def friends: RepositoryIO[Seq[User]]
+    def friends:               RepositoryIO[Seq[User]]
 
-    def getWallet: RepositoryIO[Option[UserWallet]]
+    def getWallet:                            RepositoryIO[Option[UserWallet]]
     def getWallet(userId:        UserId):     RepositoryIO[Option[UserWallet]]
     def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet]
 
   }
   trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {
 
-    def getHistoricalUserGames: RepositoryIO[Seq[Game]]
+    def getHistoricalUserGames:      RepositoryIO[Seq[Game]]
     def userInGame(id:      GameId): RepositoryIO[Boolean]
     def updatePlayers(game: Game):   RepositoryIO[Game]
-    def gameInvites:              RepositoryIO[Seq[Game]]
-    def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]]
-    def getGameForUser:           RepositoryIO[Option[Game]]
+    def gameInvites:                 RepositoryIO[Seq[Game]]
+    def gamesWaitingForPlayers():    RepositoryIO[Seq[Game]]
+    def getGameForUser:              RepositoryIO[Option[Game]]
 
   }
 

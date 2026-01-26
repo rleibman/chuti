@@ -34,7 +34,7 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{Ref as ReactRef, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import org.scalajs.dom.html.Div
-import sttp.client3.*
+import sttp.client4.*
 
 import java.net.URI
 import java.time.{Instant, ZoneId}

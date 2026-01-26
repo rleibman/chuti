@@ -16,8 +16,9 @@
 
 package game
 
-import api.{ChutiEnvironment, ChutiSession}
 import api.token.TokenHolder
+import chat.ChatService
+import api.{ChutiEnvironment, ChutiSession}
 import caliban.*
 import caliban.CalibanError.ExecutionError
 import caliban.interop.zio.*
@@ -27,11 +28,8 @@ import caliban.schema.*
 import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
-import chat.ChatApi.{Mutations, Queries, Subscriptions}
-import chat.ChatService
 import chuti.{*, given}
 import dao.Repository
-import game.GameService
 import mail.Postman
 import zio.json.*
 import zio.json.ast.Json
@@ -113,9 +111,9 @@ object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
     userStream: ConnectionId => ZStream[GameService & ChutiSession & Repository, GameError, UserEvent]
   )
 
-  private given Schema[Any, GameId] = Schema.intSchema.contramap(_.gameId)
-  private given Schema[Any, UserId] = Schema.intSchema.contramap(_.userId)
-  private given Schema[Any, ConnectionId] = Schema.intSchema.contramap(_.connectionId)
+  private given Schema[Any, GameId] = Schema.longSchema.contramap(_.value)
+  private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
+  private given Schema[Any, ConnectionId] = Schema.stringSchema.contramap(_.value)
   private given Schema[Any, User] = gen[Any, User]
   private given Schema[Any, Game] = gen[Any, Game]
 
@@ -127,7 +125,7 @@ object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
     Schema.gen[ChutiEnvironment & ChutiSession & GameService & ChatService, Subscriptions]
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[GameId] = ArgBuilder.int.map(GameId.apply)
-  private given ArgBuilder[ConnectionId] = ArgBuilder.int.map(ConnectionId.apply)
+  private given ArgBuilder[ConnectionId] = ArgBuilder.string.map(ConnectionId.apply)
 
   def sanitizeGame(
     game: Game,
@@ -146,9 +144,10 @@ object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
       )
     )
 
-  def sanitizeGame(game: Game): ZIO[ChutiSession, Nothing, Game] =
+  def sanitizeGame(game: Game): ZIO[ChutiSession, GameError, Game] =
     for {
-      user <- ZIO.serviceWith[ChutiSession](_.user)
+      userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+      user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
     } yield sanitizeGame(game, user)
 
   lazy val api: GraphQL[ChutiEnvironment & ChutiSession & GameService & ChatService] =

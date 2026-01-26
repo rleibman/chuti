@@ -82,7 +82,7 @@ object GameComponent {
       event:  PlayEvent
     ): Callback = {
       calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.gameId, event.toJsonAST.toOption.get),
+        Mutations.play(gameId.value, event.toJsonAST.toOption.get),
         _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
       )
     }
@@ -597,7 +597,7 @@ object GameComponent {
 
   import scala.language.unsafeNulls
   given Reusability[Triunfo] = Reusability.by(_.toString)
-  given Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given Reusability[Game] = Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
   given Reusability[CuantasCantas] = Reusability.by(_.toString)
   given Reusability[Ficha] = Reusability.by(_.toString)
   given Reusability[State] = Reusability.derive[State]

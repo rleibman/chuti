@@ -17,32 +17,84 @@
 package api.routes
 
 import api.{ChutiEnvironment, ChutiSession}
-import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
+import auth.{AuthServer, Session}
 import chat.ChatService
+import chuti.*
+import game.GameApi
+import caliban.*
 import dao.Repository
-import game.{GameApi, GameService}
-import zio.*
 import zio.http.*
+import zio.json.*
+import zio.{ZIO, ZLayer}
 
-object GameRoutes {
+object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  lazy val authRoute
-    : IO[CalibanError.ValidationError, Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, Nothing]] =
-    for {
-      interpreter <- GameApi.api.interpreter
+  lazy private val interpreter = GameApi.api.interpreter
+
+  case class ChangePasswordRequest(
+    currentPassword: String,
+    newPassword:     String
+  )
+
+  object ChangePasswordRequest {
+
+    given JsonDecoder[ChangePasswordRequest] = DeriveJsonDecoder.gen[ChangePasswordRequest]
+
+  }
+
+  override def api: ZIO[
+    ChutiEnvironment,
+    GameError,
+    Routes[ChutiEnvironment & ChutiSession, GameError]
+  ] =
+    (for {
+      interpreter <- interpreter
     } yield {
       Routes(
         Method.ANY / "api" / "game" ->
           QuickAdapter(interpreter).handlers.api,
         Method.ANY / "api" / "game" / "ws" ->
-          QuickAdapter(interpreter).handlers.webSocket,
+          QuickAdapter(interpreter).handlers.webSocket
+            .tapAllZIO(a => ZIO.logError(s"WebSocket error: ${a.toString}"), b => ZIO.logInfo("WebSocket closed")),
         Method.ANY / "api" / "game" / "graphiql" ->
-          GraphiQLHandler.handler(apiPath = "/api/game"),
-        Method.GET / "api" / "game" / "schema" ->
-          Handler.fromBody(Body.fromCharSequence(GameApi.api.render)),
+          GraphiQLHandler.handler(apiPath = "/api/game", wsPath = None),
         Method.POST / "api" / "game" / "upload" ->
-          QuickAdapter(interpreter).handlers.upload
+          QuickAdapter(interpreter).handlers.upload,
+        Method.POST / "api" / "changePassword" ->
+          Handler.fromFunctionZIO[Request] { request =>
+            (for {
+              session    <- ZIO.service[ChutiSession]
+              authServer <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
+              user <- ZIO
+                .fromOption(session.user).orElseFail(GameError("Not logged in"))
+              bodyStr <- request.body.asString.mapError(e => GameError(e))
+              changePasswordRequest <- ZIO
+                .fromEither(bodyStr.fromJson[ChangePasswordRequest]).mapError(e => GameError(e))
+              // Verify current password by attempting to log in
+              loginResult <- authServer
+                .login(user.email, changePasswordRequest.currentPassword, session.connectionId).mapError(e =>
+                  GameError(e)
+                )
+              _ <- ZIO.when(loginResult.isEmpty)(ZIO.fail(GameError("Current password is incorrect")))
+              // Change the password
+              _ <- authServer.changePassword(user.id, changePasswordRequest.newPassword).mapError(e => GameError(e))
+            } yield Response.ok).catchAll { error =>
+              ZIO.succeed(Response.text(error.getMessage).status(Status.BadRequest))
+            }
+          }
       )
-    }
+    })
+      .mapError(GameError(_))
+
+  override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
+    (for {
+      interpreter <- interpreter.tapErrorCause(cause => ZIO.logCause(cause))
+    } yield {
+
+      Routes(
+        Method.GET / "unauth" / "chuti" / "schema" ->
+          Handler.fromBody(Body.fromCharSequence(GameApi.api.render)),
+      )
+    }).mapError(GameError(_))
 
 }

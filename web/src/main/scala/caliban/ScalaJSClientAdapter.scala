@@ -1,142 +1,167 @@
 /*
- * Copyright 2020 Roberto Leibman
+ * Copyright (c) 2025 Roberto Leibman - All Rights Reserved
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * This source code is protected under international copyright law.  All rights
+ * reserved and protected by the copyright holders.
+ * This file is confidential and only available to authorized individuals with the
+ * permission of the copyright holders.  If you encounter this file and do not have
+ * permission, please contact the copyright holders and delete this file.
  */
 
-package caliban.client.scalajs
+package caliban
 
-import _root_.util.Config
-import caliban.client
+import caliban.client.*
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.GraphQLResponseError.Location
 import caliban.client.Operations.{IsOperation, RootSubscription}
-import caliban.client.{GraphQLRequest, GraphQLResponse, GraphQLResponseError, SelectionBuilder}
+import app.ClientConfiguration
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
-import sttp.capabilities
-import sttp.client3.*
-import zio.*
-import chuti.{*, given}
+import sttp.client4.*
+import sttp.model.Uri
+import zio.json.*
+import zio.json.ast.*
 
 import java.net.URI
 import java.time.Instant
-import scala.concurrent.Future
-import scala.util.{Failure, Success}
-import zio.json.*
-import zio.json.ast.Json
+import scala.concurrent.duration.*
 
 trait WebSocketHandler {
 
-  def id:      String
+  def id: String
+
   def close(): Callback
 
 }
 
-trait ScalaJSClientAdapter extends TimerSupport {
+case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
-  val serverUri = uri"http://${Config.chutiHost}/api/game"
-  given backend: SttpBackend[Future, capabilities.WebSockets] = FetchBackend()
-
-  def asyncCalibanCall[Origin, A](
-    selectionBuilder: SelectionBuilder[Origin, A]
-  )(using ev:         IsOperation[Origin]
-  ): AsyncCallback[A] = {
-    val request = selectionBuilder.toRequest(serverUri)
-    // TODO add headers as necessary
-    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-    AsyncCallback
-      .fromFuture(request.send(backend))
-      .map(_.body match {
-        case Left(exception) => throw exception
-        case Right(value)    => value
-      })
-  }
-
-  def asyncCalibanCallThroughJsonOpt[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, Option[Json]]
-  )(using ev:         IsOperation[Origin]
-  ): AsyncCallback[Option[A]] =
-    asyncCalibanCall[Origin, Option[Json]](selectionBuilder).map { jsonOpt =>
-      jsonOpt.map(_.as[A]) match {
-        case Some(Right(value)) => Some(value)
-        case Some(Left(error)) =>
-          Callback.throwException(GameError(error)).runNow()
-          None
-        case None => None
+  // Custom encoder/decoder for __Value that maps to/from JSON without discriminators
+  given JsonEncoder[client.__Value] =
+    new JsonEncoder[client.__Value] {
+      def unsafeEncode(
+        value:  client.__Value,
+        indent: Option[Int],
+        out:    zio.json.internal.Write
+      ): Unit = {
+        value match {
+          case client.__Value.__StringValue(s)  => JsonEncoder.string.unsafeEncode(s, indent, out)
+          case client.__Value.__NumberValue(n)  => JsonEncoder.bigDecimal.unsafeEncode(n.bigDecimal, indent, out)
+          case client.__Value.__BooleanValue(b) => JsonEncoder.boolean.unsafeEncode(b, indent, out)
+          case client.__Value.__NullValue       => out.write("null")
+          case client.__Value.__EnumValue(e)    => JsonEncoder.string.unsafeEncode(e, indent, out)
+          case client.__Value.__ListValue(values) =>
+            out.write('[')
+            var first = true
+            values.foreach { v =>
+              if (!first) out.write(',')
+              first = false
+              unsafeEncode(v, indent, out)
+            }
+            out.write(']')
+          case client.__Value.__ObjectValue(fields) =>
+            out.write('{')
+            var first = true
+            fields.foreach { case (k, v) =>
+              if (!first) out.write(',')
+              first = false
+              JsonEncoder.string.unsafeEncode(k, indent, out)
+              out.write(':')
+              unsafeEncode(v, indent, out)
+            }
+            out.write('}')
+        }
       }
     }
 
-  def calibanCall[Origin, A](
-    selectionBuilder: SelectionBuilder[Origin, A],
-    callback:         A => Callback
-  )(using ev:         IsOperation[Origin]
-  ): Callback = {
-    val request = selectionBuilder.toRequest(serverUri)
-    // TODO add headers as necessary
-    import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+  given JsonDecoder[client.__Value] =
+    new JsonDecoder[client.__Value] {
+      def unsafeDecode(
+        trace: List[JsonError],
+        in:    zio.json.internal.RetractReader
+      ): client.__Value = {
+        // Parse as zio.json.ast.Json first, then convert
+        val json = JsonDecoder[Json].unsafeDecode(trace, in)
+        jsonToValue(json)
+      }
 
-    AsyncCallback
-      .fromFuture(request.send(backend))
-      .completeWith {
-        case Success(response) if response.code.isSuccess || response.code.isInformational =>
-          response.body match {
-            case Right(a) =>
-              callback(a)
-            case Left(error) =>
-              Callback.log(s"1 Error: $error") // TODO handle error responses better
-          }
-        case Failure(exception) =>
-          Callback.throwException(exception) // TODO handle error responses better
-        case Success(response) =>
-          Callback.log(s"2 Error: ${response.statusText}") // TODO handle error responses better
+      private def jsonToValue(json: Json): client.__Value =
+        json match {
+          case Json.Str(s)   => client.__Value.__StringValue(s)
+          case Json.Num(n)   => client.__Value.__NumberValue(n)
+          case Json.Bool(b)  => client.__Value.__BooleanValue(b)
+          case Json.Null     => client.__Value.__NullValue
+          case Json.Arr(arr) => client.__Value.__ListValue(arr.map(jsonToValue).toList)
+          case Json.Obj(fields) =>
+            client.__Value.__ObjectValue(fields.toList.map { case (k, v) => k -> jsonToValue(v) })
+        }
+    }
+
+  given JsonEncoder[Location] = DeriveJsonEncoder.gen[Location]
+  given JsonDecoder[Location] = DeriveJsonDecoder.gen[Location]
+  given JsonEncoder[GraphQLResponseError] = DeriveJsonEncoder.gen[GraphQLResponseError]
+  given JsonDecoder[GraphQLResponseError] = DeriveJsonDecoder.gen[GraphQLResponseError]
+
+  given JsonEncoder[client.__Value.__ObjectValue] =
+    new JsonEncoder[client.__Value.__ObjectValue] {
+      def unsafeEncode(
+        value:  client.__Value.__ObjectValue,
+        indent: Option[Int],
+        out:    zio.json.internal.Write
+      ): Unit = {
+        summon[JsonEncoder[client.__Value]].unsafeEncode(value, indent, out)
+      }
+    }
+  given JsonDecoder[client.__Value.__ObjectValue] =
+    new JsonDecoder[client.__Value.__ObjectValue] {
+      def unsafeDecode(
+        trace: List[JsonError],
+        in:    zio.json.internal.RetractReader
+      ): client.__Value.__ObjectValue = {
+        summon[JsonDecoder[client.__Value]].unsafeDecode(trace, in) match {
+          case obj: client.__Value.__ObjectValue => obj
+          case other => throw new Exception(s"Expected object but got $other")
+        }
+      }
+    }
+
+  given JsonEncoder[GraphQLResponse] = DeriveJsonEncoder.gen[GraphQLResponse]
+  given JsonDecoder[GraphQLResponse] = DeriveJsonDecoder.gen[GraphQLResponse]
+  given JsonEncoder[GraphQLRequest] = DeriveJsonEncoder.gen[GraphQLRequest]
+  given JsonDecoder[GraphQLRequest] = DeriveJsonDecoder.gen[GraphQLRequest]
+  given JsonEncoder[GQLOperationMessage] = DeriveJsonEncoder.gen[GQLOperationMessage]
+  given JsonDecoder[GQLOperationMessage] = DeriveJsonDecoder.gen[GQLOperationMessage]
+
+  // Enhancement error management switch this, insteaf of returning AsyncCallback, return an Either[Throwable, A]
+  def asyncCalibanCallWithAuth[Origin, A](
+    selectionBuilder: SelectionBuilder[Origin, A]
+  )(using ev:         IsOperation[Origin]
+  ): AsyncCallback[A] = {
+    util.ApiClientSttp4
+      .withAuth(selectionBuilder.toRequest(serverUri))
+      .map { s =>
+        s match {
+          case Left(exception) => throw exception
+          case Right(value)    => value
+        }
       }
   }
 
-  def calibanCallThroughJsonOpt[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, Option[Json]],
-    callback:         Option[A] => Callback
+  // Enhancement error management switch this, insteaf of returning AsyncCallback, return an Either[Throwable, A]
+  def asyncCalibanCallWithAuthOptional[Origin, A](
+    selectionBuilder: SelectionBuilder[Origin, A]
   )(using ev:         IsOperation[Origin]
-  ): Callback =
-    calibanCall[Origin, Option[Json]](
-      selectionBuilder,
-      {
-        case Some(json) =>
-          json.as[A] match {
-            case Right(obj) => callback(Option(obj))
-            case Left(error) =>
-              Callback.log(s"3 Error: $error") // TODO handle error responses better
-          }
-        case None => callback(None)
-      }
-    )
-
-  def calibanCallThroughJson[Origin, A: JsonDecoder](
-    selectionBuilder: SelectionBuilder[Origin, Json],
-    callback:         A => Callback
-  )(using ev:         IsOperation[Origin]
-  ): Callback =
-    calibanCall[Origin, Json](
-      selectionBuilder,
-      { json =>
-        json.as[A] match {
-          case Right(obj) => callback(obj)
-          case Left(error) =>
-            Callback.log(s"4 Error: $error") // TODO handle error responses better
+  ): AsyncCallback[A] = {
+    util.ApiClientSttp4
+      .withAuthOptional(selectionBuilder.toRequest(serverUri))
+      .map { s =>
+        s match {
+          case Left(exception) => throw exception
+          case Right(value)    => value
         }
       }
-    )
+  }
 
   import GQLOperationMessage.*
 
@@ -164,31 +189,15 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
   }
 
-  given JsonEncoder[client.__Value] = JsonEncoder.derived[client.__Value]
-  given JsonDecoder[client.__Value] = JsonDecoder.derived[client.__Value]
-  given JsonEncoder[Location] = DeriveJsonEncoder.gen[Location]
-  given JsonDecoder[Location] = DeriveJsonDecoder.gen[Location]
-  given JsonEncoder[GraphQLResponseError] = DeriveJsonEncoder.gen[GraphQLResponseError]
-  given JsonDecoder[GraphQLResponseError] = DeriveJsonDecoder.gen[GraphQLResponseError]
+  import scala.language.unsafeNulls
 
-  given JsonEncoder[client.__Value.__ObjectValue] = DeriveJsonEncoder.gen[client.__Value.__ObjectValue]
-  given JsonDecoder[client.__Value.__ObjectValue] = DeriveJsonDecoder.gen[client.__Value.__ObjectValue]
-
-  given JsonEncoder[GraphQLResponse] = DeriveJsonEncoder.gen[GraphQLResponse]
-  given JsonDecoder[GraphQLResponse] = DeriveJsonDecoder.gen[GraphQLResponse]
-  given JsonEncoder[GraphQLRequest] = DeriveJsonEncoder.gen[GraphQLRequest]
-  given JsonDecoder[GraphQLRequest] = DeriveJsonDecoder.gen[GraphQLRequest]
-  given JsonEncoder[GQLOperationMessage] = DeriveJsonEncoder.gen[GQLOperationMessage]
-  given JsonDecoder[GQLOperationMessage] = DeriveJsonDecoder.gen[GQLOperationMessage]
-
-  // TODO we will replace this with some zio thing as soon as I figure out how, maybe replace all callbacks to zios?
   def makeWebSocketClient[A: JsonDecoder](
-    uriOrSocket:      Either[URI, WebSocket],
-    query:            SelectionBuilder[RootSubscription, A],
-    operationId:      String,
-    connectionId:     String,
-    onData:           (String, Option[A]) => Callback,
-    connectionParams: Option[Json] = None,
+    webSocket:          Option[WebSocket],
+    query:              SelectionBuilder[RootSubscription, A],
+    operationId:        String,
+    socketConnectionId: String,
+    onData:             (String, Option[A]) => Callback,
+    connectionParams:   Option[Json] = None,
     timeout: Duration = 8.minutes, // how long the client should wait in ms for a keep-alive message from the server (default 5 minutes), this parameter is ignored if the server does not send keep-alive messages. This will also be used to calculate the max connection time per connect/reconnect
     reconnect:            Boolean = true,
     reconnectionAttempts: Int = 3,
@@ -196,13 +205,15 @@ trait ScalaJSClientAdapter extends TimerSupport {
       (
         _,
         _
-      ) => Callback.empty
+      ) =>
+        Callback.empty
     },
     onReconnected: (String, Option[Json]) => Callback = {
       (
         _,
         _
-      ) => Callback.empty
+      ) =>
+        Callback.empty
     },
     onReconnecting: String => Callback = { _ => Callback.empty },
     onConnecting:   Callback = Callback.empty,
@@ -210,26 +221,28 @@ trait ScalaJSClientAdapter extends TimerSupport {
       (
         _,
         _
-      ) => Callback.empty
+      ) =>
+        Callback.empty
     },
     onKeepAlive: Option[Json] => Callback = { _ => Callback.empty },
     onServerError: (String, Option[Json]) => Callback = {
       (
         _,
         _
-      ) => Callback.empty
+      ) =>
+        Callback.empty
     },
     onClientError: Throwable => Callback = { _ => Callback.empty }
   ): WebSocketHandler =
     new WebSocketHandler {
 
-      override val id: String = connectionId
+      override val id: String = socketConnectionId
 
       def GQLConnectionInit(): GQLOperationMessage =
         GQLOperationMessage(GQL_CONNECTION_INIT, Option(operationId), connectionParams)
 
       def GQLStart(query: GraphQLRequest): GQLOperationMessage =
-        GQLOperationMessage(GQL_START, Option(operationId), payload = Option(query.toJsonAST.toOption.get))
+        GQLOperationMessage(GQL_START, Option(operationId), payload = query.toJsonAST.toOption)
 
       def GQLStop(): GQLOperationMessage = GQLOperationMessage(GQL_STOP, Option(operationId))
 
@@ -238,12 +251,16 @@ trait ScalaJSClientAdapter extends TimerSupport {
 
       private val graphql: GraphQLRequest = query.toGraphQL()
 
-      val socket: WebSocket = uriOrSocket match {
-        case Left(uri)        => new org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")
-        case Right(webSocket) => webSocket
+      val socket: WebSocket = webSocket.getOrElse {
+        // Use wss:// on server (HTTPS), ws:// locally (HTTP)
+        val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
+        val uri = new URI(s"$protocol://${ClientConfiguration.live.host}/unauth/dmscreen/ws")
+        println("Connecting to WebSocket at " + uri.toString)
+
+        org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")
       }
 
-      // TODO, move this into some sort of Ref/state class
+      // Enhancement, move this into some sort of Ref/state class
       case class ConnectionState(
         lastKAOpt:       Option[Instant] = None,
         kaIntervalOpt:   Option[Int] = None,
@@ -265,19 +282,19 @@ trait ScalaJSClientAdapter extends TimerSupport {
       socket.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
         val strMsg = e.data.toString
         val msg: Either[String, GQLOperationMessage] = strMsg.fromJson[GQLOperationMessage]
-//      println(s"Received: $strMsg")
+        //      println(s"Received: $strMsg")
         msg match {
           case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
             connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
             onDisconnected(id.getOrElse(""), payload).runNow()
-//          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
-//            connectionState =
-//              connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
-//            onReconnecting(id.getOrElse(""))
-//            doConnect()
-//          } else if (connectionState.reconnectCount > reconnectionAttempts) {
-//            println("Maximum number of connection retries exceeded")
-//          }
+          //          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
+          //            connectionState =
+          //              connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
+          //            onReconnecting(id.getOrElse(""))
+          //            doConnect()
+          //          } else if (connectionState.reconnectCount > reconnectionAttempts) {
+          //            println("Maximum number of connection retries exceeded")
+          //          }
           // Nothing else to do, really
           case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
             // We should only do this the first time
@@ -307,7 +324,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                       connectionState.lastKAOpt.map { lastKA =>
                         val timeFromLastKA =
                           java.time.Duration
-                            .between(lastKA, Instant.now.nn).nn.toMillis.milliseconds
+                            .between(lastKA, Instant.now).nn.toMillis.milliseconds
                         if (timeFromLastKA > timeout) {
                           // Assume we've gotten disconnected, we haven't received a KA in a while
                           if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
@@ -324,7 +341,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                 )
               )
             }
-            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now().nn))
+            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
             onKeepAlive(payload).runNow()
           case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
             if (connectionState.closed) println("Connection is already closed")
@@ -336,7 +353,7 @@ trait ScalaJSClientAdapter extends TimerSupport {
                   payload
                     .as[GraphQLResponse]
                     .left
-                    .map(ex => DecodingError(s"Json deserialization error $ex"))
+                    .map(ex => DecodingError(s"Json deserialization error: $ex"))
                 data <-
                   if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
                   else Right(parsed.data)
@@ -364,18 +381,23 @@ trait ScalaJSClientAdapter extends TimerSupport {
           case Right(GQLOperationMessage(typ, id, payload)) =>
             println(s"Unknown server operation! $typ $payload $id")
           case Left(error) =>
-            val e = GameError(error)
-            onClientError(e)
-            e.printStackTrace()
+            onClientError(DecodingError(error))
         }
       }
       socket.onerror = { (e: org.scalajs.dom.Event) =>
         println(s"Got error $e")
-        onClientError(new Exception(s"We've got a socket error, no further info ($e)"))
+        onClientError(Exception(s"We've got a socket error, no further info ($e)"))
       }
       socket.onopen = { (_: org.scalajs.dom.Event) =>
         onConnecting.runNow()
         doConnect()
+      }
+
+      socket.onclose = { (e: org.scalajs.dom.CloseEvent) =>
+        if (connectionState.firstConnection) {
+          println(s"Socket closed before connection could be established: $query, ${e.reason}")
+        }
+        println(s"Socket closed: $query, ${e.reason}")
       }
 
       override def close(): Callback = {

@@ -33,7 +33,8 @@ trait ChutiBot {
     for {
       gameOperations <- ZIO.service[Repository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
-      user           <- ZIO.serviceWith[ChutiSession](_.user)
+      userOpt        <- ZIO.serviceWith[ChutiSession](_.user)
+      user           <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
       game           <- gameOperations.get(gameId).map(_.get)
       turn           <- decideTurn(user, game)
       played         <- gameService.play(gameId, turn)

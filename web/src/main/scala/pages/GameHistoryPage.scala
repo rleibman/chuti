@@ -18,7 +18,7 @@ package pages
 
 import java.time.format.DateTimeFormatter
 import app.ChutiState
-import caliban.client.scalajs.ScalaJSClientAdapter
+import caliban.ScalaJSClientAdapter
 import chuti.{*, given}
 import caliban.client.scalajs.GameClient.Queries
 import japgolly.scalajs.react.component.Scala.Unmounted

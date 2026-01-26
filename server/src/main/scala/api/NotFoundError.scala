@@ -14,17 +14,24 @@
  * limitations under the License.
  */
 
-package util
+package api
 
-import org.scalajs.dom.window
+import chuti.GameError
 
-object Config {
+class NotFoundError(
+  msg:         String,
+  cause:       Option[Throwable] = None,
+  isTransient: Boolean = false
+) extends GameError(msg, cause, isTransient)
 
-  val chutiHost =
-    s"${window.location.hostname}${
-        if (window.location.port != "" && window.location.port != "80")
-          s":${window.location.port}"
-        else ""
-      }"
+object NotFoundError {
+
+  def apply(message: String): NotFoundError = new NotFoundError(message)
+
+  def apply(
+    msg:         String,
+    cause:       Option[Throwable] = None,
+    isTransient: Boolean = false
+  ): NotFoundError = new NotFoundError(msg, cause, isTransient)
 
 }

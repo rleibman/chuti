@@ -16,35 +16,27 @@
 
 package api
 
-import chuti.User
-import zio.ULayer
+import auth.{AuthenticatedSession, Session, UnauthenticatedSession}
+import chuti.{ConnectionId, User}
+import zio.json.*
+import zio.{ULayer, ZLayer}
 
 import java.util.Locale
-import zio.json.*
+
+type ChutiSession = Session[User, ConnectionId]
 
 object ChutiSession {
 
-  val adminSession: ChutiSession = ChutiSession(chuti.god)
+  val empty: ChutiSession = UnauthenticatedSession[User, ConnectionId]()
 
-  private given JsonDecoder[Locale] =
-    JsonDecoder.string.mapOrFail(s =>
-      Locale.forLanguageTag(s) match {
-        case l: Locale => Right(l)
-        case null => Left(s"invalid locale $s")
-      }
-    )
-
-  private given JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
-
-  given JsonCodec[ChutiSession] = DeriveJsonCodec.gen[ChutiSession]
+  val godSession:                ChutiSession = AuthenticatedSession(Some(chuti.god), Some(ConnectionId.random))
+  val godlessSession:            ChutiSession = AuthenticatedSession(Some(chuti.godless), Some(ConnectionId.random))
+  def botSession(botUser: User): ChutiSession = AuthenticatedSession(Some(botUser), Some(ConnectionId.random))
 
 }
 
-case class ChutiSession(
-  user:   User,
-  locale: Locale = Locale.of("es", "MX")
-) {
+extension (session: ChutiSession) {
 
-  def toLayer: ULayer[ChutiSession] = zio.ZLayer.succeed(this)
+  def toLayer: ULayer[ChutiSession] = ZLayer.succeed(session)
 
 }

@@ -1,11 +1,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Global stuff
-lazy val SCALA = "3.5.2"
+lazy val SCALA = "3.8.1"
 
-val scalajsReactVersion = "2.1.1"
+val scalajsReactVersion = "3.0.0"
 val reactVersion = "^18.3.0"
 
-version := "0.2.0-SNAPSHOT"
+version := "1.0.0"
 
 enablePlugins(ScalablyTypedConverterGenSourcePlugin)
 
@@ -14,7 +14,7 @@ scalaVersion                  := SCALA
 Global / scalaVersion         := SCALA
 
 organization     := "net.leibman"
-startYear        := Some(2020)
+startYear        := Some(2024)
 organizationName := "Roberto Leibman"
 headerLicense    := Some(HeaderLicense.MIT("2024", "Roberto Leibman", HeaderLicenseStyle.Detailed))
 name             := "chuti-stlib"
@@ -22,14 +22,21 @@ useYarn          := true
 stOutputPackage  := "net.leibman.chuti"
 stFlavour        := Flavour.ScalajsReact
 
+libraryDependencies ++= Seq(
+  "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion,
+  "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion
+)
+
+dependencyOverrides += "com.github.japgolly.scalajs-react" %%% "core" % scalajsReactVersion
+
 /* javascript / typescript deps */
 Compile / npmDependencies ++= Seq(
-  "react-dom"         -> reactVersion,
+  "@types/react"      -> reactVersion,
   "@types/react-dom"  -> reactVersion,
   "react"             -> reactVersion,
-  "@types/react"      -> reactVersion,
-  "csstype"           -> "^3.1.0",
+  "react-dom"         -> reactVersion,
   "@types/prop-types" -> "^15.7.0",
+  "csstype"           -> "^3.1.0",
   "semantic-ui-react" -> "^2.1.5"
 )
 
@@ -42,7 +49,7 @@ Test / npmDependencies ++= Seq(
 scalaJSLinkerConfig ~= (_.withSourceMap(false))
 
 // focus only on these libraries
-stMinimize := Selection.AllExcept("semantic-ui-react", "react-quill")
+stMinimize := Selection.AllExcept("semantic-ui-react")
 
 stIgnore ++= List(
 )

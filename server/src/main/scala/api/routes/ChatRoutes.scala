@@ -16,21 +16,25 @@
 
 package api.routes
 
-import api.token.TokenHolder
 import api.{ChutiEnvironment, ChutiSession}
-import caliban.interop.tapir.{HttpInterpreter, WebSocketInterpreter}
 import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
 import chat.{ChatApi, ChatService}
+import chuti.GameError
 import dao.Repository
-import mail.Postman
 import zio.*
 import zio.http.*
 
-object ChatRoutes {
+object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  lazy val authRoute: IO[CalibanError.ValidationError, Routes[ChatService & ChutiEnvironment & ChutiSession, Nothing]] =
-    for {
-      interpreter <- ChatApi.api.interpreter
+  lazy private val interpreter = ChatApi.api.interpreter
+
+  override def api: ZIO[
+    ChutiEnvironment,
+    GameError,
+    Routes[ChutiEnvironment & ChutiSession, GameError]
+  ] =
+    (for {
+      interpreter <- interpreter
     } yield {
       Routes(
         Method.ANY / "api" / "chat" ->
@@ -38,12 +42,20 @@ object ChatRoutes {
         Method.ANY / "api" / "chat" / "ws" ->
           QuickAdapter(interpreter).handlers.webSocket,
         Method.ANY / "api" / "chat" / "graphiql" ->
-          GraphiQLHandler.handler(apiPath = "/api/chat"),
-        Method.GET / "api" / "chat" / "schema" ->
+          GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
+        Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.
+          QuickAdapter(interpreter).handlers.upload,
+        ).mapError(GameError.apply)
+
+  /** These do not require a session
+   */
+  override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
+    (for {
+      interpreter <- interpreter
+    } yield {
+      Routes(
+        Method.GET / "unauth" / "chat" / "schema" ->
           Handler.fromBody(Body.fromCharSequence(ChatApi.api.render)),
-        Method.POST / "api" / "chat" / "upload" ->
-          QuickAdapter(interpreter).handlers.upload
-      )
-    }
+    }).mapError(DMScreenError(_))
 
 }

@@ -211,7 +211,11 @@ object GameClient {
     )(implicit encoder0: ArgEncoder[Int]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder
-        .Field("acceptGameInvitation", OptionOf(Scalar()), arguments = List(Argument("value", value, "Int!")(encoder0)))
+        .Field(
+          "acceptGameInvitation",
+          OptionOf(Scalar()),
+          arguments = List(Argument("value", value, "Int!")(encoder0))
+        )
     def declineGameInvitation(
       value:             Int
     )(implicit encoder0: ArgEncoder[Int]

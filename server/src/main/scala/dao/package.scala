@@ -28,15 +28,15 @@ package object dao {
     ZIO[ChutiSession, RepositoryError, E]
 
   case class FriendsRow(
-    one: Int,
-    two: Int
+    one: Long,
+    two: Long
   )
 
   object UserRow {
 
     def fromUser(value: User): UserRow =
       UserRow(
-        id = value.id.fold(0)(_.userId),
+        id = value.id.fold(0L)(_.value),
         name = value.name,
         email = value.email,
         created = Timestamp.from(value.created).nn,
@@ -47,7 +47,7 @@ package object dao {
   }
 
   case class UserRow(
-    id:          Int,
+    id:          Long,
     name:        String,
     email:       String,
     created:     Timestamp,
@@ -74,7 +74,7 @@ package object dao {
 
     def fromGame(value: Game): GameRow = {
       val ret = GameRow(
-        id = value.id.fold(0)(_.gameId),
+        id = value.id.fold(0L)(_.value),
         current_index = value.currentEventIndex,
         lastSnapshot = value.toJson,
         status = value.gameStatus,
@@ -87,7 +87,7 @@ package object dao {
   }
 
   case class GameRow(
-    id:            Int,
+    id:            Long,
     lastSnapshot:  String,
     status:        GameStatus,
     created:       Timestamp,
@@ -110,26 +110,26 @@ package object dao {
   }
 
   case class GameEventRow(
-    gameId:       Int,
+    gameId:       Long,
     currentIndex: Int = 0,
     eventData:    String
   )
 
   case class GamePlayersRow(
-    userId:  Int,
-    gameId:  Int,
-    order:   Int,
+    userId:  Long,
+    gameId:  Long,
+    order:   Long,
     invited: Boolean
   )
 
   object UserWalletRow {
 
     def fromUserWallet(value: UserWallet): UserWalletRow =
-      UserWalletRow(userId = value.userId.userId, amount = value.amount)
+      UserWalletRow(userId = value.userId.value, amount = value.amount)
 
   }
   case class UserWalletRow(
-    userId: Int,
+    userId: Long,
     amount: BigDecimal
   ) {
 

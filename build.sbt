@@ -1,12 +1,24 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // Common Stuff
+
+import org.apache.commons.io.FileUtils
+
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import org.apache.commons.io.FileUtils
+
+lazy val buildTime: SettingKey[String] = SettingKey[String]("buildTime", "time of build").withRank(KeyRanks.Invisible)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Global stuff
+ThisBuild / resolvers += Resolver.sonatypeCentralSnapshots
+
+lazy val SCALA = "3.8.1"
 Global / onChangedBuildSource := ReloadOnSourceChanges
+scalaVersion                  := SCALA
+Global / scalaVersion         := SCALA
+
+import scala.concurrent.duration.*
+Global / watchAntiEntropy := 1.second
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shared settings
@@ -16,236 +28,358 @@ lazy val dist = TaskKey[File]("dist")
 lazy val debugDist = TaskKey[File]("debugDist")
 
 lazy val scala3Opts = Seq(
+  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s",
+  "-deprecation", // Emit warning and location for usages of deprecated APIs.
   "-no-indent", // scala3
-  "-old-syntax", // scala3
+  "-old-syntax", // I hate space sensitive languages!
   "-encoding",
   "utf-8", // Specify character encoding used by source files.
   "-feature", // Emit warning and location for usages of features that should be imported explicitly.
   "-language:existentials", // Existential types (besides wildcard types) can be written and inferred
   "-language:implicitConversions",
   "-language:higherKinds", // Allow higher-kinded types
-  //  "-language:strictEquality",
+  //  "-language:strictEquality", //This is cool, but super noisy
   "-unchecked", // Enable additional warnings where generated code depends on assumptions.
-  "-Xfatal-warnings", // Fail the compilation if there are any warnings.
-  "-deprecation", // Emit warning and location for usages of deprecated APIs.
+//  "-Wsafe-init", //Great idea, breaks compile though.
+  "-Xmax-inlines",
+  "128",
   //  "-explain-types", // Explain type errors in more detail.
   //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
-  "-Xmax-inlines",
-  "128",
   "-Yretain-trees" // Retain trees for debugging.,
 )
 
 enablePlugins(
-  GitVersioning,
-  CalibanPlugin
+  com.github.sbt.git.GitVersioning
 )
 
-//val circeVersion = "0.14.10"
-val calibanVersion = "2.9.0"
-val zioVersion = "2.1.13"
+val betterFilesVersion = "3.9.2"
+val calibanVersion = "3.0.0"
+val calibanClientVersion = "3.0.0"
+val commonsCodecVersion = "1.20.0"
+val courierVersion = "4.0.0-RC1"
+val stlibVersion = "1.0.0"
+val flywayVersion = "11.20.2"
+val izumiReflectVersion = "3.0.9"
+val jsoniterVersion = "2.38.8"
+val justSemverCoreVersion = "1.1.1"
+val jwtCirceVersion = "11.0.3"
+val jwtZioJsonVersion = "11.0.3"
+val langchain4jOllamaVersion = "1.10.0"
+val langchainCoreVersion = "1.10.0"
+val langchainLibrariesVersion = "1.10.0-beta18"
+val logbackVersion = "1.5.25"
+val mariadbVersion = "3.5.7"
+val openPdfVersion = "3.0.0"
+val qdrantVersion = "1.21.4"
 val quillVersion = "4.8.6"
-val zioHttpVersion = "3.0.1"
-val zioConfigVersion = "4.0.2"
-val zioJsonVersion = "0.7.3"
-val testContainerVersion = "0.41.4"
-val SCALA = "3.5.2"
+val scalablytypedRuntimeVersion = "2.4.2"
+val scalacssVersion = "1.0.0"
+val scalaJavaTimeVersion = "2.6.0"
+val scalajsDomVersion = "2.8.1"
+val scalajsReactVersion = "3.0.0"
+val scalatagsVersion = "0.13.1"
+val scalaXmlVersion = "2.4.0"
+val sttpClient4Version = "4.0.15"
+val testContainerVersion = "0.44.1"
+val zioCacheVersion = "0.2.7"
+val zioConfigVersion = "4.0.6"
+val zioHttpVersion = "3.7.4"
+val zioJsonVersion = "0.7.45"
+val zioPreludeVersion = "1.0.0-RC45"
+val zioLoggingSlf4j2Version = "2.5.3"
+val zioNioVersion = "2.0.2"
+val zioSchemaVersion = "1.5.0"
+val zioVersion = "2.1.24"
+val zioAuth = "3.0.3"
 
 lazy val commonSettings = Seq(
-  organization                     := "net.leibman",
-  scalaVersion                     := SCALA,
-  startYear                        := Some(2020),
-  organizationName                 := "Roberto Leibman",
-  headerLicense                    := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
-  libraryDependencies += "dev.zio" %% "zio" % zioVersion withSources (),
-  scalacOptions ++= scala3Opts
+  organization       := "net.leibman",
+  startYear          := Some(2024),
+  organizationName   := "Roberto Leibman",
+  git.useGitDescribe := true,
+  headerLicense      := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
+  scalacOptions ++= scala3Opts,
+  resolvers += Resolver.mavenLocal
 )
 
-
 ////////////////////////////////////////////////////////////////////////////////////
-// common (i.e. model)
-lazy val commonJVM = common.jvm
-lazy val commonJS = common.js
+// Model
+lazy val modelJVM = model.jvm
+lazy val modelJS = model.js
 
-lazy val common = crossProject(JSPlatform, JVMPlatform)
+lazy val model = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(
     AutomateHeaderPlugin,
-    GitVersioning,
+    com.github.sbt.git.GitVersioning,
     BuildInfoPlugin
   )
+  .jvmSettings(scalacOptions ++= scala3Opts :+ "-Werror")
+  .jsSettings(scalacOptions ++= scala3Opts)
   .settings(
-    scalaVersion     := SCALA,
-    name             := "chuti-common",
-    buildInfoPackage := "chuti"
+    name             := "chuti-model",
+    buildInfoPackage := "chuti",
+    commonSettings,
+    libraryDependencies ++= Seq(
+      "net.leibman" % "zio-auth_3" % zioAuth withSources () // I don't know why %% isn't working.
+    )
   )
+  .jvmEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
   .jvmSettings(
-    commonSettings,
-    libraryDependencies ++= Seq("dev.zio" %% "zio-json" % zioJsonVersion withSources ())
+    libraryDependencies ++= Seq(
+      "dev.zio"     %% "zio"                 % zioVersion withSources (),
+      "dev.zio"     %% "zio-nio"             % zioNioVersion withSources (),
+      "dev.zio"     %% "zio-config-magnolia" % zioConfigVersion withSources (),
+      "dev.zio"     %% "zio-config-typesafe" % zioConfigVersion withSources (),
+      "dev.zio"     %% "zio-json"            % zioJsonVersion withSources (),
+      "dev.zio"     %% "zio-prelude"         % zioPreludeVersion withSources (),
+      "dev.zio"     %% "zio-http"            % zioHttpVersion withSources (),
+      "io.getquill" %% "quill-jdbc-zio"      % quillVersion withSources (),
+      "io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion withSources ()
+    )
   )
+  .jsEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
   .jsSettings(
-    commonSettings,
-    libraryDependencies ++= Seq("dev.zio" %%% "zio-json" % zioJsonVersion withSources ())
+    libraryDependencies ++= Seq(
+      "net.leibman"               % "zio-auth_sjs1_3" % zioAuth withSources (), // I don't know why %% isn't working.
+      "dev.zio" %%% "zio"         % zioVersion withSources (),
+      "dev.zio" %%% "zio-json"    % zioJsonVersion withSources (),
+      "dev.zio" %%% "zio-prelude" % zioPreludeVersion withSources (),
+      "io.kevinlee" %%% "just-semver-core"                                % justSemverCoreVersion withSources (),
+      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-core"   % jsoniterVersion,
+      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-macros" % jsoniterVersion
+    )
   )
 
+////////////////////////////////////////////////////////////////////////////////////
+// Analytics
+lazy val analyticsJVM = analytics.jvm
+lazy val analyticsJS = analytics.js
+
+lazy val analytics = crossProject(JSPlatform, JVMPlatform)
+  .enablePlugins(
+    // AutomateHeaderPlugin,
+    com.github.sbt.git.GitVersioning,
+    BuildInfoPlugin
+  )
+  .jvmSettings(scalacOptions ++= scala3Opts :+ "-Werror")
+  .jsSettings(scalacOptions ++= scala3Opts)
+  .settings(
+    name             := "chuti-analytics",
+    buildInfoPackage := "chuti",
+    commonSettings,
+    libraryDependencies ++= Seq(
+      "net.leibman" % "zio-auth_3" % zioAuth withSources () // I don't know why %% isn't working.
+    )
+  )
+  .jvmEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
+  .jvmSettings(
+    libraryDependencies ++= Seq(
+      "dev.zio"     %% "zio"                 % zioVersion withSources (),
+      "dev.zio"     %% "zio-nio"             % zioNioVersion withSources (),
+      "dev.zio"     %% "zio-config-magnolia" % zioConfigVersion withSources (),
+      "dev.zio"     %% "zio-config-typesafe" % zioConfigVersion withSources (),
+      "dev.zio"     %% "zio-json"            % zioJsonVersion withSources (),
+      "dev.zio"     %% "zio-prelude"         % zioPreludeVersion withSources (),
+      "dev.zio"     %% "zio-http"            % zioHttpVersion withSources (),
+      "io.getquill" %% "quill-jdbc-zio"      % quillVersion withSources (),
+      "io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion withSources ()
+    )
+  )
+  .jvmConfigure(_.dependsOn(modelJVM))
+  .jsEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
+  .jsSettings(
+    libraryDependencies ++= Seq(
+      "net.leibman"               % "zio-auth_sjs1_3" % zioAuth withSources (), // I don't know why %% isn't working.
+      "dev.zio" %%% "zio"         % zioVersion withSources (),
+      "dev.zio" %%% "zio-json"    % zioJsonVersion withSources (),
+      "dev.zio" %%% "zio-prelude" % zioPreludeVersion withSources (),
+      "io.kevinlee" %%% "just-semver-core"                                % justSemverCoreVersion withSources (),
+      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-core"   % jsoniterVersion,
+      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-macros" % jsoniterVersion
+    )
+  )
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Server
 lazy val server = project
   .enablePlugins(
     AutomateHeaderPlugin,
-    GitVersioning,
+    com.github.sbt.git.GitVersioning,
     LinuxPlugin,
-    JDebPackaging,
     DebianPlugin,
     DebianDeployPlugin,
     JavaServerAppPackaging,
     SystemloaderPlugin,
     SystemdPlugin
   )
-  .settings(debianSettings)
-  .settings(commonSettings)
-  .dependsOn(commonJVM)
+  .settings(debianSettings, commonSettings)
+  .dependsOn(modelJVM, ai, analyticsJVM)
   .settings(
-    name := "chuti-server",
-//    libraryDependencySchemes += "org.scala-lang.modules" %% "scala-java8-compat" % "always",
+    scalacOptions ++= scala3Opts :+ "-Werror",
+    buildInfoPackage := "chuti.server",
+    name             := "chuti-server",
     libraryDependencies ++= Seq(
       // DB
-      "mysql"        % "mysql-connector-java" % "8.0.33" withSources (),
-      "io.getquill" %% "quill-jdbc-zio"       % quillVersion withSources (),
+      "org.mariadb.jdbc" % "mariadb-java-client" % mariadbVersion withSources (),
+      "io.getquill"     %% "quill-jdbc-zio"      % quillVersion withSources (),
+      "org.flywaydb"     % "flyway-core"         % flywayVersion withSources (),
+      "org.flywaydb"     % "flyway-mysql"        % flywayVersion withSources (),
+      // Log
+      "ch.qos.logback" % "logback-classic" % logbackVersion withSources (),
       // ZIO
-      "dev.zio"               %% "zio"                            % zioVersion withSources (),
-      "dev.zio"               %% "zio-nio"                        % "2.0.2" withSources (),
-      "dev.zio"               %% "zio-cache"                      % "0.2.3" withSources (),
-      "dev.zio"               %% "zio-config"                     % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-derivation"          % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-magnolia"            % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-config-typesafe"            % zioConfigVersion withSources (),
-      "dev.zio"               %% "zio-logging-slf4j"              % "2.4.0" withSources (),
-      "dev.zio"               %% "izumi-reflect"                  % "2.3.10" withSources (),
-      "dev.zio"               %% "zio-json"                       % zioJsonVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban"                        % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-tapir"                  % calibanVersion withSources (),
-      "com.github.ghostdogpr" %% "caliban-zio-http"               % calibanVersion withSources (),
-      "dev.zio"               %% "zio-http"                       % zioHttpVersion withSources (),
-      "com.github.jwt-scala"  %% "jwt-zio-json"                   % "10.0.1" withSources (), // Other random utilities
-      "com.github.pathikrit"  %% "better-files"                   % "3.9.2" withSources (),
-      "com.github.daddykotex" %% "courier"                        % "3.2.0" withSources (),
-      "ch.qos.logback"         % "logback-classic"                % "1.5.12" withSources (),
-      "commons-codec"          % "commons-codec"                  % "1.17.1",
+      "dev.zio"                       %% "zio"                   % zioVersion withSources (),
+      "dev.zio"                       %% "zio-nio"               % zioNioVersion withSources (),
+      "dev.zio"                       %% "zio-cache"             % zioCacheVersion withSources (),
+      "dev.zio"                       %% "zio-config"            % zioConfigVersion withSources (),
+      "dev.zio"                       %% "zio-config-derivation" % zioConfigVersion withSources (),
+      "dev.zio"                       %% "zio-config-magnolia"   % zioConfigVersion withSources (),
+      "dev.zio"                       %% "zio-config-typesafe"   % zioConfigVersion withSources (),
+      "dev.zio"                       %% "zio-logging-slf4j2"    % zioLoggingSlf4j2Version withSources (),
+      "dev.zio"                       %% "izumi-reflect"         % izumiReflectVersion withSources (),
+      "com.github.ghostdogpr"         %% "caliban"               % calibanVersion withSources (),
+      "com.github.ghostdogpr"         %% "caliban-quick"         % calibanVersion withSources (),
+      "dev.zio"                       %% "zio-http"              % zioHttpVersion withSources (),
+      "com.github.jwt-scala"          %% "jwt-circe"             % jwtCirceVersion withSources (),
+      "com.github.jwt-scala"          %% "jwt-zio-json"          % jwtZioJsonVersion withSources (),
+      "dev.zio"                       %% "zio-json"              % zioJsonVersion withSources (),
+      "com.softwaremill.sttp.client4" %% "core"                  % sttpClient4Version withSources (),
+      "com.softwaremill.sttp.client4" %% "zio"                   % sttpClient4Version withSources (),
+      "com.softwaremill.sttp.client4" %% "zio-json"              % sttpClient4Version withSources (),
+      "org.scala-lang.modules"        %% "scala-xml"             % scalaXmlVersion withSources (),
+      // Other random utilities
+      "com.github.pathikrit"  %% "better-files"                   % betterFilesVersion withSources (),
+      "com.github.daddykotex" %% "courier"                        % courierVersion withSources (),
+      "commons-codec"          % "commons-codec"                  % commonsCodecVersion,
       "com.dimafeng"          %% "testcontainers-scala-scalatest" % testContainerVersion withSources (),
-      "com.dimafeng"          %% "testcontainers-scala-mysql"     % testContainerVersion withSources (),
+      "com.dimafeng"          %% "testcontainers-scala-mariadb"   % testContainerVersion withSources (),
       // Testing
       "dev.zio"       %% "zio-test"     % zioVersion % "test" withSources (),
       "dev.zio"       %% "zio-test-sbt" % zioVersion % "test" withSources (),
       "org.scalatest" %% "scalatest"    % "3.2.19"   % "test" withSources ()
-//      "io.d11" %% "zhttp-test" % zioHttpVersion % "test" withSources()
-    ),
-    testFrameworks ++= Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
-  )
-
-lazy val login: Project = project
-  .dependsOn(commonJS)
-  .settings(commonSettings)
-  .configure(bundlerSettings)
-  .configure(withCssLoading)
-  .configure(commonWeb)
-  .enablePlugins(
-    AutomateHeaderPlugin,
-    GitVersioning,
-    ScalaJSPlugin,
-    CalibanPlugin
-  )
-  .settings(
-    name := "chuti-login",
-    debugDist := {
-
-      val assets = (ThisBuild / baseDirectory).value / "login" / "src" / "main" / "web"
-
-      val artifacts = (Compile / fastOptJS / webpack).value
-      val artifactFolder = (Compile / fastOptJS / crossTarget).value
-      val debugFolder = (ThisBuild / baseDirectory).value / "debugDist"
-
-      debugFolder.mkdirs()
-      FileUtils.copyDirectory(assets, debugFolder, true)
-      artifacts.foreach { artifact =>
-        val target = artifact.data.relativeTo(artifactFolder) match {
-          case None          => debugFolder / artifact.data.name
-          case Some(relFile) => debugFolder / relFile.toString
-        }
-
-        println(s"Trying to copy ${artifact.data.toPath} to ${target.toPath}")
-        Files.copy(artifact.data.toPath, target.toPath, REPLACE_EXISTING)
-      }
-
-      debugFolder
-    },
-    dist := {
-      val assets = (ThisBuild / baseDirectory).value / "login" / "src" / "main" / "web"
-
-      val artifacts = (Compile / fullOptJS / webpack).value
-      val artifactFolder = (Compile / fullOptJS / crossTarget).value
-      val distFolder = (ThisBuild / baseDirectory).value / "dist"
-
-      distFolder.mkdirs()
-      FileUtils.copyDirectory(assets, distFolder, true)
-      artifacts.foreach { artifact =>
-        val target = artifact.data.relativeTo(artifactFolder) match {
-          case None          => distFolder / artifact.data.name
-          case Some(relFile) => distFolder / relFile.toString
-        }
-
-        println(s"Trying to copy ${artifact.data.toPath} to ${target.toPath}")
-        Files.copy(artifact.data.toPath, target.toPath, REPLACE_EXISTING)
-      }
-
-      distFolder
-    }
+    )
   )
 
 lazy val debianSettings =
   Seq(
+    Compile / mainClass         := Some("chuti.Chuti"),
     Debian / name               := "chuti",
-    Debian / normalizedName     := "chuti",
-    Debian / packageDescription := "The game of chuti",
-    Debian / packageSummary     := "The game of chuti",
+    Debian / packageDescription := "El Juego de Chuti",
+    Debian / packageSummary     := "El Juego de Chuti",
+    Debian / debianChangelog    := Some(file("debian/changelog")),
     Linux / maintainer          := "Roberto Leibman <roberto@leibman.net>",
     Linux / daemonUser          := "chuti",
     Linux / daemonGroup         := "chuti",
     Debian / serverLoading      := Some(ServerLoader.Systemd),
+    // Configure JVM to use logback.xml from /etc/chuti-server
+    Universal / javaOptions ++= Seq(
+      "-Dlogback.configurationFile=/etc/chuti-server/logback.xml"
+    ),
+    // Map application.conf template
     Universal / mappings += {
       val src = sourceDirectory.value
       val conf = src / "templates" / "application.conf"
       conf -> "conf/application.conf"
+    },
+    // Map logback.xml template
+    Universal / mappings += {
+      val src = sourceDirectory.value
+      val logback = src / "templates" / "logback.xml"
+      logback -> "conf/logback.xml"
+    },
+    // Map the entire dist directory to /data/www/www.chuti.fun/html
+    Universal / mappings ++= {
+      val distDir = (ThisBuild / baseDirectory).value / "dist"
+      if (distDir.exists()) {
+        (distDir.allPaths --- distDir) pair Path.rebase(distDir, "www/")
+      } else {
+        Seq.empty
+      }
+    },
+    // Install www content to the web directory
+    Linux / defaultLinuxInstallLocation := "/opt",
+    // Additional package mapping for www content
+    Debian / linuxPackageMappings += {
+      val distDir = (ThisBuild / baseDirectory).value / "dist"
+      packageMapping(
+        (distDir.allPaths --- distDir).get.map { f =>
+          f -> s"/data/www/www.chuti.fun/html/${Path.relativeTo(distDir)(f).get}"
+        }: _*
+      ).withUser("chuti").withGroup("chuti")
+    },
+    // Install configuration files to /etc/chuti-server/ for easy editing
+    Debian / linuxPackageMappings += {
+      val src = sourceDirectory.value
+      val confFile = src / "templates" / "application.conf"
+      val logbackFile = src / "templates" / "logback.xml"
+      packageMapping(
+        confFile    -> "/etc/chuti-server/application.conf",
+        logbackFile -> "/etc/chuti-server/logback.xml"
+      ).withUser("chuti").withGroup("chuti").withPerms("0644").withConfig()
+    },
+    // Add custom maintainer scripts to create log directory
+    Debian / maintainerScripts := {
+      val scripts:  Map[String, Seq[String]] = (Debian / maintainerScripts).value
+      val postinst: Seq[String] = scripts.getOrElse("postinst", Seq.empty)
+
+      // Add log directory creation before chown commands
+      val updatedPostinst: Seq[String] = postinst.map { line =>
+        if (line.contains("chown chuti:chuti '/var/log/chuti-server'")) {
+          Seq(
+            "mkdir -p '/var/log/chuti-server'",
+            "chown -R chuti:chuti '/var/log/chuti-server'",
+            "chmod 755 '/var/log/chuti-server'"
+          ).mkString("\n")
+        } else {
+          line
+        }
+      }
+
+      scripts + ("postinst" -> updatedPostinst)
     }
   )
 
 ////////////////////////////////////////////////////////////////////////////////////
-// Web
-val scalajsReactVersion = "2.1.2"
-val reactVersion = "17.0.0"
-
-lazy val reactNpmDeps: Project => Project =
-  _.settings(
-    Compile / npmDependencies ++= Seq(
-      "react-dom"         -> reactVersion,
-      "@types/react-dom"  -> reactVersion,
-      "react"             -> reactVersion,
-      "@types/react"      -> reactVersion,
-      "csstype"           -> "2.6.11",
-      "@types/prop-types" -> "15.7.3"
+// AI
+lazy val ai = project
+  .enablePlugins(
+    // AutomateHeaderPlugin,
+    com.github.sbt.git.GitVersioning
+  )
+  .settings(commonSettings)
+  .dependsOn(modelJVM)
+  .settings(
+    scalacOptions ++= scala3Opts :+ "-Werror",
+    name := "chuti-ai",
+    libraryDependencies ++= Seq(
+      // ZIO
+      "dev.zio" %% "zio"     % zioVersion withSources (),
+      "dev.zio" %% "zio-nio" % "2.0.2" withSources (),
+      // AI stuff
+      "com.dimafeng"      %% "testcontainers-scala-core" % testContainerVersion withSources (),
+      "org.testcontainers" % "qdrant"                    % qdrantVersion withSources (),
+      "dev.langchain4j"    % "langchain4j-core"          % langchainCoreVersion withSources (),
+      "dev.langchain4j"    % "langchain4j"               % langchainCoreVersion withSources (),
+      "dev.langchain4j"    % "langchain4j-ollama"        % langchain4jOllamaVersion withSources (),
+      "dev.langchain4j"    % "langchain4j-easy-rag"      % langchainLibrariesVersion withSources (),
+      "dev.langchain4j"    % "langchain4j-qdrant"        % langchainLibrariesVersion withSources (),
+      // Other random utilities
+      "com.github.pathikrit" %% "better-files"    % betterFilesVersion withSources (),
+      "ch.qos.logback"        % "logback-classic" % logbackVersion withSources (),
+      // Testing
+      "dev.zio" %% "zio-test"     % zioVersion % "test" withSources (),
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test" withSources ()
     )
   )
 
+////////////////////////////////////////////////////////////////////////////////////
+// Web
 lazy val bundlerSettings: Project => Project =
   _.enablePlugins(ScalaJSBundlerPlugin)
     .settings(
-      Compile / npmDependencies ++= Seq(
-      ),
-      webpack / version               := "5.96.1",
-      startWebpackDevServer / version := "3.1.10",
-//      Compile / fastOptJS / webpackExtraArgs += "--mode=development",
-      Compile / fastOptJS / webpackDevServerExtraArgs += "--mode=development",
+      webpack / version := "5.96.1",
       Compile / fastOptJS / artifactPath := ((Compile / fastOptJS / crossTarget).value /
         ((fastOptJS / moduleName).value + "-opt.js")),
-      //      Compile / fullOptJS / webpackExtraArgs += "--mode=production",
-      Compile / fullOptJS / webpackDevServerExtraArgs += "--mode=production",
       Compile / fullOptJS / artifactPath := ((Compile / fullOptJS / crossTarget).value /
         ((fullOptJS / moduleName).value + "-opt.js")),
       useYarn                                   := true,
@@ -253,104 +387,9 @@ lazy val bundlerSettings: Project => Project =
       Global / scalaJSStage                     := FastOptStage,
       Compile / scalaJSUseMainModuleInitializer := true,
       Test / scalaJSUseMainModuleInitializer    := false,
-      webpackEmitSourceMaps                     := false,
-      scalaJSLinkerConfig ~= { a =>
-        a.withSourceMap(true) // .withRelativizeSourceMapBase(None)
-      }
+      Compile / npmDependencies ++= Seq(
+      )
     )
-
-lazy val web: Project = project
-  .dependsOn(commonJS)
-  .settings(commonSettings)
-  .configure(bundlerSettings)
-  .configure(withCssLoading)
-  .configure(commonWeb)
-  .enablePlugins(
-    AutomateHeaderPlugin,
-    GitVersioning,
-    ScalaJSPlugin,
-    CalibanPlugin
-  )
-  .settings(
-    name := "chuti-web",
-    debugDist := {
-
-      val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
-
-      val artifacts = (Compile / fastOptJS / webpack).value
-      val artifactFolder = (Compile / fastOptJS / crossTarget).value
-      val debugFolder = (ThisBuild / baseDirectory).value / "debugDist"
-
-      debugFolder.mkdirs()
-      FileUtils.copyDirectory(assets, debugFolder, true)
-      artifacts.foreach { artifact =>
-        val target = artifact.data.relativeTo(artifactFolder) match {
-          case None          => debugFolder / artifact.data.name
-          case Some(relFile) => debugFolder / relFile.toString
-        }
-
-//        println(s"Trying to copy ${artifact.data.toPath} to ${target.toPath}")
-        Files.copy(artifact.data.toPath, target.toPath, REPLACE_EXISTING)
-      }
-
-      debugFolder
-    },
-    dist := {
-      val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
-
-      val artifacts = (Compile / fullOptJS / webpack).value
-      val artifactFolder = (Compile / fullOptJS / crossTarget).value
-      val distFolder = (ThisBuild / baseDirectory).value / "dist"
-
-      distFolder.mkdirs()
-      FileUtils.copyDirectory(assets, distFolder, true)
-      artifacts.foreach { artifact =>
-        val target = artifact.data.relativeTo(artifactFolder) match {
-          case None          => distFolder / artifact.data.name
-          case Some(relFile) => distFolder / relFile.toString
-        }
-
-//        println(s"Trying to copy ${artifact.data.toPath} to ${target.toPath}")
-        Files.copy(artifact.data.toPath, target.toPath, REPLACE_EXISTING)
-      }
-
-      distFolder
-    }
-  )
-
-lazy val commonWeb: Project => Project =
-  _.settings(
-    libraryDependencies ++= Seq(
-      "net.leibman" %%% "chuti-stlib"              % "0.2.0-SNAPSHOT" withSources (),
-      "commons-io"                                 % "commons-io" % "2.18.0" withSources (),
-      "com.github.ghostdogpr" %%% "caliban-client" % calibanVersion withSources (),
-      "dev.zio" %%% "zio"                          % zioVersion withSources (),
-      "com.softwaremill.sttp.client3" %%% "core"   % "3.10.1" withSources (),
-      //      ("com.softwaremill.sttp.model" %%% "core" % "1.4.27" withSources()).cross(CrossVersion.for3Use2_13),
-      //      ("com.softwaremill.sttp.client" %%% "core" % "2.3.0" withSources()).cross(CrossVersion.for3Use2_13),
-      //      ("com.softwaremill.sttp.client" %% "async-http-client-backend-zio" % "2.3.0").cross(CrossVersion.for3Use2_13),
-      //      ("ru.pavkin" %%% "scala-js-momentjs" % "0.10.5" withSources()).cross(CrossVersion.for3Use2_13),
-      "io.github.cquiroz" %%% "scala-java-time"                           % "2.6.0" withSources (),
-      "io.github.cquiroz" %%% "scala-java-time-tzdb"                      % "2.6.0" withSources (),
-      "org.scala-js" %%% "scalajs-dom"                                    % "2.8.0" withSources (),
-      "com.olvind" %%% "scalablytyped-runtime"                            % "2.4.2",
-      "com.github.japgolly.scalajs-react" %%% "core"                      % scalajsReactVersion withSources (),
-      "com.github.japgolly.scalajs-react" %%% "extra"                     % scalajsReactVersion withSources (),
-      "com.lihaoyi" %%% "scalatags"                                       % "0.13.1" withSources (),
-      "com.github.japgolly.scalacss" %%% "core"                           % "1.0.0" withSources (),
-      "com.github.japgolly.scalacss" %%% "ext-react"                      % "1.0.0" withSources (),
-      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-core"   % "2.31.3",
-      "com.github.plokhotnyuk.jsoniter-scala" %%% "jsoniter-scala-macros" % "2.31.3"
-
-      //      ("org.scala-js" %%% "scalajs-java-securerandom" % "1.0.0").cross(CrossVersion.for3Use2_13)
-    ),
-    organizationName := "Roberto Leibman",
-    startYear        := Some(2020),
-    licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
-    Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value)
-//    webpackDevServerPort                 := 8009
-  )
 
 lazy val withCssLoading: Project => Project =
   _.settings(
@@ -365,14 +404,119 @@ lazy val withCssLoading: Project => Project =
     )
   )
 
+lazy val commonWeb: Project => Project =
+  _.settings(
+    libraryDependencies ++= Seq(
+      "net.leibman" %%% "chuti-stlib"                 % stlibVersion withSources (),
+      "com.github.ghostdogpr" %%% "caliban-client"    % calibanClientVersion withSources (),
+      "dev.zio" %%% "zio"                             % zioVersion withSources (),
+      "com.softwaremill.sttp.client4" %%% "core"      % sttpClient4Version withSources (),
+      "com.softwaremill.sttp.client4" %%% "zio-json"  % sttpClient4Version withSources (),
+      "io.github.cquiroz" %%% "scala-java-time"       % scalaJavaTimeVersion withSources (),
+      "io.github.cquiroz" %%% "scala-java-time-tzdb"  % scalaJavaTimeVersion withSources (),
+      "org.scala-js" %%% "scalajs-dom"                % scalajsDomVersion withSources (),
+      "com.olvind" %%% "scalablytyped-runtime"        % scalablytypedRuntimeVersion,
+      "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion withSources (),
+      "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion withSources (),
+      "com.lihaoyi" %%% "scalatags"                   % scalatagsVersion withSources (),
+      "com.github.japgolly.scalacss" %%% "core"       % scalacssVersion withSources (),
+      "com.github.japgolly.scalacss" %%% "ext-react"  % scalacssVersion withSources (),
+      // Testing
+      "dev.zio" %%% "zio-test"                       % zioVersion          % "test" withSources (),
+      "dev.zio" %%% "zio-test-sbt"                   % zioVersion          % "test" withSources (),
+      "com.github.japgolly.scalajs-react" %%% "test" % scalajsReactVersion % "test" withSources ()
+    ),
+    dependencyOverrides ++= Seq(
+      "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion,
+      "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion
+    ),
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
+    organizationName                     := "Roberto Leibman",
+    startYear                            := Some(2024),
+    Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
+    Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value)
+    //    webpackDevServerPort                 := 8009
+  )
+
+lazy val web: Project = project
+  .dependsOn(modelJS)
+  .configure(bundlerSettings)
+  .configure(withCssLoading)
+  .configure(commonWeb)
+  .settings(commonSettings)
+  .enablePlugins(
+    AutomateHeaderPlugin,
+    com.github.sbt.git.GitVersioning,
+    ScalaJSPlugin
+  )
+  .settings(
+    scalacOptions ++= scala3Opts,
+    name := "chuti-web",
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio"      % zioVersion withSources (),
+      "dev.zio" %%% "zio-json" % zioJsonVersion withSources ()
+    ),
+    debugDist := {
+
+      val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
+
+      val artifacts = (Compile / fastOptJS / webpack).value
+      val artifactFolder = (Compile / fastOptJS / crossTarget).value
+      val debugFolder = (ThisBuild / baseDirectory).value / "debugDist"
+
+      debugFolder.mkdirs()
+      FileUtils.copyDirectory(assets, debugFolder, true)
+
+      // Copy all JS and map files from webpack output directory (including chunks)
+      val webpackOutputDir = artifactFolder
+      if (webpackOutputDir.exists()) {
+        println(s"Copying webpack output from: $webpackOutputDir")
+        val allBundles = (webpackOutputDir * "*.js").get ++ (webpackOutputDir * "*.js.map").get
+        allBundles.foreach { bundleFile =>
+          val targetFile = debugFolder / bundleFile.name
+          Files.copy(bundleFile.toPath, targetFile.toPath, REPLACE_EXISTING)
+        }
+      } else {
+        println(s"Webpack output directory does not exist: $webpackOutputDir")
+      }
+
+      debugFolder
+    },
+    dist := {
+      val assets = (ThisBuild / baseDirectory).value / "web" / "src" / "main" / "web"
+
+      val artifacts = (Compile / fullOptJS / webpack).value
+      val artifactFolder = (Compile / fullOptJS / crossTarget).value
+      val distFolder = (ThisBuild / baseDirectory).value / "dist"
+
+      distFolder.mkdirs()
+      FileUtils.copyDirectory(assets, distFolder, true)
+
+      // Copy all JS and map files from webpack output directory (including chunks)
+      val webpackOutputDir = artifactFolder
+      if (webpackOutputDir.exists()) {
+        println(s"Copying webpack output from: $webpackOutputDir")
+        val allBundles = (webpackOutputDir * "*.js").get ++ (webpackOutputDir * "*.js.map").get
+        allBundles.foreach { bundleFile =>
+          val targetFile = distFolder / bundleFile.name
+          Files.copy(bundleFile.toPath, targetFile.toPath, REPLACE_EXISTING)
+        }
+      } else {
+        println(s"Webpack output directory does not exist: $webpackOutputDir")
+      }
+
+      distFolder
+    }
+  )
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Root project
 lazy val root = project
   .in(file("."))
-  .aggregate(commonJVM, commonJS, server, web, login)
+  .aggregate(modelJVM, modelJS, server, web)
   .settings(
     name           := "chuti",
     publish / skip := true,
     version        := "0.1.0",
-    headerLicense  := None
+    headerLicense  := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
   )

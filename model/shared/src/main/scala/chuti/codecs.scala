@@ -19,14 +19,10 @@ package chuti
 import chuti.CuantasCantas.CuantasCantas
 import zio.json.*
 
-given JsonDecoder[UserId] = JsonDecoder.int.map(UserId.apply)
-given JsonEncoder[UserId] = JsonEncoder.int.contramap(_.userId)
-given JsonDecoder[ConnectionId] = JsonDecoder.int.map(ConnectionId.apply)
-given JsonEncoder[ConnectionId] = JsonEncoder.int.contramap(_.connectionId)
-given JsonDecoder[GameId] = JsonDecoder.int.map(GameId.apply)
-given JsonEncoder[GameId] = JsonEncoder.int.contramap(_.gameId)
-given JsonDecoder[ChannelId] = JsonDecoder.int.map(ChannelId.apply)
-given JsonEncoder[ChannelId] = JsonEncoder.int.contramap(_.channelId)
+given JsonCodec[UserId] = JsonCodec.long.transform(UserId.apply, _.value)
+given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _.value)
+given JsonCodec[GameId] = JsonCodec.long.transform(GameId.apply, _.value)
+given JsonCodec[ChannelId] = JsonCodec.long.transform(ChannelId.apply, _.value)
 
 given JsonEncoder[Triunfo] = DeriveJsonEncoder.gen[Triunfo]
 given JsonDecoder[Triunfo] = DeriveJsonDecoder.gen[Triunfo]

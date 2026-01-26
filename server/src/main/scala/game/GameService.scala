@@ -16,21 +16,21 @@
 
 package game
 
-import api.{ChutiEnvironment, ChutiSession}
 import api.token.TokenHolder
+import api.{*, given}
 import caliban.{CalibanError, GraphQLInterpreter}
 import chat.*
-import chuti.{*, given}
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
+import chuti.{*, given}
 import dao.{Repository, RepositoryError}
 import game.GameService.EventQueue
 import mail.Postman
-import zio.json.ast.Json
 import zio.json.*
-import zio.{Clock, Console, *}
+import zio.json.ast.Json
 import zio.logging.*
 import zio.stream.ZStream
+import zio.{Clock, Console, *}
 
 trait GameService {
 
@@ -103,11 +103,9 @@ trait GameService {
 
 object GameService {
 
-  lazy val godLayer: ULayer[ChutiSession] =
-    ChutiSession(chuti.god).toLayer
+  lazy val godLayer: ULayer[ChutiSession] = ChutiSession.godSession.toLayer
 
-  lazy val godlessLayer: ULayer[ChutiSession] =
-    ChutiSession(chuti.godless).toLayer
+  lazy val godlessLayer: ULayer[ChutiSession] = ChutiSession.godlessSession.toLayer
 
   def joinRandomGame(): ZIO[GameService & ChutiSession & Repository, GameError, Game] =
     ZIO.serviceWithZIO[GameService](_.joinRandomGame())
@@ -251,16 +249,17 @@ object GameService {
 
       override def abandonGame(gameId: GameId): ZIO[ChutiSession & Repository, GameError, Boolean] =
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           gameOpt    <- repository.gameOperations.get(gameId)
           savedOpt <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.id == user.id))
-              throw GameError("Ese usuario no esta jugando matarile-rile-ron")
+              ZIO.fail(GameError("Ese usuario no esta jugando matarile-rile-ron"))
             else {
               val (gameAfterApply, appliedEvent) =
-                game.applyEvent(Option(user), AbandonGame())
+                game.applyEvent(userOpt, AbandonGame())
               // God needs to save this user, because the user has already left the game
               repository.gameOperations
                 .upsert(gameAfterApply).map((_, appliedEvent)).provideLayer(godLayer)
@@ -320,7 +319,7 @@ object GameService {
       }
 
       private def botLayer: ULayer[ChutiSession] = {
-        ChutiSession(hal9000).toLayer
+        ChutiSession.botSession(hal9000).toLayer
       }
 
       override def startGame(gameId: GameId)
@@ -341,13 +340,11 @@ object GameService {
                     foldedGame,
                     _
                   ) =>
-                    foldedGame
-                      .map(g =>
-                        joinGame(Option(g))
-                          .provideSomeLayer[Repository & Postman & TokenHolder](
-                            botLayer
-                          )
-                      ).flatten
+                    foldedGame.flatMap(g =>
+                      joinGame(Option(g))
+                        .provideSomeLayer[Repository & Postman & TokenHolder](
+                          botLayer
+                        ))
                 )
             }
           }
@@ -366,7 +363,8 @@ object GameService {
         oldGameId: GameId
       ): ZIO[TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman, GameError, Game] =
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           now        <- Clock.instant
@@ -380,7 +378,7 @@ object GameService {
               satoshiPerPoint = oldGame.satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
+            val (game2, _) = newGame.applyEvent(userOpt, JoinGame())
             repository.gameOperations.upsert(game2)
           }
           _ <- ZIO.foreachDiscard(oldGame.jugadores.filter(_.id != user.id).map(_.user)) { u =>
@@ -395,7 +393,8 @@ object GameService {
 
       override def newGame(satoshiPerPoint: Int): ZIO[ChutiSession & Repository, GameError, Game] =
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           now        <- Clock.instant
@@ -406,7 +405,7 @@ object GameService {
               satoshiPerPoint = satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(Option(user), JoinGame())
+            val (game2, _) = newGame.applyEvent(userOpt, JoinGame())
             repository.gameOperations.upsert(game2)
           }
           _ <- repository.gameOperations.updatePlayers(upserted)
@@ -453,7 +452,8 @@ object GameService {
         friendId: UserId
       ): ZIO[ChutiSession & Repository & ChatService, GameError, Boolean] =
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           friendOpt  <- repository.userOperations.get(friendId)
@@ -472,7 +472,8 @@ object GameService {
         enemyId: UserId
       ): ZIO[ChutiSession & Repository & ChatService, GameError, Boolean] =
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           enemyOpt   <- repository.userOperations.get(enemyId)
@@ -492,7 +493,8 @@ object GameService {
         gameId: GameId
       ): ZIO[TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman, GameError, Boolean] = {
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           postman    <- ZIO.service[Postman]
@@ -506,12 +508,16 @@ object GameService {
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (!game.jugadores.exists(_.user.id == user.id))
-              throw GameError(
-                s"El usuario ${user.id} no esta en este juego, por lo cual no puede invitar a nadie"
+              ZIO.fail(
+                GameError(
+                  s"El usuario ${user.id} no esta en este juego, por lo cual no puede invitar a nadie"
+                )
               )
-            val (withInvite, invitation) =
-              game.applyEvent(Option(user), InviteToGame(invited = invited))
-            repository.gameOperations.upsert(withInvite).map((_, invitation))
+            else {
+              val (withInvite, invitation) =
+                game.applyEvent(userOpt, InviteToGame(invited = invited))
+              repository.gameOperations.upsert(withInvite).map((_, invitation))
+            }
           }
           _ <-
             ChatService
@@ -537,7 +543,8 @@ object GameService {
         gameId: GameId
       ): ZIO[TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman, GameError, Boolean] = {
         (for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           postman    <- ZIO.service[Postman]
@@ -545,14 +552,18 @@ object GameService {
           invitedOpt <- repository.userOperations.get(userId)
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
             if (invitedOpt.isEmpty)
-              throw GameError(s"El usuario $userId no existe")
-            if (!game.jugadores.exists(_.user.id == user.id))
-              throw GameError(
-                s"El usuario ${user.id} no esta en este juego, por lo que no puede invitar a nadie"
+              ZIO.fail(GameError(s"El usuario $userId no existe"))
+            else if (!game.jugadores.exists(_.user.id == user.id))
+              ZIO.fail(
+                GameError(
+                  s"El usuario ${user.id} no esta en este juego, por lo que no puede invitar a nadie"
+                )
               )
-            val (withInvite, invitation) =
-              game.applyEvent(Option(user), InviteToGame(invited = invitedOpt.get))
-            repository.gameOperations.upsert(withInvite).map((_, invitation))
+            else {
+              val (withInvite, invitation) =
+                game.applyEvent(userOpt, InviteToGame(invited = invitedOpt.get))
+              repository.gameOperations.upsert(withInvite).map((_, invitation))
+            }
           }
           _ <-
             ChatService
@@ -569,9 +580,10 @@ object GameService {
         } yield true).mapError(GameError.apply)
       }
 
-      private def joinGame(gameOpt: Option[Game]): ZIO[ChutiSession & Repository, RepositoryError, Game] = {
+      private def joinGame(gameOpt: Option[Game]): ZIO[ChutiSession & Repository, GameError, Game] = {
         for {
-          user <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+          user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           repository <- ZIO.service[Repository]
           now        <- Clock.instant
@@ -583,17 +595,17 @@ object GameService {
               ).provideLayer(godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
-            val (joined, joinGame) = newOrRetrieved.applyEvent(Option(user), JoinGame())
+            val (joined, joinGame) = newOrRetrieved.applyEvent(userOpt, JoinGame())
             val (started, startGame: GameEvent) =
               if (joined.canTransitionTo(GameStatus.requiereSopa)) {
                 joined
                   .copy(gameStatus = GameStatus.requiereSopa).applyEvent(
-                    Option(user),
+                    userOpt,
                     Sopa(firstSopa = true)
                   )
                 // TODO change player status, and update players in LoggedIn Players and in database, invalidate db cache
               } else
-                joined.applyEvent(Option(user), NoOp())
+                joined.applyEvent(userOpt, NoOp())
             repository.gameOperations.upsert(started).map((_, joinGame, startGame))
           }
           _ <- repository.gameOperations.updatePlayers(afterApply._1)
@@ -621,7 +633,8 @@ object GameService {
       ): ZIO[ChutiSession & Repository & ChatService, GameError, Boolean] =
         (for {
           repository <- ZIO.service[Repository]
-          user       <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt    <- ZIO.serviceWith[ChutiSession](_.user)
+          user       <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           gameOpt <- repository.gameOperations.get(gameId)
           afterEvent <- ZIO.foreach(gameOpt) { game =>
@@ -631,7 +644,7 @@ object GameService {
               )
             if (!game.jugadores.exists(_.user.id == user.id))
               throw GameError(s"El usuario ${user.id} ni siquera esta en este juego")
-            val (afterEvent, declinedEvent) = game.applyEvent(Option(user), DeclineInvite())
+            val (afterEvent, declinedEvent) = game.applyEvent(userOpt, DeclineInvite())
             repository.gameOperations
               .upsert(afterEvent).map((_, declinedEvent))
               .provideLayer(godLayer)
@@ -655,7 +668,8 @@ object GameService {
       ): ZIO[ChutiSession & Repository & ChatService, GameError, Boolean] = {
         (for {
           repository <- ZIO.service[Repository]
-          user       <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt    <- ZIO.serviceWith[ChutiSession](_.user)
+          user       <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           gameOpt <- repository.gameOperations.get(gameId)
           afterEvent <- ZIO.foreach(gameOpt) { game =>
@@ -766,7 +780,8 @@ object GameService {
       ): ZIO[Repository & ChutiSession, GameError, Game] = {
         (for {
           repository <- ZIO.service[Repository]
-          user       <- ZIO.serviceWith[ChutiSession](_.user)
+          userOpt    <- ZIO.serviceWith[ChutiSession](_.user)
+          user       <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
           gameOpt <- repository.gameOperations.get(gameId)
           played <- gameOpt.fold(throw GameError("No encontre ese juego")) { game =>
@@ -814,11 +829,12 @@ object GameService {
       ): ZStream[ChutiSession, Nothing, GameEvent] =
         ZStream.unwrap {
           for {
-            user  <- ZIO.serviceWith[ChutiSession](_.user)
-            queue <- Queue.sliding[GameEvent](requestedCapacity = 100)
-            _     <- gameEventQueues.update(EventQueue(user, connectionId, queue) :: _)
-            after <- gameEventQueues.get
-            _     <- ZIO.logInfo(s"GameStream started, queues have ${after.length} entries")
+            userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+            user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Authenticated User required")).orDie
+            queue   <- Queue.sliding[GameEvent](requestedCapacity = 100)
+            _       <- gameEventQueues.update(EventQueue(user, connectionId, queue) :: _)
+            after   <- gameEventQueues.get
+            _       <- ZIO.logInfo(s"GameStream started, queues have ${after.length} entries")
           } yield ZStream
             .fromQueue(queue)
             .ensuring(
@@ -835,7 +851,8 @@ object GameService {
       ): ZStream[ChutiSession, Nothing, UserEvent] =
         ZStream.unwrap {
           for {
-            user          <- ZIO.serviceWith[ChutiSession](_.user)
+            userOpt       <- ZIO.serviceWith[ChutiSession](_.user)
+            user          <- ZIO.fromOption(userOpt).orElseFail(GameError("Authenticated User required")).orDie
             allUserQueues <- userEventQueues.get
             _ <- {
               // Only broadcast connections if the user is not yet in one of the queues, and don't send

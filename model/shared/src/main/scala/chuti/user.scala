@@ -19,6 +19,8 @@ package chuti
 import java.time.Instant
 import zio.json.*
 
+import java.util.Locale
+
 case class User(
   id:          Option[UserId],
   email:       String,
@@ -27,14 +29,25 @@ case class User(
   lastUpdated: Instant,
   active:      Boolean = false,
   deleted:     Boolean = false,
-  isAdmin:     Boolean = false
+  isAdmin:     Boolean = false,
+  locale:      Locale = Locale.of("es", "MX")
 ) {
 
-  def isBot: Boolean = id.fold(false)(i => i.userId < -1 && i != godUserId)
+  def isBot: Boolean = id.fold(false)(i => i.value < -1 && i != UserId.godUserId)
 
 }
 
 object User {
+
+  private given JsonDecoder[Locale] =
+    JsonDecoder.string.mapOrFail(s =>
+      Locale.forLanguageTag(s) match {
+        case l: Locale => Right(l)
+        case null => Left(s"invalid locale $s")
+      }
+    )
+
+  private given JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
 
   given JsonDecoder[User] = DeriveJsonDecoder.gen[User]
 

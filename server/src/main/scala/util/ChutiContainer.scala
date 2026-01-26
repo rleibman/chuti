@@ -16,8 +16,8 @@
 
 package util
 
-import api.*
-import com.dimafeng.testcontainers.MySQLContainer
+import api.ConfigurationService
+import com.dimafeng.testcontainers.MariaDBContainer
 import com.typesafe.config
 import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
@@ -33,7 +33,7 @@ import scala.io.{BufferedSource, Source}
 
 trait ChutiContainer {
 
-  def container: MySQLContainer
+  def container: MariaDBContainer
 
 }
 
@@ -76,13 +76,13 @@ object ChutiContainer {
             }
           } { case (conn, stmt) =>
             ZIO.succeed {
-              stmt.close().nn
-              conn.close().nn
+              stmt.close()
+              conn.close()
             }
           } { case (_, stmt) =>
             ZIO
               .foreach(statements) { statement =>
-                ZIO.attempt(stmt.executeUpdate(statement).nn)
+                ZIO.attempt(stmt.executeUpdate(statement))
               }.catchSome { case e: SQLException =>
                 ZIO.fail(RepositoryError(e))
               }
@@ -96,7 +96,7 @@ object ChutiContainer {
   val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
     _ <- ZIO.logDebug("Creating container")
     c <- ZIO.succeed {
-      val c = MySQLContainer()
+      val c = MariaDBContainer()
       c.container.start()
       c
     }
@@ -104,20 +104,22 @@ object ChutiContainer {
     _ <-
       (Migrator("server/src/main/sql").migrate()
         *> Migrator("server/src/it/sql").migrate())
-        .provideLayer(Quill.DataSource.fromDataSource(getConfig(c).dataSource))
+        .provideLayer(Quill.DataSource.fromDataSource(getConfig(c).dataSourceConfig.createDataSource))
         .mapError(RepositoryError.apply)
   } yield new ChutiContainer {
 
-    override def container: MySQLContainer = c
+    override def container: MariaDBContainer = c
 
   }).mapError(RepositoryError.apply))
 
-  private def getConfig(container: MySQLContainer) = {
-    DbConfig(
-      driver = "com.mysql.cj.jdbc.Driver",
-      url = container.container.getJdbcUrl.nn,
-      user = container.container.getUsername.nn,
-      password = container.container.getPassword.nn
+  private def getConfig(container: MariaDBContainer): DatabaseConfig = {
+    DatabaseConfig(
+      dataSourceConfig = DataSourceConfig(
+        driver = "com.mysql.cj.jdbc.Driver",
+        url = container.container.getJdbcUrl.nn,
+        user = container.container.getUsername.nn,
+        password = container.container.getPassword.nn
+      )
     )
   }
 
@@ -126,7 +128,9 @@ object ChutiContainer {
       for {
         container  <- ZIO.service[ChutiContainer].map(_.container)
         baseConfig <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-      } yield ConfigurationService.withConfig(baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container))))
+      } yield ConfigurationService.withConfig(
+        baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container)))
+      )
     }
 
 }

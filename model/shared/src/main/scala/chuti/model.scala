@@ -24,18 +24,6 @@ import zio.json.ast.Json
 import java.time.Instant
 import scala.annotation.tailrec
 
-object GameError {
-
-  def apply(cause:   Throwable): GameError = new GameError(message = "", cause = Option(cause))
-  def apply(message: String):    GameError = new GameError(message = message, cause = None)
-
-}
-
-class GameError(
-  val message: String,
-  val cause:   Option[Throwable]
-) extends Exception(message, cause.getOrElse(null))
-
 enum Numero(val value: Int) {
 
   case Numero0 extends Numero(0)
@@ -175,10 +163,10 @@ object Ficha {
 
 sealed trait Ficha extends Product with Serializable {
 
-  def arriba: Numero
-  def abajo:  Numero
-  def esMula: Boolean
-  def value:  Int
+  def arriba:             Numero
+  def abajo:              Numero
+  def esMula:             Boolean
+  def value:              Int
   def es(num:    Numero): Boolean
   def other(num: Numero): Numero
 
@@ -186,13 +174,13 @@ sealed trait Ficha extends Product with Serializable {
 
 case object FichaTapada extends Ficha {
 
-  override def arriba: Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def abajo:  Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def esMula: Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def value:  Int = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def arriba:             Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def abajo:              Numero = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def esMula:             Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
+  override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
   override def es(num:    Numero): Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
   override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def toString: String = "?:?"
+  override def toString:           String = "?:?"
 
 }
 
@@ -201,11 +189,11 @@ case class FichaConocida private[chuti] (
   abajo:  Numero
 ) extends Ficha {
 
-  lazy override val esMula: Boolean = arriba == abajo
-  lazy override val value:  Int = arriba.value + abajo.value
+  lazy override val esMula:        Boolean = arriba == abajo
+  lazy override val value:         Int = arriba.value + abajo.value
   override def es(num:    Numero): Boolean = arriba == num || abajo == num
   override def other(num: Numero): Numero = { if (arriba == num) abajo else arriba }
-  override def toString: String = s"${arriba.value}:${abajo.value}"
+  override def toString:           String = s"${arriba.value}:${abajo.value}"
 
 }
 
@@ -452,7 +440,7 @@ case class Game(
   @transient
   lazy val ganadorDePartido: Option[Jugador] = jugadores.find(_.ganadorDePartido)
   @transient
-  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.gameId))
+  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
   @transient
   lazy val mano: Option[Jugador] = jugadores.find(_.mano)
   @transient
