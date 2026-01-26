@@ -2,7 +2,7 @@ package db.quill
 
 import api.*
 import chuti.{User, UserId}
-import dao.Repository
+import dao.ZIORepository
 import dao.quill.QuillRepository
 import db.quill.QuillUserSpec.now
 import util.ChutiContainer

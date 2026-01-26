@@ -29,18 +29,22 @@ import caliban.wrappers.Wrappers.*
 import chuti.*
 import chuti.ChannelId.*
 import chuti.UserId.*
-import dao.Repository
+import dao.ZIORepository
 import zio.*
+import zio.json.*
+import zio.json.ast.Json
 import zio.logging.*
 import zio.stream.ZStream
 
-case class SayRequest(
-  msg:       String,
-  channelId: ChannelId,
-  toUser:    Option[User] = None
-)
+import java.util.Locale
 
-object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
+object ChatApi {
+
+  case class SayRequest(
+    msg:       String,
+    channelId: ChannelId,
+    toUser:    Option[User] = None
+  ) derives ArgBuilder
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -54,12 +58,12 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
   )
 
   case class Mutations(
-    say: SayRequest => URIO[ChatService & Repository & ChutiSession, Boolean]
+    say: SayRequest => URIO[ChatService & ZIORepository & ChutiSession, Boolean]
   )
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & Repository & ChutiSession,
+      ChatService & ZIORepository & ChutiSession,
       GameError,
       ChatMessage
     ]
@@ -68,20 +72,29 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
   private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
   private given Schema[Any, ChannelId] = Schema.longSchema.contramap(_.value)
   private given Schema[Any, ConnectionId] = Schema.stringSchema.contramap(_.value)
-  private given Schema[Any, User] = gen[Any, User]
-  private given Schema[Any, ChatMessage] = gen[Any, ChatMessage]
-  private given Schema[ChatService & ChutiSession, Queries] = Schema.gen[ChatService & ChutiSession, Queries]
-  private given Schema[ChatService & Repository & ChutiSession, Mutations] =
-    Schema.gen[ChatService & Repository & ChutiSession, Mutations]
-  private given Schema[ChatService & Repository & ChutiSession, Subscriptions] =
-    Schema.gen[ChatService & Repository & ChutiSession, Subscriptions]
+  private given Schema[Any, Locale] = Schema.stringSchema.contramap(_.toString)
+  private given Schema[Any, User] = Schema.gen[Any, User]
+  private given Schema[Any, ChatMessage] = Schema.gen[Any, ChatMessage]
 
   private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
   private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.string.map(ConnectionId.apply)
+  private given ArgBuilder[Locale] =
+    ArgBuilder.string.flatMap(s =>
+      Locale.forLanguageTag(s) match {
+        case l: Locale => Right(l)
+        case null => Left(ExecutionError(s"invalid locale $s"))
+      }
+    )
+  private given ArgBuilder[User] = ArgBuilder.derived[User]
 
-  lazy val api: GraphQL[ChatService & Repository & ChutiSession] =
-    graphQL(
+  lazy val api: GraphQL[ChatService & ZIORepository & ChutiSession] =
+    graphQL[
+      ChatService & ZIORepository & ChutiSession,
+      Queries,
+      Mutations,
+      Subscriptions
+    ](
       RootResolver(
         Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
         Mutations(
@@ -91,18 +104,9 @@ object ChatApi extends GenericSchema[ChatService & Repository & ChutiSession] {
           chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
         )
       )
-    ) @@
-      maxFields(22) @@ // query analyzer that limit query fields
-      maxDepth(30)
-//      @@ // query analyzer that limit query depth
-//      timeout(3.seconds) @@ // wrapper that fails slow queries
-//      printSlowQueries(3.seconds)
-
-  //  @@ // wrapper that logs slow queries
-//      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
-  val schema =
-    """schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Instant\n\ninput UserInput {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype ChatMessage {\n  fromUser: User!\n  msg: String!\n  channelId: Int!\n  toUser: User\n  date: Insant!\n}\n\ntype Mutations {\n  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!\n}\n\ntype Queries {\n  getRecentMessages(value: Int!): [ChatMessage!]\n}\n\ntype Subscriptions {\n  chatStream(channelId: Int!, connectionId: String!): ChatMessage\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}"""
-  // Generate client with
-  // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/chat.schema /Volumes/Personal/projects/chuti/web/src/main/scala/chat/ChatClient.scala
+    ) @@ maxFields(20)
+      @@ maxDepth(30)
+      @@ printErrors
+      @@ timeout(3.seconds)
 
 }

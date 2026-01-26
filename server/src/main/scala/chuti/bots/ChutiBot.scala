@@ -18,7 +18,7 @@ package chuti.bots
 
 import api.ChutiSession
 import chuti.*
-import dao.Repository
+import dao.ZIORepository
 import game.GameService
 import zio.{IO, ZIO}
 
@@ -29,9 +29,9 @@ trait ChutiBot {
     game: Game
   ): IO[GameError, PlayEvent]
 
-  def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & Repository, GameError, Game] = {
+  def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & ZIORepository, GameError, Game] = {
     for {
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
       userOpt        <- ZIO.serviceWith[ChutiSession](_.user)
       user           <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))

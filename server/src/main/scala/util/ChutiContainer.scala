@@ -16,7 +16,7 @@
 
 package util
 
-import api.ConfigurationService
+import api.*
 import com.dimafeng.testcontainers.MariaDBContainer
 import com.typesafe.config
 import com.typesafe.config.ConfigFactory

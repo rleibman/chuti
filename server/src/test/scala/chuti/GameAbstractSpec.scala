@@ -23,8 +23,8 @@ import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.*
-import dao.Repository.GameOperations
-import dao.{InMemoryRepository, Repository, RepositoryIO}
+import dao.ZIORepository.GameOperations
+import dao.{InMemoryRepository, ZIORepository, RepositoryIO}
 import game.GameService
 import mail.Postman
 import org.scalatest.Assertion
@@ -64,7 +64,7 @@ trait GameAbstractSpec {
 
   def juegaHastaElFinal(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     for {
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
@@ -103,7 +103,7 @@ trait GameAbstractSpec {
   def juegaMano(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     val bot = DumbChutiBot
     for {
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
@@ -169,7 +169,7 @@ trait GameAbstractSpec {
 
   def getReadyToPlay(gameId: GameId): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     for {
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
       gameService    <- ZIO.service[GameService]
       game <- gameOperations
         .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
@@ -327,7 +327,7 @@ trait GameAbstractSpec {
   ): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] =
     for {
       gameService    <- ZIO.service[GameService]
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
       getGame <-
         ZIO
           .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[

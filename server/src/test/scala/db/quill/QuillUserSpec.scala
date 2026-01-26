@@ -2,7 +2,7 @@ package db.quill
 
 import api.ChutiEnvironment
 import chuti.*
-import dao.{Repository, RepositoryError, RepositoryPermissionError}
+import dao.{ZIORepository, RepositoryError, RepositoryPermissionError}
 import db.quill.QuillGameSpec.fixedClock
 import zio.*
 import zio.logging.*
@@ -26,7 +26,7 @@ object QuillUserSpec extends QuillSpec {
       test("Happy CRUD") {
         (for {
           testUser             <- testUserZIO
-          repo                 <- ZIO.service[Repository].map(_.userOperations)
+          repo                 <- ZIO.service[ZIORepository].map(_.userOperations)
           allUsersBeforeInsert <- repo.search()
           inserted             <- repo.upsert(testUser)
           allUsersAfterInsert  <- repo.search()
@@ -45,7 +45,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("inserting the same user (by email should fail)") {
         (for {
-          repo     <- ZIO.service[Repository].map(_.userOperations)
+          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser <- testUserZIO
           _        <- repo.upsert(testUser)
           _        <- repo.upsert(testUser)
@@ -56,7 +56,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("changing a user's email should only succeed if that user doesn't exist already") {
         (for {
-          repo       <- ZIO.service[Repository].map(_.userOperations)
+          repo       <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser1  <- testUserZIO
           testUser2  <- testUserZIO
           firstUser  <- repo.upsert(testUser1)
@@ -69,14 +69,14 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Deleting a non-existent user") {
         (for {
-          repo     <- ZIO.service[Repository].map(_.userOperations)
+          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
           deleted  <- repo.delete(UserId(123), softDelete = false)
           deleted2 <- repo.delete(UserId(123), softDelete = true)
         } yield assertTrue(!deleted) && assertTrue(!deleted2)).withClock(fixedClock)
       },
       test("Updating a non-existent user") {
         (for {
-          repo     <- ZIO.service[Repository].map(_.userOperations)
+          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser <- testUserZIO
           _        <- repo.upsert(testUser.copy(id = Some(UserId(123)), name = "ChangedName"))
         } yield assertTrue(false))
@@ -86,8 +86,8 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Deleting a user with no permissions") {
         (for {
-          repo <- ZIO.service[Repository].map(_.userOperations)
-          _    <- repo.delete(UserId(123)).provideSomeLayer[Repository](satanSession)
+          repo <- ZIO.service[ZIORepository].map(_.userOperations)
+          _    <- repo.delete(UserId(123)).provideSomeLayer[ZIORepository](satanSession)
         } yield assertTrue(false))
           .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
@@ -97,10 +97,10 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Updating a user with no permissions") {
         (for {
-          repo     <- ZIO.service[Repository].map(_.userOperations)
+          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser <- testUserZIO
           inserted <- repo.upsert(testUser)
-          _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[Repository](satanSession)
+          _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[ZIORepository](satanSession)
         } yield assertTrue(false))
           .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
@@ -111,20 +111,20 @@ object QuillUserSpec extends QuillSpec {
       test("login") {
         (for {
           now             <- Clock.instant
-          repo            <- ZIO.service[Repository].map(_.userOperations)
+          repo            <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser        <- testUserZIO
           inserted        <- repo.upsert(testUser)
           active          <- repo.upsert(inserted.copy(active = true))
           passwordChanged <- repo.changePassword(active, password)
           loggedIn        <- repo.login(active.email, password)
-          firstLogin      <- repo.firstLogin.provideSomeLayer[Repository](userSession(active))
+          firstLogin      <- repo.firstLogin.provideSomeLayer[ZIORepository](userSession(active))
         } yield assertTrue(passwordChanged) &&
           assertTrue(loggedIn.contains(active)) &&
           assertTrue(firstLogin.contains(now))).withClock(fixedClock)
       },
       test("user by email") {
         (for {
-          repo        <- ZIO.service[Repository].map(_.userOperations)
+          repo        <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser    <- testUserZIO
           inserted    <- repo.upsert(testUser)
           active      <- repo.upsert(inserted.copy(active = true))
@@ -134,19 +134,19 @@ object QuillUserSpec extends QuillSpec {
       },
       test("friend stuff") {
         (for {
-          repo       <- ZIO.service[Repository].map(_.userOperations)
+          repo       <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser1  <- testUserZIO
           inserted1  <- repo.upsert(testUser1.copy(active = true))
           testUser2  <- testUserZIO
           inserted2  <- repo.upsert(testUser2.copy(active = true))
-          noFriends1 <- repo.friends.provideSomeLayer[Repository](userSession(inserted1))
-          noFriends2 <- repo.friends.provideSomeLayer[Repository](userSession(inserted2))
-          friended   <- repo.friend(inserted2).provideSomeLayer[Repository](userSession(inserted1))
-          aFriend1   <- repo.friends.provideSomeLayer[Repository](userSession(inserted1))
-          aFriend2   <- repo.friends.provideSomeLayer[Repository](userSession(inserted2))
-          unfriended <- repo.unfriend(inserted1).provideSomeLayer[Repository](userSession(inserted2))
-          noFriends3 <- repo.friends.provideSomeLayer[Repository](userSession(inserted1))
-          noFriends4 <- repo.friends.provideSomeLayer[Repository](userSession(inserted2))
+          noFriends1 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
+          noFriends2 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
+          friended   <- repo.friend(inserted2).provideSomeLayer[ZIORepository](userSession(inserted1))
+          aFriend1   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
+          aFriend2   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
+          unfriended <- repo.unfriend(inserted1).provideSomeLayer[ZIORepository](userSession(inserted2))
+          noFriends3 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
+          noFriends4 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
         } yield {
           assert(noFriends1)(isEmpty) &&
           assert(noFriends2)(isEmpty) &&
@@ -160,7 +160,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("wallet") {
         (for {
-          repo          <- ZIO.service[Repository].map(_.userOperations)
+          repo          <- ZIO.service[ZIORepository].map(_.userOperations)
           testUser1     <- testUserZIO
           inserted1     <- repo.upsert(testUser1.copy(active = true))
           wallet        <- repo.getWallet(inserted1.id.get)

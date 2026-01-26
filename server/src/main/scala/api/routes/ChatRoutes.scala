@@ -17,10 +17,10 @@
 package api.routes
 
 import api.{ChutiEnvironment, ChutiSession}
-import caliban.{CalibanError, GraphiQLHandler, QuickAdapter}
+import caliban.{CalibanError, GraphQLInterpreter, GraphiQLHandler, QuickAdapter}
 import chat.{ChatApi, ChatService}
 import chuti.GameError
-import dao.Repository
+import dao.ZIORepository
 import zio.*
 import zio.http.*
 
@@ -28,11 +28,8 @@ object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
   lazy private val interpreter = ChatApi.api.interpreter
 
-  override def api: ZIO[
-    ChutiEnvironment,
-    GameError,
-    Routes[ChutiEnvironment & ChutiSession, GameError]
-  ] =
+  override def api
+    : ZIO[ChutiEnvironment, GameError, Routes[ChatService & ZIORepository & ChutiSession, GameError]] =
     (for {
       interpreter <- interpreter
     } yield {
@@ -44,18 +41,20 @@ object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
         Method.ANY / "api" / "chat" / "graphiql" ->
           GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
         Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.
-          QuickAdapter(interpreter).handlers.upload,
-        ).mapError(GameError.apply)
+          QuickAdapter(interpreter).handlers.upload
+      )
+    }).mapError(GameError.apply)
 
   /** These do not require a session
-   */
+    */
   override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
     (for {
       interpreter <- interpreter
     } yield {
       Routes(
         Method.GET / "unauth" / "chat" / "schema" ->
-          Handler.fromBody(Body.fromCharSequence(ChatApi.api.render)),
-    }).mapError(DMScreenError(_))
+          Handler.fromBody(Body.fromCharSequence(ChatApi.api.render))
+      )
+    }).mapError(GameError.apply)
 
 }

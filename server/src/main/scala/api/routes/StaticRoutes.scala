@@ -17,26 +17,17 @@
 package api.routes
 
 import api.*
+import api.routes.StaticRoutes.file
 import auth.*
 import chuti.*
 import zio.*
 import zio.http.*
+import zio.stream.ZStream
 
 import java.nio.file.{Files, Paths as JPaths}
 
 object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  private def file(
-    fileName: String,
-    request:  Request
-  ): IO[GameError, java.io.File] = {
-    JPaths.get(fileName) match {
-      case path: java.nio.file.Path if !Files.exists(path) =>
-        ZIO.fail(NotFoundError(s"File not found: ${request.path}"))
-      case path: java.nio.file.Path => ZIO.succeed(path.toFile.nn)
-      case null => ZIO.fail(GameError(s"HttpError.InternalServerError(Could not find file $fileName))"))
-    }
-  }
   private def file(
     fileName: String
   ): IO[GameError, java.io.File] = {
@@ -46,22 +37,10 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
       case null => ZIO.fail(GameError(s"HttpError.InternalServerError(Could not find file $fileName))"))
     }
   }
+
   override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
     ZIO.succeed(
       Routes(
-        Method.GET / "playerView" -> handler {
-          (
-            _: Request
-          ) =>
-            Handler
-              .fromFileZIO {
-                for {
-                  config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-                  staticContentDir = config.chuti.http.staticContentDir
-                  file <- file(s"$staticContentDir/index.html")
-                } yield file
-              }.mapError(GameError(_))
-        }.flatten,
         Method.GET / Root -> handler {
           (
             _: Request
@@ -76,22 +55,23 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
               }.mapError(GameError(_))
         }.flatten,
         Method.GET / trailing -> handler {
-          (
-            path: Path,
-            _:    Request
-          ) =>
+            (
+              path: Path,
+              _:    Request
+            ) =>
 
-            // You might want to restrict the files that could come back, but then again, you may not
-            val somethingElse = path.toString
-            Handler
-              .fromFileZIO {
-                for {
-                  config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-                  staticContentDir = config.chuti.http.staticContentDir
-                  file <- file(s"$staticContentDir/$somethingElse")
-                } yield file
-              }.mapError(GameError(_))
-        }.flatten
+              // You might want to restrict the files that could come back, but then again, you may not
+              val somethingElse = path.toString
+              Handler
+                .fromFileZIO {
+                  for {
+                    config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                    staticContentDir = config.chuti.http.staticContentDir
+                    file <- file(s"$staticContentDir/$somethingElse")
+                  } yield file
+                }.mapError(GameError(_))
+                .contramap[(Path, Request)](_._2)
+          }
       )
     )
 

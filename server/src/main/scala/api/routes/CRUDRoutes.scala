@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package routes
+package api.routes
 
 import api.{ChutiEnvironment, ChutiSession}
 import chuti.{GameError, Search}
-import dao.{CRUDOperations, Repository, RepositoryError, RepositoryIO}
+import dao.{CRUDOperations, ZIORepository, RepositoryError, RepositoryIO}
 import util.*
 import zio.http.*
 import zio.*
@@ -27,10 +27,10 @@ import zio.json.*
 
 import scala.util.matching.Regex
 
-abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder, SEARCH <: Search: Tag: JsonDecoder] {
+abstract class CRUDRoutes[E: {Tag, JsonEncoder, JsonDecoder}, PK: {Tag, JsonDecoder}, SEARCH <: Search: {Tag, JsonDecoder}] {
   self =>
 
-  type OpsService = CRUDOperations[E, PK, SEARCH]
+  type OpsService = CRUDOperations[RepositoryIO, E, PK, SEARCH]
 
   val url: String
 
@@ -75,7 +75,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
     Option[E]
   ] =
     for {
-      ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+      ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
       ret <- ops.get(id)
     } yield ret
 
@@ -83,7 +83,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
     objOpt: Option[E]
   ): ZIO[ChutiSession & OpsService, Throwable, Boolean] =
     for {
-      ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+      ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
       ret <- objOpt.fold(ZIO.succeed(false): RepositoryIO[Boolean])(obj => ops.delete(getPK(obj), defaultSoftDelete))
     } yield ret
 
@@ -93,7 +93,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
     E
   ] = {
     for {
-      ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+      ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
       ret <- ops.upsert(obj)
     } yield ret
   }
@@ -104,7 +104,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
     Long
   ] =
     for {
-      ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+      ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
       ret <- ops.count(search)
     } yield ret
 
@@ -114,7 +114,7 @@ abstract class CRUDRoutes[E: Tag: JsonEncoder: JsonDecoder, PK: Tag: JsonDecoder
     Seq[E]
   ] =
     for {
-      ops <- ZIO.service[CRUDOperations[E, PK, SEARCH]]
+      ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
       ret <- ops.search(search)
     } yield ret
 

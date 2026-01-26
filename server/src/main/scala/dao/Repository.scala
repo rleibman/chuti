@@ -16,153 +16,107 @@
 
 package dao
 
-import api.ChutiSession
-import api.token.{Token, TokenPurpose}
+import api.token.*
 import chuti.*
-import dao.Repository.{GameOperations, TokenOperations, UserOperations}
-import game.GameService.godLayer
-import zio.cache.{Cache, Lookup}
-import zio.logging.*
-import zio.{Clock, Random, ZIO, *}
 
 import java.time.Instant
+import scala.concurrent.duration.Duration
 
-trait Repository {
+/** Collects the basic CRUD operations of a single object (or object graph) against a data source.
+  * @tparam E
+  *   the typeof the object to be stored.
+  * @tparam PK
+  *   the type of the primary key of the object.
+  * @tparam SEARCH
+  *   the type of the search object.
+  */
+trait CRUDOperations[F[_], E, PK, SEARCH <: Search] {
 
-  def gameOperations: GameOperations
-
-  def userOperations: UserOperations
-
-  def tokenOperations: TokenOperations
+  def upsert(e: E):  F[E]
+  def get(pk:   PK): F[Option[E]]
+  def delete(
+    pk:         PK,
+    softDelete: Boolean = false
+  ):                                         F[Boolean]
+  def search(search: Option[SEARCH] = None): F[Seq[E]]
+  def count(search:  Option[SEARCH] = None): F[Long]
 
 }
 
-object Repository {
+class Repository[F[_]] {
 
-  lazy val cached: URLayer[Repository, Repository] = ZLayer.fromZIO {
-    for {
-      repository <- ZIO.service[Repository]
-      cache <- zio.cache.Cache.make[GameId, Any, RepositoryError, Game](
-        capacity = 10,
-        timeToLive = 1.hour,
-        lookup = Lookup { gameId =>
-          for {
-            game <- repository.gameOperations
-              .get(gameId)
-              .flatMap(ZIO.fromOption)
-              .orElseFail(RepositoryError(s"Could not find game: $gameId"))
-              .provideLayer(godLayer)
-          } yield game
-        }
-      )
-    } yield CachedRepository(cache, repository): Repository
-  }
+  def gameOperations: GameOperations[F]
 
-  case class CachedRepository(
-    gameCache:  Cache[GameId, RepositoryError, Game],
-    repository: Repository
-  ) extends Repository {
+  def userOperations: UserOperations[F]
 
-    override def gameOperations: Repository.GameOperations =
-      new Repository.GameOperations {
+  def tokenOperations: TokenOperations[F]
 
-        override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = repository.gameOperations.getHistoricalUserGames
+}
 
-        override def userInGame(id: GameId): RepositoryIO[Boolean] = repository.gameOperations.userInGame(id)
+trait GameOperations[F[_]] extends CRUDOperations[F, Game, GameId, EmptySearch] {
 
-        override def updatePlayers(game: Game): RepositoryIO[Game] =
-          game.id.fold(ZIO.unit)(i => gameCache.invalidate(i)) *>
-            repository.gameOperations.updatePlayers(game)
+  def getHistoricalUserGames: F[Seq[Game]]
 
-        override def gameInvites: RepositoryIO[Seq[Game]] = repository.gameOperations.gameInvites
+  def userInGame(id: GameId): F[Boolean]
 
-        override def gamesWaitingForPlayers(): RepositoryIO[Seq[Game]] =
-          repository.gameOperations.gamesWaitingForPlayers()
+  def updatePlayers(game: Game): F[Game]
 
-        override def getGameForUser: RepositoryIO[Option[Game]] = repository.gameOperations.getGameForUser
+  def gameInvites: F[Seq[Game]]
 
-        override def upsert(game: Game): RepositoryIO[Game] =
-          game.id.fold(ZIO.unit)(i => gameCache.invalidate(i)) *>
-            repository.gameOperations.upsert(game)
+  def gamesWaitingForPlayers(): F[Seq[Game]]
 
-        override def get(pk: GameId): RepositoryIO[Option[Game]] = gameCache.get(pk).map(Option.apply)
+  def getGameForUser: F[Option[Game]]
 
-        override def delete(
-          pk:         GameId,
-          softDelete: Boolean
-        ): RepositoryIO[Boolean] =
-          gameCache.invalidate(pk) *>
-            repository.gameOperations.delete(pk, softDelete)
+}
 
-        override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] =
-          repository.gameOperations.search(search)
+trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSearch] {
 
-        override def count(search: Option[EmptySearch]): RepositoryIO[Long] = repository.gameOperations.count(search)
+  def firstLogin: F[Option[Instant]]
 
-      }
+  def login(
+    email:    String,
+    password: String
+  ): F[Option[User]]
 
-    override def userOperations: Repository.UserOperations = repository.userOperations
+  def userByEmail(email: String): F[Option[User]]
 
-    override def tokenOperations: Repository.TokenOperations = repository.tokenOperations
+  def changePassword(
+    user:     User,
+    password: String
+  ): F[Boolean]
 
-  }
+  def unfriend(enemy: User): F[Boolean]
 
-  trait UserOperations extends CRUDOperations[User, UserId, PagedStringSearch] {
+  def friend(friend: User): F[Boolean]
 
-    def firstLogin: RepositoryIO[Option[Instant]]
+  def friends: F[Seq[User]]
 
-    def login(
-      email:    String,
-      password: String
-    ): ZIO[Any, RepositoryError, Option[User]]
+  def getWallet: F[Option[UserWallet]]
 
-    def userByEmail(email: String): RepositoryIO[Option[User]]
+  def getWallet(userId: UserId): F[Option[UserWallet]]
 
-    def changePassword(
-      user:     User,
-      password: String
-    ): RepositoryIO[Boolean]
+  def updateWallet(userWallet: UserWallet): F[UserWallet]
 
-    def unfriend(enemy: User): RepositoryIO[Boolean]
-    def friend(friend:  User): RepositoryIO[Boolean]
-    def friends:               RepositoryIO[Seq[User]]
+}
 
-    def getWallet:                            RepositoryIO[Option[UserWallet]]
-    def getWallet(userId:        UserId):     RepositoryIO[Option[UserWallet]]
-    def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet]
+trait TokenOperations[F[_]] {
 
-  }
-  trait GameOperations extends CRUDOperations[Game, GameId, EmptySearch] {
+  def cleanup: F[Boolean]
 
-    def getHistoricalUserGames:      RepositoryIO[Seq[Game]]
-    def userInGame(id:      GameId): RepositoryIO[Boolean]
-    def updatePlayers(game: Game):   RepositoryIO[Game]
-    def gameInvites:                 RepositoryIO[Seq[Game]]
-    def gamesWaitingForPlayers():    RepositoryIO[Seq[Game]]
-    def getGameForUser:              RepositoryIO[Option[Game]]
+  def validateToken(
+    token:   Token,
+    purpose: TokenPurpose
+  ): F[Option[User]]
 
-  }
+  def createToken(
+    user:    User,
+    purpose: TokenPurpose,
+    ttl:     Option[Duration]
+  ): F[Token]
 
-  trait TokenOperations {
-
-    def cleanup: RepositoryIO[Boolean]
-
-    def validateToken(
-      token:   Token,
-      purpose: TokenPurpose
-    ): RepositoryIO[Option[User]]
-
-    def createToken(
-      user:    User,
-      purpose: TokenPurpose,
-      ttl:     Option[Duration]
-    ): ZIO[ChutiSession, RepositoryError, Token]
-
-    def peek(
-      token:   Token,
-      purpose: TokenPurpose
-    ): RepositoryIO[Option[User]]
-
-  }
+  def peek(
+    token:   Token,
+    purpose: TokenPurpose
+  ): F[Option[User]]
 
 }

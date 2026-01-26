@@ -18,11 +18,11 @@ package api.routes
 
 import api.{ChutiEnvironment, ChutiSession}
 import auth.{AuthServer, Session}
+import caliban.*
 import chat.ChatService
 import chuti.*
-import game.GameApi
-import caliban.*
-import dao.Repository
+import dao.ZIORepository
+import game.{GameApi, GameService}
 import zio.http.*
 import zio.json.*
 import zio.{ZIO, ZLayer}
@@ -45,7 +45,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
   override def api: ZIO[
     ChutiEnvironment,
     GameError,
-    Routes[ChutiEnvironment & ChutiSession, GameError]
+    Routes[ChutiEnvironment & ChutiSession & GameService & ChatService, GameError]
   ] =
     (for {
       interpreter <- interpreter
@@ -65,9 +65,9 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
             (for {
               session    <- ZIO.service[ChutiSession]
               authServer <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
-              user <- ZIO
-                .fromOption(session.user).orElseFail(GameError("Not logged in"))
-              bodyStr <- request.body.asString.mapError(e => GameError(e))
+              user       <- ZIO.fromOption(session.user).orElseFail(GameError("Not logged in"))
+              userId     <- ZIO.fromOption(user.id).orElseFail(GameError("User does not have id"))
+              bodyStr    <- request.body.asString.mapError(e => GameError(e))
               changePasswordRequest <- ZIO
                 .fromEither(bodyStr.fromJson[ChangePasswordRequest]).mapError(e => GameError(e))
               // Verify current password by attempting to log in
@@ -77,7 +77,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
                 )
               _ <- ZIO.when(loginResult.isEmpty)(ZIO.fail(GameError("Current password is incorrect")))
               // Change the password
-              _ <- authServer.changePassword(user.id, changePasswordRequest.newPassword).mapError(e => GameError(e))
+              _ <- authServer.changePassword(userId, changePasswordRequest.newPassword).mapError(e => GameError(e))
             } yield Response.ok).catchAll { error =>
               ZIO.succeed(Response.text(error.getMessage).status(Status.BadRequest))
             }
@@ -93,7 +93,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
       Routes(
         Method.GET / "unauth" / "chuti" / "schema" ->
-          Handler.fromBody(Body.fromCharSequence(GameApi.api.render)),
+          Handler.fromBody(Body.fromCharSequence(GameApi.api.render))
       )
     }).mapError(GameError(_))
 

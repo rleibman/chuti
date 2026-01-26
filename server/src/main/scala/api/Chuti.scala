@@ -20,9 +20,9 @@ import api.routes.*
 import api.token.TokenHolder
 import auth.{AuthServer, Session}
 import chat.ChatService
-import chuti.{GameError, PagedStringSearch, User, UserId}
+import chuti.*
 import dao.quill.QuillRepository
-import dao.{CRUDOperations, Repository}
+import dao.{CRUDOperations, ZIORepository, RepositoryError}
 import game.GameService
 import mail.{CourierPostman, Postman}
 import zio.*
@@ -74,7 +74,8 @@ object Chuti extends ZIOApp {
 
     private val routes: Seq[AppRoutes[ChutiEnvironment, ChutiSession, GameError]] =
       Seq(
-        ChutiRoutes,
+        ChatRoutes,
+        GameRoutes,
         TestRoutes,
         StaticRoutes
       )
@@ -132,9 +133,9 @@ object Chuti extends ZIOApp {
       config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       // Run Flyway migrations first, before anything else
 //      _           <- FlywayMigration.runMigrations
-      rateLimiter <- ZIO.service[RateLimiter]
-      _           <- RateLimiter.cleanupSchedule(rateLimiter)
-      _           <- ZIO.logInfo("Rate limiter cleanup schedule started")
+//      rateLimiter <- ZIO.service[RateLimiter]
+//      _           <- RateLimiter.cleanupSchedule(rateLimiter)
+//      _           <- ZIO.logInfo("Rate limiter cleanup schedule started")
       app         <- zapp
       _           <- ZIO.logInfo(s"Starting application with config $config")
       server <- {

@@ -17,7 +17,6 @@
 package game
 
 import api.token.TokenHolder
-import chat.ChatService
 import api.{ChutiEnvironment, ChutiSession}
 import caliban.*
 import caliban.CalibanError.ExecutionError
@@ -28,94 +27,101 @@ import caliban.schema.*
 import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
+import chat.ChatService
 import chuti.{*, given}
-import dao.Repository
+import dao.ZIORepository
 import mail.Postman
+import zio.*
 import zio.json.*
 import zio.json.ast.Json
 import zio.logging.*
+import zio.nio.file.Files
 import zio.stream.ZStream
-import zio.{Clock, Console, ZIO, *}
 
-object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
+import java.net.URI
+import java.nio.file.StandardOpenOption
+import java.util.Locale
+
+object GameApi {
 
   import caliban.interop.circe.json.*
 
   case class PlayArgs(
     gameId:    GameId,
     gameEvent: Json
-  )
+  ) derives ArgBuilder
   case class GameInviteArgs(
     userId: UserId,
     gameId: GameId
-  )
+  ) derives ArgBuilder
 
   case class GameStreamArgs(
     gameId:       GameId,
     connectionId: ConnectionId
-  )
+  ) derives ArgBuilder
 
-  case class NewGameArgs(satoshiPerPoint: Int)
+  case class NewGameArgs(satoshiPerPoint: Int) derives ArgBuilder
 
   case class InviteByEmailArgs(
     name:   String,
     email:  String,
     gameId: GameId
-  )
+  ) derives ArgBuilder
 
   case class Queries(
-    getGame:                GameId => ZIO[GameService & ChutiSession & Repository, GameError, Json],
-    getGameForUser:         ZIO[GameService & ChutiSession & Repository, GameError, Json],
-    getFriends:             ZIO[GameService & ChutiSession & Repository, GameError, Seq[User]],
-    getGameInvites:         ZIO[GameService & ChutiSession & Repository, GameError, Json],
-    getLoggedInUsers:       ZIO[GameService & ChutiSession & Repository, GameError, Seq[User]],
-    getHistoricalUserGames: ZIO[GameService & ChutiSession & Repository, GameError, Json]
+    getGame:                GameId => ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
+    getGameForUser:         ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
+    getFriends:             ZIO[GameService & ChutiSession & ZIORepository, GameError, Seq[User]],
+    getGameInvites:         ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
+    getLoggedInUsers:       ZIO[GameService & ChutiSession & ZIORepository, GameError, Seq[User]],
+    getHistoricalUserGames: ZIO[GameService & ChutiSession & ZIORepository, GameError, Json]
   )
   case class Mutations(
-    newGame: NewGameArgs => ZIO[GameService & ChutiSession & Repository, GameError, Json],
+    newGame: NewGameArgs => ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
     newGameSameUsers: GameId => ZIO[
-      GameService & TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman,
+      GameService & TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman,
       GameError,
       Json
     ],
-    joinRandomGame: ZIO[GameService & ChutiSession & Repository, GameError, Json],
-    abandonGame:    GameId => ZIO[GameService & ChutiSession & Repository, GameError, Boolean],
+    joinRandomGame: ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
+    abandonGame:    GameId => ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean],
     inviteByEmail: InviteByEmailArgs => ZIO[
-      GameService & TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman,
+      GameService & TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman,
       GameError,
       Boolean
     ],
-    startGame: GameId => ZIO[GameService & Repository & Postman & TokenHolder & ChutiSession, GameError, Boolean],
+    startGame: GameId => ZIO[GameService & ZIORepository & Postman & TokenHolder & ChutiSession, GameError, Boolean],
     inviteToGame: GameInviteArgs => ZIO[
-      TokenHolder & ChutiSession & ChatService & Repository & ChutiSession & Postman & GameService,
+      TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman & GameService,
       GameError,
       Boolean
     ],
-    acceptGameInvitation: GameId => ZIO[GameService & ChutiSession & Repository, GameError, Json],
+    acceptGameInvitation: GameId => ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
     declineGameInvitation: GameId => ZIO[
-      GameService & ChutiSession & Repository & ChatService,
+      GameService & ChutiSession & ZIORepository & ChatService,
       GameError,
       Boolean
     ],
     cancelUnacceptedInvitations: GameId => ZIO[
-      GameService & ChutiSession & Repository & ChatService,
+      GameService & ChutiSession & ZIORepository & ChatService,
       GameError,
       Boolean
     ],
-    friend:   UserId => ZIO[GameService & ChutiSession & Repository & ChatService, GameError, Boolean],
-    unfriend: UserId => ZIO[GameService & ChutiSession & Repository & ChatService, GameError, Boolean],
-    play:     PlayArgs => ZIO[GameService & ChutiSession & Repository, GameError, Boolean]
+    friend:   UserId => ZIO[GameService & ChutiSession & ZIORepository & ChatService, GameError, Boolean],
+    unfriend: UserId => ZIO[GameService & ChutiSession & ZIORepository & ChatService, GameError, Boolean],
+    play:     PlayArgs => ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean]
   )
   case class Subscriptions(
-    gameStream: GameStreamArgs => ZStream[GameService & ChutiSession & Repository, GameError, Json],
-    userStream: ConnectionId => ZStream[GameService & ChutiSession & Repository, GameError, UserEvent]
+    gameStream: GameStreamArgs => ZStream[GameService & ChutiSession & ZIORepository, GameError, Json],
+    userStream: ConnectionId => ZStream[GameService & ChutiSession & ZIORepository, GameError, UserEvent]
   )
 
   private given Schema[Any, GameId] = Schema.longSchema.contramap(_.value)
   private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
   private given Schema[Any, ConnectionId] = Schema.stringSchema.contramap(_.value)
-  private given Schema[Any, User] = gen[Any, User]
-  private given Schema[Any, Game] = gen[Any, Game]
+  private given Schema[Any, Locale] = Schema.stringSchema.contramap(_.toString)
+  private given Schema[Any, User] = Schema.gen[Any, User]
+  private given Schema[Any, Game] = Schema.gen[Any, Game]
 
   private given Schema[ChutiEnvironment & ChutiSession & GameService & ChatService, Queries] =
     Schema.gen[ChutiEnvironment & ChutiSession & GameService & ChatService, Queries]
@@ -151,7 +157,12 @@ object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
     } yield sanitizeGame(game, user)
 
   lazy val api: GraphQL[ChutiEnvironment & ChutiSession & GameService & ChatService] =
-    graphQL(
+    graphQL[
+      ChutiEnvironment & ChutiSession & GameService & ChatService,
+      Queries,
+      Mutations,
+      Subscriptions
+    ](
       RootResolver(
         Queries(
           getGame = gameId =>
@@ -230,17 +241,9 @@ object GameApi extends GenericSchema[GameService & ChutiSession & ChatService] {
           userStream = connectionId => GameService.userStream(connectionId)
         )
       )
-    ) @@
-      maxFields(200) @@ // query analyzer that limit query fields
-      maxDepth(30)
-//      @@ // query analyzer that limit query depth
-//      timeout(15.seconds) @@ // wrapper that fails slow queries
-//      printSlowQueries(3.seconds)
-//  @@ // wrapper that logs slow queries
-//      apolloTracing // wrapper for https://github.com/apollographql/apollo-tracing
-  val schema =
-    "schema {\n  query: Queries\n  mutation: Mutations\n  subscription: Subscriptions\n}\n\nscalar Json\n\nscalar Instant\n\nenum UserEventType {\n  AbandonedGame\n  Connected\n  Disconnected\n  JoinedGame\n  Modified\n}\n\ntype Mutations {\n  newGame(satoshiPerPoint: Int!): Json\n  newGameSameUsers(value: Int!): Json\n  joinRandomGame: Json\n  abandonGame(value: Int!): Boolean\n  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean\n  startGame(value: Int!): Boolean\n  inviteToGame(userId: Int!, gameId: Int!): Boolean\n  acceptGameInvitation(value: Int!): Json\n  declineGameInvitation(value: Int!): Boolean\n  cancelUnacceptedInvitations(value: Int!): Boolean\n  friend(value: Int!): Boolean\n  unfriend(value: Int!): Boolean\n  play(gameId: Int!, gameEvent: Json!): Boolean\n}\n\ntype Queries {\n  getGame(value: Int!): Json\n  getGameForUser: Json\n  getFriends: [User!]\n  getGameInvites: [Json!]\n  getLoggedInUsers: [User!]\n  getHistoricalUserGames: [Json!]\n}\n\ntype Subscriptions {\n  gameStream(gameId: Int!, connectionId: String!): Json\n  userStream(value: String!): UserEvent\n}\n\ntype User {\n  id: Int\n  email: String!\n  name: String!\n  created: Instant!\n  active: Boolean!\n  deleted: Boolean!\n  isAdmin: Boolean!\n}\n\ntype UserEvent {\n  user: User!\n  userEventType: UserEventType!\n  gameId: Int\n}"
+    ) @@ maxFields(20)
+      @@ maxDepth(30)
+      @@ printErrors
+      @@ timeout(3.seconds)
 
-  // Generate client with
-  // calibanGenClient /Volumes/Personal/projects/chuti/server/src/main/graphql/game.schema /Volumes/Personal/projects/chuti/web/src/main/scala/game/GameClient.scala
 }

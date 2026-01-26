@@ -18,12 +18,13 @@ package chat
 
 import api.ChutiSession
 import caliban.{CalibanError, GraphQLInterpreter}
+import chat.ChatApi.SayRequest
 import chuti.*
 import chuti.ChannelId.*
-import dao.Repository
+import dao.ZIORepository
 import zio.logging.*
 import zio.stream.ZStream
-import zio.{Clock, Console, *}
+import zio.*
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -34,13 +35,13 @@ trait ChatService {
     channelId: ChannelId
   ): ZIO[ChutiSession, GameError, Seq[ChatMessage]]
 
-  def say(msg: SayRequest): URIO[Repository & ChutiSession, ChatMessage]
+  def say(msg: SayRequest): URIO[ZIORepository & ChutiSession, ChatMessage]
 
   def chatStream(
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    Repository & ChutiSession,
+    ZIORepository & ChutiSession,
     GameError,
     ChatMessage
   ]
@@ -58,7 +59,7 @@ object ChatService {
     channelId: ChannelId,
     toUser:    Option[User]
   ): ZIO[
-    ChatService & Repository & ChutiSession,
+    ChatService & ZIORepository & ChutiSession,
     Nothing,
     ChatMessage
   ] =
@@ -68,7 +69,7 @@ object ChatService {
     } yield sent
 
   def say(request: SayRequest): URIO[
-    ChatService & Repository & ChutiSession,
+    ChatService & ZIORepository & ChutiSession,
     ChatMessage
   ] = ZIO.service[ChatService].flatMap(_.say(request))
 
@@ -76,7 +77,7 @@ object ChatService {
     channelId:    ChannelId,
     connectionId: ConnectionId
   ): ZStream[
-    ChatService & Repository & ChutiSession,
+    ChatService & ZIORepository & ChutiSession,
     GameError,
     ChatMessage
   ] = ZStream.service[ChatService].flatMap(_.chatStream(channelId, connectionId))
@@ -118,7 +119,7 @@ object ChatService {
         }
 
         override def say(request: SayRequest): ZIO[
-          Repository & ChutiSession,
+          ZIORepository & ChutiSession,
           Nothing,
           ChatMessage
         ] =
@@ -158,7 +159,7 @@ object ChatService {
           channelId:    ChannelId,
           connectionId: ConnectionId
         ): ZStream[
-          Repository & ChutiSession,
+          ZIORepository & ChutiSession,
           GameError,
           ChatMessage
         ] =
@@ -166,7 +167,7 @@ object ChatService {
             for {
               userOpt       <- ZIO.serviceWith[ChutiSession](_.user)
               user          <- ZIO.fromOption(userOpt).orElseFail(GameError("Authenticated User required")).orDie
-              gameOps <- ZIO.service[Repository].map(_.gameOperations)
+              gameOps <- ZIO.service[ZIORepository].map(_.gameOperations)
               // Make sure the user has rights to listen in on the channel,
               // basically if the channel is lobby, or the user is in the game channel for that game
               // admins can listen in on games.

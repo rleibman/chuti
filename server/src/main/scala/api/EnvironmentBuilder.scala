@@ -32,8 +32,8 @@ import zio.json.*
 
 import java.util.Locale
 
-type ChutiEnvironment = AuthConfig & Repository & ConfigurationService & Postman &
-  AuthServer[User, UserId, ConnectionId] & TokenHolder & OAuthService & OAuthStateStore
+type ChutiEnvironment = AuthConfig & ZIORepository & ConfigurationService & Postman &
+  AuthServer[User, Option[UserId], ConnectionId] & TokenHolder & OAuthService & OAuthStateStore
 //  RateLimiter &
 //  RateLimitConfig &
 //  FlywayMigration &
@@ -53,31 +53,63 @@ given JsonCodec[Locale] =
 
 object EnvironmentBuilder {
 
+  /** Converts dmscreen's OAuth configuration to zio-auth's OAuthService
+    *
+    * dmscreen.oauth is a Map[String, OAuthProviderConfig] where keys are provider names ("google", "github", etc.)
+    */
+  private val oauthServiceLayer: ZLayer[ConfigurationService, ConfigurationError, OAuthService] =
+    ZLayer.fromZIO {
+      for {
+        config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+      } yield {
+        // Extract provider configs from map
+        val googleConfig = config.chuti.oauth.get("google")
+        val githubConfig = config.chuti.oauth.get("github")
+        val discordConfig = config.chuti.oauth.get("discord")
+
+        // Create OAuthService with configured providers
+        OAuthService.live(
+          googleConfig,
+          githubConfig,
+          discordConfig
+        )
+      }
+    }.flatten
+
   lazy private val postmanLayer: ZLayer[ConfigurationService, GameError, Postman] = ZLayer.fromZIO(for {
     configService <- ZIO.service[ConfigurationService]
     appConfig     <- configService.appConfig
   } yield CourierPostman.live(appConfig.chuti.smtp))
 
-  val repoLayer: ZLayer[ConfigurationService, ConfigurationError, Repository] =
-    QuillRepository.uncached >>> Repository.cached
+  val repoLayer: ZLayer[ConfigurationService, ConfigurationError, ZIORepository] =
+    QuillRepository.uncached >>> ZIORepository.cached
 
-  val live: ULayer[ChutiEnvironment] = ZLayer.make[ChutiEnvironment](
-    ConfigurationService.live,
-    repoLayer,
-    postmanLayer,
-    TokenHolder.liveLayer,
-    ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
-  ).orDie
+  val live: ULayer[ChutiEnvironment] = ZLayer
+    .make[ChutiEnvironment](
+      ChutiAuthServer.live,
+      ConfigurationService.live,
+      repoLayer,
+      postmanLayer,
+      TokenHolder.liveLayer,
+      ZLayer.fromZIO(ZIO.serviceWith[ZIORepository](_.userOperations)),
+      oauthServiceLayer,
+      OAuthStateStore.live(),
+      ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session))
+    ).orDie
 
   val withContainer: Layer[GameError, ChutiEnvironment] = {
 
     ZLayer.make[ChutiEnvironment](
+      ChutiAuthServer.live,
       ChutiContainer.containerLayer,
       ConfigurationService.live >>> ChutiContainer.configLayer,
+      ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
       repoLayer,
       postmanLayer,
       TokenHolder.liveLayer,
-      ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
+      oauthServiceLayer,
+      OAuthStateStore.live(),
+      ZLayer.fromZIO(ZIO.serviceWith[ZIORepository](_.userOperations))
     )
   }
 
@@ -105,7 +137,8 @@ object EnvironmentBuilder {
         cache <- Cache
           .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
       } yield TokenHolder.tempCache(cache)),
-      ZLayer.fromZIO(ZIO.service[Repository].map(_.userOperations))
+      ZLayer.fromZIO(ZIO.service[ZIORepository].map(_.userOperations)),
+      OAuthStateStore.live(),
     )
   }
 

@@ -19,7 +19,7 @@ package chuti
 import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
 import api.token.TokenHolder
 import chuti.CuantasCantas.Buenas
-import dao.{InMemoryRepository, Repository}
+import dao.{InMemoryRepository, ZIORepository}
 import dao.InMemoryRepository.*
 import game.GameService
 import mail.Postman
@@ -44,11 +44,11 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
       for {
         gameService <- ZIO.service[GameService].provide(GameService.make())
         gameStream = gameService
-          .gameStream(GameId(1), connectionId).provideSomeLayer[Repository & Postman & TokenHolder](
+          .gameStream(GameId(1), connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
             ChutiSession(user1).toLayer
           )
         userStream = gameService
-          .userStream(connectionId).provideSomeLayer[Repository & Postman & TokenHolder](ChutiSession(user1).toLayer)
+          .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
         gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
         userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
         _               <- Clock.sleep(1.second)

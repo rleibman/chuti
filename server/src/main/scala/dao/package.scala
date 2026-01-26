@@ -138,7 +138,7 @@ package object dao {
   }
 
   case class UserLogRow(
-    userId: Int,
+    userId: Long,
     time:   Timestamp
   )
 
@@ -146,7 +146,7 @@ package object dao {
     tok:          String,
     tokenPurpose: String,
     expireTime:   Timestamp,
-    userId:       Int
+    userId:       Long
   )
 
 }

@@ -18,7 +18,7 @@ package dao
 
 import api.token.*
 import chuti.*
-import dao.Repository.TokenOperations
+import dao.TokenOperations
 import zio.logging.*
 import zio.*
 
@@ -37,7 +37,7 @@ object InMemoryRepository {
   val user4: User =
     User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
-  def fromGames(games: Seq[Game]): ULayer[Repository] =
+  def fromGames(games: Seq[Game]): ULayer[ZIORepository] =
     ZLayer.fromZIO(for {
       games <- Ref.make(games.map(g => g.id.get -> g).toMap)
       users <- Ref.make(
@@ -51,7 +51,7 @@ object InMemoryRepository {
       tokens <- Ref.make(Map.empty[String, Token])
     } yield InMemoryRepository(games, users, tokens))
 
-  val make: ULayer[Repository] = ZLayer.fromZIO(for {
+  val make: ULayer[ZIORepository] = ZLayer.fromZIO(for {
     games <- Ref.make(Map.empty[GameId, Game])
     users <- Ref.make(
       Map(
@@ -70,11 +70,11 @@ case class InMemoryRepository(
   games:  Ref[Map[GameId, Game]],
   users:  Ref[Map[UserId, User]],
   tokens: Ref[Map[String, Token]]
-) extends Repository {
+) extends ZIORepository {
 
   import InMemoryRepository.*
 
-  override val gameOperations: Repository.GameOperations = new Repository.GameOperations {
+  override val gameOperations: GameOperations[RepositoryIO] = new GameOperations[RepositoryIO] {
 
     override def getHistoricalUserGames: RepositoryIO[Seq[Game]] = ???
 
@@ -108,7 +108,7 @@ case class InMemoryRepository(
 
   }
 
-  override val userOperations: Repository.UserOperations = new Repository.UserOperations {
+  override val userOperations: UserOperations[RepositoryIO] = new UserOperations[RepositoryIO] {
 
     override def login(
       email:    String,
@@ -155,7 +155,7 @@ case class InMemoryRepository(
     override def firstLogin: RepositoryIO[Option[Instant]] = ???
 
   }
-  override val tokenOperations: Repository.TokenOperations = new TokenOperations {
+  override val tokenOperations: TokenOperations[RepositoryIO] = new TokenOperations[RepositoryIO] {
 
     override def validateToken(
       token:   Token,

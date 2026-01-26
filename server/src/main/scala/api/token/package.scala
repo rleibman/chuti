@@ -17,7 +17,7 @@
 package api
 
 import chuti.{GameError, User, UserId}
-import dao.Repository
+import dao.ZIORepository
 import game.GameService
 import zio.*
 import zio.cache.Cache
@@ -78,9 +78,9 @@ package object token {
 
       })
 
-    def liveLayer: URLayer[Repository, TokenHolder] =
+    def liveLayer: URLayer[ZIORepository, TokenHolder] =
       ZLayer.fromZIO(for {
-        repo <- ZIO.service[Repository]
+        repo <- ZIO.service[ZIORepository]
         freq = new zio.DurationSyntax(1).hour
         _ <- (ZIO.logInfo("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provide(GameService.godLayer))
           .repeat(Schedule.spaced(freq).jittered).forkDaemon
@@ -96,7 +96,7 @@ package object token {
             user:    User,
             purpose: TokenPurpose,
             ttl:     Option[Duration]
-          ): IO[GameError, Token] = repo.tokenOperations.createToken(user, purpose, ttl).provide(GameService.godLayer)
+          ): IO[GameError, Token] = repo.tokenOperations.createToken(user, purpose, ttl.map(_.asScala)).provide(GameService.godLayer)
 
           override def validateToken(
             token:   Token,

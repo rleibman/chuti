@@ -22,7 +22,7 @@ import chat.ChatService
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
 import chuti.Triunfo.TriunfoNumero
 import dao.InMemoryRepository.*
-import dao.Repository
+import dao.ZIORepository
 import game.GameService
 import mail.Postman
 import zio.test.{TestResult, ZIOSpec, assertCompletes, assertTrue, test}
@@ -160,7 +160,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         gamesToTest.map { tester =>
           test(tester.description)(
             for {
-              gameOperations <- ZIO.service[Repository].map(_.gameOperations)
+              gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
               saved <-
                 gameOperations
                   .upsert(tester.game).provideSomeLayer[ChutiEnvironment](

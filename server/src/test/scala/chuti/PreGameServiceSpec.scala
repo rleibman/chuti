@@ -18,7 +18,7 @@ package chuti
 
 import api.{ChutiEnvironment, ChutiSession}
 import chat.ChatService
-import dao.{InMemoryRepository, Repository}
+import dao.{InMemoryRepository, ZIORepository}
 import game.GameService
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*

@@ -20,7 +20,7 @@ import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
 import api.token.TokenHolder
 import chat.ChatService
 import dao.InMemoryRepository.*
-import dao.Repository
+import dao.ZIORepository
 import game.GameService
 import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec

@@ -16,14 +16,20 @@
 
 package mail
 
+import chuti.{Game, User}
 import api.SmtpConfig
-import courier.{Envelope, Mailer}
+import api.token.*
+import courier.{Envelope, Mailer, Multipart}
 import zio.{ZIO, *}
+
+import javax.mail.internet.InternetAddress
 
 trait Postman {
 
   def deliver(email: Envelope): UIO[Unit]
 
+  def webHostName: String
+  
   // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
   def inviteToPlayByEmail(
     user:    User,
@@ -44,7 +50,7 @@ trait Postman {
              |<p>Si quieres aceptar, ve a <a href="$linkUrl">$linkUrl</a></p>
              |<p>Te esperamos pronto! </p>
              |</body></html>""".stripMargin))
-}
+    }
 
   def inviteToGameEmail(
     user:    User,
@@ -68,7 +74,7 @@ trait Postman {
     }
 
   def lostPasswordEmail(user: User): RIO[TokenHolder, Envelope] =
-      for {
+    for {
       tokenHolder <- ZIO.service[TokenHolder]
 
       token <- tokenHolder.createToken(user, TokenPurpose.LostPassword)
@@ -115,27 +121,27 @@ object CourierPostman {
   def live(config: SmtpConfig): Postman =
     new Postman {
 
-        lazy val mailer: Mailer = {
-          if (config.auth)
-            Mailer(config.host, config.port)
-              .auth(config.auth)
-              .as(
-                config.user,
-                config.password
-              )
-              .startTls(config.startTTLS)()
-          else
-            Mailer(config.host, config.port).auth(config.auth)()
-        }
-
-        override def deliver(email: Envelope): UIO[Unit] =
-          ZIO
-            .fromFuture(implicit ec => mailer(email)).tapBoth(
-              e => ZIO.logError(s"Error sending email: $e"),
-              msg => ZIO.logDebug(s"Email sent to ${email.to.mkString(", ")}: $msg")
-            ).forkDaemon.unit
-
+      lazy val mailer: Mailer = {
+        if (config.auth)
+          Mailer(config.host, config.port)
+            .auth(config.auth)
+            .as(
+              config.user,
+              config.password
+            )
+            .startTls(config.startTTLS)()
+        else
+          Mailer(config.host, config.port).auth(config.auth)()
       }
+
+      override def deliver(email: Envelope): UIO[Unit] =
+        ZIO
+          .fromFuture(implicit ec => mailer(email)).tapBoth(
+            e => ZIO.logError(s"Error sending email: $e"),
+            msg => ZIO.logDebug(s"Email sent to ${email.to.mkString(", ")}: $msg")
+          ).forkDaemon.unit
+
+      override def webHostName: String = config.webHostname
     }
 
 }
