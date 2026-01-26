@@ -254,7 +254,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       val socket: WebSocket = webSocket.getOrElse {
         // Use wss:// on server (HTTPS), ws:// locally (HTTP)
         val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
-        val uri = new URI(s"$protocol://${ClientConfiguration.live.host}/unauth/dmscreen/ws")
+        val uri = new URI(s"$protocol://${ClientConfiguration.live.host}/unauth/chuti/ws")
         println("Connecting to WebSocket at " + uri.toString)
 
         org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")

@@ -36,6 +36,7 @@ import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
 import scala.annotation.targetName
+import scala.concurrent.duration.{Duration as ScalaDuration}
 
 object QuillRepository {
 
@@ -55,7 +56,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
   private val dataSourceLayer: TaskLayer[DataSource] = {
     println("=========================== dataSourceLayerCreation should only happen once!")
-    Quill.DataSource.fromDataSource(config.dataSourceConfig.createDataSource)
+    Quill.DataSource.fromDataSource(config.dataSource.createDataSource)
   }
 
   given MappedEncoding[UserId, Long] = MappedEncoding[UserId, Long](_.value)
@@ -685,7 +686,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     override def createToken(
       user:    User,
       purpose: TokenPurpose,
-      ttl:     Option[Duration]
+      ttl:     Option[ScalaDuration]
     ): ZIO[ChutiSession, RepositoryError, Token] =
       (
         for {

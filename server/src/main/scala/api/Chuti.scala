@@ -21,18 +21,14 @@ import api.token.TokenHolder
 import auth.{AuthServer, Session}
 import chat.ChatService
 import chuti.*
-import dao.quill.QuillRepository
-import dao.{CRUDOperations, ZIORepository, RepositoryError}
+import dao.{RepositoryError, ZIORepository}
 import game.GameService
-import mail.{CourierPostman, Postman}
+import mail.Postman
 import zio.*
 import zio.http.*
-import zio.logging.*
 import zio.logging.backend.SLF4J
 
 import java.io.{PrintWriter, StringWriter}
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 object Chuti extends ZIOApp {
 
@@ -42,7 +38,7 @@ object Chuti extends ZIOApp {
   // Configure ZIO to use SLF4J (logback) instead of console logging
   // This routes all ZIO logs through logback, which writes to both file and console
   override def bootstrap: ULayer[ChutiEnvironment] =
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> EnvironmentBuilder.live
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> EnvironmentBuilder.withContainer
 
   object TestRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
@@ -105,7 +101,7 @@ object Chuti extends ZIOApp {
     val status = squashed match {
       case _: NotFoundError                    => Status.NotFound
       case e: RepositoryError if e.isTransient => Status.BadGateway
-      case _: GameError                    => Status.InternalServerError
+      case _: GameError                        => Status.InternalServerError
       case _ => Status.InternalServerError
     }
     ZIO
@@ -116,7 +112,7 @@ object Chuti extends ZIOApp {
 
   lazy val zapp: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, Nothing]] = for {
     _                <- ZIO.log("Initializing Routes")
-    authServer       <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
+    authServer       <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
     authServerApi    <- authServer.authRoutes
     authServerUnauth <- authServer.unauthRoutes
     unauth           <- AllTogether.unauth
@@ -132,12 +128,12 @@ object Chuti extends ZIOApp {
     for {
       config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       // Run Flyway migrations first, before anything else
-//      _           <- FlywayMigration.runMigrations
+      _ <- FlywayMigration.runMigrations
 //      rateLimiter <- ZIO.service[RateLimiter]
 //      _           <- RateLimiter.cleanupSchedule(rateLimiter)
 //      _           <- ZIO.logInfo("Rate limiter cleanup schedule started")
-      app         <- zapp
-      _           <- ZIO.logInfo(s"Starting application with config $config")
+      app <- zapp
+      _   <- ZIO.logInfo(s"Starting application with config $config")
       server <- {
         // Configure server with request streaming enabled for large uploads
         val serverConfig = ZLayer.succeed(

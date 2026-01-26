@@ -16,7 +16,7 @@
 
 package chuti
 
-import api.{ChutiEnvironment, ChutiSession}
+import api.{ChutiEnvironment, ChutiSession, toLayer}
 import chat.ChatService
 import dao.{InMemoryRepository, ZIORepository}
 import game.GameService

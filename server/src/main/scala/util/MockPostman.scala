@@ -22,7 +22,7 @@ import zio.*
 
 class MockPostman extends Postman {
 
-  override def deliver(email: Envelope): Task[Unit] = ZIO.logInfo(s"Delivering $email")
+  override def deliver(email: Envelope): UIO[Unit] = ZIO.logInfo(s"Delivering $email")
 
   override def webHostName: String = "chuti.fun"
 

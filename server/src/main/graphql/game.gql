@@ -3,9 +3,13 @@ schema {
   mutation: Mutations
   subscription: Subscriptions
 }
+
 "An instantaneous point on the time-line represented by a standard date time string"
 scalar Instant
+
 scalar Json
+
+scalar Long
 
 enum UserEventType {
   AbandonedGame
@@ -17,36 +21,36 @@ enum UserEventType {
 
 type Mutations {
   newGame(satoshiPerPoint: Int!): Json
-  newGameSameUsers(value: Int!): Json
+  newGameSameUsers(value: Long!): Json
   joinRandomGame: Json
-  abandonGame(value: Int!): Boolean
-  inviteByEmail(name: String!, email: String!, gameId: Int!): Boolean
-  startGame(value: Int!): Boolean
-  inviteToGame(userId: Int!, gameId: Int!): Boolean
-  acceptGameInvitation(value: Int!): Json
-  declineGameInvitation(value: Int!): Boolean
-  cancelUnacceptedInvitations(value: Int!): Boolean
-  friend(value: Int!): Boolean
-  unfriend(value: Int!): Boolean
-  play(gameId: Int!, gameEvent: Json!): Boolean
+  abandonGame(value: Long!): Boolean
+  inviteByEmail(name: String!, email: String!, gameId: Long!): Boolean
+  startGame(value: Long!): Boolean
+  inviteToGame(userId: Long!, gameId: Long!): Boolean
+  acceptGameInvitation(value: Long!): Json
+  declineGameInvitation(value: Long!): Boolean
+  cancelUnacceptedInvitations(value: Long!): Boolean
+  friend(value: Long!): Boolean
+  unfriend(value: Long!): Boolean
+  play(gameId: Long!, gameEvent: Json!): Boolean
 }
 
 type Queries {
-  getGame(value: Int!): Json
+  getGame(value: Long!): Json
   getGameForUser: Json
   getFriends: [User!]
-  getGameInvites: [Json!]
+  getGameInvites: Json
   getLoggedInUsers: [User!]
-  getHistoricalUserGames: [Json!]
+  getHistoricalUserGames: Json
 }
 
 type Subscriptions {
-  gameStream(gameId: Int!, connectionId: String!): Json
+  gameStream(gameId: Long!, connectionId: String!): Json
   userStream(value: String!): UserEvent
 }
 
 type User {
-  id: Int
+  id: Long
   email: String!
   name: String!
   created: Instant!
@@ -54,10 +58,11 @@ type User {
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
+  locale: String!
 }
 
 type UserEvent {
   user: User!
   userEventType: UserEventType!
-  gameId: Int
+  gameId: Long
 }

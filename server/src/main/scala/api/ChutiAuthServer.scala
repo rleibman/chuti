@@ -66,8 +66,8 @@ object ChutiAuthServer {
       override def userByEmail(email: String): IO[AuthError, Option[User]] =
         repo.userByEmail(email).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
-      override def userByPK(pk: UserId): IO[AuthError, Option[User]] =
-        repo.get(pk).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
+      override def userByPK(pk: Option[UserId]): IO[AuthError, Option[User]] =
+        pk.fold(ZIO.succeed(None))(id => repo.get(id).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_)))
 
       override def createUser(
         name:     String,
@@ -112,21 +112,22 @@ object ChutiAuthServer {
         postman.deliver(email)
       }
 
-      override def activateUser(userPK: UserId): IO[AuthError, Unit] =
+      override def activateUser(userPK: Option[UserId]): IO[AuthError, Unit] =
         (for {
-          _    <- ZIO.logInfo(s"Activating user with PK: ${userPK.value}")
-          user <- repo.get(userPK)
+          pk   <- ZIO.fromOption(userPK).orElseFail(AuthBadRequest("User PK is required"))
+          _    <- ZIO.logInfo(s"Activating user with PK: ${pk.value}")
+          user <- repo.get(pk)
           _ <- ZIO.logInfo(s"Found user: ${user.map(u => s"${u.email} (active=${u.active})").getOrElse("NOT FOUND")}")
-          _ <- ZIO.fail(AuthBadRequest(s"user ${userPK.value} not found")).when(user.isEmpty)
+          _ <- ZIO.fail(AuthBadRequest(s"user ${pk.value} not found")).when(user.isEmpty)
           result <- user.fold(ZIO.unit)(u =>
             ZIO.logInfo(s"Updating user ${u.email} to active=true") *>
               repo.upsert(u.copy(active = true)).unit
           )
-          _ <- ZIO.logInfo(s"User ${userPK.value} activated successfully")
+          _ <- ZIO.logInfo(s"User ${pk.value} activated successfully")
         } yield ())
           .provide(ChutiSession.godSession.toLayer)
           .mapError(AuthError(_))
-          .tapError(e => ZIO.logErrorCause(s"Error activating user ${userPK.value}", Cause.fail(e)))
+          .tapError(e => ZIO.logErrorCause(s"Error activating user $userPK", Cause.fail(e)))
 
       override def getEmailBodyHtml(
         user:    User,

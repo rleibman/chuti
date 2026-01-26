@@ -23,6 +23,7 @@ import zio.logging.*
 import zio.*
 
 import java.time.Instant
+import scala.concurrent.duration.{Duration as ScalaDuration}
 
 object InMemoryRepository {
 
@@ -165,7 +166,7 @@ case class InMemoryRepository(
     override def createToken(
       user:    User,
       purpose: TokenPurpose,
-      ttl:     Option[Duration]
+      ttl:     Option[ScalaDuration]
     ): RepositoryIO[Token] = ???
 
     override def peek(

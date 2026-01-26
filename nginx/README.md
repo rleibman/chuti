@@ -135,8 +135,8 @@ sudo tail -f /var/log/nginx/www.chuti.fun.access.log
 sudo tail -f /var/log/nginx/www.chuti.fun.error.log
 
 # Application
-sudo tail -f /var/log/nginx/app.chuti.fun.access.log
-sudo tail -f /var/log/nginx/app.chuti.fun.error.log
+sudo tail -f /var/log/nginx/www.chuti.fun.access.log
+sudo tail -f /var/log/nginx/www.chuti.fun.error.log
 ```
 
 ### Test configuration
@@ -164,8 +164,7 @@ The main deployment script (`deploy.sh`) will:
 1. Build the landing page (`npm run build`)
 2. Build the application (`sbt dist`)
 3. Upload both to the server
-4. Deploy landing page to `/data/www/www.chuti.fun/html`
-5. Deploy application to `/data/www/app.chuti.fun/html` (via .deb package)
+5. Deploy application to `/data/www/www.chuti.fun/html` (via .deb package)
 6. Restart the backend service
 
 No nginx restart is needed as content is updated in place.

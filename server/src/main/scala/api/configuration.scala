@@ -24,7 +24,6 @@ import com.zaxxer.hikari.*
 import zio.*
 import zio.config.magnolia.DeriveConfig
 import zio.config.typesafe.*
-import zio.nio.file.Path
 
 import java.io.File
 
@@ -58,7 +57,7 @@ case class DataSourceConfig(
 }
 
 case class DatabaseConfig(
-  dataSourceConfig: DataSourceConfig
+  dataSource: DataSourceConfig
 ) {}
 
 case class SmtpConfig(
@@ -138,7 +137,7 @@ case class AppConfig(
 ) {
 
   lazy val dataSource: HikariDataSource = {
-    chuti.db.dataSourceConfig.createDataSource
+    chuti.db.dataSource.createDataSource
   }
 
 }

@@ -19,11 +19,11 @@ package api
 import api.token.{TokenHolder, TokenPurpose}
 import auth.*
 import auth.oauth.{OAuthService, OAuthStateStore}
-import chat.*
+import chat.ChatService
 import chuti.*
 import dao.*
 import dao.quill.QuillRepository
-import game.*
+import game.GameService
 import mail.*
 import util.{ChutiContainer, MockPostman}
 import zio.*
@@ -33,10 +33,10 @@ import zio.json.*
 import java.util.Locale
 
 type ChutiEnvironment = AuthConfig & ZIORepository & ConfigurationService & Postman &
-  AuthServer[User, Option[UserId], ConnectionId] & TokenHolder & OAuthService & OAuthStateStore
+  AuthServer[User, Option[UserId], ConnectionId] & TokenHolder & OAuthService & OAuthStateStore & GameService &
+  ChatService & FlywayMigration
 //  RateLimiter &
 //  RateLimitConfig &
-//  FlywayMigration &
 //net.leibman.analytics.AnalyticsZIORepository &
 //  net.leibman.analytics.AnalyticsCleanupService
 
@@ -53,9 +53,9 @@ given JsonCodec[Locale] =
 
 object EnvironmentBuilder {
 
-  /** Converts dmscreen's OAuth configuration to zio-auth's OAuthService
+  /** Converts chuti's OAuth configuration to zio-auth's OAuthService
     *
-    * dmscreen.oauth is a Map[String, OAuthProviderConfig] where keys are provider names ("google", "github", etc.)
+    * chuti.oauth is a Map[String, OAuthProviderConfig] where keys are provider names ("google", "github", etc.)
     */
   private val oauthServiceLayer: ZLayer[ConfigurationService, ConfigurationError, OAuthService] =
     ZLayer.fromZIO {
@@ -91,15 +91,16 @@ object EnvironmentBuilder {
       repoLayer,
       postmanLayer,
       TokenHolder.liveLayer,
-      ZLayer.fromZIO(ZIO.serviceWith[ZIORepository](_.userOperations)),
       oauthServiceLayer,
       OAuthStateStore.live(),
-      ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session))
+      ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
+      GameService.make(),
+      ChatService.make(),
+      FlywayMigration.live,
     ).orDie
 
-  val withContainer: Layer[GameError, ChutiEnvironment] = {
-
-    ZLayer.make[ChutiEnvironment](
+  val withContainer: ULayer[ChutiEnvironment] = ZLayer
+    .make[ChutiEnvironment](
       ChutiAuthServer.live,
       ChutiContainer.containerLayer,
       ConfigurationService.live >>> ChutiContainer.configLayer,
@@ -109,9 +110,10 @@ object EnvironmentBuilder {
       TokenHolder.liveLayer,
       oauthServiceLayer,
       OAuthStateStore.live(),
-      ZLayer.fromZIO(ZIO.serviceWith[ZIORepository](_.userOperations))
-    )
-  }
+      GameService.make(),
+      ChatService.make(),
+      FlywayMigration.live,
+    ).orDie
 
   final def testLayer(gameFiles: String*): ULayer[ChutiEnvironment] = {
     import better.files.File
@@ -129,17 +131,23 @@ object EnvironmentBuilder {
         .orDie
     }.flatten
 
-    ZLayer.make[ChutiEnvironment](
-      ConfigurationService.live,
-      repositoryLayer,
-      ZLayer.succeed(new MockPostman),
-      ZLayer.fromZIO(for {
-        cache <- Cache
-          .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
-      } yield TokenHolder.tempCache(cache)),
-      ZLayer.fromZIO(ZIO.service[ZIORepository].map(_.userOperations)),
-      OAuthStateStore.live(),
-    )
+    ZLayer
+      .make[ChutiEnvironment](
+        ConfigurationService.live,
+        repositoryLayer,
+        ZLayer.succeed(new MockPostman),
+        ZLayer.fromZIO(for {
+          cache <- Cache
+            .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
+        } yield TokenHolder.tempCache(cache)),
+        OAuthStateStore.live(),
+        GameService.make(),
+        ChatService.make(),
+        ChutiAuthServer.live,
+        oauthServiceLayer,
+        ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
+        FlywayMigration.live,
+      ).orDie
   }
 
 }

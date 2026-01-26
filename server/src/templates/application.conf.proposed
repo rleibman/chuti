@@ -73,7 +73,7 @@ chuti {
       userInfoUri = "https://www.googleapis.com/oauth2/v3/userinfo"
 
       # Redirect URI - must match Google Console configuration
-      redirectUri = "https://app.chuti.fun/oauth/google/callback"
+      redirectUri = "https://www.chuti.fun/oauth/google/callback"
       redirectUri = ${?CHUTI_GOOGLE_OAUTH_REDIRECT_URI}
 
       # OAuth scopes to request

@@ -211,7 +211,8 @@ lazy val server = project
     DebianDeployPlugin,
     JavaServerAppPackaging,
     SystemloaderPlugin,
-    SystemdPlugin
+    SystemdPlugin,
+    CalibanPlugin
   )
   .settings(debianSettings, commonSettings)
   .dependsOn(modelJVM, ai, analyticsJVM)

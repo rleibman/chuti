@@ -26,35 +26,33 @@ import zio.http.*
 
 object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  lazy private val interpreter = ChatApi.api.interpreter
-
   override def api
-    : ZIO[ChutiEnvironment, GameError, Routes[ChatService & ZIORepository & ChutiSession, GameError]] =
-    (for {
-      interpreter <- interpreter
-    } yield {
-      Routes(
-        Method.ANY / "api" / "chat" ->
-          QuickAdapter(interpreter).handlers.api,
-        Method.ANY / "api" / "chat" / "ws" ->
-          QuickAdapter(interpreter).handlers.webSocket,
-        Method.ANY / "api" / "chat" / "graphiql" ->
-          GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
-        Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.
-          QuickAdapter(interpreter).handlers.upload
-      )
-    }).mapError(GameError.apply)
+    : ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment & ChutiSession, GameError]] =
+    ChatApi.api.interpreter.mapBoth(
+      GameError(_),
+      interpreter =>
+        Routes(
+          Method.ANY / "api" / "chat" ->
+            QuickAdapter(interpreter).handlers.api,
+          Method.ANY / "api" / "chat" / "ws" ->
+            QuickAdapter(interpreter).handlers.webSocket,
+          Method.ANY / "api" / "chat" / "graphiql" ->
+            GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
+          Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.
+            QuickAdapter(interpreter).handlers.upload
+        )
+    )
 
   /** These do not require a session
     */
   override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
-    (for {
-      interpreter <- interpreter
-    } yield {
-      Routes(
-        Method.GET / "unauth" / "chat" / "schema" ->
-          Handler.fromBody(Body.fromCharSequence(ChatApi.api.render))
-      )
-    }).mapError(GameError.apply)
+    ChatApi.api.interpreter.mapBoth(
+      GameError(_),
+      _ =>
+        Routes(
+          Method.GET / "unauth" / "chat" / "schema" ->
+            Handler.fromBody(Body.fromCharSequence(ChatApi.api.render))
+        )
+    )
 
 }

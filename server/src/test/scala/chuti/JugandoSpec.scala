@@ -16,7 +16,7 @@
 
 package chuti
 
-import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
+import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.TokenHolder
 import chat.ChatService
 import dao.InMemoryRepository.*

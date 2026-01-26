@@ -7,8 +7,10 @@ schema {
 "An instantaneous point on the time-line represented by a standard date time string"
 scalar Instant
 
+scalar Long
+
 input UserInput {
-  id: Int
+  id: Long
   email: String!
   name: String!
   created: Instant!
@@ -16,30 +18,31 @@ input UserInput {
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
+  locale: String!
 }
 
 type ChatMessage {
   fromUser: User!
   msg: String!
-  channelId: Int!
+  channelId: Long!
   date: Instant!
   toUser: User
 }
 
 type Mutations {
-  say(msg: String!, channelId: Int!, toUser: UserInput): Boolean!
+  say(msg: String!, channelId: Long!, toUser: UserInput): Boolean!
 }
 
 type Queries {
-  getRecentMessages(value: Int!): [ChatMessage!]
+  getRecentMessages(value: Long!): [ChatMessage!]
 }
 
 type Subscriptions {
-  chatStream(channelId: Int!, connectionId: String!): ChatMessage
+  chatStream(channelId: Long!, connectionId: String!): ChatMessage
 }
 
 type User {
-  id: Int
+  id: Long
   email: String!
   name: String!
   created: Instant!
@@ -47,4 +50,5 @@ type User {
   active: Boolean!
   deleted: Boolean!
   isAdmin: Boolean!
+  locale: String!
 }

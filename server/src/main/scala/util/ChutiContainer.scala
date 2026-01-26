@@ -18,18 +18,14 @@ package util
 
 import api.*
 import com.dimafeng.testcontainers.MariaDBContainer
-import com.typesafe.config
-import com.typesafe.config.ConfigFactory
 import dao.RepositoryError
-import io.getquill.context.ZioJdbc.DataSourceLayer
 import io.getquill.jdbczio.Quill
 import zio.*
-import zio.logging.*
 
 import java.io
 import java.sql.SQLException
 import javax.sql.DataSource
-import scala.io.{BufferedSource, Source}
+import scala.io.Source
 
 trait ChutiContainer {
 
@@ -39,83 +35,23 @@ trait ChutiContainer {
 
 object ChutiContainer {
 
-  private case class Migrator(
-    path: String
-  ) {
-
-    def migrate(): ZIO[DataSource, RepositoryError, Unit] = {
-      for {
-        files <- ZIO.succeed {
-          import scala.language.unsafeNulls
-          new java.io.File(path).listFiles.sortBy(_.getName)
-        }
-        dataSource <- ZIO.service[DataSource]
-        statements <- ZIO
-          .foreach(files) {
-            case file: io.File if file.getName.nn.endsWith("sql") =>
-              ZIO.acquireReleaseWith(ZIO.attempt(Source.fromFile(file)))(f => ZIO.attempt(f.close()).orDie) { source =>
-                val str = source
-                  .getLines()
-                  .map(str => str.replaceAll("--.*", "").nn.trim.nn)
-                  .mkString("\n")
-                ZIO.attempt(str.split(";\n").nn)
-              }
-            case _ => ZIO.fail(RepositoryError("File must be of either sql or JSON type."))
-          }.mapBoth(
-            RepositoryError.apply,
-            _.flatten
-              .map(_.nn.trim.nn)
-              .filter(_.nonEmpty)
-          ).catchSome(e => ZIO.fail(RepositoryError(e)))
-        res <- {
-          ZIO.acquireReleaseWith {
-            ZIO.attempt {
-              val conn = dataSource.getConnection.nn
-              val stmt = conn.createStatement().nn
-              (conn, stmt)
-            }
-          } { case (conn, stmt) =>
-            ZIO.succeed {
-              stmt.close()
-              conn.close()
-            }
-          } { case (_, stmt) =>
-            ZIO
-              .foreach(statements) { statement =>
-                ZIO.attempt(stmt.executeUpdate(statement))
-              }.catchSome { case e: SQLException =>
-                ZIO.fail(RepositoryError(e))
-              }
-          }
-        }.unit.mapError(RepositoryError.apply)
-      } yield res
-    }
-
-  }
-
-  val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.fromZIO((for {
+  val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.fromZIO(for {
     _ <- ZIO.logDebug("Creating container")
     c <- ZIO.succeed {
       val c = MariaDBContainer()
       c.container.start()
       c
     }
-    _ <- ZIO.logDebug("Migrating container")
-    _ <-
-      (Migrator("server/src/main/sql").migrate()
-        *> Migrator("server/src/it/sql").migrate())
-        .provideLayer(Quill.DataSource.fromDataSource(getConfig(c).dataSourceConfig.createDataSource))
-        .mapError(RepositoryError.apply)
   } yield new ChutiContainer {
 
     override def container: MariaDBContainer = c
 
-  }).mapError(RepositoryError.apply))
+  })
 
   private def getConfig(container: MariaDBContainer): DatabaseConfig = {
     DatabaseConfig(
-      dataSourceConfig = DataSourceConfig(
-        driver = "com.mysql.cj.jdbc.Driver",
+      dataSource = DataSourceConfig(
+        driver = "org.mariadb.jdbc.Driver",
         url = container.container.getJdbcUrl.nn,
         user = container.container.getUsername.nn,
         password = container.container.getPassword.nn

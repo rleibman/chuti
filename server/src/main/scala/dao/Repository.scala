@@ -43,7 +43,7 @@ trait CRUDOperations[F[_], E, PK, SEARCH <: Search] {
 
 }
 
-class Repository[F[_]] {
+abstract class Repository[F[_]] {
 
   def gameOperations: GameOperations[F]
 

@@ -17,13 +17,13 @@
 package chuti
 
 import api.token.{TokenHolder, TokenPurpose}
-import api.{ChutiEnvironment, ChutiSession}
+import api.{ChutiEnvironment, ChutiSession, toLayer}
 import better.files.File
 import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.*
-import dao.ZIORepository.GameOperations
+import dao.GameOperations
 import dao.{InMemoryRepository, ZIORepository, RepositoryIO}
 import game.GameService
 import mail.Postman
@@ -40,7 +40,7 @@ import java.util.UUID
 
 trait GameAbstractSpec {
 
-  val connectionId: ConnectionId = ConnectionId(5)
+  val connectionId: ConnectionId = ConnectionId("5")
 
   val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
   val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"

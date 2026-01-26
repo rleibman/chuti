@@ -33,6 +33,8 @@ object ChutiSession {
   val godlessSession:            ChutiSession = AuthenticatedSession(Some(chuti.godless), Some(ConnectionId.random))
   def botSession(botUser: User): ChutiSession = AuthenticatedSession(Some(botUser), Some(ConnectionId.random))
 
+  def apply(user: User): ChutiSession = AuthenticatedSession(Some(user), Some(ConnectionId.random))
+
 }
 
 extension (session: ChutiSession) {

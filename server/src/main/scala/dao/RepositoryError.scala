@@ -36,8 +36,9 @@ object RepositoryError {
 }
 
 sealed class RepositoryError(
-  override val message: String = "",
-  override val cause:   Option[Throwable] = None
-) extends GameError(message, cause)
+  override val msg:         String = "",
+  override val cause:       Option[Throwable] = None,
+  override val isTransient: Boolean = false
+) extends GameError(msg, cause, isTransient)
 
-case class RepositoryPermissionError(override val message: String = "") extends RepositoryError(message)
+case class RepositoryPermissionError(override val msg: String = "") extends RepositoryError(msg)
