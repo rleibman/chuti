@@ -30,7 +30,7 @@ case class User(
   active:      Boolean = false,
   deleted:     Boolean = false,
   isAdmin:     Boolean = false,
-  locale:      Locale = Locale.of("es", "MX")
+  locale:      Locale = Locale.forLanguageTag("es")
 ) {
 
   def isBot: Boolean = id.fold(false)(i => i.value < -1 && i != UserId.godUserId)
@@ -39,19 +39,18 @@ case class User(
 
 object User {
 
-  private given JsonDecoder[Locale] =
-    JsonDecoder.string.mapOrFail(s =>
-      Locale.forLanguageTag(s) match {
-        case l: Locale => Right(l)
-        case null => Left(s"invalid locale $s")
-      }
+  given JsonCodec[Locale] =
+    JsonCodec(
+      JsonEncoder.string.contramap(_.toString),
+      JsonDecoder.string.mapOrFail(s =>
+        Locale.forLanguageTag(s) match {
+          case l: Locale => Right(l)
+          case null => Left(s"invalid locale $s")
+        }
+      )
     )
 
-  private given JsonEncoder[Locale] = JsonEncoder.string.contramap(_.toString)
-
-  given JsonDecoder[User] = DeriveJsonDecoder.gen[User]
-
-  given JsonEncoder[User] = DeriveJsonEncoder.gen[User]
+  given JsonCodec[User]= JsonCodec.derived[User]
 
 }
 

@@ -59,7 +59,7 @@ val calibanClientVersion = "3.0.0"
 val commonsCodecVersion = "1.20.0"
 val courierVersion = "4.0.0-RC1"
 val stlibVersion = "1.0.0"
-val flywayVersion = "11.20.2"
+val flywayVersion = "11.20.3"
 val izumiReflectVersion = "3.0.9"
 val jsoniterVersion = "2.38.8"
 val justSemverCoreVersion = "1.1.1"
@@ -76,6 +76,7 @@ val quillVersion = "4.8.6"
 val scalablytypedRuntimeVersion = "2.4.2"
 val scalacssVersion = "1.0.0"
 val scalaJavaTimeVersion = "2.6.0"
+val scalaJavaLocaleVersion = "1.5.4"
 val scalajsDomVersion = "2.8.1"
 val scalajsReactVersion = "3.0.0"
 val scalatagsVersion = "0.13.1"
@@ -415,6 +416,7 @@ lazy val commonWeb: Project => Project =
       "com.softwaremill.sttp.client4" %%% "zio-json"  % sttpClient4Version withSources (),
       "io.github.cquiroz" %%% "scala-java-time"       % scalaJavaTimeVersion withSources (),
       "io.github.cquiroz" %%% "scala-java-time-tzdb"  % scalaJavaTimeVersion withSources (),
+      "io.github.cquiroz" %%% "scala-java-locales"    % scalaJavaLocaleVersion withSources (),
       "org.scala-js" %%% "scalajs-dom"                % scalajsDomVersion withSources (),
       "com.olvind" %%% "scalablytyped-runtime"        % scalablytypedRuntimeVersion,
       "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion withSources (),

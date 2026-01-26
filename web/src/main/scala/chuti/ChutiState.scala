@@ -17,7 +17,7 @@
 package chuti
 
 import _root_.util.LocalizedMessages
-import caliban.client.scalajs.WebSocketHandler
+import caliban.WebSocketHandler
 import chuti.*
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}

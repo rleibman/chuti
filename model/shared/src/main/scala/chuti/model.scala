@@ -16,6 +16,7 @@
 
 package chuti
 
+import chat.ChannelId
 import chuti.Numero.*
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import zio.json.*
@@ -396,7 +397,7 @@ case class Game(
   estrictaDerecha: Boolean = false,
   jugadores:       List[Jugador] = List.empty,
   statusString:    String = "",
-  satoshiPerPoint: Double = 100.0
+  satoshiPerPoint: Long = 100L
 ) {
 
   def jugadorState(jugador: Jugador): JugadorState = {
@@ -447,14 +448,14 @@ case class Game(
   lazy val turno: Option[Jugador] = jugadores.find(_.turno)
   @transient
   lazy val quienCanta:  Option[Jugador] = jugadores.find(_.cantante)
-  val abandonedPenalty: Int = 10 // Times the satoshiPerPoint of the game
+  val abandonedPenalty: Long = 10 // Times the satoshiPerPoint of the game
   val numPlayers:       Int = 4
 
   @transient
-  lazy val cuentasCalculadas: Seq[(Jugador, Int, Double)] = {
+  lazy val cuentasCalculadas: Seq[(jugador: Jugador, puntos: Int, costoTotal: Long)] = {
     val conPuntos = jugadores.map(j => (j, j.cuenta.map(_.puntos).sum))
     conPuntos.map { case (j, puntos) =>
-      val total =
+      val total: Long =
         (if (j.ganadorDePartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
           (if (puntos < 0) -2
            else

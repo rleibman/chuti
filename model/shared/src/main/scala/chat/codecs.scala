@@ -14,27 +14,9 @@
  * limitations under the License.
  */
 
-package chuti
+package chat
 
-import auth.{AuthClient, LoginRouter, OAuthProviderUI}
-import japgolly.scalajs.react.*
-import japgolly.scalajs.react.vdom.html_<^.*
-import org.scalajs.dom
+import zio.json.JsonCodec
 
-import scala.scalajs.js
-import scala.scalajs.js.annotation.JSExport
+given JsonCodec[ChannelId] = JsonCodec.long.transform(ChannelId.apply, _.value)
 
-object ChutiApp {
-
-  @JSExport
-  def main(args: Array[String]): Unit = {
-    js.Dynamic.global.document.title =
-      if (org.scalajs.dom.window.location.protocol == "https:") "DMScreen" else "DMScreen (Local)"
-    val container = dom.document.getElementById("content")
-    val root = ReactDOMClient.createRoot(container)
-    root.render(Content())
-    ()
-
-  }
-
-}

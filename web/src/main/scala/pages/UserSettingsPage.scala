@@ -16,7 +16,7 @@
 
 package pages
 
-import app.ChutiState
+import chuti.ChutiState
 import chuti.User
 import components.Toast
 import japgolly.scalajs.react.*
@@ -247,7 +247,8 @@ object UserSettingsPage extends ChutiPage {
   private val component = ScalaComponent
     .builder[Unit]("UserSettingsPage")
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderS(_.backend.render(_))
     .componentDidMount(_.backend.init)
     .build
 

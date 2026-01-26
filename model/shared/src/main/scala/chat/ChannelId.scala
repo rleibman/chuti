@@ -14,14 +14,25 @@
  * limitations under the License.
  */
 
-package chuti
+package chat
 
-import java.time.Instant
+opaque type ChannelId = Long
 
-case class ChatMessage(
-  fromUser:  User,
-  msg:       String,
-  channelId: ChannelId,
-  date:      Instant,
-  toUser:    Option[User] = None
-)
+object ChannelId {
+
+  given CanEqual[ChannelId, ChannelId] = CanEqual.derived
+
+  val empty:         ChannelId = 0
+  val lobbyChannel:  ChannelId = -1
+  val directChannel: ChannelId = -2
+
+  def apply(channelId: Long): ChannelId = channelId
+
+  extension (channelId: ChannelId) {
+
+    def value:    Long = channelId
+    def nonEmpty: Boolean = channelId.value != ChannelId.empty
+
+  }
+
+}

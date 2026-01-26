@@ -29,7 +29,7 @@ enum Mode {
   case login, registration, passwordRecoveryRequest, passwordRecoveryAfterToken, newUserAcceptFriend
 
 }
-import app.Mode.*
+import chuti.Mode.*
 object LoginControllerState {
 
   val ctx: Context[LoginControllerState] = React.createContext(LoginControllerState())

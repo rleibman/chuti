@@ -20,7 +20,7 @@ enum UserEventType {
 }
 
 type Mutations {
-  newGame(satoshiPerPoint: Int!): Json
+  newGame(satoshiPerPoint: Long!): Json
   newGameSameUsers(value: Long!): Json
   joinRandomGame: Json
   abandonGame(value: Long!): Boolean

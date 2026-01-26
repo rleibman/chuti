@@ -18,9 +18,9 @@ package chat
 
 import api.ChutiSession
 import caliban.{CalibanError, GraphQLInterpreter}
-import chat.ChatApi.SayRequest
+import chat.SayRequest
 import chuti.*
-import chuti.ChannelId.*
+import chat.ChannelId.*
 import dao.ZIORepository
 import zio.logging.*
 import zio.stream.ZStream

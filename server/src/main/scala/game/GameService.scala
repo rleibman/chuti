@@ -41,7 +41,7 @@ trait GameService {
 
   def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game]
 
-  def newGame(satoshiPerPoint: Int): ZIO[ChutiSession & ZIORepository, GameError, Game]
+  def newGame(satoshiPerPoint: Long): ZIO[ChutiSession & ZIORepository, GameError, Game]
 
   def newGameSameUsers(oldGameId: GameId)
     : ZIO[TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman, GameError, Game]
@@ -117,7 +117,7 @@ object GameService {
     : ZIO[GameService & ZIORepository & Postman & TokenHolder & ChutiSession, GameError, Boolean] =
     ZIO.serviceWithZIO[GameService](_.startGame(gameId))
 
-  def newGame(satoshiPerPoint: Int): ZIO[GameService & ChutiSession & ZIORepository, GameError, Game] =
+  def newGame(satoshiPerPoint: Long): ZIO[GameService & ChutiSession & ZIORepository, GameError, Game] =
     ZIO.serviceWithZIO[GameService](_.newGame(satoshiPerPoint))
 
   def newGameSameUsers(
@@ -295,7 +295,7 @@ object GameService {
           _ <- ZIO.foreachDiscard(gameOpt.flatMap(g => walletOpt.map(w => (g, w)))) {
             case (game, wallet) if game.gameStatus.enJuego =>
               val lostPoints =
-                game.cuentasCalculadas.find(_._1.id == user.id).map(_._2).getOrElse(0)
+                game.cuentasCalculadas.find(_.jugador.id == user.id).map(_.puntos).getOrElse(0)
 
               repository.userOperations
                 .updateWallet(
@@ -391,7 +391,7 @@ object GameService {
               )
         } yield afterInvites).mapError(GameError.apply)
 
-      override def newGame(satoshiPerPoint: Int): ZIO[ChutiSession & ZIORepository, GameError, Game] =
+      override def newGame(satoshiPerPoint: Long): ZIO[ChutiSession & ZIORepository, GameError, Game] =
         (for {
           userOpt <- ZIO.serviceWith[ChutiSession](_.user)
           user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))

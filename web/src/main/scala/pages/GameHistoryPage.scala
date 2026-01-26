@@ -17,10 +17,8 @@
 package pages
 
 import java.time.format.DateTimeFormatter
-import app.ChutiState
-import caliban.ScalaJSClientAdapter
+import chuti.{ChutiState, ClientRepository}
 import chuti.{*, given}
-import caliban.client.scalajs.GameClient.Queries
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
@@ -36,9 +34,7 @@ import net.leibman.chuti.semanticUiReact.components.{
 
 import java.time.ZoneId
 import java.util.Locale
-import zio.json.*
-import zio.json.ast.Json
-object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
+object GameHistoryPage extends ChutiPage  {
 
   private val df =
     DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn
@@ -49,21 +45,12 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
     import scala.language.unsafeNulls
 
     def init: Callback = {
-      calibanCall[Queries, Option[List[Json]]](
-        Queries.getHistoricalUserGames,
-        jsonGames => {
-          $.modState(
-            _.copy(games =
-              jsonGames.toList.flatten.map(json =>
-                json.as[Game] match {
-                  case Right(game) => game
-                  case Left(error) => throw GameError(error)
-                }
-              )
-            )
-          )
+      ClientRepository.game.getHistoricalUserGames
+        .flatMap(games => $.modState(_.copy(games = games)).asAsyncCallback)
+        .completeWith {
+          case scala.util.Success(_)         => Callback.empty
+          case scala.util.Failure(exception) => Callback.throwException(exception)
         }
-      )
     }
 
     def render(s: State): VdomElement =
@@ -139,7 +126,8 @@ object GameHistoryPage extends ChutiPage with ScalaJSClientAdapter {
   private val component = ScalaComponent
     .builder[Unit]
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderS(_.backend.render(_))
     .componentDidMount(_.backend.init)
     .build
 

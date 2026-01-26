@@ -143,10 +143,10 @@ object GameClient {
   type Mutations = _root_.caliban.client.Operations.RootMutation
   object Mutations {
 
-    def newGame(satoshiPerPoint: Int)(implicit encoder0: ArgEncoder[Int])
+    def newGame(satoshiPerPoint: Long)(implicit encoder0: ArgEncoder[Long])
       : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder
-        .Field("newGame", OptionOf(Scalar()), arguments = List(Argument("satoshiPerPoint", satoshiPerPoint, "Int!")))
+        .Field("newGame", OptionOf(Scalar()), arguments = List(Argument("satoshiPerPoint", satoshiPerPoint, "Long!")))
     def newGameSameUsers(value: Long)(implicit encoder0: ArgEncoder[Long])
       : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder

@@ -20,7 +20,7 @@ import caliban.client.*
 import caliban.client.CalibanClientError.{DecodingError, ServerError}
 import caliban.client.GraphQLResponseError.Location
 import caliban.client.Operations.{IsOperation, RootSubscription}
-import app.ClientConfiguration
+import chuti.ClientConfiguration
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket

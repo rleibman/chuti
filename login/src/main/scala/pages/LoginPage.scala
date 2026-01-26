@@ -16,7 +16,7 @@
 
 package pages
 
-import app.{LoginControllerState, Mode}
+import chuti.{LoginControllerState, Mode}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*

@@ -60,7 +60,7 @@ object GameApi {
     connectionId: ConnectionId
   ) derives ArgBuilder
 
-  case class NewGameArgs(satoshiPerPoint: Int) derives ArgBuilder
+  case class NewGameArgs(satoshiPerPoint: Long) derives ArgBuilder
 
   case class InviteByEmailArgs(
     name:   String,
@@ -129,8 +129,8 @@ object GameApi {
     Schema.gen[ChutiEnvironment & ChutiSession & GameService & ChatService, Mutations]
   private given Schema[ChutiEnvironment & ChutiSession & GameService & ChatService, Subscriptions] =
     Schema.gen[ChutiEnvironment & ChutiSession & GameService & ChatService, Subscriptions]
-  private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
-  private given ArgBuilder[GameId] = ArgBuilder.int.map(GameId.apply)
+  private given ArgBuilder[UserId] = ArgBuilder.long.map(UserId.apply)
+  private given ArgBuilder[GameId] = ArgBuilder.long.map(GameId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.string.map(ConnectionId.apply)
 
   def sanitizeGame(

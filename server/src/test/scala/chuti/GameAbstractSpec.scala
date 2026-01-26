@@ -159,7 +159,7 @@ trait GameAbstractSpec {
     )
   }
 
-  def newGame(satoshiPerPoint: Int): ZIO[ChutiEnvironment & GameService & ChatService, GameError, Game] =
+  def newGame(satoshiPerPoint: Long): ZIO[ChutiEnvironment & GameService & ChatService, GameError, Game] =
     for {
       gameService <- ZIO.service[GameService]
       // Start the game

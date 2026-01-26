@@ -62,26 +62,6 @@ object GameId {
 
 }
 
-opaque type ChannelId = Long
-
-object ChannelId {
-
-  given CanEqual[ChannelId, ChannelId] = CanEqual.derived
-
-  val empty:         ChannelId = 0
-  val lobbyChannel:  ChannelId = -1
-  val directChannel: ChannelId = -2
-
-  def apply(channelId: Long): ChannelId = channelId
-
-  extension (channelId: ChannelId) {
-
-    def value:    Long = channelId
-    def nonEmpty: Boolean = channelId.value != ChannelId.empty
-
-  }
-
-}
 
 // A user who can do anything
 val god: User = User(

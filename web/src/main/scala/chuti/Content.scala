@@ -16,10 +16,7 @@
 
 package chuti
 
-import _root_.util.Config
-import caliban.ScalaJSClientAdapter
-import caliban.client.SelectionBuilder
-import caliban.client.scalajs.GameClient.{Queries, Subscriptions, User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType}
+import chuti.ClientRepository.{UserEvent, UserEventType}
 import chuti.{*, given}
 import components.{ChutiComponent, Confirm, Toast}
 import japgolly.scalajs.react.*
@@ -27,27 +24,19 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^.*
-import net.leibman.chuti.std.OnErrorEventHandlerNonNull
 import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 import service.UserRESTClient
-import zio.json.*
-import zio.json.ast.Json
 
-import java.net.URI
 import java.time.Instant
-import java.util.UUID
 import scala.collection.mutable
 import scala.scalajs.js
-import scala.scalajs.js.{ThisFunction, |}
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the
   * router should be the main content of the app, but having a middle piece that loads app state makes some sense, that
   * way the router is in charge of routing and presenting the app menu.
   */
 object Content extends ChutiComponent with TimerSupport {
-
-  private val connectionId = UUID.randomUUID().toString
 
   case class State(chutiState: ChutiState)
 
@@ -268,83 +257,42 @@ object Content extends ChutiComponent with TimerSupport {
       currentUser:   User,
       currentGameId: Option[GameId]
     )(
-      data: Option[(User, CalibanUserEventType, Option[GameId])]
+      event: UserEvent
     ): Callback = {
-      import CalibanUserEventType.*
-      Callback.log(data.toString) >> {
-        data match {
-          case None => Callback.empty
-          case Some((user, Disconnected, _)) =>
+      import UserEventType.*
+      Callback.log(event.toString) >> {
+        event.userEventType match {
+          case Disconnected =>
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
-                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id))
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id))
               )
             )
-          case Some((user, Connected | Modified, _)) =>
+          case Connected | Modified =>
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
-                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != user.id) :+ user)
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id) :+ event.user)
               )
             )
-          case Some((_, AbandonedGame, gameId)) =>
+          case AbandonedGame =>
             // Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
             // That'll request a refresh.
             // Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
-            if (gameId != currentGameId)
+            if (event.gameId != currentGameId)
               Callback.empty
             else
               refresh(initial = false)()
-          case Some((user, JoinedGame, gameId)) =>
+          case JoinedGame =>
             // Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
             // That'll request a refresh.
             // Also, don't refresh if I'm not involved in the game at all, or I'm not in any games, since I really don't care
-            if (user.id == currentUser.id || gameId != currentGameId)
+            if (event.user.id == currentUser.id || event.gameId != currentGameId)
               Callback.empty
             else
               refresh(initial = false)()
         }
-      }
-    }
-
-    lazy private val userSelectionBuilder: SelectionBuilder[CalibanUser, User] =
-      (CalibanUser.id ~ CalibanUser.name).mapN(
-        (
-          id:   Option[Int],
-          name: String
-        ) => {
-          User(
-            id = id.map(UserId.apply),
-            email = "",
-            name = name,
-            created = Instant.now.nn,
-            lastUpdated = Instant.now.nn
-          )
-        }
-      )
-
-    lazy private val userEventSelectionBuilder
-      : SelectionBuilder[CalibanUserEvent, (User, CalibanUserEventType, Option[GameId])] = {
-      val t: SelectionBuilder[CalibanUserEvent, (Option[Int], String, String, CalibanUserEventType, Option[Int])] =
-        CalibanUserEvent.user(CalibanUser.id) ~
-          CalibanUserEvent.user(CalibanUser.name) ~
-          CalibanUserEvent.user(CalibanUser.email) ~
-          CalibanUserEvent.userEventType ~
-          CalibanUserEvent.gameId
-
-      t.map { case (idOpt, name, email, eventType, gameIdOpt) =>
-        (
-          User(
-            id = idOpt.map(UserId.apply),
-            name = name,
-            email = email,
-            created = Instant.now.nn,
-            lastUpdated = Instant.now.nn
-          ),
-          eventType,
-          gameIdOpt.map(GameId.apply)
-        )
       }
     }
 
@@ -356,9 +304,9 @@ object Content extends ChutiComponent with TimerSupport {
           else AsyncCallback.pure(oldState.chutiState.user)
         isFirstLogin      <- UserRESTClient.remoteSystem.isFirstLoginToday()
         wallet            <- UserRESTClient.remoteSystem.wallet()
-        friends           <- asyncCalibanCall(Queries.getFriends(userSelectionBuilder))
-        loggedInUsersOpt  <- asyncCalibanCall(Queries.getLoggedInUsers(userSelectionBuilder))
-        gameInProgressOpt <- asyncCalibanCallThroughJsonOpt[Queries, Game](Queries.getGameForUser)
+        friendsViews      <- ClientRepository.game.getFriends
+        loggedInViews     <- ClientRepository.game.getLoggedInUsers
+        gameInProgressOpt <- ClientRepository.game.getGameForUser
         needNewGameStream = (for {
           oldGame <- oldState.chutiState.gameInProgress
           newGame <- gameInProgressOpt
@@ -374,15 +322,30 @@ object Content extends ChutiComponent with TimerSupport {
 
       } yield $.modState { s =>
         import scala.language.unsafeNulls
+
+        // Convert UserViews to Users
+        val friends = friendsViews.map(v =>
+          User(
+            id = v.id.map(UserId.apply),
+            name = v.name,
+            email = v.email,
+            created = Option(Instant.parse(v.created)).getOrElse(Instant.now()),
+            lastUpdated = Option(Instant.parse(v.lastUpdated)).getOrElse(Instant.now()),
+            active = v.active
+          )
+        )
+        val loggedInUsers = loggedInViews.map(v =>
+          User(
+            id = v.id.map(UserId.apply),
+            name = v.name,
+            email = v.email,
+            created = Option(Instant.parse(v.created)).getOrElse(Instant.now()),
+            lastUpdated = Option(Instant.parse(v.lastUpdated)).getOrElse(Instant.now()),
+            active = v.active
+          )
+        )
+
         val copy = if (initial) {
-
-          given JsonDecoder[CalibanUserEventType] =
-            DeriveJsonDecoder
-              .gen[UserEventType].mapOrFail(a =>
-                CalibanUserEventType.values
-                  .find(b => a.toString == b.value).toRight(s"Coudn't find $a in ${CalibanUserEventType.values}")
-              )
-
           // Special stuff needs to be done on initalization:
           // - Create the userStream and connect to it
           // - Set all methods that will be used by users of ChutiState to update pieces of the state, think of these as application level methods
@@ -400,57 +363,27 @@ object Content extends ChutiComponent with TimerSupport {
               user = whoami,
               isFirstLogin = isFirstLogin,
               userStream = Option(
-                makeWebSocketClient[Option[(User, CalibanUserEventType, Option[GameId])]](
-                  uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
-                  query = Subscriptions
-                    .userStream(connectionId)(
-                      userEventSelectionBuilder
-                    ),
-                  onData = {
-                    (
-                      _,
-                      data
-                    ) =>
-                      whoami.fold(Callback.empty)(currentUser =>
-                        onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(data.flatten)
-                      )
-                  },
-                  operationId = "-",
-                  connectionId = s"$connectionId-${whoami.flatMap(_.id).fold(0)(_.userId)}"
-                )
+                ClientRepository.game.makeUserWebSocket { event =>
+                  whoami.fold(Callback.empty)(currentUser =>
+                    onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(event)
+                  )
+                }
               )
             )
           )
         } else s
 
-        import scala.language.unsafeNulls
         copy.copy(chutiState =
           copy.chutiState.copy(
             wallet = wallet,
-            friends = friends.toList.flatten,
-            loggedInUsers = loggedInUsersOpt.toList.flatten.distinctBy(_.id),
+            friends = friends.toList,
+            loggedInUsers = loggedInUsers.toList.distinctBy(_.id),
             gameInProgress = gameInProgressOpt,
             gameStream =
               if (!needNewGameStream) copy.chutiState.gameStream
               else
                 gameInProgressOpt.map(game =>
-                  makeWebSocketClient[Option[Json]](
-                    uriOrSocket = Left(new URI(s"ws://${Config.chutiHost}/api/game/ws")),
-                    query = Subscriptions.gameStream(game.id.get.gameId, connectionId),
-                    onData = {
-                      (
-                        _,
-                        data
-                      ) =>
-                        data.flatten.fold(Callback.empty)(json =>
-                          json
-                            .as[GameEvent]
-                            .fold(failure => Callback.throwException(GameError(failure)), g => onGameEvent(g))
-                        )
-                    },
-                    operationId = "-",
-                    connectionId = s"$connectionId-${gameInProgressOpt.flatMap(_.id).fold(0)(_.gameId)}"
-                  )
+                  ClientRepository.game.makeGameWebSocket(game.id.get, onGameEvent)
                 )
           )
         )
@@ -486,7 +419,8 @@ object Content extends ChutiComponent with TimerSupport {
 
       State(chutiState = ChutiState(gameViewMode = gameViewMode))
     }
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderS(_.backend.render(_))
     .componentDidMount(_.backend.refresh(initial = true)())
     .componentWillUnmount($ =>
       Callback.log("Closing down gameStream and userStream") >>

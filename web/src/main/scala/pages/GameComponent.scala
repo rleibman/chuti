@@ -17,13 +17,11 @@
 package pages
 
 import _root_.util.LocalizedMessages
-import app.{ChutiState, GameViewMode}
+import chuti.{ChutiState, ClientRepository, GameViewMode}
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.{*, given}
 import components.{Confirm, Toast}
-import caliban.client.scalajs.given
-import caliban.client.scalajs.GameClient.Mutations
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
@@ -37,8 +35,7 @@ import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
   SemanticShorthandItem
 }
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
-import pages.LobbyComponent.calibanCall
-import zio.json.*
+
 import scala.scalajs.js.JSConverters.*
 
 object GameComponent {
@@ -81,10 +78,11 @@ object GameComponent {
       gameId: GameId,
       event:  PlayEvent
     ): Callback = {
-      calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.value, event.toJsonAST.toOption.get),
-        _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
-      )
+      (for {
+        _ <- ClientRepository.game.play(gameId, event)
+      } yield {
+        clearPlayState() >> Toast.success(localized("GameComponent.listo"))
+      }).completeWith(_.get)
     }
 
     def moveFichaRight(
@@ -611,7 +609,8 @@ object GameComponent {
         estrictaDerecha = p.gameInProgress.fold(false)(_.estrictaDerecha)
       )
     )
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderPS(_.backend.render(_, _))
     .configure(Reusability.shouldComponentUpdate)
     .build
 

@@ -17,9 +17,9 @@
 package pages
 
 import java.time.ZoneOffset
-
-import app.{ChutiState, GameViewMode}
+import chuti.{ChutiState, GameViewMode}
 import caliban.ScalaJSClientAdapter
+import chat.ChatMessage
 import chuti.*
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -29,7 +29,7 @@ import org.scalajs.dom.window
 
 object GamePage extends ChutiPage with TimerSupport {
 
-  import app.GameViewMode.*
+  import chuti.GameViewMode.*
 
   case class State()
 
@@ -101,7 +101,8 @@ object GamePage extends ChutiPage with TimerSupport {
   private val component = ScalaComponent
     .builder[Props]("GamePageInner")
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderP(_.backend.render(_))
     .configure(Reusability.shouldComponentUpdate)
     .build
 

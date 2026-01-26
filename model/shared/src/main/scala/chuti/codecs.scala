@@ -18,43 +18,19 @@ package chuti
 
 import chuti.CuantasCantas.CuantasCantas
 import zio.json.*
+import chat.given 
 
 given JsonCodec[UserId] = JsonCodec.long.transform(UserId.apply, _.value)
 given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _.value)
 given JsonCodec[GameId] = JsonCodec.long.transform(GameId.apply, _.value)
-given JsonCodec[ChannelId] = JsonCodec.long.transform(ChannelId.apply, _.value)
-
-given JsonEncoder[Triunfo] = DeriveJsonEncoder.gen[Triunfo]
-given JsonDecoder[Triunfo] = DeriveJsonDecoder.gen[Triunfo]
-
-given JsonEncoder[Fila] = DeriveJsonEncoder.gen[Fila]
-given JsonDecoder[Fila] = DeriveJsonDecoder.gen[Fila]
-
-given JsonEncoder[CuantasCantas] = DeriveJsonEncoder.gen[CuantasCantas]
-given JsonDecoder[CuantasCantas] = DeriveJsonDecoder.gen[CuantasCantas]
-
-given JsonEncoder[(UserId, Seq[Fila])] = DeriveJsonEncoder.gen[(UserId, Seq[Fila])]
-
-given JsonEncoder[Borlote] = DeriveJsonEncoder.gen[Borlote]
-given JsonDecoder[Borlote] = DeriveJsonDecoder.gen[Borlote]
-
-given JsonEncoder[PlayEvent] = DeriveJsonEncoder.gen[PlayEvent]
-given JsonDecoder[PlayEvent] = DeriveJsonDecoder.gen[PlayEvent]
-
-given JsonEncoder[GameEvent] = DeriveJsonEncoder.gen[GameEvent]
-given JsonDecoder[GameEvent] = DeriveJsonDecoder.gen[GameEvent]
-
-given JsonEncoder[Cuenta] = DeriveJsonEncoder.gen[Cuenta]
-given JsonDecoder[Cuenta] = DeriveJsonDecoder.gen[Cuenta]
-
-given JsonEncoder[Jugador] = DeriveJsonEncoder.gen[Jugador]
-given JsonDecoder[Jugador] = DeriveJsonDecoder.gen[Jugador]
-
-given JsonEncoder[GameStatus] = DeriveJsonEncoder.gen[GameStatus]
-given JsonDecoder[GameStatus] = DeriveJsonDecoder.gen[GameStatus]
-
-given JsonEncoder[Game] = DeriveJsonEncoder.gen[Game]
-given JsonDecoder[Game] = DeriveJsonDecoder.gen[Game]
-
-given JsonEncoder[ChatMessage] = DeriveJsonEncoder.gen[ChatMessage]
-given JsonDecoder[ChatMessage] = DeriveJsonDecoder.gen[ChatMessage]
+given JsonCodec[Triunfo] = JsonCodec.derived[Triunfo]
+given JsonCodec[Fila] = JsonCodec.derived[Fila]
+given JsonCodec[CuantasCantas] = JsonCodec.derived[CuantasCantas]
+given JsonCodec[(UserId, Seq[Fila])] = JsonCodec.derived[(UserId, Seq[Fila])]
+given JsonCodec[Borlote] = JsonCodec.derived[Borlote]
+given JsonCodec[PlayEvent] = JsonCodec.derived[PlayEvent]
+given JsonCodec[GameEvent] = JsonCodec.derived[GameEvent]
+given JsonCodec[Cuenta] = JsonCodec.derived[Cuenta]
+given JsonCodec[Jugador] = JsonCodec.derived[Jugador]
+given JsonCodec[GameStatus] = JsonCodec.derived[GameStatus]
+given JsonCodec[Game] = JsonCodec.derived[Game]

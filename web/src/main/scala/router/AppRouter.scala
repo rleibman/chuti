@@ -16,22 +16,22 @@
 
 package router
 
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import app.{ChutiState, GameViewMode, GlobalDialog}
-import chat.ChatComponent
-import chuti.{ChannelId, GameStatus}
+import chat.*
+import chuti.{ChutiState, GameStatus, GameViewMode, GlobalDialog}
 import components.*
+import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.router.*
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.scalajs.dom.*
-import pages.{RulesPage, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsCollectionsMenuMenuMod.MenuProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticICONS
+import org.scalajs.dom.*
+import pages.*
 
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.annotation.unused
 
 object AppRouter extends ChutiComponent {
@@ -165,10 +165,11 @@ object AppRouter extends ChutiComponent {
 
     private val component = ScalaComponent
       .builder[Unit]("content")
-      .renderBackend[Backend]
+      .backend[Backend](Backend(_))
+      .render(_.backend.render())
       .build
 
-    def apply() = component()
+    def apply(): Unmounted[Unit, Unit, Backend] = component()
 
   }
 
@@ -315,9 +316,9 @@ object AppRouter extends ChutiComponent {
         chutiState.user.fold(EmptyVdom) { user =>
           val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
             chutiState.gameViewMode match {
-              case app.GameViewMode.lobby => ChannelId.lobbyChannel
+              case GameViewMode.lobby => ChannelId.lobbyChannel
               case GameViewMode.game      => game.channelId.getOrElse(ChannelId.lobbyChannel)
-              case app.GameViewMode.none  => ChannelId.lobbyChannel
+              case GameViewMode.none  => ChannelId.lobbyChannel
             }
           )
           ChatComponent(

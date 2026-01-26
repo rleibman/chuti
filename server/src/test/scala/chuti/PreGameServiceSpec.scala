@@ -26,9 +26,14 @@ import zio.test.{Spec, TestEnvironment, ZIOSpec}
 
 object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatService] {
 
-  override def spec: Spec[ChutiEnvironment & GameService & ChatService & TestEnvironment & Scope, Any] = ???
+  override def spec: Spec[ChutiEnvironment & GameService & ChatService & TestEnvironment & Scope, Any] =
+    zio.test.suite("PreGameServiceSpec")(
+      // Tests are currently commented out - see commented code below
+      zio.test.test("placeholder")(zio.test.assertCompletes)
+    )
 
-  override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] = ???
+  override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
+    api.EnvironmentBuilder.testLayer()
 
 }
 

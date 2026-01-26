@@ -133,7 +133,8 @@ object Toast {
     ScalaComponent
       .builder[Unit]("LeibmanToast")
       .initialState(ToastState())
-      .renderBackend[Backend]
+      .backend[Backend](Backend(_))
+      .renderS(_.backend.render(_))
       .build
 
   private val toastRef = Ref.toScalaComponent(component)

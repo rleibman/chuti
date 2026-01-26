@@ -27,7 +27,7 @@ import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
 import chuti.*
-import chuti.ChannelId.*
+import chat.ChannelId.*
 import chuti.UserId.*
 import dao.ZIORepository
 import zio.*
@@ -40,11 +40,6 @@ import java.util.Locale
 
 object ChatApi {
 
-  case class SayRequest(
-    msg:       String,
-    channelId: ChannelId,
-    toUser:    Option[User] = None
-  ) derives ArgBuilder
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
@@ -76,8 +71,8 @@ object ChatApi {
   private given Schema[Any, User] = Schema.gen[Any, User]
   private given Schema[Any, ChatMessage] = Schema.gen[Any, ChatMessage]
 
-  private given ArgBuilder[UserId] = ArgBuilder.int.map(UserId.apply)
-  private given ArgBuilder[ChannelId] = ArgBuilder.int.map(ChannelId.apply)
+  private given ArgBuilder[UserId] = ArgBuilder.long.map(UserId.apply)
+  private given ArgBuilder[ChannelId] = ArgBuilder.long.map(ChannelId.apply)
   private given ArgBuilder[ConnectionId] = ArgBuilder.string.map(ConnectionId.apply)
   private given ArgBuilder[Locale] =
     ArgBuilder.string.flatMap(s =>

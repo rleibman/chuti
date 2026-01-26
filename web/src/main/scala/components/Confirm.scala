@@ -75,7 +75,8 @@ object Confirm {
     ScalaComponent
       .builder[Unit]("LeibmanConfirm")
       .initialState(ConfirmState())
-      .renderBackend[Backend]
+      .backend[Backend](Backend(_))
+      .renderS(_.backend.render(_))
       .build
 
   private val ref = Ref.toScalaComponent(component)
