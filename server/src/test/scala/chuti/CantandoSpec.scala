@@ -31,7 +31,7 @@ import zio.{Clock, Console, *}
 
 object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 
-  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.withContainer.orDie
+  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.withContainer
 
   val spec = suite("Cantando")(
     test("printing the game")(

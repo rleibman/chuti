@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package app
+package chuti
 
 import org.scalajs.dom
 

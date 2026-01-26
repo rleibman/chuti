@@ -16,6 +16,14 @@
 
 package api.token
 
+enum TokenPurpose(override val toString: String) {
+
+  case NewUser extends TokenPurpose(toString = "NewUser")
+  case LostPassword extends TokenPurpose(toString = "LostPassword")
+
+}
+
+
 case class Token(tok: String) {
 
   override def toString: String = tok

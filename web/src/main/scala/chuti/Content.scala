@@ -14,34 +14,32 @@
  * limitations under the License.
  */
 
-package app
+package chuti
 
-import java.net.URI
-import java.util.UUID
-import caliban.client.SelectionBuilder
+import _root_.util.Config
 import caliban.ScalaJSClientAdapter
-import chuti.{*, given}
-import components.ChutiComponent
-import components.{Confirm, Toast}
+import caliban.client.SelectionBuilder
 import caliban.client.scalajs.GameClient.{Queries, Subscriptions, User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType}
+import chuti.{*, given}
+import components.{ChutiComponent, Confirm, Toast}
+import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^.*
-import japgolly.scalajs.react.*
 import net.leibman.chuti.std.OnErrorEventHandlerNonNull
 import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 import service.UserRESTClient
-import _root_.util.Config
-import caliban.ScalaJSClientAdapter
 import zio.json.*
 import zio.json.ast.Json
 
+import java.net.URI
+import java.time.Instant
+import java.util.UUID
 import scala.collection.mutable
 import scala.scalajs.js
 import scala.scalajs.js.{ThisFunction, |}
-import java.time.Instant
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the
   * router should be the main content of the app, but having a middle piece that loads app state makes some sense, that

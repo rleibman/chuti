@@ -19,13 +19,7 @@ package util
 import api.*
 import com.dimafeng.testcontainers.MariaDBContainer
 import dao.RepositoryError
-import io.getquill.jdbczio.Quill
 import zio.*
-
-import java.io
-import java.sql.SQLException
-import javax.sql.DataSource
-import scala.io.Source
 
 trait ChutiContainer {
 

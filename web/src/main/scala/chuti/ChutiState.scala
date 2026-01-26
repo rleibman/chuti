@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package app
+package chuti
 
-import java.util.Locale
-
+import _root_.util.LocalizedMessages
 import caliban.client.scalajs.WebSocketHandler
 import chuti.*
 import japgolly.scalajs.react.React.Context
 import japgolly.scalajs.react.{Callback, React}
 import org.scalajs.dom.window
 import pages.LobbyComponent.ExtUser
-import _root_.util.LocalizedMessages
+
+import java.util.Locale
 
 enum GameViewMode {
 
