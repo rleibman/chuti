@@ -1,0 +1,89 @@
+# #####################################
+# ##### Environment Configuration #####
+# #####################################
+
+# This file gets sourced before the actual startscript
+# gets executed. You can use this file to provide
+# environment variables
+
+# Available replacements
+# ------------------------------------------------
+# ${{author}}			debian author
+# ${{descr}}			debian package description
+# ${{exec}}				startup script name
+# ${{chdir}}			app directory
+# ${{retries}}			retries for startup
+# ${{retryTimeout}}		retry timeout
+# ${{app_name}}			normalized app name
+# ${{daemon_user}}		daemon user
+# -------------------------------------------------
+
+# Setting JAVA_OPTS
+# -----------------
+# JAVA_OPTS="-Dpidfile.path=/var/run/${{app_name}}/chuti.pid $JAVA_OPTS"
+JAVA_OPTS="-Dconfig.file=/etc/chuti-server/application.conf"
+
+# Setting PIDFILE
+# ---------------
+# PIDFILE="/var/run/${{app_name}}/chuti.pid"
+
+# #####################################
+# ##### Chuti Configuration #####
+# #####################################
+
+# REQUIRED: Set these environment variables for production
+# =========================================================
+
+# Session Secret Key (REQUIRED)
+# Generate a secure random string (128+ characters) for production
+# Example: openssl rand -base64 96 | tr -d '\n'
+CHUTI_SESSION_SECRET_KEY="CHANGE-ME-GENERATE-SECURE-SECRET-128-CHARS-MIN"
+export CHUTI_SESSION_SECRET_KEY
+
+# Database Configuration (REQUIRED)
+CHUTI_DB_URL="jdbc:mariadb://localhost:3306/chuti"
+export CHUTI_DB_URL
+
+CHUTI_DB_USER="chuti"
+export CHUTI_DB_USER
+
+CHUTI_DB_PASSWORD="CHANGE-ME-PRODUCTION-DB-PASSWORD"
+export CHUTI_DB_PASSWORD
+
+# OPTIONAL: HTTP Server Configuration
+# ====================================
+# Uncomment and modify as needed
+
+# CHUTI_HTTP_HOST="0.0.0.0"
+# export CHUTI_HTTP_HOST
+
+# CHUTI_HTTP_PORT="8079"
+# export CHUTI_HTTP_PORT
+
+# CHUTI_STATIC_CONTENT_DIR="/var/www/chuti/dist"
+# export CHUTI_STATIC_CONTENT_DIR
+
+# OPTIONAL: SMTP Configuration
+# =============================
+# Uncomment and configure if using email features
+
+# CHUTI_SMTP_LOCALHOST="localhost"
+# export CHUTI_SMTP_LOCALHOST
+
+# CHUTI_SMTP_HOST="smtp.example.com"
+# export CHUTI_SMTP_HOST
+
+# CHUTI_SMTP_PORT="587"
+# export CHUTI_SMTP_PORT
+
+# CHUTI_SMTP_AUTH="true"
+# export CHUTI_SMTP_AUTH
+
+# CHUTI_SMTP_START_TTLS="true"
+# export CHUTI_SMTP_START_TTLS
+
+# CHUTI_SMTP_USER="chuti@example.com"
+# export CHUTI_SMTP_USER
+
+# CHUTI_SMTP_PASSWORD="smtp-password"
+# export CHUTI_SMTP_PASSWORD

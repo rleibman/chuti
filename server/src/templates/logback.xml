@@ -1,0 +1,50 @@
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%date [%level] %logger - [%X] %replace(%message){'\n', ''}%n%xException</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/chuti-server/chuti.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/var/log/chuti-server/chuti.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date [%level] %logger - [%X] %replace(%message){'\n', ''}%n%xException</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <appender-ref ref="STDOUT"/>
+    </appender>
+
+    <!-- Root logger - INFO for production -->
+    <!-- Both CONSOLE and FILE appenders enabled so all logs appear in both places -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <!-- Application loggers -->
+    <logger name="chuti" level="INFO"/>
+    <logger name="auth" level="INFO"/>
+
+    <!-- Third-party library loggers -->
+    <logger name="io.grpc.netty.shaded.io.grpc.netty" level="ERROR"/>
+    <logger name="io.grpc.netty.shaded.io.netty" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+    <logger name="ai.djl.huggingface" level="INFO"/>
+    <logger name="dev.langchain4j.store.embedding" level="ERROR"/>
+    <logger name="com.github.dockerjava" level="OFF"/>
+    <logger name="org.testcontainers" level="OFF"/>
+    <logger name="org.mariadb.jdbc.message.server.OkPacket" level="OFF"/>
+    <logger name="org.mariadb.jdbc.client.impl.StandardClient" level="OFF"/>
+    <logger name="com.zaxxer.hikari" level="OFF"/>
+    <logger name="org.flywaydb" level="INFO"/>
+
+</configuration>

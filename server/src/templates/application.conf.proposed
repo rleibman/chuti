@@ -1,0 +1,83 @@
+chuti {
+  dndBeyondFileStore = "/var/chuti/fileStore/dndBeyondCharacters"
+  initialDataStore = "/www.chuti/data"
+
+  session {
+    # Session secret key - MUST be set via CHUTI_SESSION_SECRET_KEY environment variable
+    # This is configured in /etc/default/chuti-server
+    secretKey = ${?CHUTI_SESSION_SECRET_KEY}
+    accessTTL = "60 minutes"
+    refreshTTL = "14 days"
+  }
+
+  db {
+    dataSourceClassName = "org.mariadb.jdbc.MariaDbDataSource"
+    maximumPoolSize = 10
+    dataSource {
+      driver = "org.mariadb.jdbc.Driver"
+      # Database configuration from environment variables
+      # Set in /etc/default/chuti-server
+      url = "jdbc:mariadb://localhost:3306/chuti"
+      url = ${?CHUTI_DB_URL}
+      user = ${?CHUTI_DB_USER}
+
+      password = ${?CHUTI_DB_PASSWORD}
+      maximumPoolSize = 20
+      minimumIdle = 1000
+      connectionTimeoutMins = 5
+    }
+  }
+
+  http {
+    hostName = "0.0.0.0"
+    hostName = ${?CHUTI_HTTP_HOST}
+    port = 8079
+    port = ${?CHUTI_HTTP_PORT}
+    staticContentDir = "/var/www/chuti/dist"
+    staticContentDir = ${?CHUTI_STATIC_CONTENT_DIR}
+  }
+
+  smtp {
+    localhost = "localhost"
+    localhost = ${?CHUTI_SMTP_LOCALHOST}
+    host = "localhost"
+    host = ${?CHUTI_SMTP_HOST}
+    auth = false
+    auth = ${?CHUTI_SMTP_AUTH}
+    port = 25
+    port = ${?CHUTI_SMTP_PORT}
+    startTTLS = false
+    startTTLS = ${?CHUTI_SMTP_START_TTLS}
+    user = ""
+    user = ${?CHUTI_SMTP_USER}
+    password = ""
+    password = ${?CHUTI_SMTP_PASSWORD}
+    webHostname = "www.chuti.fun"
+  }
+
+  rateLimit {
+    enabled = true
+    maxRequests = 100
+    windowDurationSeconds = 60
+  }
+  oauth {
+    google {
+      # Google OAuth 2.0 credentials
+      # Obtain from https://console.cloud.google.com/apis/credentials
+      clientId = ${?CHUTI_GOOGLE_OAUTH_CLIENT_ID}
+      clientSecret = ${?CHUTI_GOOGLE_OAUTH_CLIENT_SECRET}
+
+      # OAuth endpoints (Google's standard URLs)
+      authorizationUri = "https://accounts.google.com/o/oauth2/v2/auth"
+      tokenUri = "https://oauth2.googleapis.com/token"
+      userInfoUri = "https://www.googleapis.com/oauth2/v3/userinfo"
+
+      # Redirect URI - must match Google Console configuration
+      redirectUri = "https://app.chuti.fun/oauth/google/callback"
+      redirectUri = ${?CHUTI_GOOGLE_OAUTH_REDIRECT_URI}
+
+      # OAuth scopes to request
+      scopes = ["openid", "email", "profile"]
+    }
+  }
+}
