@@ -127,7 +127,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       ): client.__Value.__ObjectValue = {
         summon[JsonDecoder[client.__Value]].unsafeDecode(trace, in) match {
           case obj: client.__Value.__ObjectValue => obj
-          case other => throw new Exception(s"Expected object but got $other")
+          case other => throw Exception(s"Expected object but got $other")
         }
       }
     }
@@ -260,7 +260,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       val socket: WebSocket = webSocket.getOrElse {
         // Use wss:// on server (HTTPS), ws:// locally (HTTP)
         val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
-        val uri = new URI(s"$protocol://${ClientConfiguration.live.host}/unauth/chuti/ws")
+        val uri = URI(s"$protocol://${ClientConfiguration.live.host}/unauth/chuti/ws")
         println("Connecting to WebSocket at " + uri.toString)
 
         org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")

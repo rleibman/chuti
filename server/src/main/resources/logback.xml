@@ -18,7 +18,7 @@
     <!--    <logger name="chuti" level="DEBUG"/>-->
     <logger name="com.github.dockerjava" level="OFF"/>
     <logger name="org.testcontainers" level="OFF"/>
-    <!--    <logger name="org.mariadb.jdbc" level="DEBUG"/>-->
+    <logger name="org.mariadb.jdbc" level="INFO"/>
     <logger name="com.zaxxer.hikari" level="OFF"/>
     <logger name="io.netty" level="OFF"/>
 

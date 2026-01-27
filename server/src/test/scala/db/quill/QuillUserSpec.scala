@@ -35,14 +35,14 @@ object QuillUserSpec extends QuillSpec {
     suite("Quill User Suite")(
       test("random") {
         for {
-          tok <- Random.nextBytes(16).map(r => new BigInteger(r.toArray).toString(32))
+          tok <- Random.nextBytes(16).map(r =>  BigInteger(r.toArray).toString(32))
           _   <- ZIO.logInfo(tok)
         } yield assert(tok.length)(isGreaterThan(0))
       },
       test("Happy CRUD") {
         (for {
           testUser             <- testUserZIO
-          repo                 <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo                 <- ZIO.serviceWith[ZIORepository](_.userOperations)
           allUsersBeforeInsert <- repo.search()
           inserted             <- repo.upsert(testUser)
           allUsersAfterInsert  <- repo.search()
@@ -61,7 +61,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("inserting the same user (by email should fail)") {
         (for {
-          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo     <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser <- testUserZIO
           _        <- repo.upsert(testUser)
           _        <- repo.upsert(testUser)
@@ -72,7 +72,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("changing a user's email should only succeed if that user doesn't exist already") {
         (for {
-          repo       <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo       <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser1  <- testUserZIO
           testUser2  <- testUserZIO
           firstUser  <- repo.upsert(testUser1)
@@ -85,14 +85,14 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Deleting a non-existent user") {
         (for {
-          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo     <- ZIO.serviceWith[ZIORepository](_.userOperations)
           deleted  <- repo.delete(UserId(123), softDelete = false)
           deleted2 <- repo.delete(UserId(123), softDelete = true)
         } yield assertTrue(!deleted) && assertTrue(!deleted2)).withClock(fixedClock)
       },
       test("Updating a non-existent user") {
         (for {
-          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo     <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser <- testUserZIO
           _        <- repo.upsert(testUser.copy(id = Some(UserId(123)), name = "ChangedName"))
         } yield assertTrue(false))
@@ -102,7 +102,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Deleting a user with no permissions") {
         (for {
-          repo <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo <- ZIO.serviceWith[ZIORepository](_.userOperations)
           _    <- repo.delete(UserId(123)).provideSomeLayer[ZIORepository](satanSession)
         } yield assertTrue(false))
           .withClock(fixedClock)
@@ -113,7 +113,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("Updating a user with no permissions") {
         (for {
-          repo     <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo     <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser <- testUserZIO
           inserted <- repo.upsert(testUser)
           _        <- repo.upsert(inserted.copy(name = "changedName")).provideSomeLayer[ZIORepository](satanSession)
@@ -127,7 +127,7 @@ object QuillUserSpec extends QuillSpec {
       test("login") {
         (for {
           now             <- Clock.instant
-          repo            <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo            <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser        <- testUserZIO
           inserted        <- repo.upsert(testUser)
           active          <- repo.upsert(inserted.copy(active = true))
@@ -140,7 +140,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("user by email") {
         (for {
-          repo        <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo        <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser    <- testUserZIO
           inserted    <- repo.upsert(testUser)
           active      <- repo.upsert(inserted.copy(active = true))
@@ -150,7 +150,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("friend stuff") {
         (for {
-          repo       <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo       <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser1  <- testUserZIO
           inserted1  <- repo.upsert(testUser1.copy(active = true))
           testUser2  <- testUserZIO
@@ -176,7 +176,7 @@ object QuillUserSpec extends QuillSpec {
       },
       test("wallet") {
         (for {
-          repo          <- ZIO.service[ZIORepository].map(_.userOperations)
+          repo          <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser1     <- testUserZIO
           inserted1     <- repo.upsert(testUser1.copy(active = true))
           wallet        <- repo.getWallet(inserted1.id.get)

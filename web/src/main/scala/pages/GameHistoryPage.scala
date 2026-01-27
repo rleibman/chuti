@@ -34,7 +34,7 @@ import net.leibman.chuti.semanticUiReact.components.{
 
 import java.time.ZoneId
 import java.util.Locale
-object GameHistoryPage extends ChutiPage  {
+object GameHistoryPage extends ChutiPage {
 
   private val df =
     DateTimeFormatter.ofPattern("MM/dd/yyyy HH:mm").nn.withLocale(Locale.US).nn.withZone(ZoneId.systemDefault()).nn

@@ -75,7 +75,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
       }
       val game = Game(None, created = Instant.now.nn, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
 
-      new GameTester(description, game, testEndState)
+      GameTester(description, game, testEndState)
     }
 
   }
@@ -160,7 +160,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         gamesToTest.map { tester =>
           test(tester.description)(
             for {
-              gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
+              gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
               saved <-
                 gameOperations
                   .upsert(tester.game).provideSomeLayer[ChutiEnvironment](

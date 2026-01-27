@@ -23,8 +23,7 @@ import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.*
-import dao.GameOperations
-import dao.{InMemoryRepository, ZIORepository, RepositoryIO}
+import dao.{GameOperations, InMemoryRepository, RepositoryIO, ZIORepository}
 import game.GameService
 import mail.Postman
 import org.scalatest.Assertion
@@ -64,7 +63,7 @@ trait GameAbstractSpec {
 
   def juegaHastaElFinal(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     for {
-      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
       start <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
@@ -103,7 +102,7 @@ trait GameAbstractSpec {
   def juegaMano(gameId: GameId): ZIO[ChutiEnvironment & ChatService & GameService, Exception, Game] = {
     val bot = DumbChutiBot
     for {
-      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
       game <-
         gameOperations
           .get(gameId).map(_.get).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
@@ -160,12 +159,9 @@ trait GameAbstractSpec {
   }
 
   def newGame(satoshiPerPoint: Long): ZIO[ChutiEnvironment & GameService & ChatService, GameError, Game] =
-    for {
-      gameService <- ZIO.service[GameService]
-      // Start the game
-      game <- gameService
-        .newGame(satoshiPerPoint).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user1))
-    } yield game
+    ZIO.serviceWithZIO[GameService](
+      _.newGame(satoshiPerPoint).provideSomeLayer[ChutiEnvironment & GameService & ChatService](userLayer(user1))
+    )
 
   def getReadyToPlay(gameId: GameId): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     for {
@@ -327,7 +323,7 @@ trait GameAbstractSpec {
   ): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] =
     for {
       gameService    <- ZIO.service[GameService]
-      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
       getGame <-
         ZIO
           .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[

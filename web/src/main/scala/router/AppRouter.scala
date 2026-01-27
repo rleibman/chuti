@@ -16,6 +16,7 @@
 
 package router
 
+import auth.AuthClient
 import chat.*
 import chuti.{ChutiState, GameStatus, GameViewMode, GlobalDialog}
 import components.*
@@ -26,7 +27,6 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsCollectionsMenuMenuMod.MenuProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticICONS
-import org.scalajs.dom.*
 import pages.*
 
 import java.time.ZoneId
@@ -257,10 +257,7 @@ object AppRouter extends ChutiComponent {
                     (
                       _,
                       _
-                    ) =>
-                      Callback {
-                        document.location.href = "/api/auth/doLogout"
-                      }
+                    ) => AuthClient.logout().completeWith(_ => Callback.empty)
                   }("Cerrar sesión"), // TODO I8n`
                   MenuItem().onClick(
                     (
@@ -317,7 +314,7 @@ object AppRouter extends ChutiComponent {
           val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
             chutiState.gameViewMode match {
               case GameViewMode.lobby => ChannelId.lobbyChannel
-              case GameViewMode.game      => game.channelId.getOrElse(ChannelId.lobbyChannel)
+              case GameViewMode.game  => game.channelId.getOrElse(ChannelId.lobbyChannel)
               case GameViewMode.none  => ChannelId.lobbyChannel
             }
           )

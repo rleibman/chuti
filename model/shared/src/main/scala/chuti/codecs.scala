@@ -18,7 +18,7 @@ package chuti
 
 import chuti.CuantasCantas.CuantasCantas
 import zio.json.*
-import chat.given 
+import chat.given
 
 given JsonCodec[UserId] = JsonCodec.long.transform(UserId.apply, _.value)
 given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _.value)

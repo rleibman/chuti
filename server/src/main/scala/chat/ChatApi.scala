@@ -26,8 +26,8 @@ import caliban.schema.*
 import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
 import caliban.wrappers.Wrappers.*
-import chuti.*
 import chat.ChannelId.*
+import chuti.*
 import chuti.UserId.*
 import dao.ZIORepository
 import zio.*
@@ -40,28 +40,21 @@ import java.util.Locale
 
 object ChatApi {
 
-
   case class ChatStreamArgs(
     channelId:    ChannelId,
     connectionId: ConnectionId
   )
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & ChutiSession, GameError, Seq[
-      ChatMessage
-    ]]
+    getRecentMessages: ChannelId => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Seq[ChatMessage]]
   )
 
   case class Mutations(
-    say: SayRequest => URIO[ChatService & ZIORepository & ChutiSession, Boolean]
+    say: SayRequest => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Boolean]
   )
 
   case class Subscriptions(
-    chatStream: ChatStreamArgs => ZStream[
-      ChatService & ZIORepository & ChutiSession,
-      GameError,
-      ChatMessage
-    ]
+    chatStream: ChatStreamArgs => ZStream[ChatService & ZIORepository & ChutiSession, GameError, ChatMessage]
   )
 
   private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
@@ -82,6 +75,7 @@ object ChatApi {
       }
     )
   private given ArgBuilder[User] = ArgBuilder.derived[User]
+  private given ArgBuilder[SayRequest] = ArgBuilder.derived[SayRequest]
 
   lazy val api: GraphQL[ChatService & ZIORepository & ChutiSession] =
     graphQL[
@@ -91,12 +85,11 @@ object ChatApi {
       Subscriptions
     ](
       RootResolver(
-        Queries(getRecentMessages = channelId => ChatService.getRecentMessages(channelId)),
-        Mutations(
-          say = sayRequest => ChatService.say(sayRequest).as(true)
-        ),
+        Queries(getRecentMessages = channelId => ZIO.serviceWithZIO[ChatService](_.getRecentMessages(channelId))),
+        Mutations(say = sayRequest => ZIO.serviceWithZIO[ChatService](_.say(sayRequest)).as(true)),
         Subscriptions(
-          chatStream = chatStreamArgs => ChatService.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
+          chatStream = chatStreamArgs =>
+            ZStream.serviceWithStream[ChatService](_.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId))
         )
       )
     ) @@ maxFields(20)

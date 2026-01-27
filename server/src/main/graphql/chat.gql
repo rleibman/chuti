@@ -30,7 +30,7 @@ type ChatMessage {
 }
 
 type Mutations {
-  say(msg: String!, channelId: Long!, toUser: UserInput): Boolean!
+  say(msg: String!, channelId: Long!, toUser: UserInput): Boolean
 }
 
 type Queries {

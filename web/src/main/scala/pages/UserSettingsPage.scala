@@ -16,18 +16,17 @@
 
 package pages
 
-import chuti.ChutiState
-import chuti.User
+import auth.AuthClient
+import chuti.{ChutiState, ClientRepository, ConnectionId, User}
 import components.Toast
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.{<, *}
-import org.scalajs.dom.window
-import service.UserRESTClient
-import net.leibman.chuti.semanticUiReact.components.{FormGroup, *}
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
+import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
+import org.scalajs.dom.window
 
 object UserSettingsPage extends ChutiPage {
 
@@ -46,8 +45,10 @@ object UserSettingsPage extends ChutiPage {
   class Backend($ : BackendScope[Unit, State]) {
 
     def init: Callback =
-      UserRESTClient.remoteSystem
-        .whoami().map(u => $.modState(_.copy(user = u))).completeWith(_.get)
+      AuthClient
+        .whoami[User, ConnectionId](Some(ClientRepository.connectionId))
+        .map(u => $.modState(_.copy(user = u)))
+        .completeWith(_.get)
 
     private def onUserInputChange(
       fn: (User, String) => User
@@ -94,9 +95,9 @@ object UserSettingsPage extends ChutiPage {
       val valid: Seq[String] = validatePassword(s)
       if (valid.nonEmpty)
         Toast.error(valid.map(s => <.p(s)).toVdomArray)
-      else
-        UserRESTClient.remoteSystem
-          .changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada")) // TODO i8n
+      else {
+        ClientRepository.user.changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada"))
+      } // TODO i8n
     }
 
     private def renderUserInfo(

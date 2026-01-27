@@ -19,4 +19,3 @@ package chat
 import zio.json.JsonCodec
 
 given JsonCodec[ChannelId] = JsonCodec.long.transform(ChannelId.apply, _.value)
-

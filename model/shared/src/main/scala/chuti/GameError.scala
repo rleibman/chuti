@@ -23,7 +23,7 @@ object GameError {
   def apply(cause: Throwable): GameError =
     cause match {
       case e: GameError => e
-      case e => new GameError(cause.getMessage, Some(cause))
+      case e => GameError(cause.getMessage, Some(cause))
     }
   def apply(message: String): GameError = new GameError(message)
 
@@ -45,4 +45,3 @@ class GameError(
   val cause:       Option[Throwable] = None,
   val isTransient: Boolean = false
 ) extends Exception(msg, cause.orNull) {}
-

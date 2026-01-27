@@ -203,7 +203,7 @@ object Fila {
   def apply(
     index:  Int,
     fichas: Ficha*
-  ): Fila = new Fila(fichas.toSeq, index)
+  ): Fila = Fila(fichas.toSeq, index)
 
 }
 
@@ -239,7 +239,6 @@ object JugadorState {
     }
 
 }
-import chuti.JugadorState.*
 
 case class Jugador(
   user:             User,
@@ -696,6 +695,11 @@ case class Game(
       case _ => false
     }
   }
+
+  def applyEvent(
+    user:  User,
+    event: GameEvent
+  ): (Game, GameEvent) = applyEvent(Some(user), event)
 
   // Returns the newly modified state, and any changes to the event
   def applyEvent(

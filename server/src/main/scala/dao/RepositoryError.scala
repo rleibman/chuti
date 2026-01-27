@@ -23,13 +23,13 @@ object RepositoryError {
   def apply(t: Throwable): RepositoryError = {
     t match {
       case t: RepositoryError => t
-      case t => RepositoryError(t.getMessage, Some(t))
+      case t => new RepositoryError(t.getMessage, Some(t))
     }
   }
   def apply(
     message: String = "",
     cause:   Option[Throwable] = None
-  ) = {
+  ): RepositoryError = {
     new RepositoryError(message, cause)
   }
 
@@ -41,4 +41,7 @@ sealed class RepositoryError(
   override val isTransient: Boolean = false
 ) extends GameError(msg, cause, isTransient)
 
-case class RepositoryPermissionError(override val msg: String = "") extends RepositoryError(msg)
+case class RepositoryPermissionError(
+  override val msg:   String = "",
+  override val cause: Option[Throwable] = None
+) extends RepositoryError(msg)

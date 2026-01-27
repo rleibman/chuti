@@ -55,23 +55,23 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
               }.mapError(GameError(_))
         }.flatten,
         Method.GET / trailing -> handler {
-            (
-              path: Path,
-              _:    Request
-            ) =>
+          (
+            path: Path,
+            _:    Request
+          ) =>
 
-              // You might want to restrict the files that could come back, but then again, you may not
-              val somethingElse = path.toString
-              Handler
-                .fromFileZIO {
-                  for {
-                    config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-                    staticContentDir = config.chuti.http.staticContentDir
-                    file <- file(s"$staticContentDir/$somethingElse")
-                  } yield file
-                }.mapError(GameError(_))
-                .contramap[(Path, Request)](_._2)
-          }
+            // You might want to restrict the files that could come back, but then again, you may not
+            val somethingElse = path.toString
+            Handler
+              .fromFileZIO {
+                for {
+                  config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
+                  staticContentDir = config.chuti.http.staticContentDir
+                  file <- file(s"$staticContentDir/$somethingElse")
+                } yield file
+              }.mapError(GameError(_))
+              .contramap[(Path, Request)](_._2)
+        }
       )
     )
 

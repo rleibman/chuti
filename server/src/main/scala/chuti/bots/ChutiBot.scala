@@ -31,7 +31,7 @@ trait ChutiBot {
 
   def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & ZIORepository, GameError, Game] = {
     for {
-      gameOperations <- ZIO.service[ZIORepository].map(_.gameOperations)
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
       gameService    <- ZIO.service[GameService]
       userOpt        <- ZIO.serviceWith[ChutiSession](_.user)
       user           <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))

@@ -56,7 +56,7 @@ object ChutiContainer {
   val configLayer: ZLayer[ConfigurationService & ChutiContainer, ConfigurationError, ConfigurationService] =
     ZLayer.fromZIO {
       for {
-        container  <- ZIO.service[ChutiContainer].map(_.container)
+        container  <- ZIO.serviceWith[ChutiContainer](_.container)
         baseConfig <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       } yield ConfigurationService.withConfig(
         baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container)))

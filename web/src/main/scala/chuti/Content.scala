@@ -16,8 +16,8 @@
 
 package chuti
 
+import auth.AuthClient
 import chuti.ClientRepository.{UserEvent, UserEventType}
-import chuti.{*, given}
 import components.{ChutiComponent, Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -26,9 +26,9 @@ import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
-import service.UserRESTClient
 
-import java.time.Instant
+import java.time.{Instant, LocalDate, ZoneId}
+import java.util.Locale
 import scala.collection.mutable
 import scala.scalajs.js
 
@@ -161,9 +161,10 @@ object Content extends ChutiComponent with TimerSupport {
       languageTag: String
     ): Callback = {
       val async = for {
-        user <-
-          AsyncCallback.traverse(userOpt.toSeq)(user => UserRESTClient.remoteSystem.upsert(user))
-        _ <- UserRESTClient.remoteSystem.setLocale(languageTag)
+        user <- AsyncCallback.traverse(userOpt)(user => ClientRepository.user.upsert(user))
+        _ <- AsyncCallback.traverse(user)(user =>
+          ClientRepository.user.upsert(user.copy(locale = Locale.forLanguageTag(languageTag)))
+        )
       } yield {
         Callback(window.sessionStorage.setItem("languageTag", languageTag)) >>
           $.modState(s =>
@@ -176,7 +177,7 @@ object Content extends ChutiComponent with TimerSupport {
     }
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
-    val audio = new Audio("")
+    val audio = Audio("")
     audio.onended = { (_: Event) =>
       if (audioQueue.size > 4) {
         // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
@@ -300,12 +301,12 @@ object Content extends ChutiComponent with TimerSupport {
       val ajax = for {
         oldState <- $.state.asAsyncCallback
         whoami <-
-          if (initial) UserRESTClient.remoteSystem.whoami()
+          if (initial) AuthClient.whoami[User, ConnectionId](Some(ClientRepository.connectionId))
           else AsyncCallback.pure(oldState.chutiState.user)
-        isFirstLogin      <- UserRESTClient.remoteSystem.isFirstLoginToday()
-        wallet            <- UserRESTClient.remoteSystem.wallet()
-        friendsViews      <- ClientRepository.game.getFriends
-        loggedInViews     <- ClientRepository.game.getLoggedInUsers
+        isFirstLogin      <- ClientRepository.user.isFirstLoginToday
+        wallet            <- ClientRepository.user.getWallet
+        friends           <- ClientRepository.user.friends
+        loggedInUsers     <- ClientRepository.game.getLoggedInUsers
         gameInProgressOpt <- ClientRepository.game.getGameForUser
         needNewGameStream = (for {
           oldGame <- oldState.chutiState.gameInProgress
@@ -322,28 +323,6 @@ object Content extends ChutiComponent with TimerSupport {
 
       } yield $.modState { s =>
         import scala.language.unsafeNulls
-
-        // Convert UserViews to Users
-        val friends = friendsViews.map(v =>
-          User(
-            id = v.id.map(UserId.apply),
-            name = v.name,
-            email = v.email,
-            created = Option(Instant.parse(v.created)).getOrElse(Instant.now()),
-            lastUpdated = Option(Instant.parse(v.lastUpdated)).getOrElse(Instant.now()),
-            active = v.active
-          )
-        )
-        val loggedInUsers = loggedInViews.map(v =>
-          User(
-            id = v.id.map(UserId.apply),
-            name = v.name,
-            email = v.email,
-            created = Option(Instant.parse(v.created)).getOrElse(Instant.now()),
-            lastUpdated = Option(Instant.parse(v.lastUpdated)).getOrElse(Instant.now()),
-            active = v.active
-          )
-        )
 
         val copy = if (initial) {
           // Special stuff needs to be done on initalization:
@@ -382,9 +361,7 @@ object Content extends ChutiComponent with TimerSupport {
             gameStream =
               if (!needNewGameStream) copy.chutiState.gameStream
               else
-                gameInProgressOpt.map(game =>
-                  ClientRepository.game.makeGameWebSocket(game.id.get, onGameEvent)
-                )
+                gameInProgressOpt.map(game => ClientRepository.game.makeGameWebSocket(game.id.get, onGameEvent))
           )
         )
       }

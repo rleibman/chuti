@@ -37,8 +37,8 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
           delivered <- postman
             .deliver(
               Envelope
-                .from(new InternetAddress("system@chuti.com"))
-                .to(new InternetAddress("roberto@leibman.net"))
+                .from( InternetAddress("system@chuti.com"))
+                .to( InternetAddress("roberto@leibman.net"))
                 .subject("hello")
                 .content(Text("body of hello"))
             ).fork

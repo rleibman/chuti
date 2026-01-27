@@ -79,7 +79,7 @@ package object dao {
         lastSnapshot = value.toJson,
         status = value.gameStatus,
         created = Timestamp.from(value.created).nn,
-        lastUpdated = new Timestamp(System.currentTimeMillis())
+        lastUpdated = Timestamp(System.currentTimeMillis())
       )
       ret
     }

@@ -101,7 +101,7 @@ object FlywayMigration {
         val infoResult = flyway.info()
         val migrations = infoResult.all()
 
-        val builder = new StringBuilder()
+        val builder = StringBuilder()
         builder.append(s"Flyway Info:\n")
         builder.append(s"  Schema Version: ${infoResult.current()}\n")
         builder.append(s"  Migrations:\n")

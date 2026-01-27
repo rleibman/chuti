@@ -20,23 +20,17 @@ import api.*
 import api.token.*
 import chuti.*
 import dao.*
-import game.GameService.godLayer
-import io.getquill.context.ZioJdbc.DataSourceLayer
-import io.getquill.extras.*
 import io.getquill.jdbczio.Quill
 import io.getquill.{query as qquery, *}
-import zio.cache.*
 import zio.json.*
 import zio.json.ast.Json
-import zio.logging.*
 import zio.{Clock, Random, *}
 
 import java.math.BigInteger
 import java.sql.{SQLException, Timestamp, Types}
 import java.time.*
 import javax.sql.DataSource
-import scala.annotation.targetName
-import scala.concurrent.duration.{Duration as ScalaDuration}
+import scala.concurrent.duration.Duration as ScalaDuration
 
 object QuillRepository {
 
@@ -44,11 +38,11 @@ object QuillRepository {
     ZLayer.fromZIO(for {
       configService <- ZIO.service[ConfigurationService]
       appConfig     <- configService.appConfig
-    } yield QuillRepository(appConfig.chuti.db))
+    } yield QuillRepository(appConfig))
 
 }
 
-case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
+case class QuillRepository(config: AppConfig) extends ZIORepository {
 
   private object ctx extends MysqlZioJdbcContext(MysqlEscape)
 
@@ -56,7 +50,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
   private val dataSourceLayer: TaskLayer[DataSource] = {
     println("=========================== dataSourceLayerCreation should only happen once!")
-    Quill.DataSource.fromDataSource(config.dataSource.createDataSource)
+    Quill.DataSource.fromDataSource(config.dataSource)
   }
 
   given MappedEncoding[UserId, Long] = MappedEncoding[UserId, Long](_.value)
@@ -77,12 +71,11 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
       ) => row.setString(index, value.toString)
     )
 
-  def requiredUserId: ZIO[ChutiSession, RepositoryError, UserId] =
-    for {
-      userOpt <- ZIO.serviceWith[ChutiSession](_.user)
-      id <- ZIO
-        .fromOption(userOpt.flatMap(_.id)).orElseFail(RepositoryError("User is required for this operation"))
-    } yield id
+  private def requiredUserId: ZIO[ChutiSession, RepositoryError, UserId] =
+    ZIO
+      .serviceWith[ChutiSession](_.user.flatMap(_.id)).someOrFail(
+        RepositoryError("User is required for this operation")
+      )
 
   private given ctx.Decoder[Json] =
     JdbcDecoder {
@@ -161,8 +154,9 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
   }
 
   private def assertAuth(
-    authorized: ChutiSession => Boolean,
-    errorFn:    ChutiSession => String
+    authorized:     ChutiSession => Boolean,
+    errorFn:        ChutiSession => String
+  )(implicit trace: Trace
   ): ZIO[ChutiSession, RepositoryError, ChutiSession] = {
     for {
       session <- ZIO.service[ChutiSession]
@@ -178,14 +172,14 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
       for {
         _ <- assertAuth(
           session =>
-            session.user == chuti.god || session.user == chuti.godless || session.user
+            session.user.contains(chuti.god) || session.user.contains(chuti.godless) || session.user
               .flatMap(_.id).fold(false)(_ == pk),
-          session => s"${session.user} Not authorized"
+          session => s"get ${session.user} Not authorized"
         )
         res <- ctx
           .run(users.filter(u => u.id == lift(pk.value) && !u.deleted))
           .map(_.headOption.map(_.toUser))
-          .provideLayer(dataSourceLayer)
+          .provideSomeLayer[ChutiSession](dataSourceLayer)
           .mapError(RepositoryError.apply)
       } yield res
     }
@@ -196,8 +190,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     ): RepositoryIO[Boolean] = {
       for {
         _ <- assertAuth(
-          session => session.user == chuti.god || session.user.flatMap(_.id).fold(false)(_ == pk),
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god) || session.user.flatMap(_.id).fold(false)(_ == pk),
+          session => s"delete ${session.user} Not authorized"
         )
         now <- Clock.instant
         result <- {
@@ -244,8 +238,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     override def upsert(user: User): RepositoryIO[User] =
       (for {
         _ <- assertAuth(
-          session => session.user == chuti.god || session.user.flatMap(_.id) == user.id,
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god) || session.user.flatMap(_.id) == user.id,
+          session => s"upsert ${session.user} Not authorized"
         )
         now <- Clock.instant
 
@@ -292,10 +286,10 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
     override def firstLogin: RepositoryIO[Option[Instant]] =
       (for {
-        userOpt <- ZIO.serviceWith[ChutiSession](_.user)
         userId <- ZIO
-          .fromOption(userOpt.flatMap(_.id))
-          .orElseFail(RepositoryError("User is required for this operation"))
+          .serviceWith[ChutiSession](_.user.flatMap(_.id)).someOrFail(
+            RepositoryError("User is required for this operation")
+          )
         res <- ctx
           .run(
             userLogins
@@ -324,7 +318,9 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
         _ <- ZIO.foreachDiscard(userId)(id =>
           ctx.run(userLogins.insertValue(UserLogRow(lift(id.value), lift(saveTime))))
         )
-      } yield user.flatten).provideLayer(dataSourceLayer).mapError(RepositoryError.apply)
+      } yield user.flatten)
+        .provideSomeLayer(dataSourceLayer)
+        .mapError(RepositoryError.apply)
     }
 
     override def changePassword(
@@ -333,8 +329,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     ): RepositoryIO[Boolean] =
       (for {
         _ <- assertAuth(
-          session => session.user == chuti.god || session.user.flatMap(_.id) == user.id,
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god) || session.user.flatMap(_.id) == user.id,
+          session => s"change password ${session.user} Not authorized"
         )
         res <- ctx
           .run(
@@ -345,11 +341,17 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
           ).map(_ > 0)
       } yield res).provideSomeLayer[ChutiSession](dataSourceLayer).mapError(RepositoryError.apply)
 
+    override def changePassword(newPassword: String): RepositoryIO[Boolean] =
+      for {
+        user   <- ZIO.serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required"))
+        result <- changePassword(user, newPassword)
+      } yield result
+
     override def userByEmail(email: String): RepositoryIO[Option[User]] = {
       ctx
         .run(users.filter(u => u.email == lift(email) && !u.deleted && u.active))
         .map(_.headOption.map(_.toUser))
-        .provideLayer(dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
     }
 
@@ -399,8 +401,11 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
     override def friends: RepositoryIO[Seq[User]] =
       (for {
-        userOpt <- ZIO.serviceWith[ChutiSession](_.user)
-        res <- userOpt.flatMap(_.id).fold(ZIO.succeed(Seq.empty): ZIO[DataSource, SQLException, Seq[User]]) { id =>
+        id <- ZIO
+          .serviceWith[ChutiSession](_.user.flatMap(_.id)).someOrFail(
+            RepositoryError("User is required for this operation")
+          )
+        res <-
           ctx
             .run {
               users
@@ -413,21 +418,23 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
                   (f.one == lift(id.value) || f.two == lift(id.value)) && u.id != lift(id.value)
                 }
             }.map(_.map(_._1.toUser))
-        }
       } yield res)
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def getWallet: RepositoryIO[Option[UserWallet]] =
       for {
-        userOpt <- ZIO.serviceWith[ChutiSession](_.user)
-        wallet  <- ZIO.foreach(userOpt.flatMap(_.id))(getWallet)
-      } yield wallet.flatten
+        userId <- ZIO
+          .serviceWith[ChutiSession](_.user.flatMap(_.id)).someOrFail(
+            RepositoryError("User is required for this operation")
+          )
+        wallet <- getWallet(userId)
+      } yield wallet
 
     override def getWallet(userId: UserId): RepositoryIO[Option[UserWallet]] =
       (for {
         _ <- assertAuth(
-          session => session.user == god || session.user.flatMap(_.id).fold(false)(_ == userId),
+          session => session.user.contains(god) || session.user.flatMap(_.id).fold(false)(_ == userId),
           _ => "You can't see someone else's wallet"
         )
         walletOpt <- ctx.run(userWallets.filter(_.userId == lift(userId.value))).map(_.headOption)
@@ -442,7 +449,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     override def updateWallet(userWallet: UserWallet): RepositoryIO[UserWallet] =
       (for {
         _ <- assertAuth(
-          session => session.user == god,
+          session => session.user.contains(god),
           _ => "Only god (or the Fed) can update a wallet"
         )
         existing <- getWallet(userWallet.userId)
@@ -454,13 +461,24 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
+    override def isFirstLoginToday: RepositoryIO[Boolean] =
+      (for {
+        firstLoginOpt <- firstLogin
+        now           <- Clock.instant
+        isFirstToday = firstLoginOpt.fold(true) { firstLogin =>
+          val firstLoginDate = firstLogin.atZone(java.time.ZoneId.systemDefault()).toLocalDate
+          val todayDate = now.atZone(java.time.ZoneId.systemDefault()).toLocalDate
+          firstLoginDate == todayDate
+        }
+      } yield isFirstToday)
+        .mapError(RepositoryError.apply)
   }
 
   def unCachedGet(pk: GameId): RepositoryIO[Option[Game]] =
     ctx
       .run(games.filter(g => g.id == lift(pk.value) && !g.deleted))
       .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))
-      .provideLayer(dataSourceLayer)
+      .provideSomeLayer[ChutiSession](dataSourceLayer)
       .mapError(RepositoryError.apply)
 
   override val gameOperations: GameOperations[RepositoryIO] = new GameOperations[RepositoryIO] {
@@ -485,16 +503,15 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
     override def userInGame(id: GameId): RepositoryIO[Boolean] =
       (for {
-        userOpt <- ZIO.serviceWith[ChutiSession](_.user)
-        isBot = userOpt.forall(_.isBot)
+        user <- ZIO.serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
         ret <-
-          if (isBot)
+          if (user.isBot)
             ZIO.succeed(true)
           else {
             ctx.run(
               gamePlayers
                 .filter(gp =>
-                  gp.gameId == lift(id.value) && gp.userId == lift(userOpt.flatMap(_.id).getOrElse(UserId.empty).value)
+                  gp.gameId == lift(id.value) && gp.userId == lift(user.id.map(_.value).getOrElse(0L))
                 ).nonEmpty
             )
           }
@@ -509,8 +526,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
 
       for {
         _ <- assertAuth(
-          session => session.user == chuti.god || game.jugadores.exists(_.user.id == session.user.flatMap(_.id)),
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god) || game.jugadores.exists(_.user.id == session.user.flatMap(_.id)),
+          session => s"update players ${session.user} Not authorized"
         )
         _ <- game.id.fold(
           ZIO.fail(RepositoryError("can't update players of unsaved game")): ZIO[DataSource, RepositoryError, Long]
@@ -586,8 +603,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     override def upsert(game: Game): RepositoryIO[Game] =
       (for {
         _ <- assertAuth(
-          session => session.user == chuti.god || game.jugadores.exists(_.user.id == session.user.flatMap(_.id)),
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god) || game.jugadores.exists(_.user.id == session.user.flatMap(_.id)),
+          session => s"upsert game ${session.user} Not authorized"
         )
         now <- Clock.instant
         upsertMe = GameRow
@@ -624,7 +641,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
       ctx
         .run(games.filter(g => g.id == lift(pk.value) && !g.deleted))
         .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))
-        .provideLayer(dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
     override def delete(
@@ -633,8 +650,8 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
     ): RepositoryIO[Boolean] = {
       for {
         _ <- assertAuth(
-          session => session.user == chuti.god,
-          session => s"${session.user} Not authorized"
+          session => session.user.contains(chuti.god),
+          session => s"delete game ${session.user} Not authorized"
         )
         result <- {
           if (softDelete) {
@@ -691,12 +708,12 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
       (
         for {
           userId <- requiredUserId
-          tok    <- Random.nextBytes(8).map(r => new BigInteger(r.toArray).toString(32))
+          tok    <- Random.nextBytes(8).map(r => BigInteger(r.toArray).toString(32))
           now    <- Clock.instant.map(_.toEpochMilli)
           row = TokenRow(
             tok = tok,
             tokenPurpose = purpose.toString,
-            expireTime = new Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + now)),
+            expireTime = Timestamp(ttl.fold(Long.MaxValue)(_.toMillis + now)),
             userId = userId.value
           )
           inserted <- ctx.run(tokens.insertValue(lift(row))).as(Token(row.tok))
@@ -714,7 +731,7 @@ case class QuillRepository(config: DatabaseConfig) extends ZIORepository {
             .filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString))
             .join(users).on(_.userId == _.id).map(_._2)
         ).map(_.headOption.map(_.toUser))
-        .provideLayer(dataSourceLayer)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
 
   }

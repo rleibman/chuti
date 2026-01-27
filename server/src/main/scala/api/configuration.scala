@@ -19,7 +19,7 @@ package api
 import auth.oauth.OAuthProviderConfig
 import auth.{AuthConfig, SecretKey}
 import chuti.GameError
-import com.typesafe.config.{ConfigFactory, Config as TypesafeConfig}
+import com.typesafe.config.{Config as TypesafeConfig, ConfigFactory}
 import com.zaxxer.hikari.*
 import zio.*
 import zio.config.magnolia.DeriveConfig
@@ -40,21 +40,7 @@ case class DataSourceConfig(
   maximumPoolSize:       Int = 20,
   minimumIdle:           Int = 1000,
   connectionTimeoutMins: Long = 5
-) {
-
-  def createDataSource: HikariDataSource = {
-    val config = new HikariConfig()
-    config.setDriverClassName(driver)
-    config.setJdbcUrl(url)
-    config.setUsername(user)
-    config.setPassword(password)
-    config.setMaximumPoolSize(maximumPoolSize)
-    config.setMinimumIdle(minimumIdle)
-    config.setConnectionTimeout(connectionTimeoutMins * 60 * 1000)
-    new HikariDataSource(config)
-  }
-
-}
+)
 
 case class DatabaseConfig(
   dataSource: DataSourceConfig
@@ -137,7 +123,15 @@ case class AppConfig(
 ) {
 
   lazy val dataSource: HikariDataSource = {
-    chuti.db.dataSource.createDataSource
+    val config = HikariConfig()
+    config.setDriverClassName(chuti.db.dataSource.driver)
+    config.setJdbcUrl(chuti.db.dataSource.url)
+    config.setUsername(chuti.db.dataSource.user)
+    config.setPassword(chuti.db.dataSource.password)
+    config.setMaximumPoolSize(chuti.db.dataSource.maximumPoolSize)
+    config.setMinimumIdle(chuti.db.dataSource.minimumIdle)
+    config.setConnectionTimeout(chuti.db.dataSource.connectionTimeoutMins * 60 * 1000)
+    HikariDataSource(config)
   }
 
 }
@@ -172,7 +166,7 @@ object ConfigurationService {
       import scala.language.unsafeNulls
       val confFileName = java.lang.System.getProperty("application.conf", "./src/main/resources/application.conf")
 
-      val confFile = new File(confFileName)
+      val confFile = File(confFileName)
       AppConfig.read(
         ConfigFactory
           .parseFile(confFile)

@@ -96,7 +96,7 @@ object EnvironmentBuilder {
       ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
       GameService.make(),
       ChatService.make(),
-      FlywayMigration.live,
+      FlywayMigration.live
     ).orDie
 
   val withContainer: ULayer[ChutiEnvironment] = ZLayer
@@ -112,7 +112,7 @@ object EnvironmentBuilder {
       OAuthStateStore.live(),
       GameService.make(),
       ChatService.make(),
-      FlywayMigration.live,
+      FlywayMigration.live
     ).orDie
 
   final def testLayer(gameFiles: String*): ULayer[ChutiEnvironment] = {
@@ -135,7 +135,7 @@ object EnvironmentBuilder {
       .make[ChutiEnvironment](
         ConfigurationService.live,
         repositoryLayer,
-        ZLayer.succeed(new MockPostman),
+        ZLayer.succeed(MockPostman),
         ZLayer.fromZIO(for {
           cache <- Cache
             .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
@@ -146,7 +146,7 @@ object EnvironmentBuilder {
         ChutiAuthServer.live,
         oauthServiceLayer,
         ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
-        FlywayMigration.live,
+        FlywayMigration.live
       ).orDie
   }
 

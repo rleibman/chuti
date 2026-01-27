@@ -67,7 +67,7 @@ object ChutiAuthServer {
         repo.userByEmail(email).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
       override def userByPK(pk: Option[UserId]): IO[AuthError, Option[User]] =
-        pk.fold(ZIO.succeed(None))(id => repo.get(id).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_)))
+        pk.fold(ZIO.none)(id => repo.get(id).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_)))
 
       override def createUser(
         name:     String,
@@ -100,13 +100,13 @@ object ChutiAuthServer {
       ): IO[AuthError, Unit] = {
         val smtpConfig = config.chuti.smtp
         val baseEmail = Envelope
-          .from(new InternetAddress(smtpConfig.fromEmail, smtpConfig.fromName))
-          .to(new InternetAddress(user.email))
+          .from(InternetAddress(smtpConfig.fromEmail, smtpConfig.fromName))
+          .to(InternetAddress(user.email))
           .subject(subject)
           .content(Multipart().html(body))
         val email =
           if (smtpConfig.bccEmail.nonEmpty)
-            baseEmail.bcc(new InternetAddress(smtpConfig.bccEmail))
+            baseEmail.bcc(InternetAddress(smtpConfig.bccEmail))
           else
             baseEmail
         postman.deliver(email)

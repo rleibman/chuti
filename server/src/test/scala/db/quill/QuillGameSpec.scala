@@ -48,7 +48,7 @@ object QuillGameSpec extends QuillSpec {
     suite("Quill Game Suite")(
       test("CRUD") {
         for {
-          gameRepo            <- ZIO.service[ZIORepository].map(_.gameOperations)
+          gameRepo            <- ZIO.serviceWith[ZIORepository](_.gameOperations)
           game                <- readGame(GAME_NEW)
           inserted            <- gameRepo.upsert(game.copy(id = None))
           gotten              <- gameRepo.get(inserted.id.get)

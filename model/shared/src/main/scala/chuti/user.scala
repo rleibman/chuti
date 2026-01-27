@@ -50,7 +50,7 @@ object User {
       )
     )
 
-  given JsonCodec[User]= JsonCodec.derived[User]
+  given JsonCodec[User] = JsonCodec.derived[User]
 
 }
 

@@ -16,12 +16,11 @@
 
 package api.token
 
-import chuti.{GameError, User, UserId}
+import chuti.{GameError, User}
 import dao.ZIORepository
 import game.GameService
 import zio.*
 import zio.cache.Cache
-import zio.logging.*
 
 import java.math.BigInteger
 import java.security.SecureRandom
@@ -72,9 +71,12 @@ object TokenHolder {
   def liveLayer: URLayer[ZIORepository, TokenHolder] =
     ZLayer.fromZIO(for {
       repo <- ZIO.service[ZIORepository]
-      freq = new zio.DurationSyntax(1).hour
-      _ <- (ZIO.logInfo("Cleaning up old tokens") *> repo.tokenOperations.cleanup.provide(GameService.godLayer))
-        .repeat(Schedule.spaced(freq).jittered).forkDaemon
+      freq = zio.DurationSyntax(1).hour
+      _ <- (ZIO.logInfo("Cleaning up old tokens") *>
+        repo.tokenOperations.cleanup
+          .delay(2.minutes)
+          .repeat(Schedule.spaced(freq).jittered)
+          .provide(GameService.godLayer)).forkDaemon
     } yield {
       new TokenHolder {
 
@@ -108,7 +110,7 @@ object TokenHolder {
         purpose: TokenPurpose,
         ttl:     Option[Duration] = Option(3.hours)
       ): IO[GameError, Token] = {
-        val t = new BigInteger(12 * 5, random).toString(32)
+        val t = BigInteger(12 * 5, random).toString(32)
         cache.get((t, purpose)).as(Token(t))
       }
 

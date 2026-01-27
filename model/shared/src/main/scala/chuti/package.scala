@@ -62,7 +62,6 @@ object GameId {
 
 }
 
-
 // A user who can do anything
 val god: User = User(
   id = Some(UserId.godUserId),

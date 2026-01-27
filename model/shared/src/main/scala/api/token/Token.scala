@@ -23,7 +23,6 @@ enum TokenPurpose(override val toString: String) {
 
 }
 
-
 case class Token(tok: String) {
 
   override def toString: String = tok

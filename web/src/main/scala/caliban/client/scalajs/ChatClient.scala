@@ -153,10 +153,10 @@ object ChatClient {
       encoder0: ArgEncoder[String],
       encoder1: ArgEncoder[Long],
       encoder2: ArgEncoder[scala.Option[UserInput]]
-    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, Boolean] =
+    ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "say",
-        Scalar(),
+        OptionOf(Scalar()),
         arguments = List(
           Argument("msg", msg, "String!"),
           Argument("channelId", channelId, "Long!"),

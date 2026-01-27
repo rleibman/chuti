@@ -91,7 +91,7 @@ package object coinbase {
     val prehash =
       if (method == "POST" || method == "PUT") timestamp + method.toUpperCase + requestPath
       else timestamp + method.toUpperCase + requestPath + body
-    val keyspec = new SecretKeySpec(secretKey.getBytes, "HmacSHA256")
+    val keyspec = SecretKeySpec(secretKey.getBytes, "HmacSHA256")
     try {
       val sha256 = Mac.getInstance("HmacSHA256").asInstanceOf[Mac]
       sha256.init(keyspec)

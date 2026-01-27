@@ -75,7 +75,8 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
                   )
                 _ <- ZIO.when(loginResult.isEmpty)(ZIO.fail(GameError("Current password is incorrect")))
                 // Change the password
-                _ <- authServer.changePassword(Option(userId), changePasswordRequest.newPassword).mapError(e => GameError(e))
+                _ <- authServer
+                  .changePassword(Option(userId), changePasswordRequest.newPassword).mapError(e => GameError(e))
               } yield Response.ok).catchAll { error =>
                 ZIO.succeed(Response.text(error.getMessage).status(Status.BadRequest))
               }

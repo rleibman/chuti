@@ -23,7 +23,7 @@ import zio.logging.*
 import zio.*
 
 import java.time.Instant
-import scala.concurrent.duration.{Duration as ScalaDuration}
+import scala.concurrent.duration.Duration as ScalaDuration
 
 object InMemoryRepository {
 
@@ -123,6 +123,8 @@ case class InMemoryRepository(
       password: String
     ): RepositoryIO[Boolean] = ???
 
+    override def changePassword(password: String): RepositoryIO[Boolean] = ???
+
     override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
 
     override def friend(friend: User): RepositoryIO[Boolean] = ???
@@ -155,6 +157,7 @@ case class InMemoryRepository(
 
     override def firstLogin: RepositoryIO[Option[Instant]] = ???
 
+    override def isFirstLoginToday: RepositoryIO[Boolean] = ???
   }
   override val tokenOperations: TokenOperations[RepositoryIO] = new TokenOperations[RepositoryIO] {
 

@@ -26,8 +26,7 @@ import zio.http.*
 
 object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
-  override def api
-    : ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment & ChutiSession, GameError]] =
+  override def api: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment & ChutiSession, GameError]] =
     ChatApi.api.interpreter.mapBoth(
       GameError(_),
       interpreter =>

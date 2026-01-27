@@ -117,6 +117,24 @@ object GameClient {
 
   }
 
+  type UserWallet
+  object UserWallet {
+
+    final case class UserWalletView(
+      userId: Long,
+      amount: BigDecimal
+    )
+
+    type ViewSelection = SelectionBuilder[UserWallet, UserWalletView]
+
+    def view: ViewSelection = (userId ~ amount).map { case (userId, amount) => UserWalletView(userId, amount) }
+
+    def userId: SelectionBuilder[UserWallet, Long] = _root_.caliban.client.SelectionBuilder.Field("userId", Scalar())
+    def amount: SelectionBuilder[UserWallet, BigDecimal] =
+      _root_.caliban.client.SelectionBuilder.Field("amount", Scalar())
+
+  }
+
   type Queries = _root_.caliban.client.Operations.RootQuery
   object Queries {
 
@@ -137,6 +155,11 @@ object GameClient {
     def getHistoricalUserGames
       : SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder.Field("getHistoricalUserGames", OptionOf(Scalar()))
+    def getWallet[A](innerSelection: SelectionBuilder[UserWallet, A])
+      : SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[A]] =
+      _root_.caliban.client.SelectionBuilder.Field("getWallet", OptionOf(Obj(innerSelection)))
+    def isFirstLoginToday: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[Boolean]] =
+      _root_.caliban.client.SelectionBuilder.Field("isFirstLoginToday", OptionOf(Scalar()))
 
   }
 
@@ -221,6 +244,10 @@ object GameClient {
         OptionOf(Scalar()),
         arguments = List(Argument("gameId", gameId, "Long!"), Argument("gameEvent", gameEvent, "Json!"))
       )
+    def changePassword(value: String)(implicit encoder0: ArgEncoder[String])
+      : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[Boolean]] =
+      _root_.caliban.client.SelectionBuilder
+        .Field("changePassword", OptionOf(Scalar()), arguments = List(Argument("value", value, "String!")))
 
   }
 

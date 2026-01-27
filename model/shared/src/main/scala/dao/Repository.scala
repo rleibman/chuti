@@ -71,6 +71,8 @@ trait GameOperations[F[_]] extends CRUDOperations[F, Game, GameId, EmptySearch] 
 
 trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSearch] {
 
+  def isFirstLoginToday: F[Boolean]
+
   def firstLogin: F[Option[Instant]]
 
   def login(
@@ -79,6 +81,8 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
   ): F[Option[User]]
 
   def userByEmail(email: String): F[Option[User]]
+
+  def changePassword(password: String): F[Boolean]
 
   def changePassword(
     user:     User,

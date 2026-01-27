@@ -20,7 +20,7 @@ import courier.Envelope
 import mail.Postman
 import zio.*
 
-class MockPostman extends Postman {
+case object MockPostman extends Postman {
 
   override def deliver(email: Envelope): UIO[Unit] = ZIO.logInfo(s"Delivering $email")
 

@@ -80,9 +80,7 @@ object GameComponent {
     ): Callback = {
       (for {
         _ <- ClientRepository.game.play(gameId, event)
-      } yield {
-        clearPlayState() >> Toast.success(localized("GameComponent.listo"))
-      }).completeWith(_.get)
+      } yield clearPlayState() >> Toast.success(localized("GameComponent.listo"))).completeWith(_.get)
     }
 
     def moveFichaRight(
@@ -360,7 +358,7 @@ object GameComponent {
                       case JugadorState.esperandoCanto   => EmptyVdom
                       case JugadorState.esperando        => EmptyVdom
                       case JugadorState.partidoTerminado => EmptyVdom
-                      case _                             => throw new RuntimeException("Should never, ever get here")
+                      case _                             => throw RuntimeException("Should never, ever get here")
                     },
                     if (puedeRendirse) {
                       Button

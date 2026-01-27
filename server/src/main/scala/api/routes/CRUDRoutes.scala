@@ -18,7 +18,7 @@ package api.routes
 
 import api.{ChutiEnvironment, ChutiSession}
 import chuti.{GameError, Search}
-import dao.{CRUDOperations, ZIORepository, RepositoryError, RepositoryIO}
+import dao.{CRUDOperations, RepositoryError, RepositoryIO, ZIORepository}
 import util.*
 import zio.http.*
 import zio.*
@@ -27,7 +27,11 @@ import zio.json.*
 
 import scala.util.matching.Regex
 
-abstract class CRUDRoutes[E: {Tag, JsonEncoder, JsonDecoder}, PK: {Tag, JsonDecoder}, SEARCH <: Search: {Tag, JsonDecoder}] {
+abstract class CRUDRoutes[
+  E:                {Tag, JsonEncoder, JsonDecoder},
+  PK:               {Tag, JsonDecoder},
+  SEARCH <: Search: {Tag, JsonDecoder}
+] {
   self =>
 
   type OpsService = CRUDOperations[RepositoryIO, E, PK, SEARCH]
