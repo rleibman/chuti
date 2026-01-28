@@ -107,22 +107,22 @@ trait GameAbstractSpec {
       sigiuente3 = game.nextPlayer(sigiuente2)
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
+          .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(mano.user).toLayer
           )
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
+          .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente1.user).toLayer
           )
       _ <-
         bot
-          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
+          .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente2.user).toLayer
           )
       afterPlayer4 <-
         bot
-          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
+          .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & ChatService & GameService](
             ChutiSession(sigiuente3.user).toLayer
           )
     } yield afterPlayer4
@@ -212,7 +212,7 @@ trait GameAbstractSpec {
       // Una vez que alguien ya canto chuti, pasa a los demas.
       g1 <-
         bot
-          .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+          .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
             ChutiSession(quienCanta).toLayer
           )
       g2 <-
@@ -220,7 +220,7 @@ trait GameAbstractSpec {
           ZIO.succeed(g1)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente1).toLayer
             )
         }
@@ -229,7 +229,7 @@ trait GameAbstractSpec {
           ZIO.succeed(g2)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente2).toLayer
             )
         }
@@ -238,7 +238,7 @@ trait GameAbstractSpec {
           ZIO.succeed(g3)
         else {
           bot
-            .takeTurn(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
+            .takeTurn(gameId, 0).provideSomeLayer[ChutiEnvironment & GameService & ChatService](
               ChutiSession(sigiuente3).toLayer
             )
         }

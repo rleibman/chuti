@@ -156,12 +156,12 @@ final case class NoOp(
 }
 
 final case class NoOpPlay(
-  gameId:              Option[GameId] = None,
-  userId:              Option[UserId] = None,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              Option[GameId] = None,
+  override val userId:              Option[UserId] = None,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PlayEvent {
 
   override val reapplyMode:    ReapplyMode = none
@@ -173,7 +173,7 @@ final case class NoOpPlay(
   ): (Game, GameEvent) =
     (
       game,
-      copy(index = Option(game.currentEventIndex), gameId = game.id, userId = jugador.id)
+      this
     )
 
   override def redoEvent(
