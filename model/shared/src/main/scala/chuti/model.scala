@@ -140,21 +140,28 @@ object Ficha {
 
   given JsonDecoder[Ficha] =
     JsonDecoder[Json].mapOrFail { json =>
+      def parseNumero(j: Json): Either[String, Numero] =
+        // Support both formats: plain int or {"value": int}
+        j.asNumber.map(n => Numero(n.value.intValue())).toRight("Invalid numero")
+          .orElse(j.as[Numero])
+
       for {
-        obj     <- json.asObject.toRight("Not an object")
-        theType <- obj.get("type").flatMap(_.asString).toRight("No type")
-        arriba  <- obj.get("arriba").toRight("No arriba").flatMap(_.as[Numero])
-        abajo   <- obj.get("abajo").toRight("No abajo").flatMap(_.as[Numero])
+        obj        <- json.asObject.toRight("Not an object")
+        theType    <- obj.get("type").flatMap(_.asString).toRight("No type")
+        arribaJson <- obj.get("arriba").toRight("No arriba")
+        abajoJson  <- obj.get("abajo").toRight("No abajo")
+        arriba     <- parseNumero(arribaJson)
+        abajo      <- parseNumero(abajoJson)
       } yield if (theType.equals("tapada")) FichaTapada else apply(arriba, abajo)
     }
 
   given JsonEncoder[Ficha] =
     JsonEncoder[Json].contramap { (ficha: Ficha) =>
-      s"""{
-        "type": "${if (ficha == FichaTapada) "tapada" else "conocida"}",
-        "arriba": ${if (ficha == FichaTapada) Numero0 else ficha.arriba}},
-        "abajo": ${if (ficha == FichaTapada) Numero0 else ficha.abajo}
-       }""".fromJson[Json].toOption.get
+      Json.Obj(
+        "type" -> Json.Str(if (ficha == FichaTapada) "tapada" else "conocida"),
+        "arriba" -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.arriba).value),
+        "abajo" -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.abajo).value)
+      )
     }
 
 }
