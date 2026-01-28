@@ -52,16 +52,13 @@ object Numero {
 
   def apply(num: Int): Numero = values(num)
 
-  given JsonDecoder[Numero] =
-    JsonDecoder[Json].mapOrFail(json =>
-      json.asObject
-        .flatMap(_.get("value")).flatMap(_.asNumber).map(_.value.intValue).map(apply).toRight("Error decoding Numero")
+  given JsonCodec[Numero] = {
+    case class Temp(value: Int)
+    JsonCodec.derived[Temp].transformOrFail(
+      temp => Numero.values.find(_.value == temp.value).toRight(s"Invalid Numero value: ${temp.value}"),
+      numero => Temp(numero.value)
     )
-
-  given JsonEncoder[Numero] =
-    JsonEncoder[Json].contramap { (num: Numero) =>
-      s"""{"value": ${num.value}""".fromJson[Json].toOption.get
-    }
+  }
 
 }
 

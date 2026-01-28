@@ -17,11 +17,9 @@
 package chat
 
 import api.ChutiSession
+import auth.{AuthConfig, AuthServer}
 import caliban.*
 import caliban.CalibanError.ExecutionError
-import caliban.interop.zio.*
-import caliban.interop.zio.json.*
-import caliban.introspection.adt.__Type
 import caliban.schema.*
 import caliban.schema.ArgBuilder.auto.*
 import caliban.schema.Schema.auto.*
@@ -31,9 +29,6 @@ import chuti.*
 import chuti.UserId.*
 import dao.ZIORepository
 import zio.*
-import zio.json.*
-import zio.json.ast.Json
-import zio.logging.*
 import zio.stream.ZStream
 
 import java.util.Locale
@@ -42,8 +37,9 @@ object ChatApi {
 
   case class ChatStreamArgs(
     channelId:    ChannelId,
-    connectionId: ConnectionId
-  )
+    connectionId: ConnectionId,
+    token:        String
+  ) derives ArgBuilder
 
   case class Queries(
     getRecentMessages: ChannelId => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Seq[ChatMessage]]
@@ -54,7 +50,11 @@ object ChatApi {
   )
 
   case class Subscriptions(
-    chatStream: ChatStreamArgs => ZStream[ChatService & ZIORepository & ChutiSession, GameError, ChatMessage]
+    chatStream: ChatStreamArgs => ZStream[
+      ChatService & ZIORepository & AuthConfig & AuthServer[User, Option[UserId], ConnectionId],
+      GameError,
+      ChatMessage
+    ]
   )
 
   private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
@@ -77,9 +77,9 @@ object ChatApi {
   private given ArgBuilder[User] = ArgBuilder.derived[User]
   private given ArgBuilder[SayRequest] = ArgBuilder.derived[SayRequest]
 
-  lazy val api: GraphQL[ChatService & ZIORepository & ChutiSession] =
+  lazy val api: GraphQL[ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, Option[UserId], ConnectionId]] =
     graphQL[
-      ChatService & ZIORepository & ChutiSession,
+      ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, Option[UserId], ConnectionId],
       Queries,
       Mutations,
       Subscriptions
@@ -89,10 +89,22 @@ object ChatApi {
         Mutations(say = sayRequest => ZIO.serviceWithZIO[ChatService](_.say(sayRequest)).as(true)),
         Subscriptions(
           chatStream = chatStreamArgs =>
-            ZStream.serviceWithStream[ChatService](_.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId))
+            ZStream.unwrap(
+              for {
+                authServer <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+                sessionLayer <- authServer
+                  .sessionLayerFromToken(
+                    chatStreamArgs.token,
+                    Some(chatStreamArgs.connectionId)
+                  ).mapError(e => GameError(e.getMessage))
+              } yield ZStream
+                .serviceWithStream[ChatService](
+                  _.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
+                ).provideSomeLayer[ChatService & ZIORepository](sessionLayer)
+            )
         )
       )
-    ) @@ maxFields(20)
+    ) @@ maxFields(50)
       @@ maxDepth(30)
       @@ printErrors
       @@ timeout(3.seconds)

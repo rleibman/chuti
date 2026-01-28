@@ -256,7 +256,8 @@ object GameClient {
 
     def gameStream(
       gameId:       Long,
-      connectionId: String
+      connectionId: String,
+      token:        String
     )(implicit
       encoder0: ArgEncoder[Long],
       encoder1: ArgEncoder[String]
@@ -264,16 +265,24 @@ object GameClient {
       _root_.caliban.client.SelectionBuilder.Field(
         "gameStream",
         OptionOf(Scalar()),
-        arguments = List(Argument("gameId", gameId, "Long!"), Argument("connectionId", connectionId, "String!"))
+        arguments = List(
+          Argument("gameId", gameId, "Long!"),
+          Argument("connectionId", connectionId, "String!"),
+          Argument("token", token, "String!")
+        )
       )
     def userStream[A](
-      value: String
+      connectionId: String,
+      token:        String
     )(
       innerSelection:    SelectionBuilder[UserEvent, A]
     )(implicit encoder0: ArgEncoder[String]
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[A]] =
-      _root_.caliban.client.SelectionBuilder
-        .Field("userStream", OptionOf(Obj(innerSelection)), arguments = List(Argument("value", value, "String!")))
+      _root_.caliban.client.SelectionBuilder.Field(
+        "userStream",
+        OptionOf(Obj(innerSelection)),
+        arguments = List(Argument("connectionId", connectionId, "String!"), Argument("token", token, "String!"))
+      )
 
   }
 

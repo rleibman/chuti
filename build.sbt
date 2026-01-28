@@ -92,7 +92,7 @@ val zioLoggingSlf4j2Version = "2.5.3"
 val zioNioVersion = "2.0.2"
 val zioSchemaVersion = "1.5.0"
 val zioVersion = "2.1.24"
-val zioAuth = "3.0.3"
+val zioAuth = "3.1.0"
 
 lazy val commonSettings = Seq(
   organization       := "net.leibman",

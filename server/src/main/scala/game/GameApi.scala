@@ -18,6 +18,7 @@ package game
 
 import api.token.TokenHolder
 import api.{ChutiEnvironment, ChutiSession}
+import auth.{AuthConfig, AuthServer}
 import caliban.*
 import caliban.CalibanError.ExecutionError
 import caliban.execution.ExecutionRequest
@@ -42,8 +43,6 @@ import java.util.Locale
 
 object GameApi {
 
-  import caliban.interop.circe.json.*
-
   case class PlayArgs(
     gameId:    GameId,
     gameEvent: Json
@@ -55,7 +54,13 @@ object GameApi {
 
   case class GameStreamArgs(
     gameId:       GameId,
-    connectionId: ConnectionId
+    connectionId: ConnectionId,
+    token:        String
+  ) derives ArgBuilder
+
+  case class UserStreamArgs(
+    connectionId: ConnectionId,
+    token:        String
   ) derives ArgBuilder
 
   case class NewGameArgs(satoshiPerPoint: Long) derives ArgBuilder
@@ -110,11 +115,11 @@ object GameApi {
     friend:         UserId => ZIO[GameService & ChutiSession & ZIORepository & ChatService, GameError, Boolean],
     unfriend:       UserId => ZIO[GameService & ChutiSession & ZIORepository & ChatService, GameError, Boolean],
     play:           PlayArgs => ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean],
-    changePassword: String => ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean],
+    changePassword: String => ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean]
   )
   case class Subscriptions(
-    gameStream: GameStreamArgs => ZStream[GameService & ChutiSession & ZIORepository, GameError, Json],
-    userStream: ConnectionId => ZStream[GameService & ChutiSession & ZIORepository, GameError, UserEvent]
+    gameStream: GameStreamArgs => ZStream[GameService & ZIORepository & AuthConfig & AuthServer[User, Option[UserId], ConnectionId], GameError, Json],
+    userStream: UserStreamArgs => ZStream[GameService & ZIORepository & AuthConfig & AuthServer[User, Option[UserId], ConnectionId], GameError, UserEvent]
   )
 
   private given Schema[Any, GameId] = Schema.longSchema.contramap(_.value)
@@ -206,13 +211,17 @@ object GameApi {
             for {
               gameOpt   <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
               sanitized <- ZIO.foreach(gameOpt)(sanitizeGame)
-              jsonOpt   <- ZIO.fromEither(sanitized.toRight("").flatMap(_.toJsonAST)).mapError(GameError.apply)
-            } yield jsonOpt,
+              json <- sanitized.fold(ZIO.succeed(Json.Null))(game =>
+                ZIO.fromEither(game.toJsonAST).mapError(GameError.apply)
+              )
+            } yield json,
           getGameForUser = for {
             gameOpt   <- ZIO.serviceWithZIO[GameService](_.getGameForUser)
             sanitized <- ZIO.foreach(gameOpt)(sanitizeGame)
-            jsonOpt   <- ZIO.fromEither(sanitized.toRight("").flatMap(_.toJsonAST)).mapError(GameError.apply)
-          } yield jsonOpt,
+            json <- sanitized.fold(ZIO.succeed(Json.Null))(game =>
+              ZIO.fromEither(game.toJsonAST).mapError(GameError.apply)
+            )
+          } yield json,
           getFriends = ZIO.serviceWithZIO[ZIORepository](_.userOperations.friends),
           getGameInvites = for {
             gameSeq <- ZIO.serviceWithZIO[GameService](_.getGameInvites)
@@ -274,20 +283,43 @@ object GameApi {
               json   <- ZIO.fromEither(playArgs.gameEvent.toJsonAST).mapError(GameError.apply)
               played <- GameService.play(playArgs.gameId, json)
             } yield played,
-          changePassword = newPassword =>
-            ZIO.serviceWithZIO[ZIORepository](_.userOperations.changePassword(newPassword)),
+          changePassword =
+            newPassword => ZIO.serviceWithZIO[ZIORepository](_.userOperations.changePassword(newPassword))
         ),
         Subscriptions(
           gameStream = gameStreamArgs =>
-            ZStream.serviceWithStream[GameService](
-              _.gameStream(gameStreamArgs.gameId, gameStreamArgs.connectionId).flatMap(event =>
-                ZStream.fromZIOOption(ZIO.fromOption(event.toJsonAST.toOption))
-              )
+            ZStream.unwrap(
+              for {
+                authServer <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+                sessionLayer <- authServer
+                  .sessionLayerFromToken(
+                    gameStreamArgs.token,
+                    Some(gameStreamArgs.connectionId)
+                  ).mapError(e => GameError(e.getMessage))
+              } yield ZStream
+                .serviceWithStream[GameService](
+                  _.gameStream(gameStreamArgs.gameId, gameStreamArgs.connectionId).flatMap(event =>
+                    ZStream.fromZIOOption(ZIO.fromOption(event.toJsonAST.toOption))
+                  )
+                ).provideSomeLayer[GameService & ZIORepository](sessionLayer)
             ),
-          userStream = connectionId => ZStream.serviceWithStream[GameService](_.userStream(connectionId))
+          userStream = userStreamArgs =>
+            ZStream.unwrap(
+              for {
+                authServer <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+                sessionLayer <- authServer
+                  .sessionLayerFromToken(
+                    userStreamArgs.token,
+                    Some(userStreamArgs.connectionId)
+                  ).mapError(e => GameError(e.getMessage))
+              } yield ZStream
+                .serviceWithStream[GameService](
+                  _.userStream(userStreamArgs.connectionId)
+                ).provideSomeLayer[GameService & ZIORepository](sessionLayer)
+            )
         )
       )
-    ) @@ maxFields(20)
+    ) @@ maxFields(50)
       @@ maxDepth(30)
       @@ printErrors
       @@ gameErrorHandler

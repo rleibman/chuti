@@ -171,7 +171,8 @@ object ChatClient {
 
     def chatStream[A](
       channelId:    Long,
-      connectionId: String
+      connectionId: String,
+      token:        String
     )(
       innerSelection: SelectionBuilder[ChatMessage, A]
     )(implicit
@@ -181,7 +182,11 @@ object ChatClient {
       _root_.caliban.client.SelectionBuilder.Field(
         "chatStream",
         OptionOf(Obj(innerSelection)),
-        arguments = List(Argument("channelId", channelId, "Long!"), Argument("connectionId", connectionId, "String!"))
+        arguments = List(
+          Argument("channelId", channelId, "Long!"),
+          Argument("connectionId", connectionId, "String!"),
+          Argument("token", token, "String!")
+        )
       )
 
   }

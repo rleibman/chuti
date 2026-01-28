@@ -50,8 +50,8 @@ type Queries {
 }
 
 type Subscriptions {
-  gameStream(gameId: Long!, connectionId: String!): Json
-  userStream(value: String!): UserEvent
+  gameStream(gameId: Long!, connectionId: String!, token: String!): Json
+  userStream(connectionId: String!, token: String!): UserEvent
 }
 
 type User {

@@ -71,7 +71,7 @@ object TokenHolder {
   def liveLayer: URLayer[ZIORepository, TokenHolder] =
     ZLayer.fromZIO(for {
       repo <- ZIO.service[ZIORepository]
-      freq = zio.DurationSyntax(1).hour
+      freq = zio.DurationSyntax(6).hour
       _ <- (ZIO.logInfo("Cleaning up old tokens") *>
         repo.tokenOperations.cleanup
           .delay(2.minutes)

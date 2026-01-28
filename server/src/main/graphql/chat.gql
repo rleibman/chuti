@@ -38,7 +38,7 @@ type Queries {
 }
 
 type Subscriptions {
-  chatStream(channelId: Long!, connectionId: String!): ChatMessage
+  chatStream(channelId: Long!, connectionId: String!, token: String!): ChatMessage
 }
 
 type User {

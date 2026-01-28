@@ -34,7 +34,8 @@ object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
           Method.ANY / "api" / "chat" ->
             QuickAdapter(interpreter).handlers.api,
           Method.ANY / "api" / "chat" / "ws" ->
-            QuickAdapter(interpreter).handlers.webSocket,
+            QuickAdapter(interpreter).handlers.webSocket
+              .tapAllZIO(a => ZIO.logError(s"WebSocket error: ${a.toString}"), b => ZIO.logInfo("WebSocket closed")),
           Method.ANY / "api" / "chat" / "graphiql" ->
             GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
           Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.

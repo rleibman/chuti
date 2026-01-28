@@ -24,6 +24,7 @@ import chat.*
 import dao.{GameOperations, UserOperations}
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.callback.AsyncCallback
+import org.scalajs.dom.window
 import sttp.client4.UriContext
 import zio.json.*
 import zio.json.ast.Json
@@ -33,6 +34,10 @@ import java.time
 object ClientRepository {
 
   val connectionId: ConnectionId = ConnectionId.random
+
+  /** Gets the JWT token from localStorage, or empty string if not present */
+  private def getToken: String =
+    Option(window.localStorage.getItem("jwtToken")).getOrElse("")
 
   trait ChatOperations[F[_]] {
 
@@ -61,7 +66,7 @@ object ClientRepository {
       )
     }
 
-    val client: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/user")
+    val client: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/game")
 
     override def firstLogin: AsyncCallback[Option[time.Instant]] = ???
 
@@ -195,8 +200,9 @@ object ClientRepository {
       onData:    ChatMessage => Callback = _ => Callback.empty
     ): WebSocketHandler =
       client.makeWebSocketClient[Option[ChatMessage]](
+        path = "api/chat/ws",
         webSocket = None,
-        query = caliban.client.scalajs.ChatClient.Subscriptions.chatStream(channelId.value, connectionId.value)(
+        query = caliban.client.scalajs.ChatClient.Subscriptions.chatStream(channelId.value, connectionId.value, getToken)(
           chatMessageSB
         ),
         onData = {
@@ -461,8 +467,9 @@ object ClientRepository {
       onData: GameEvent => Callback
     ): WebSocketHandler = {
       client.makeWebSocketClient[Option[Json]](
+        path = "api/game/ws",
         webSocket = None,
-        query = Subscriptions.gameStream(gameId.value, connectionId.value),
+        query = Subscriptions.gameStream(gameId.value, connectionId.value, getToken),
         onData = {
           (
             _,
@@ -534,8 +541,9 @@ object ClientRepository {
       }
 
       client.makeWebSocketClient[Option[UserEvent]](
+        path = "api/game/ws",
         webSocket = None,
-        query = Subscriptions.userStream(connectionId.value)(userEventSB),
+        query = Subscriptions.userStream(connectionId.value, getToken)(userEventSB),
         onData = {
           (
             _,

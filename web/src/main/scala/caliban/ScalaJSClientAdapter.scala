@@ -24,7 +24,6 @@ import chuti.ClientConfiguration
 import japgolly.scalajs.react.extra.TimerSupport
 import japgolly.scalajs.react.{AsyncCallback, Callback}
 import org.scalajs.dom.WebSocket
-import sttp.client4.*
 import sttp.model.Uri
 import zio.json.*
 import zio.json.ast.*
@@ -198,6 +197,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
   import scala.language.unsafeNulls
 
   def makeWebSocketClient[A: JsonDecoder](
+    path:               String,
     webSocket:          Option[WebSocket],
     query:              SelectionBuilder[RootSubscription, A],
     operationId:        String,
@@ -260,7 +260,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       val socket: WebSocket = webSocket.getOrElse {
         // Use wss:// on server (HTTPS), ws:// locally (HTTP)
         val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
-        val uri = URI(s"$protocol://${ClientConfiguration.live.host}/unauth/chuti/ws")
+        val uri = URI(s"$protocol://${ClientConfiguration.live.host}/$path")
         println("Connecting to WebSocket at " + uri.toString)
 
         org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")

@@ -38,7 +38,7 @@ object Chuti extends ZIOApp {
   // Configure ZIO to use SLF4J (logback) instead of console logging
   // This routes all ZIO logs through logback, which writes to both file and console
   override def bootstrap: ULayer[ChutiEnvironment] =
-    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> EnvironmentBuilder.withContainer
+    Runtime.removeDefaultLoggers >>> SLF4J.slf4j >>> EnvironmentBuilder.live
 
   object TestRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
