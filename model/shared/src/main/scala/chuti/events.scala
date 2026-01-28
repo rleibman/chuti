@@ -350,7 +350,7 @@ final case class InviteToGame(
     if (game.jugadores.length == game.numPlayers)
       throw GameError("El juego ya esta completo")
     (
-      game.copy(jugadores = game.jugadores :+ Jugador(invited, invited = true)),
+      game.copy(jugadores = game.jugadores :+ Jugador(invited, JugadorType.human, invited = true)),
       copy(
         index = Option(game.currentEventIndex),
         gameId = game.id,
@@ -367,6 +367,7 @@ final case class InviteToGame(
 }
 
 final case class JoinGame(
+  jugadorType:         JugadorType = JugadorType.human,
   joinedUser:          Option[User] = None,
   gameId:              Option[GameId] = None,
   userId:              Option[UserId] = None,
@@ -389,7 +390,7 @@ final case class JoinGame(
       throw GameError("Un jugador no puede estar dos veces en el mismo juego")
 
     val newPlayer = game.jugadores
-      .find(_.id == user.id).fold(Jugador(user))(j => j.copy(invited = false))
+      .find(_.id == user.id).fold(Jugador(user, JugadorType.human))(j => j.copy(invited = false))
 
     (
       game.copy(

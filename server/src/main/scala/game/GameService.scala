@@ -23,72 +23,17 @@ import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import chuti.{*, given}
 import dao.{RepositoryError, ZIORepository}
-import game.GameService.EventQueue
 import mail.Postman
 import zio.*
 import zio.json.*
-import zio.json.ast.Json
 import zio.stream.ZStream
 
-trait GameService {
+type GameEnvironment = ChutiSession & ZIORepository & ChatService & TokenHolder & Postman
+type GameTask[A] = ZIO[GameEnvironment, GameError, A]
 
-  protected val userQueue: Ref[List[EventQueue[UserEvent]]]
-  protected val gameQueue: Ref[List[EventQueue[GameEvent]]]
+trait GameService extends GameEngine[GameTask] {
 
-  def broadcastGameEvent(gameEvent: GameEvent): ZIO[ChutiSession & ZIORepository, GameError, GameEvent]
-
-  def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game]
-
-  def newGame(satoshiPerPoint: Long): ZIO[ChutiSession & ZIORepository, GameError, Game]
-
-  def newGameSameUsers(oldGameId: GameId)
-    : ZIO[TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman, GameError, Game]
-
-  def play(
-    gameId:    GameId,
-    playEvent: PlayEvent
-  ): ZIO[ChutiSession & ZIORepository, GameError, Game]
-
-  def getGameForUser: ZIO[ChutiSession & ZIORepository, GameError, Option[Game]]
-
-  def getGame(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Option[Game]]
-
-  def abandonGame(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Boolean]
-
-  def startGame(gameId: GameId): ZIO[ZIORepository & Postman & TokenHolder & ChutiSession, GameError, Boolean]
-
-  def getFriends: ZIO[ChutiSession & ZIORepository, GameError, Seq[User]]
-
-  def getGameInvites: ZIO[ChutiSession & ZIORepository, GameError, Seq[Game]]
-
-  def getLoggedInUsers: ZIO[ChutiSession & ZIORepository, GameError, Seq[User]]
-
-  def getHistoricalUserGames: ZIO[ChutiSession & ZIORepository, GameError, Seq[Game]]
-
-  def inviteByEmail(
-    name:   String,
-    email:  String,
-    gameId: GameId
-  ): ZIO[TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman, GameError, Boolean]
-
-  def inviteToGame(
-    userId: UserId,
-    gameId: GameId
-  ): ZIO[TokenHolder & ChutiSession & ChatService & ZIORepository & ChutiSession & Postman, GameError, Boolean]
-
-  def friend(userId: UserId): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean]
-
-  def unfriend(userId: UserId): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean]
-
-  def acceptGameInvitation(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Game]
-
-  def cancelUnacceptedInvitations(
-    gameId: GameId
-  ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean]
-
-  def declineGameInvitation(
-    gameId: GameId
-  ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean]
+  def broadcastGameEvent(gameEvent: GameEvent): GameTask[GameEvent]
 
   def gameStream(
     gameId:       GameId,
@@ -97,10 +42,6 @@ trait GameService {
 
   def userStream(connectionId: ConnectionId): ZStream[ChutiSession & ZIORepository, GameError, UserEvent]
 
-  def getWallet: ZIO[ChutiSession & ZIORepository, GameError, Option[UserWallet]]
-
-  def isFirstLoginToday: ZIO[ChutiSession & ZIORepository, GameError, Boolean]
-
 }
 
 object GameService {
@@ -108,20 +49,6 @@ object GameService {
   lazy val godLayer: ULayer[ChutiSession] = ChutiSession.godSession.toLayer
 
   lazy val godlessLayer: ULayer[ChutiSession] = ChutiSession.godlessSession.toLayer
-
-  def play(
-    gameId:    GameId,
-    playEvent: Json
-  ): ZIO[GameService & ChutiSession & ZIORepository, GameError, Boolean] =
-    ZIO.serviceWithZIO[GameService](
-      _.play(
-        gameId,
-        playEvent.as[PlayEvent] match {
-          case Right(event) => event
-          case Left(error)  => throw GameError(error)
-        }
-      ).as(true)
-    )
 
   case class EventQueue[EventType](
     user:         User,
@@ -153,8 +80,8 @@ object GameService {
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])
     } yield new GameService {
 
-      override val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
-      override val gameQueue: Ref[List[EventQueue[GameEvent]]] = gameEventQueues
+      val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
+      val gameQueue: Ref[List[EventQueue[GameEvent]]] = gameEventQueues
 
       override def abandonGame(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Boolean] =
         (for {
@@ -234,36 +161,40 @@ object GameService {
         : ZIO[ZIORepository & Postman & TokenHolder & ChutiSession, GameError, Boolean] =
         (for {
           gameOpt <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
-          _ <- ZIO.foreachDiscard(gameOpt) { game =>
-            {
-              (game.jugadores.size until game.numPlayers)
-                .foldLeft(
-                  ZIO
-                    .succeed(game).asInstanceOf[
-                      ZIO[ZIORepository & Postman & TokenHolder, Throwable, Game]
-                    ]
-                )(
-                  (
-                    foldedGame,
-                    _
-                  ) =>
-                    foldedGame.flatMap(g =>
-                      joinGame(Option(g))
-                        .provideSomeLayer[ZIORepository & Postman & TokenHolder](
-                          botLayer
-                        )
-                    )
-                )
-            }
+          gameStarted <- ZIO.foreach(gameOpt) { game =>
+            (game.jugadores.size until game.numPlayers)
+              .foldLeft(
+                ZIO
+                  .succeed(game).asInstanceOf[
+                    ZIO[ZIORepository & Postman & TokenHolder, Throwable, Game]
+                  ]
+              )(
+                (
+                  foldedGame,
+                  _
+                ) =>
+                  foldedGame.flatMap(g => 
+                    //If there's not enough human players, we need to add some bots
+                    joinGame(Option(g), JugadorType.dumbBot)
+                      .provideSomeLayer[ZIORepository & Postman & TokenHolder](
+                        botLayer 
+                      )
+                  )
+              )
           }
+          _ <- ZIO.foreachDiscard(gameStarted)(loopForBots)
         } yield true).mapError(GameError.apply)
 
+      // TODO figure out if the player in turn is a bot, in which case we start an autobot process
+      //  (bots play in turn until there's a human player in turn)
+      private def loopForBots(game: Game): ZIO[ChutiSession & ZIORepository, GameError, Game] = ???  
+      
       override def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game] =
         (for {
           gameOpt <- ZIO.serviceWithZIO[ZIORepository](
             _.gameOperations.gamesWaitingForPlayers().mapBoth(GameError.apply, _.headOption)
           )
-          joined <- joinGame(gameOpt)
+          joined <- joinGame(gameOpt, JugadorType.human)
         } yield joined).mapError(GameError.apply)
 
       override def newGameSameUsers(
@@ -320,70 +251,8 @@ object GameService {
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, upserted.id))
         } yield upserted).mapError(GameError.apply)
 
-      override def getGame(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Option[Game]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
-          .mapError(GameError.apply)
-
-      override def getHistoricalUserGames: ZIO[ChutiSession & ZIORepository, GameError, Seq[Game]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.gameOperations.getHistoricalUserGames)
-          .mapError(GameError.apply)
-
-      override def getGameForUser: ZIO[ChutiSession & ZIORepository, GameError, Option[Game]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.gameOperations.getGameForUser)
-          .mapError(GameError.apply)
-
-      override def getFriends: ZIO[ChutiSession & ZIORepository, GameError, Seq[User]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.userOperations.friends)
-          .mapError(GameError.apply)
-
-      override def getGameInvites: ZIO[ChutiSession & ZIORepository, GameError, Seq[Game]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.gameOperations.gameInvites)
-          .mapError(GameError.apply)
-
       override def getLoggedInUsers: ZIO[ChutiSession, GameError, Seq[User]] =
         userEventQueues.get.map(_.map(_.user).distinctBy(_.id).take(20))
-
-      override def friend(
-        friendId: UserId
-      ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean] =
-        (for {
-          user <- ZIO
-            .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
-          repository <- ZIO.service[ZIORepository]
-          friendOpt  <- repository.userOperations.get(friendId)
-          friended   <- ZIO.foreach(friendOpt)(friend => repository.userOperations.friend(friend))
-          _ <- ZIO.foreachDiscard(friendOpt) { person =>
-            ChatService
-              .sendMessage(
-                s"${user.name} es tu amigo :)",
-                ChannelId.directChannel,
-                Option(person)
-              )
-          }
-        } yield friended.getOrElse(false)).mapError(GameError.apply)
-
-      override def unfriend(
-        enemyId: UserId
-      ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean] =
-        (for {
-          user <- ZIO
-            .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
-          repository <- ZIO.service[ZIORepository]
-          enemyOpt   <- repository.userOperations.get(enemyId)
-          unfriended <- ZIO.foreach(enemyOpt)(enemy => repository.userOperations.unfriend(enemy))
-          _ <- ZIO.foreachDiscard(enemyOpt) { person =>
-            ChatService.sendMessage(
-              s"${user.name} ya no es tu amigo :(",
-              ChannelId.directChannel,
-              Option(person)
-            )
-          }
-        } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
       override def inviteByEmail(
         name:   String,
@@ -476,7 +345,7 @@ object GameService {
         } yield true).mapError(GameError.apply)
       }
 
-      private def joinGame(gameOpt: Option[Game]): ZIO[ChutiSession & ZIORepository, GameError, Game] = {
+      private def joinGame(gameOpt: Option[Game], jugadorType: JugadorType): ZIO[ChutiSession & ZIORepository, GameError, Game] = {
         for {
           user <- ZIO
             .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
@@ -490,7 +359,7 @@ object GameService {
               ).provideLayer(godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
-            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame())
+            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame(jugadorType: JugadorType))
             val (started, startGame: GameEvent) =
               if (joined.canTransitionTo(GameStatus.requiereSopa)) {
                 joined
@@ -517,7 +386,7 @@ object GameService {
       override def acceptGameInvitation(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, Game] =
         (for {
           gameOpt <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
-          joined  <- joinGame(gameOpt)
+          joined  <- joinGame(gameOpt, JugadorType.human)
         } yield joined).mapError(GameError.apply)
 
       override def declineGameInvitation(
@@ -666,6 +535,11 @@ object GameService {
         }
       }
 
+      override def playSilently(
+        gameId:    GameId,
+        playEvent: PlayEvent
+      ): GameTask[Boolean] = play(gameId, playEvent).as(true)
+
       override def play(
         gameId:    GameId,
         playEvent: PlayEvent
@@ -774,17 +648,43 @@ object GameService {
             }
         }
 
-      override def getWallet: ZIO[ChutiSession & ZIORepository, GameError, Option[UserWallet]] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.userOperations.getWallet)
-          .mapError(GameError.apply)
-
-      override def isFirstLoginToday: ZIO[ChutiSession & ZIORepository, GameError, Boolean] =
-        ZIO
-          .serviceWithZIO[ZIORepository](_.userOperations.isFirstLoginToday)
-          .mapError(GameError.apply)
-
-
     })
+
+  def friend(
+    friendId: UserId
+  ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean] =
+    (for {
+      user <- ZIO
+        .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
+      repository <- ZIO.service[ZIORepository]
+      friendOpt  <- repository.userOperations.get(friendId)
+      friended   <- ZIO.foreach(friendOpt)(friend => repository.userOperations.friend(friendId))
+      _ <- ZIO.foreachDiscard(friendOpt) { person =>
+        ChatService
+          .sendMessage(
+            s"${user.name} es tu amigo :)",
+            ChannelId.directChannel,
+            Option(person)
+          )
+      }
+    } yield friended.getOrElse(false)).mapError(GameError.apply)
+
+  def unfriend(
+    enemyId: UserId
+  ): ZIO[ChutiSession & ZIORepository & ChatService, GameError, Boolean] =
+    (for {
+      user <- ZIO
+        .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
+      repository <- ZIO.service[ZIORepository]
+      enemyOpt   <- repository.userOperations.get(enemyId)
+      unfriended <- ZIO.foreach(enemyOpt)(enemy => repository.userOperations.unfriend(enemyId))
+      _ <- ZIO.foreachDiscard(enemyOpt) { person =>
+        ChatService.sendMessage(
+          s"${user.name} ya no es tu amigo :(",
+          ChannelId.directChannel,
+          Option(person)
+        )
+      }
+    } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
 }

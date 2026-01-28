@@ -81,7 +81,7 @@ object ChatComponent {
 
       Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(
         _.copy(msgInFlux = "")
-      ) >> ClientRepository.chat
+      ) >> GameClient.chat
         .say(
           SayRequest(
             msg = s.msgInFlux,
@@ -173,14 +173,14 @@ object ChatComponent {
               )
           )
       (for {
-        recentMessages <- ClientRepository.chat.getRecentMessages(p.channel)
+        recentMessages <- GameClient.chat.getRecentMessages(p.channel)
       } yield {
         $.modState { s =>
           import scala.language.unsafeNulls
           s.copy(
             chatMessages = recentMessages.toList,
             ws = Option(
-              ClientRepository.chat.makeWebSocket(
+              GameClient.chat.makeWebSocket(
                 channelId = p.channel,
                 onData = { msg =>
                   Callback.log(s"got data! $msg") >>

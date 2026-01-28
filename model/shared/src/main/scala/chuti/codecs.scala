@@ -22,6 +22,7 @@ import chat.given
 
 given JsonCodec[UserId] = JsonCodec.long.transform(UserId.apply, _.value)
 given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _.value)
+given JsonCodec[JugadorType] = JsonCodec.string.transform(JugadorType.valueOf, _.toString)
 given JsonCodec[GameId] = JsonCodec.long.transform(GameId.apply, _.value)
 given JsonCodec[Triunfo] = JsonCodec.derived[Triunfo]
 given JsonCodec[Fila] = JsonCodec.derived[Fila]

@@ -157,10 +157,10 @@ object QuillUserSpec extends QuillSpec {
           inserted2  <- repo.upsert(testUser2.copy(active = true))
           noFriends1 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           noFriends2 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
-          friended   <- repo.friend(inserted2).provideSomeLayer[ZIORepository](userSession(inserted1))
+          friended   <- repo.friend(inserted2.id.get).provideSomeLayer[ZIORepository](userSession(inserted1))
           aFriend1   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           aFriend2   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
-          unfriended <- repo.unfriend(inserted1).provideSomeLayer[ZIORepository](userSession(inserted2))
+          unfriended <- repo.unfriend(inserted1.id.get).provideSomeLayer[ZIORepository](userSession(inserted2))
           noFriends3 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           noFriends4 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
         } yield {

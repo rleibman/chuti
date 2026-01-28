@@ -60,6 +60,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         if (user == user1) {
           Jugador(
             user,
+            JugadorType.dumbBot,
             fichas = hand,
             turno = true,
             cantante = true,
@@ -69,6 +70,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         } else {
           Jugador(
             user,
+            JugadorType.dumbBot,
             fichas = hand
           )
         }

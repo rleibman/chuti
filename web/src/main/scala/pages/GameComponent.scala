@@ -17,7 +17,7 @@
 package pages
 
 import _root_.util.LocalizedMessages
-import chuti.{ChutiState, ClientRepository, GameViewMode}
+import chuti.{ChutiState, GameClient, GameViewMode}
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
 import chuti.{*, given}
@@ -25,7 +25,7 @@ import components.{Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{^, *}
+import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
@@ -79,7 +79,7 @@ object GameComponent {
       event:  PlayEvent
     ): Callback = {
       (for {
-        _ <- ClientRepository.game.play(gameId, event)
+        _ <- GameClient.game.playSilently(gameId, event)
       } yield clearPlayState() >> Toast.success(localized("GameComponent.listo"))).completeWith(_.get)
     }
 

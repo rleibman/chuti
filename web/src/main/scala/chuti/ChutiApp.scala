@@ -77,7 +77,7 @@ object ChutiApp {
         } else {
           Callback.log("DMScreenApp mounting, checking authentication...") >>
             AuthClient
-              .whoami[User, ConnectionId](Some(ClientRepository.connectionId))
+              .whoami[User, ConnectionId](Some(GameClient.connectionId))
               .flatTap {
                 case Some(user) => Callback.log(s"User authenticated: ${user.email}").asAsyncCallback
                 case None       => Callback.log("No user authenticated, showing login").asAsyncCallback
@@ -96,7 +96,7 @@ object ChutiApp {
         val searchParams: Map[String, String] = dom.URLSearchParams(queryString).iterator.map(t => (t._1, t._2)).toMap
 
         userOpt.value.fold(
-          LoginRouter(Some(ClientRepository.connectionId), oauthProviders)
+          LoginRouter(Some(GameClient.connectionId), oauthProviders)
         )(user => Content())
     }
 

@@ -125,9 +125,9 @@ case class InMemoryRepository(
 
     override def changePassword(password: String): RepositoryIO[Boolean] = ???
 
-    override def unfriend(enemy: User): RepositoryIO[Boolean] = ???
+    override def unfriend(enemy: UserId): RepositoryIO[Boolean] = ???
 
-    override def friend(friend: User): RepositoryIO[Boolean] = ???
+    override def friend(friend: UserId): RepositoryIO[Boolean] = ???
 
     override def friends: RepositoryIO[Seq[User]] = ???
 

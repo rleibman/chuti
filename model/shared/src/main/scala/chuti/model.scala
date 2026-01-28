@@ -54,10 +54,11 @@ object Numero {
 
   given JsonCodec[Numero] = {
     case class Temp(value: Int)
-    JsonCodec.derived[Temp].transformOrFail(
-      temp => Numero.values.find(_.value == temp.value).toRight(s"Invalid Numero value: ${temp.value}"),
-      numero => Temp(numero.value)
-    )
+    JsonCodec
+      .derived[Temp].transformOrFail(
+        temp => Numero.values.find(_.value == temp.value).toRight(s"Invalid Numero value: ${temp.value}"),
+        numero => Temp(numero.value)
+      )
   }
 
 }
@@ -142,7 +143,8 @@ object Ficha {
     JsonDecoder[Json].mapOrFail { json =>
       def parseNumero(j: Json): Either[String, Numero] =
         // Support both formats: plain int or {"value": int}
-        j.asNumber.map(n => Numero(n.value.intValue())).toRight("Invalid numero")
+        j.asNumber
+          .map(n => Numero(n.value.intValue())).toRight("Invalid numero")
           .orElse(j.as[Numero])
 
       for {
@@ -158,9 +160,9 @@ object Ficha {
   given JsonEncoder[Ficha] =
     JsonEncoder[Json].contramap { (ficha: Ficha) =>
       Json.Obj(
-        "type" -> Json.Str(if (ficha == FichaTapada) "tapada" else "conocida"),
+        "type"   -> Json.Str(if (ficha == FichaTapada) "tapada" else "conocida"),
         "arriba" -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.arriba).value),
-        "abajo" -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.abajo).value)
+        "abajo"  -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.abajo).value)
       )
     }
 
@@ -244,8 +246,15 @@ object JugadorState {
 
 }
 
+enum JugadorType {
+
+  case human, dumbBot, smartBot
+
+}
+
 case class Jugador(
   user:             User,
+  jugadorType:      JugadorType,
   invited:          Boolean = false, // Should really reverse this and call it "accepted"
   fichas:           List[Ficha] = List.empty,
   filas:            List[Fila] = List.empty,

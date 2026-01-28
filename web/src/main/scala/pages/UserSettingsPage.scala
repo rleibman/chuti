@@ -17,11 +17,11 @@
 package pages
 
 import auth.AuthClient
-import chuti.{ChutiState, ClientRepository, ConnectionId, User}
+import chuti.{ChutiState, GameClient, ConnectionId, User}
 import components.Toast
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.html_<^.{<, *}
+import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticWIDTHS
@@ -46,7 +46,7 @@ object UserSettingsPage extends ChutiPage {
 
     def init: Callback =
       AuthClient
-        .whoami[User, ConnectionId](Some(ClientRepository.connectionId))
+        .whoami[User, ConnectionId](Some(GameClient.connectionId))
         .map(u => $.modState(_.copy(user = u)))
         .completeWith(_.get)
 
@@ -96,7 +96,7 @@ object UserSettingsPage extends ChutiPage {
       if (valid.nonEmpty)
         Toast.error(valid.map(s => <.p(s)).toVdomArray)
       else {
-        ClientRepository.user.changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada"))
+        GameClient.user.changePassword(s.passwordPair._1).completeWith(_ => Toast.success("Contraseña cambiada"))
       } // TODO i8n
     }
 

@@ -355,12 +355,13 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
         .mapError(RepositoryError.apply)
     }
 
-    override def unfriend(enemy: User): RepositoryIO[Boolean] = {
+    override def unfriend(enemy: UserId): RepositoryIO[Boolean] = {
       (for {
         userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+        enemyOpt <- get(enemy)
         rowOpt = for {
           one <- userOpt.flatMap(_.id)
-          two <- enemy.id
+          two <- enemyOpt.flatMap(_.id)
         } yield FriendsRow(one.value, two.value)
         deleted <- rowOpt.fold(ZIO.succeed(true): ZIO[DataSource, SQLException, Boolean])(row =>
           ctx
@@ -379,16 +380,15 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
         .mapError(RepositoryError.apply)
     }
 
-    override def friend(friend: User): RepositoryIO[Boolean] =
+    override def friend(friend: UserId): RepositoryIO[Boolean] =
       (for {
         userOpt <- ZIO.serviceWith[ChutiSession](_.user)
         friends <- friends
         res <- friends
-          .find(_.id == friend.id).fold {
+          .find(_.id.contains(friend)).fold {
             val rowOpt = for {
               one <- userOpt.flatMap(_.id)
-              two <- friend.id
-            } yield FriendsRow(one.value, two.value)
+            } yield FriendsRow(one.value, friend.value)
             rowOpt.fold(
               ZIO.succeed(false): zio.ZIO[DataSource, SQLException, Boolean]
             ) { row =>

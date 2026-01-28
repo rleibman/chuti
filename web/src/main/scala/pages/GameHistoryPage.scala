@@ -17,7 +17,7 @@
 package pages
 
 import java.time.format.DateTimeFormatter
-import chuti.{ChutiState, ClientRepository}
+import chuti.{ChutiState, GameClient}
 import chuti.{*, given}
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*
@@ -45,7 +45,7 @@ object GameHistoryPage extends ChutiPage {
     import scala.language.unsafeNulls
 
     def init: Callback = {
-      ClientRepository.game.getHistoricalUserGames
+      GameClient.gameRepo.getHistoricalUserGames
         .flatMap(games => $.modState(_.copy(games = games)).asAsyncCallback)
         .completeWith {
           case scala.util.Success(_)         => Callback.empty

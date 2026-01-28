@@ -16,26 +16,19 @@
 
 package chuti
 
-import api.token.{TokenHolder, TokenPurpose}
 import api.{ChutiEnvironment, ChutiSession, toLayer}
 import better.files.File
 import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
 import dao.InMemoryRepository.*
-import dao.{GameOperations, InMemoryRepository, RepositoryIO, ZIORepository}
+import dao.ZIORepository
 import game.GameService
-import mail.Postman
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import zio.*
-import zio.cache.{Cache, Lookup}
 import zio.json.*
-import zio.logging.*
 import zio.test.{TestResult, assertTrue}
-
-import java.time.Instant
-import java.util.UUID
 
 trait GameAbstractSpec {
 
@@ -208,9 +201,10 @@ trait GameAbstractSpec {
   def canto(gameId: GameId): ZIO[ChutiEnvironment & GameService & ChatService, Throwable, Game] = {
     val bot = DumbChutiBot
     for {
-      gameService <- ZIO.service[GameService]
-      game <- gameService
-        .getGame(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer).map(_.get)
+      gameService    <- ZIO.service[GameService]
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
+      game <- gameOperations
+        .get(gameId).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer).map(_.get)
       quienCanta = game.jugadores.find(_.turno).map(_.user).get
       sigiuente1 = game.nextPlayer(quienCanta).user
       sigiuente2 = game.nextPlayer(sigiuente1).user
@@ -324,20 +318,19 @@ trait GameAbstractSpec {
     for {
       gameService    <- ZIO.service[GameService]
       gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
-      getGame <-
+      gameOpt <-
         ZIO
-          .foreach(gameToPlay.id)(id => gameService.getGame(id)).provideSomeLayer[
+          .foreach(gameToPlay.id)(id => gameOperations.get(id)).provideSomeLayer[
             ChutiEnvironment & GameService & ChatService
           ](
             godLayer
-          )
-      game <-
-        getGame.flatten
-          .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[
-            ChutiEnvironment & GameService & ChatService
-          ](
-            godLayer
-          )
+          ).map(_.flatten)
+      game <- gameOpt
+        .fold(gameOperations.upsert(gameToPlay))(g => ZIO.succeed(g)).provideSomeLayer[
+          ChutiEnvironment & GameService & ChatService
+        ](
+          godLayer
+        )
       _ <- zio.Console.printLine(s"Game ${game.id.get} loaded")
       gameStream =
         gameService
@@ -367,9 +360,9 @@ trait GameAbstractSpec {
 
   def playRound(filename: String): ZIO[ChutiEnvironment & GameService & ChatService, Exception, Game] =
     for {
-      gameService <- ZIO.service[GameService]
-      game <- gameService
-        .getGame(GameId(1)).map(_.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
+      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
+      game <- gameOperations
+        .get(GameId(1)).map(_.get).provideSomeLayer[ChutiEnvironment & GameService & ChatService](godLayer)
       played <- juegaHastaElFinal(game.id.get)
     } yield played
 

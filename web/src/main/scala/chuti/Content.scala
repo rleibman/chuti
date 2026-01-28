@@ -17,7 +17,7 @@
 package chuti
 
 import auth.AuthClient
-import chuti.ClientRepository.{UserEvent, UserEventType}
+import chuti.GameClient.{UserEvent, UserEventType}
 import components.{ChutiComponent, Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -161,9 +161,9 @@ object Content extends ChutiComponent with TimerSupport {
       languageTag: String
     ): Callback = {
       val async = for {
-        user <- AsyncCallback.traverse(userOpt)(user => ClientRepository.user.upsert(user))
+        user <- AsyncCallback.traverse(userOpt)(user => GameClient.user.upsert(user))
         _ <- AsyncCallback.traverse(user)(user =>
-          ClientRepository.user.upsert(user.copy(locale = Locale.forLanguageTag(languageTag)))
+          GameClient.user.upsert(user.copy(locale = Locale.forLanguageTag(languageTag)))
         )
       } yield {
         Callback(window.sessionStorage.setItem("languageTag", languageTag)) >>
@@ -301,13 +301,13 @@ object Content extends ChutiComponent with TimerSupport {
       val ajax = for {
         oldState <- $.state.asAsyncCallback
         whoami <-
-          if (initial) AuthClient.whoami[User, ConnectionId](Some(ClientRepository.connectionId))
+          if (initial) AuthClient.whoami[User, ConnectionId](Some(GameClient.connectionId))
           else AsyncCallback.pure(oldState.chutiState.user)
-        isFirstLogin      <- ClientRepository.user.isFirstLoginToday
-        wallet            <- ClientRepository.user.getWallet
-        friends           <- ClientRepository.user.friends
-        loggedInUsers     <- ClientRepository.game.getLoggedInUsers
-        gameInProgressOpt <- ClientRepository.game.getGameForUser
+        isFirstLogin      <- GameClient.user.isFirstLoginToday
+        wallet            <- GameClient.user.getWallet
+        friends           <- GameClient.user.friends
+        loggedInUsers     <- GameClient.game.getLoggedInUsers
+        gameInProgressOpt <- GameClient.gameRepo.getGameForUser
         needNewGameStream = (for {
           oldGame <- oldState.chutiState.gameInProgress
           newGame <- gameInProgressOpt
@@ -342,7 +342,7 @@ object Content extends ChutiComponent with TimerSupport {
               user = whoami,
               isFirstLogin = isFirstLogin,
               userStream = Option(
-                ClientRepository.game.makeUserWebSocket { event =>
+                GameClient.gameRepo.makeUserWebSocket { event =>
                   whoami.fold(Callback.empty)(currentUser =>
                     onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(event)
                   )
@@ -361,7 +361,7 @@ object Content extends ChutiComponent with TimerSupport {
             gameStream =
               if (!needNewGameStream) copy.chutiState.gameStream
               else
-                gameInProgressOpt.map(game => ClientRepository.game.makeGameWebSocket(game.id.get, onGameEvent))
+                gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id.get, onGameEvent))
           )
         )
       }

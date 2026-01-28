@@ -17,11 +17,12 @@
 package chuti
 
 import caliban.client.SelectionBuilder
-import caliban.client.scalajs.GameClient.*
+import caliban.client.scalajs.GameClient.{User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType, *}
 import caliban.client.scalajs.given
 import caliban.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.*
 import dao.{GameOperations, UserOperations}
+import game.GameEngine
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.callback.AsyncCallback
 import org.scalajs.dom.window
@@ -31,64 +32,155 @@ import zio.json.ast.Json
 
 import java.time
 
-object ClientRepository {
+trait ChatOperations[F[_]] {
+
+  def getRecentMessages(channelId: ChannelId): F[Seq[ChatMessage]]
+
+  def say(request: SayRequest): F[ChatMessage]
+
+  def makeWebSocket(
+    channelId: ChannelId,
+    onData:    ChatMessage => Callback = (_ => Callback.empty)
+  ): WebSocketHandler
+
+}
+
+object GameClient {
+
+  val gameClient: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/game")
+  val chatClient: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/chat")
 
   val connectionId: ConnectionId = ConnectionId.random
 
-  /** Gets the JWT token from localStorage, or empty string if not present */
-  private def getToken: String =
-    Option(window.localStorage.getItem("jwtToken")).getOrElse("")
-
-  trait ChatOperations[F[_]] {
-
-    def getRecentMessages(channelId: ChannelId): F[Seq[ChatMessage]]
-
-    def say(request: SayRequest): F[ChatMessage]
-
-    def makeWebSocket(
-      channelId: ChannelId,
-      onData:    ChatMessage => Callback = (_ => Callback.empty)
-    ): WebSocketHandler
-
+  private val userSB = CalibanUser.view.map { u =>
+    chuti.User(
+      id = u.id.map(UserId.apply),
+      name = u.name,
+      email = u.email,
+      created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
+      lastUpdated = Option(java.time.Instant.parse(u.lastUpdated)).getOrElse(java.time.Instant.now()),
+      active = u.active
+    )
   }
+
+  /** Helper to decode JSON to Game */
+  def decodeGame(json: Json): Game =
+    json.toJson.fromJson[Game] match {
+      case Right(game) => game
+      case Left(error) => throw RuntimeException(s"Failed to decode Game: $error")
+    }
+
+  /** Helper to decode JSON to Seq[Game] */
+  def decodeGames(json: Json): Seq[Game] =
+    json.toJson.fromJson[Seq[Game]] match {
+      case Right(games) => games
+      case Left(error)  => throw RuntimeException(s"Failed to decode Games: $error")
+    }
+
+  /** Gets the JWT token from localStorage, or empty string if not present */
+  private def getToken: String = Option(window.localStorage.getItem("jwtToken")).getOrElse("")
 
   trait ExtendedUserOperations extends UserOperations[AsyncCallback] {}
 
-  val user: ExtendedUserOperations = new ExtendedUserOperations {
-    private val userSB = User.view.map { u =>
-      chuti.User(
-        id = u.id.map(UserId.apply),
-        name = u.name,
-        email = u.email,
-        created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
-        lastUpdated = Option(java.time.Instant.parse(u.lastUpdated)).getOrElse(java.time.Instant.now()),
-        active = u.active
-      )
+  val game: GameEngine[AsyncCallback] = new GameEngine[AsyncCallback] {
+    override def newGame(satoshiPerPoint: Long): AsyncCallback[Game] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.newGame(satoshiPerPoint))
+        .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to create new game")))
+
+    override def newGameSameUsers(gameId: GameId): AsyncCallback[Game] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.newGameSameUsers(gameId.value))
+        .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to create new game")))
+
+    override def joinRandomGame(): AsyncCallback[Game] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.joinRandomGame)
+        .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to join game")))
+
+    override def abandonGame(gameId: GameId): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.abandonGame(gameId.value))
+        .map(_.getOrElse(false))
+
+    override def inviteByEmail(
+      name:   String,
+      email:  String,
+      gameId: GameId
+    ): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.inviteByEmail(name, email, gameId.value))
+        .map(_.getOrElse(false))
+
+    override def startGame(gameId: GameId): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.startGame(gameId.value))
+        .map(_.getOrElse(false))
+
+    override def inviteToGame(
+      userId: UserId,
+      gameId: GameId
+    ): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.inviteToGame(userId.value, gameId.value))
+        .map(_.getOrElse(false))
+
+    override def acceptGameInvitation(gameId: GameId): AsyncCallback[Game] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.acceptGameInvitation(gameId.value))
+        .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to create new game")))
+
+    override def declineGameInvitation(gameId: GameId): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.declineGameInvitation(gameId.value))
+        .map(_.getOrElse(false))
+
+    override def cancelUnacceptedInvitations(gameId: GameId): AsyncCallback[Boolean] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.cancelUnacceptedInvitations(gameId.value))
+        .map(_.getOrElse(false))
+
+    override def play(
+      gameId:    GameId,
+      gameEvent: PlayEvent
+    ): AsyncCallback[Game] = ??? //We really don't want to get the game every time we play a turn
+
+    override def playSilently(
+      gameId:    GameId,
+      gameEvent: PlayEvent
+    ): AsyncCallback[Boolean] = {
+      val eventJson = gameEvent.toJsonAST match {
+        case Right(json) => json
+        case Left(error) => throw RuntimeException(s"Failed to encode GameEvent: $error")
+      }
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.play(gameId.value, eventJson))
+        .map(_.getOrElse(false))
     }
 
-    val client: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/game")
+    override def getLoggedInUsers: AsyncCallback[Seq[chuti.User]] =
+      gameClient
+        .asyncCalibanCallWithAuth(Queries.getLoggedInUsers(userSB))
+        .map(_.getOrElse(Nil))
+  }
+
+  val user: ExtendedUserOperations = new ExtendedUserOperations {
 
     override def firstLogin: AsyncCallback[Option[time.Instant]] = ???
 
-    override def unfriend(enemy: chuti.User): AsyncCallback[Boolean] = {
-      enemy.id.fold(AsyncCallback.pure(false))(id =>
-        client.asyncCalibanCallWithAuth(Mutations.unfriend(id.value)).map(_.getOrElse(false))
-      )
-    }
+    override def unfriend(enemy: chuti.UserId): AsyncCallback[Boolean] =
+      gameClient.asyncCalibanCallWithAuth(Mutations.unfriend(enemy.value)).map(_.getOrElse(false))
 
-    override def friend(friend: chuti.User): AsyncCallback[Boolean] = {
-      friend.id.fold(AsyncCallback.pure(false))(id =>
-        client.asyncCalibanCallWithAuth(Mutations.friend(id.value)).map(_.getOrElse(false))
-      )
-    }
+    override def friend(friend: chuti.UserId): AsyncCallback[Boolean] =
+      gameClient.asyncCalibanCallWithAuth(Mutations.friend(friend.value)).map(_.getOrElse(false))
 
     override def friends: AsyncCallback[Seq[chuti.User]] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getFriends(userSB))
         .map(_.toSeq.flatten)
 
     override def changePassword(password: String): AsyncCallback[Boolean] =
-      client.asyncCalibanCallWithAuth(Mutations.changePassword(password).map(_.getOrElse(false)))
+      gameClient.asyncCalibanCallWithAuth(Mutations.changePassword(password).map(_.getOrElse(false)))
 
     override def upsert(e: chuti.User): AsyncCallback[chuti.User] = ???
 
@@ -116,7 +208,7 @@ object ClientRepository {
     override def userByEmail(email: String): AsyncCallback[Option[chuti.User]] = ??? // Not in client
 
     override def isFirstLoginToday: AsyncCallback[Boolean] =
-      client.asyncCalibanCallWithAuth(Queries.isFirstLoginToday).map(_.getOrElse(false))
+      gameClient.asyncCalibanCallWithAuth(Queries.isFirstLoginToday).map(_.getOrElse(false))
 
     private val walletSB: SelectionBuilder[UserWallet, chuti.UserWallet] = UserWallet.view.map { w =>
       chuti.UserWallet(
@@ -126,7 +218,7 @@ object ClientRepository {
     }
 
     override def getWallet: AsyncCallback[Option[chuti.UserWallet]] =
-      client.asyncCalibanCallWithAuth(Queries.getWallet(walletSB))
+      gameClient.asyncCalibanCallWithAuth(Queries.getWallet(walletSB))
 
     override def getWallet(userId: UserId): AsyncCallback[Option[chuti.UserWallet]] = ??? // Not in Client
 
@@ -134,11 +226,10 @@ object ClientRepository {
   }
 
   val chat: ChatOperations[AsyncCallback] = new ChatOperations[AsyncCallback] {
-    val client: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/chat")
 
-    import caliban.client.scalajs.ChatClient.{ChatMessage as CalibanChatMessage2, Instant as CalibanInstant, User as CalibanUser}
+    import caliban.client.scalajs.ChatClient.{ChatMessage as CalibanChatMessage, Instant as ChatInstant, User as ChatUser}
 
-    private val userSB: SelectionBuilder[CalibanUser, chuti.User] = CalibanUser.view.map { u =>
+    private val chatUserSB: SelectionBuilder[ChatUser, chuti.User] = ChatUser.view.map { u =>
       chuti.User(
         id = u.id.map(UserId.apply),
         name = u.name,
@@ -149,17 +240,17 @@ object ClientRepository {
       )
     }
 
-    private val chatMessageSB: SelectionBuilder[CalibanChatMessage2, ChatMessage] =
-      (CalibanChatMessage2.fromUser(userSB) ~
-        CalibanChatMessage2.msg ~
-        CalibanChatMessage2.channelId ~
-        CalibanChatMessage2.date ~
-        CalibanChatMessage2.toUser(userSB)).map {
+    private val chatMessageSB: SelectionBuilder[CalibanChatMessage, ChatMessage] =
+      (CalibanChatMessage.fromUser(chatUserSB) ~
+        CalibanChatMessage.msg ~
+        CalibanChatMessage.channelId ~
+        CalibanChatMessage.date ~
+        CalibanChatMessage.toUser(chatUserSB)).map {
         (
           fromUser:  chuti.User,
           msg:       String,
           channelId: Long,
-          date:      CalibanInstant,
+          date:      ChatInstant,
           toUser:    Option[chuti.User]
         ) =>
           ChatMessage(
@@ -172,14 +263,14 @@ object ClientRepository {
       }
 
     override def getRecentMessages(channelId: ChannelId): AsyncCallback[Seq[ChatMessage]] =
-      client
+      chatClient
         .asyncCalibanCallWithAuth(
           caliban.client.scalajs.ChatClient.Queries.getRecentMessages(channelId.value)(chatMessageSB)
         )
         .map(_.getOrElse(Nil))
 
     override def say(request: SayRequest): AsyncCallback[ChatMessage] =
-      client
+      chatClient
         .asyncCalibanCallWithAuth(
           caliban.client.scalajs.ChatClient.Mutations.say(request.msg, request.channelId.value, None)
         )
@@ -199,12 +290,13 @@ object ClientRepository {
       channelId: ChannelId,
       onData:    ChatMessage => Callback = _ => Callback.empty
     ): WebSocketHandler =
-      client.makeWebSocketClient[Option[ChatMessage]](
+      chatClient.makeWebSocketClient[Option[ChatMessage]](
         path = "api/chat/ws",
         webSocket = None,
-        query = caliban.client.scalajs.ChatClient.Subscriptions.chatStream(channelId.value, connectionId.value, getToken)(
-          chatMessageSB
-        ),
+        query =
+          caliban.client.scalajs.ChatClient.Subscriptions.chatStream(channelId.value, connectionId.value, getToken)(
+            chatMessageSB
+          ),
         onData = {
           (
             _,
@@ -250,29 +342,6 @@ object ClientRepository {
 
   trait ExtendedGameOperations extends GameOperations[AsyncCallback] {
 
-    def newGame(satoshiPerPoint: Long):   AsyncCallback[Option[Game]]
-    def newGameSameUsers(gameId: GameId): AsyncCallback[Option[Game]]
-    def joinRandomGame:                   AsyncCallback[Option[Game]]
-    def abandonGame(gameId:      GameId): AsyncCallback[Boolean]
-    def inviteByEmail(
-      name:   String,
-      email:  String,
-      gameId: GameId
-    ):                             AsyncCallback[Boolean]
-    def startGame(gameId: GameId): AsyncCallback[Boolean]
-    def inviteToGame(
-      userId: UserId,
-      gameId: GameId
-    ):                                               AsyncCallback[Boolean]
-    def acceptGameInvitation(gameId:        GameId): AsyncCallback[Option[Game]]
-    def declineGameInvitation(gameId:       GameId): AsyncCallback[Boolean]
-    def cancelUnacceptedInvitations(gameId: GameId): AsyncCallback[Boolean]
-    def play(
-      gameId:    GameId,
-      gameEvent: GameEvent
-    ):                    AsyncCallback[Boolean]
-    def getLoggedInUsers: AsyncCallback[Seq[chuti.User]]
-
     /** Creates a WebSocket for receiving game events */
     def makeGameWebSocket(
       gameId: GameId,
@@ -286,25 +355,11 @@ object ClientRepository {
 
   }
 
-  val game: ExtendedGameOperations = new ExtendedGameOperations {
-    val client: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/game")
-
-    /** Helper to decode JSON to Game */
-    private def decodeGame(json: Json): Game =
-      json.toJson.fromJson[Game] match {
-        case Right(game) => game
-        case Left(error) => throw RuntimeException(s"Failed to decode Game: $error")
-      }
-
-    /** Helper to decode JSON to Seq[Game] */
-    private def decodeGames(json: Json): Seq[Game] =
-      json.toJson.fromJson[Seq[Game]] match {
-        case Right(games) => games
-        case Left(error)  => throw RuntimeException(s"Failed to decode Games: $error")
-      }
+  val gameRepo: ExtendedGameOperations = new ExtendedGameOperations {
+    val gameClient: ScalaJSClientAdapter = ScalaJSClientAdapter(uri"api/game")
 
     override def getHistoricalUserGames: AsyncCallback[Seq[Game]] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getHistoricalUserGames)
         .map {
           case Some(json) => decodeGames(json)
@@ -312,7 +367,7 @@ object ClientRepository {
         }
 
     override def userInGame(id: GameId): AsyncCallback[Boolean] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getGame(id.value))
         .map(_.isDefined)
 
@@ -321,7 +376,7 @@ object ClientRepository {
       AsyncCallback.throwException(NotImplementedError("updatePlayers not available via GraphQL"))
 
     override def gameInvites: AsyncCallback[Seq[Game]] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getGameInvites)
         .map {
           case Some(json) => decodeGames(json)
@@ -334,7 +389,7 @@ object ClientRepository {
       AsyncCallback.throwException(NotImplementedError("gamesWaitingForPlayers not available via GraphQL"))
 
     override def getGameForUser: AsyncCallback[Option[Game]] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getGameForUser)
         .map(_.map(decodeGame))
 
@@ -344,7 +399,7 @@ object ClientRepository {
       e.id match {
         case None =>
           // New game - use satoshiPerPoint from the game
-          client
+          gameClient
             .asyncCalibanCallWithAuth(Mutations.newGame(e.satoshiPerPoint))
             .map {
               case Some(json) => decodeGame(json)
@@ -356,7 +411,7 @@ object ClientRepository {
       }
 
     override def get(pk: GameId): AsyncCallback[Option[Game]] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Queries.getGame(pk.value))
         .map(_.map(decodeGame))
 
@@ -364,7 +419,7 @@ object ClientRepository {
       pk:         GameId,
       softDelete: Boolean
     ): AsyncCallback[Boolean] =
-      client
+      gameClient
         .asyncCalibanCallWithAuth(Mutations.abandonGame(pk.value))
         .map(_.getOrElse(false))
 
@@ -376,97 +431,11 @@ object ClientRepository {
       // Count by searching and getting length
       this.search(search).map(_.length.toLong)
 
-    override def newGame(satoshiPerPoint: Long): AsyncCallback[Option[Game]] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.newGame(satoshiPerPoint))
-        .map(_.map(decodeGame))
-
-    override def newGameSameUsers(gameId: GameId): AsyncCallback[Option[Game]] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.newGameSameUsers(gameId.value))
-        .map(_.map(decodeGame))
-
-    override def joinRandomGame: AsyncCallback[Option[Game]] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.joinRandomGame)
-        .map(_.map(decodeGame))
-
-    override def abandonGame(gameId: GameId): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.abandonGame(gameId.value))
-        .map(_.getOrElse(false))
-
-    override def inviteByEmail(
-      name:   String,
-      email:  String,
-      gameId: GameId
-    ): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.inviteByEmail(name, email, gameId.value))
-        .map(_.getOrElse(false))
-
-    override def startGame(gameId: GameId): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.startGame(gameId.value))
-        .map(_.getOrElse(false))
-
-    override def inviteToGame(
-      userId: UserId,
-      gameId: GameId
-    ): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.inviteToGame(userId.value, gameId.value))
-        .map(_.getOrElse(false))
-
-    override def acceptGameInvitation(gameId: GameId): AsyncCallback[Option[Game]] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.acceptGameInvitation(gameId.value))
-        .map(_.map(decodeGame))
-
-    override def declineGameInvitation(gameId: GameId): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.declineGameInvitation(gameId.value))
-        .map(_.getOrElse(false))
-
-    override def cancelUnacceptedInvitations(gameId: GameId): AsyncCallback[Boolean] =
-      client
-        .asyncCalibanCallWithAuth(Mutations.cancelUnacceptedInvitations(gameId.value))
-        .map(_.getOrElse(false))
-
-    override def play(
-      gameId:    GameId,
-      gameEvent: GameEvent
-    ): AsyncCallback[Boolean] = {
-      val eventJson = gameEvent.toJsonAST match {
-        case Right(json) => json
-        case Left(error) => throw RuntimeException(s"Failed to encode GameEvent: $error")
-      }
-      client
-        .asyncCalibanCallWithAuth(Mutations.play(gameId.value, eventJson))
-        .map(_.getOrElse(false))
-    }
-
-    private val userSB = User.view.map { u =>
-      chuti.User(
-        id = u.id.map(UserId.apply),
-        name = u.name,
-        email = u.email,
-        created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
-        lastUpdated = Option(java.time.Instant.parse(u.lastUpdated)).getOrElse(java.time.Instant.now()),
-        active = u.active
-      )
-    }
-
-    override def getLoggedInUsers: AsyncCallback[Seq[chuti.User]] =
-      client
-        .asyncCalibanCallWithAuth(Queries.getLoggedInUsers(userSB))
-        .map(_.getOrElse(Nil))
-
     override def makeGameWebSocket(
       gameId: GameId,
       onData: GameEvent => Callback
     ): WebSocketHandler = {
-      client.makeWebSocketClient[Option[Json]](
+      gameClient.makeWebSocketClient[Option[Json]](
         path = "api/game/ws",
         webSocket = None,
         query = Subscriptions.gameStream(gameId.value, connectionId.value, getToken),
@@ -491,36 +460,8 @@ object ClientRepository {
     override def makeUserWebSocket(
       onData: UserEvent => Callback
     ): WebSocketHandler = {
-      import caliban.client.scalajs.GameClient.{
-        User as CalibanUser,
-        UserEvent as CalibanUserEvent,
-        UserEventType as CalibanUserEventType
-      }
 
       val userEventSB: SelectionBuilder[CalibanUserEvent, UserEvent] = {
-        val userSB: SelectionBuilder[CalibanUser, chuti.User] = (
-          CalibanUser.id ~
-            CalibanUser.name ~
-            CalibanUser.email ~
-            CalibanUser.created ~
-            CalibanUser.lastUpdated
-        ).map {
-          (
-            id:          Option[Long],
-            name:        String,
-            email:       String,
-            created:     String,
-            lastUpdated: String
-          ) =>
-            chuti.User(
-              id = id.map(UserId.apply),
-              name = name,
-              email = email,
-              created = Option(java.time.Instant.parse(created)).getOrElse(java.time.Instant.now()),
-              lastUpdated = Option(java.time.Instant.parse(lastUpdated)).getOrElse(java.time.Instant.now())
-            )
-        }
-
         (CalibanUserEvent.user(userSB) ~
           CalibanUserEvent.userEventType ~
           CalibanUserEvent.gameId).map {
@@ -540,7 +481,7 @@ object ClientRepository {
         }
       }
 
-      client.makeWebSocketClient[Option[UserEvent]](
+      gameClient.makeWebSocketClient[Option[UserEvent]](
         path = "api/game/ws",
         webSocket = None,
         query = Subscriptions.userStream(connectionId.value, getToken)(userEventSB),

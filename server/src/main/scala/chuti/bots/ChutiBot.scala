@@ -19,7 +19,7 @@ package chuti.bots
 import api.ChutiSession
 import chuti.*
 import dao.ZIORepository
-import game.GameService
+import game.{GameEnvironment, GameService}
 import zio.{IO, ZIO}
 
 trait ChutiBot {
@@ -29,15 +29,13 @@ trait ChutiBot {
     game: Game
   ): IO[GameError, PlayEvent]
 
-  def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & ZIORepository, GameError, Game] = {
+  def takeTurn(gameId: GameId): ZIO[GameEnvironment & GameService, GameError, Game] = {
     for {
-      gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
-      gameService    <- ZIO.service[GameService]
-      userOpt        <- ZIO.serviceWith[ChutiSession](_.user)
-      user           <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
-      game           <- gameOperations.get(gameId).map(_.get)
-      turn           <- decideTurn(user, game)
-      played         <- gameService.play(gameId, turn)
+      userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+      user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
+      game    <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId).map(_.get))
+      turn    <- decideTurn(user, game)
+      played  <- ZIO.serviceWithZIO[GameService](_.play(gameId, turn))
     } yield played
   }
 

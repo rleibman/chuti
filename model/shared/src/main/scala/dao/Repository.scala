@@ -89,9 +89,9 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
     password: String
   ): F[Boolean]
 
-  def unfriend(enemy: User): F[Boolean]
+  def unfriend(enemy: UserId): F[Boolean]
 
-  def friend(friend: User): F[Boolean]
+  def friend(friend: UserId): F[Boolean]
 
   def friends: F[Seq[User]]
 
