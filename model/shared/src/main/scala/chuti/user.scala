@@ -22,7 +22,7 @@ import zio.json.*
 import java.util.Locale
 
 case class User(
-  id:          Option[UserId],
+  id:          UserId,
   email:       String,
   name:        String,
   created:     Instant,
@@ -33,7 +33,7 @@ case class User(
   locale:      Locale = Locale.forLanguageTag("es")
 ) {
 
-  def isBot: Boolean = id.fold(false)(i => i.value < -1 && i != UserId.godUserId)
+  def isBot: Boolean = id.value < -1 && id != UserId.godUserId && id != UserId.godlessUserId
 
 }
 

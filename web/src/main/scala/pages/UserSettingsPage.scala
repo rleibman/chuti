@@ -17,7 +17,7 @@
 package pages
 
 import auth.AuthClient
-import chuti.{ChutiState, GameClient, ConnectionId, User}
+import chuti.{ChutiState, ConnectionId, GameClient, User}
 import components.Toast
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted

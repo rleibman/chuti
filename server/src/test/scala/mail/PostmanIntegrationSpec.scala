@@ -18,7 +18,7 @@ package mail
 
 import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.*
-import chuti.User
+import chuti.{User, UserId}
 import courier.{Envelope, Text}
 import zio.*
 import zio.cache.{Cache, Lookup}
@@ -37,8 +37,8 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
           delivered <- postman
             .deliver(
               Envelope
-                .from( InternetAddress("system@chuti.com"))
-                .to( InternetAddress("roberto@leibman.net"))
+                .from(InternetAddress("system@chuti.com"))
+                .to(InternetAddress("roberto@leibman.net"))
                 .subject("hello")
                 .content(Text("body of hello"))
             ).fork
@@ -53,7 +53,7 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
           postman <- ZIO.service[Postman]
           now     <- Clock.instant
           envelope <- postman.registrationEmail(
-            User(id = None, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
+            User(id = UserId.empty, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
           )
           delivered <- postman.deliver(envelope).fork
         } yield delivered

@@ -55,7 +55,7 @@ type Subscriptions {
 }
 
 type User {
-  id: Long
+  id: Long!
   email: String!
   name: String!
   created: Instant!

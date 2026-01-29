@@ -30,8 +30,11 @@ object ChannelId {
 
   extension (channelId: ChannelId) {
 
-    def value:    Long = channelId
-    def nonEmpty: Boolean = channelId.value != ChannelId.empty
+    def value:                       Long = channelId
+    def nonEmpty:                    Boolean = channelId.value != ChannelId.empty
+    def isEmpty:                     Boolean = channelId.value == ChannelId.empty
+    def orElse(other: => ChannelId): ChannelId = if (channelId.isEmpty) other else channelId
+    def toOption:                    Option[ChannelId] = if (channelId.isEmpty) None else Some(channelId)
 
   }
 

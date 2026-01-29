@@ -10,7 +10,7 @@ scalar Instant
 scalar Long
 
 input UserInput {
-  id: Long
+  id: Long!
   email: String!
   name: String!
   created: Instant!
@@ -42,7 +42,7 @@ type Subscriptions {
 }
 
 type User {
-  id: Long
+  id: Long!
   email: String!
   name: String!
   created: Instant!

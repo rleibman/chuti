@@ -112,7 +112,7 @@ object Chuti extends ZIOApp {
 
   lazy val zapp: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, Nothing]] = for {
     _                <- ZIO.log("Initializing Routes")
-    authServer       <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+    authServer       <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
     authServerApi    <- authServer.authRoutes
     authServerUnauth <- authServer.unauthRoutes
     unauth           <- AllTogether.unauth

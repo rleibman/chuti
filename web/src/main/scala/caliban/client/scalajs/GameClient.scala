@@ -59,7 +59,7 @@ object GameClient {
   object User {
 
     final case class UserView(
-      id:          scala.Option[Long],
+      id:          Long,
       email:       String,
       name:        String,
       created:     Instant,
@@ -78,8 +78,7 @@ object GameClient {
           UserView(id, email, name, created, lastUpdated, active, deleted, isAdmin, locale)
       }
 
-    def id: SelectionBuilder[User, scala.Option[Long]] =
-      _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
+    def id:      SelectionBuilder[User, Long] = _root_.caliban.client.SelectionBuilder.Field("id", Scalar())
     def email:   SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
     def name:    SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
     def created: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())

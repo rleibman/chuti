@@ -30,17 +30,17 @@ object InMemoryRepository {
   private val now = Instant.now().nn
 
   val user1: User =
-    User(Option(UserId(1)), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
+    User(UserId(1), "yoyo1@example.com", "yoyo1", created = now, lastUpdated = now)
   val user2: User =
-    User(Option(UserId(2)), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
+    User(UserId(2), "yoyo2@example.com", "yoyo2", created = now, lastUpdated = now)
   val user3: User =
-    User(Option(UserId(3)), "yoyo3@example.com", "yoyo3", created = now, lastUpdated = now)
+    User(UserId(3), "yoyo3@example.com", "yoyo3", created = now, lastUpdated = now)
   val user4: User =
-    User(Option(UserId(4)), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
+    User(UserId(4), "yoyo4@example.com", "yoyo4", created = now, lastUpdated = now)
 
   def fromGames(games: Seq[Game]): ULayer[ZIORepository] =
     ZLayer.fromZIO(for {
-      games <- Ref.make(games.map(g => g.id.get -> g).toMap)
+      games <- Ref.make(games.map(g => g.id -> g).toMap)
       users <- Ref.make(
         Map(
           UserId(1) -> user1,
@@ -88,8 +88,8 @@ case class InMemoryRepository(
     override def upsert(game: Game): RepositoryIO[Game] =
       for {
         id <- zio.Random.nextInt
-        newGame = game.copy(id = game.id.orElse(Some(GameId(id))))
-        _ <- games.update(map => map + (newGame.id.get -> newGame))
+        newGame = game.copy(id = game.id.orElse(GameId(id)))
+        _ <- games.update(map => map + (newGame.id -> newGame))
       } yield newGame
 
     override def get(pk: GameId): RepositoryIO[Option[Game]] = games.get.map(_.get(pk))
@@ -138,8 +138,8 @@ case class InMemoryRepository(
     override def upsert(user: User): RepositoryIO[User] =
       for {
         id <- zio.Random.nextInt
-        newUser = user.copy(id = user.id.orElse(Some(UserId(id))))
-        _ <- users.update(map => map + (newUser.id.get -> newUser))
+        newUser = user.copy(id = user.id.orElse(UserId(id)))
+        _ <- users.update(map => map + (newUser.id -> newUser))
       } yield newUser
 
     override def get(pk: UserId): RepositoryIO[Option[User]] = users.get.map(_.get(pk))

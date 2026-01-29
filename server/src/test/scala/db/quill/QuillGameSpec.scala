@@ -50,13 +50,13 @@ object QuillGameSpec extends QuillSpec {
         for {
           gameRepo            <- ZIO.serviceWith[ZIORepository](_.gameOperations)
           game                <- readGame(GAME_NEW)
-          inserted            <- gameRepo.upsert(game.copy(id = None))
-          gotten              <- gameRepo.get(inserted.id.get)
+          inserted            <- gameRepo.upsert(game.copy(id = GameId.empty))
+          gotten              <- gameRepo.get(inserted.id)
           allGamesAfterInsert <- gameRepo.search()
           allGamesCount       <- gameRepo.count()
           updated             <- gameRepo.upsert(inserted.copy(gameStatus = GameStatus.abandonado))
-          gottenUpdated       <- gameRepo.get(inserted.id.get)
-          deleted             <- gameRepo.delete(inserted.id.get)
+          gottenUpdated       <- gameRepo.get(inserted.id)
+          deleted             <- gameRepo.delete(inserted.id)
           allGamesAfterDelete <- gameRepo.search()
         } yield assertTrue(
           inserted.id.nonEmpty,

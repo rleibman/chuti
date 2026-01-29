@@ -110,10 +110,10 @@ object GameService {
                   (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
               repository.gameOperations
-                .delete(game.id.get).provideLayer(godLayer)
+                .delete(game.id).provideLayer(godLayer)
             case (game, _) if game.jugadores.isEmpty =>
               repository.gameOperations
-                .delete(game.id.get, softDelete = true).provideLayer(godLayer)
+                .delete(game.id, softDelete = true).provideLayer(godLayer)
             case (game, _) => ZIO.succeed(game)
           }
           //          _ <- ZIO.foreachPar(players) { game =>
@@ -144,7 +144,7 @@ object GameService {
           }
           _ <- broadcast(
             userEventQueues,
-            UserEvent(user, UserEventType.AbandonedGame, savedOpt.flatMap(_._1.id))
+            UserEvent(user, UserEventType.AbandonedGame, savedOpt.map(_._1.id))
           )
         } yield savedOpt.nonEmpty).mapError(GameError.apply)
 
@@ -203,7 +203,7 @@ object GameService {
             ZIO
               .foreach(botOpt)(bot =>
                 bot
-                  .takeTurn(current.id.get).provideSome[GameEnvironment](
+                  .takeTurn(current.id).provideSome[GameEnvironment](
                     ChutiSession.botSession(jugador.user).toLayer,
                     ZLayer.succeed(this: GameService)
                   )
@@ -233,20 +233,20 @@ object GameService {
               .get(oldGameId).map(_.getOrElse(throw GameError("No existe juego previo")))
           withFirstUser <- {
             val newGame = Game(
-              id = None,
+              id = GameId.empty,
               gameStatus = GameStatus.esperandoJugadoresInvitados,
               satoshiPerPoint = oldGame.satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(user, JoinGame())
+            val (game2, _) = newGame.applyEvent(user, JoinGame(user))
             repository.gameOperations.upsert(game2)
           }
           _ <- ZIO.foreachDiscard(oldGame.jugadores.filter(_.id != user.id).map(_.user)) { u =>
-            inviteToGame(u.id.get, withFirstUser.id.get)
+            inviteToGame(u.id, withFirstUser.id)
           }
           afterInvites <-
             repository.gameOperations
-              .get(withFirstUser.id.get).map(
+              .get(withFirstUser.id).map(
                 _.getOrElse(throw GameError("No existe juego previo"))
               )
         } yield afterInvites).mapError(GameError.apply)
@@ -259,19 +259,19 @@ object GameService {
           now        <- Clock.instant
           upserted <- {
             val newGame = Game(
-              id = None,
+              id = GameId.empty,
               gameStatus = GameStatus.esperandoJugadoresInvitados,
               satoshiPerPoint = satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(user, JoinGame())
+            val (game2, _) = newGame.applyEvent(user, JoinGame(user))
             repository.gameOperations.upsert(game2)
           }
           _ <- repository.gameOperations.updatePlayers(upserted)
           _ <- ZIO.foreachDiscard(upserted.jugadores.find(_.user.id == user.id).filter(!_.user.isBot)) { j =>
             repository.userOperations.upsert(j.user)
           }
-          _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, upserted.id))
+          _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, Some(upserted.id)))
         } yield upserted).mapError(GameError.apply)
 
       override def getLoggedInUsers: ZIO[ChutiSession, GameError, Seq[User]] =
@@ -292,7 +292,7 @@ object GameService {
           invitedOpt <- repository.userOperations.userByEmail(email)
           invited <- invitedOpt.fold(
             repository.userOperations
-              .upsert(User(None, email, name, created = now, lastUpdated = now))
+              .upsert(User(UserId.empty, email, name, created = now, lastUpdated = now))
               .provideLayer(godLayer)
           )(ZIO.succeed(_))
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
@@ -381,11 +381,11 @@ object GameService {
             // The game may have no players yet, so god needs to save it
             repository.gameOperations
               .upsert(
-                Game(None, gameStatus = GameStatus.esperandoJugadoresAzar, created = now)
+                Game(GameId.empty, gameStatus = GameStatus.esperandoJugadoresAzar, created = now)
               ).provideLayer(godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
-            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame(jugadorType: JugadorType))
+            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame(user, jugadorType: JugadorType))
             val (started, startGame: GameEvent) =
               if (joined.canTransitionTo(GameStatus.requiereSopa)) {
                 joined
@@ -404,7 +404,7 @@ object GameService {
           _ <- broadcast(gameEventQueues, afterApply._3)
           _ <- broadcast(
             userEventQueues,
-            UserEvent(user, UserEventType.JoinedGame, afterApply._1.id)
+            UserEvent(user, UserEventType.JoinedGame, afterApply._1.id.toOption)
           )
         } yield afterApply._1
       }
@@ -431,7 +431,7 @@ object GameService {
               )
             if (!game.jugadores.exists(_.user.id == user.id))
               throw GameError(s"El usuario ${user.id} ni siquera esta en este juego")
-            val (afterEvent, declinedEvent) = game.applyEvent(userOpt, DeclineInvite())
+            val (afterEvent, declinedEvent) = game.applyEvent(user, DeclineInvite())
             repository.gameOperations
               .upsert(afterEvent).map((_, declinedEvent))
               .provideLayer(godLayer)
@@ -489,8 +489,8 @@ object GameService {
           game:  Game,
           razon: String
         ): (Game, Seq[GameEvent]) = {
-          val a = game.applyEvent(Option(user), HoyoTecnico(razon))
-          val b = a._1.applyEvent(Option(user), BorloteEvent(Borlote.HoyoTecnico))
+          val a = game.applyEvent(user, HoyoTecnico(razon))
+          val b = a._1.applyEvent(user, BorloteEvent(Borlote.HoyoTecnico))
           (b._1, Seq(a._2, b._2))
         }
 
@@ -501,15 +501,15 @@ object GameService {
               if e.ficha == Game.campanita && !game.triunfo
                 .contains(TriunfoNumero(Numero1)) && !game.triunfo
                 .contains(TriunfoNumero(Numero0)) =>
-            val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Campanita))
+            val a = game.applyEvent(user, BorloteEvent(Borlote.Campanita))
             (a._1, Seq(a._2))
           case _ =>
             val (regalosGame, regalosBorlote) =
               if (game.jugadores.filter(!_.cantante).count(_.filas.size == 1) == 3) {
-                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.SantaClaus))
+                val a = game.applyEvent(user, BorloteEvent(Borlote.SantaClaus))
                 (a._1, Seq(a._2))
               } else if (game.jugadores.filter(!_.cantante).exists(_.filas.size == 3)) {
-                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.ElNiñoDelCumpleaños))
+                val a = game.applyEvent(user, BorloteEvent(Borlote.ElNiñoDelCumpleaños))
                 (a._1, Seq(a._2))
               } else (game, Seq.empty)
 
@@ -518,14 +518,14 @@ object GameService {
                 game.jugadores.find(!_.cantante).fold(false)(_.filas.size == 4) && game.jugadores
                   .exists(_.filas.size < 4)
               ) {
-                val a = game.applyEvent(Option(user), BorloteEvent(Borlote.Helecho))
+                val a = game.applyEvent(user, BorloteEvent(Borlote.Helecho))
                 (a._1, Seq(a._2))
               } else (regalosGame, regalosBorlote)
 
             if (helechoGame.jugadores.exists(_.fichas.nonEmpty)) (helechoGame, helechoBorlote)
             else {
               // Ya se acabo el juego, a nadie le quedan fichas
-              val a = helechoGame.applyEvent(Option(user), TerminaJuego())
+              val a = helechoGame.applyEvent(user, TerminaJuego())
               (a._1, helechoBorlote :+ a._2)
             }
         }
@@ -550,7 +550,7 @@ object GameService {
             val sanitizedAfter = GameApi.sanitizeGame(after, jugador.user)
             val redone =
               event
-                .redoEvent(Option(user), sanitizedBefore)
+                .redoEvent(user, sanitizedBefore)
                 .copy(currentEventIndex = before.nextIndex)
             if (sanitizedAfter != redone) {
               println(sanitizedAfter.toJson)
@@ -586,7 +586,7 @@ object GameService {
                   // NoOp plays just return the current game state without changes
                   ZIO.succeed((game, Seq.empty[GameEvent]))
                 case _ =>
-                  val (played, event) = game.applyEvent(Option(user), playEvent)
+                  val (played, event) = game.applyEvent(user, playEvent)
                   val withStatus = event.processStatusMessages(played)
                   val (transitioned, transitionEvents) = checkPlayTransition(user, withStatus, event)
                   repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
@@ -606,7 +606,7 @@ object GameService {
           .foreach(game.cuentasCalculadas) { case (jugador, _, satoshi) =>
             for {
               repository <- ZIO.service[ZIORepository]
-              walletOpt  <- repository.userOperations.getWallet(jugador.id.get)
+              walletOpt  <- repository.userOperations.getWallet(jugador.id)
               updated <- ZIO.foreach(walletOpt)(wallet =>
                 repository.userOperations
                   .updateWallet(wallet.copy(amount = wallet.amount + satoshi)).provideLayer(godLayer)
@@ -639,7 +639,7 @@ object GameService {
                 ZIO.logDebug(s"Shut down game queue")
             )
             .tap(event => ZIO.logDebug(event.toString))
-            .filter(_.gameId == Option(gameId))
+            .filter(_.gameId == gameId)
         }
 
       override def userStream(

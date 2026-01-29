@@ -16,10 +16,7 @@
 
 package chuti
 
-import chuti.Numero
-import zio.json.*
-
-import java.time.{Instant, ZoneOffset}
+import java.time.Instant
 import scala.util.Random
 
 opaque type UserId = Long
@@ -36,8 +33,11 @@ object UserId {
 
   extension (userId: UserId) {
 
-    def value:    Long = userId
-    def nonEmpty: Boolean = userId.value != UserId.empty
+    def value:                    Long = userId
+    def nonEmpty:                 Boolean = userId.value != UserId.empty
+    def isEmpty:                  Boolean = userId.value == UserId.empty
+    def orElse(other: => UserId): UserId = if (userId.isEmpty) other else userId
+    def toOption:                 Option[UserId] = if (userId.isEmpty) None else Some(userId)
 
   }
 
@@ -55,8 +55,11 @@ object GameId {
 
   extension (gameId: GameId) {
 
-    def value:    Long = gameId
-    def nonEmpty: Boolean = gameId.value != GameId.empty
+    def value:                    Long = gameId
+    def nonEmpty:                 Boolean = gameId.value != GameId.empty
+    def isEmpty:                  Boolean = gameId.value == GameId.empty
+    def orElse(other: => GameId): GameId = if (gameId.isEmpty) other else gameId
+    def toOption:                 Option[GameId] = if (gameId.isEmpty) None else Some(gameId)
 
   }
 
@@ -64,7 +67,7 @@ object GameId {
 
 // A user who can do anything
 val god: User = User(
-  id = Some(UserId.godUserId),
+  id = UserId.godUserId,
   email = "god@chuti.fun",
   name = "Un-namable",
   created = Instant.ofEpochMilli(0).nn,
@@ -74,7 +77,7 @@ val god: User = User(
 
 // A user who can do some stuff, but not much
 val godless: User = User(
-  id = Some(UserId.godlessUserId),
+  id = UserId.godlessUserId,
   email = "godless@chuti.fun",
   name = "Nothing",
   created = Instant.ofEpochMilli(0).nn,
@@ -297,7 +300,7 @@ private val names = Seq(
 def hal9000: User = {
   val id = -(Random.nextInt(9998 - 1000) + 1001)
   User(
-    id = Some(UserId(id)),
+    id = UserId(id),
     email = s"hal${-id}@chuti.fun",
     name = s"${names(Random.nextInt(names.length))} HAL$id (bot)",
     created = Instant.ofEpochMilli(0).nn,

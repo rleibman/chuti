@@ -79,7 +79,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
       } yield {
         val cantante = game5.jugadores.find(_.cantante).get
         assertTrue(
-          game5.id == Option(GameId(1)),
+          game5.id == GameId(1),
           game5.jugadores.length == 4,
           game5.gameStatus == GameStatus.jugando,
           game5.currentEventIndex == 11,
@@ -157,7 +157,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.jugando)
 //    assert(game.currentEventIndex == 11)
@@ -213,7 +213,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.jugando)
 //    assert(game.currentEventIndex == 8)
@@ -286,7 +286,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.jugando)
 //    assert(game.currentEventIndex == 11)
@@ -351,7 +351,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.jugando)
 //    assert(game.currentEventIndex == 9)
@@ -428,7 +428,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.jugando)
 //    assert(game.currentEventIndex == 11)

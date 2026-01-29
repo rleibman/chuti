@@ -37,7 +37,7 @@ object RegistrationPage {
 
   case class State(
     passwordPair: (String, String) = ("", ""),
-    user:         User = User(id = None, email = "", name = "", created = Instant.now.nn, lastUpdated = Instant.now.nn)
+    user:         User = User(id = UserId.empty, email = "", name = "", created = Instant.now.nn, lastUpdated = Instant.now.nn)
   )
 
   class Backend($ : BackendScope[Unit, State]) {

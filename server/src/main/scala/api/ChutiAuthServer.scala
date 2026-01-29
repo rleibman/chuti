@@ -33,14 +33,14 @@ object ChutiAuthServer {
   val live: ZLayer[
     ConfigurationService & Postman & ZIORepository,
     ConfigurationError,
-    AuthServer[User, Option[UserId], ConnectionId]
+    AuthServer[User, UserId, ConnectionId]
   ] = ZLayer.fromZIO {
     for {
       config  <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       postman <- ZIO.service[Postman]
       repo    <- ZIO.serviceWith[ZIORepository](_.userOperations)
-    } yield new AuthServer[User, Option[UserId], ConnectionId] {
-      override def getPK(user: User): Option[UserId] = user.id
+    } yield new AuthServer[User, UserId, ConnectionId] {
+      override def getPK(user: User): UserId = user.id
 
       override def login(
         userName:     String,
@@ -53,21 +53,20 @@ object ChutiAuthServer {
         ZIO.serviceWithZIO[Session[User, ConnectionId]](u => ZIO.logDebug(s"User ${u.user} logged out"))
 
       override def changePassword(
-        userPK:      Option[UserId],
+        userPK:      UserId,
         newPassword: String
       ): ZIO[Session[User, ConnectionId], AuthError, Unit] =
         (for {
-          id <- ZIO.fromOption(userPK).orElseFail(AuthBadRequest("You cannot change the password without a user id"))
-          userOpt <- repo.get(id)
-          user    <- ZIO.fromOption(userOpt).orElseFail(AuthBadRequest(s"User with id ${id.value} not found"))
+          userOpt <- repo.get(userPK)
+          user    <- ZIO.fromOption(userOpt).orElseFail(AuthBadRequest(s"User with id ${userPK.value} not found"))
           _       <- repo.changePassword(user, newPassword).mapError(AuthError(_)).unit
         } yield ()).mapError(AuthError.apply)
 
       override def userByEmail(email: String): IO[AuthError, Option[User]] =
         repo.userByEmail(email).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
-      override def userByPK(pk: Option[UserId]): IO[AuthError, Option[User]] =
-        pk.fold(ZIO.none)(id => repo.get(id).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_)))
+      override def userByPK(pk: UserId): IO[AuthError, Option[User]] =
+        repo.get(pk).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
       override def createUser(
         name:     String,
@@ -82,13 +81,13 @@ object ChutiAuthServer {
           _ <- ZIO.fail(EmailAlreadyExists(email)).when(existingByEmail.exists(_.active))
 
           // Delete any existing inactive users with this email or name
-          _ <- ZIO.foreachDiscard(existingByEmail.filter(!_.active))(u => repo.delete(u.id.get, softDelete = false))
+          _ <- ZIO.foreachDiscard(existingByEmail.filter(!_.active))(u => repo.delete(u.id, softDelete = false))
 
           now <- Clock.instant
 
           // Create brand new user
           user <- repo.upsert(
-            User(id = None, email = email, name = name, created = now, lastUpdated = now, active = false)
+            User(id = UserId.empty, email = email, name = name, created = now, lastUpdated = now, active = false)
           )
           _ <- changePassword(user.id, password)
         } yield user).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
@@ -112,18 +111,17 @@ object ChutiAuthServer {
         postman.deliver(email)
       }
 
-      override def activateUser(userPK: Option[UserId]): IO[AuthError, Unit] =
+      override def activateUser(userPK: UserId): IO[AuthError, Unit] =
         (for {
-          pk   <- ZIO.fromOption(userPK).orElseFail(AuthBadRequest("User PK is required"))
-          _    <- ZIO.logInfo(s"Activating user with PK: ${pk.value}")
-          user <- repo.get(pk)
+          _    <- ZIO.logInfo(s"Activating user with PK: ${userPK.value}")
+          user <- repo.get(userPK)
           _ <- ZIO.logInfo(s"Found user: ${user.map(u => s"${u.email} (active=${u.active})").getOrElse("NOT FOUND")}")
-          _ <- ZIO.fail(AuthBadRequest(s"user ${pk.value} not found")).when(user.isEmpty)
+          _ <- ZIO.fail(AuthBadRequest(s"user ${userPK.value} not found")).when(user.isEmpty)
           result <- user.fold(ZIO.unit)(u =>
             ZIO.logInfo(s"Updating user ${u.email} to active=true") *>
               repo.upsert(u.copy(active = true)).unit
           )
-          _ <- ZIO.logInfo(s"User ${pk.value} activated successfully")
+          _ <- ZIO.logInfo(s"User ${userPK.value} activated successfully")
         } yield ())
           .provide(ChutiSession.godSession.toLayer)
           .mapError(AuthError(_))
@@ -170,7 +168,7 @@ object ChutiAuthServer {
 //        (for {
 //          now <- Clock.instant
 //          newUser = User(
-//            id = None,
+//            id = UserId.empty,
 //            email = oauthInfo.email,
 //            name = oauthInfo.name,
 //            created = now,

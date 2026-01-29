@@ -104,7 +104,7 @@ object LobbyComponent extends ChutiPage {
                   _
                 ) =>
                   Callback.log("Starting game") >>
-                    p.gameInProgress.value.flatMap(_.id).fold(Callback.empty) { gameId =>
+                    p.gameInProgress.value.map(_.id).fold(Callback.empty) { gameId =>
                       GameClient.game.startGame(gameId).completeWith {
                         case Success(_) => Toast.success("Juego creado!") // TODO i8n
                         case Failure(_) => Toast.error("Error creando juego!")
@@ -291,7 +291,7 @@ object LobbyComponent extends ChutiPage {
                         .inviteByEmail(
                           s.inviteExternalDialogState.fold("")(_.name),
                           s.inviteExternalDialogState.fold("")(_.email),
-                          game.id.getOrElse(GameId(0))
+                          game.id
                         ).completeWith {
                           case Success(_) =>
                             Toast.success("Invitación mandada!") >> $.modState( // TODO i8n
@@ -331,7 +331,8 @@ object LobbyComponent extends ChutiPage {
                           _
                         ) =>
                           Callback.log(s"Calling joinRandomGame") >>
-                            GameClient.game.joinRandomGame()
+                            GameClient.game
+                              .joinRandomGame()
                               .flatMap { game =>
                                 (Toast.success("Sentado a la mesa!") >> p.gameInProgress
                                   .setState(Some(game))).asAsyncCallback // TODO i8n
@@ -383,7 +384,7 @@ object LobbyComponent extends ChutiPage {
                                     _
                                   ) =>
                                     GameClient.game
-                                      .cancelUnacceptedInvitations(game.id.get)
+                                      .cancelUnacceptedInvitations(game.id)
                                       .completeWith {
                                         case Success(_)         => chutiState.onRequestGameRefresh() >> refresh()
                                         case Failure(exception) => Callback.throwException(exception)
@@ -455,11 +456,15 @@ object LobbyComponent extends ChutiPage {
                                       .fold("")(n => s"Te va a costar $n satoshi")}", // TODO i8n
                                 onConfirm = Callback.log(s"Abandoning game") >> // TODO i8n
                                   GameClient.game
-                                    .abandonGame(game.id.get)
+                                    .abandonGame(game.id)
                                     .completeWith {
-                                      case Success(true)  => Toast.success("Juego abandonado!") // TODO i8n
-                                      case Success(false) => Toast.error("Error abandonando juego!") // TODO i8n
-                                      case Failure(_)     => Toast.error("Error abandonando juego!") // TODO i8n
+                                      case Success(true) =>
+                                        p.gameInProgress.setState(None) >>
+                                          Toast.success("Juego abandonado!") // TODO i8n
+                                      case Success(false) =>
+                                        Toast.error("Error abandonando juego!") // TODO i8n
+                                      case Failure(_) =>
+                                        Toast.error("Error abandonando juego!") // TODO i8n
                                     }
                               )
                           )("Abandona Juego") // TODO i8n
@@ -474,7 +479,7 @@ object LobbyComponent extends ChutiPage {
                               _
                             ) =>
                               GameClient.game
-                                .newGameSameUsers(game.id.get)
+                                .newGameSameUsers(game.id)
                                 .flatMap { game =>
                                   (Toast.success("Juego empezado!") >> p.gameInProgress // TODO i8n
                                     .setState(Some(game)) >> $.modState(
@@ -497,7 +502,7 @@ object LobbyComponent extends ChutiPage {
                     ^.className := "gameInProgress",
                     <.h1("Juego en Curso"), // TODO i8n
                     <.div(
-                      <.h2(s"Juego #${game.id.fold(0)(_.value)}"), // TODO i8n
+                      <.h2(s"Juego #${game.id.value}"), // TODO i8n
                       <.div(game.gameStatus match {
                         case GameStatus.jugando  => <.p("Estamos a medio juego") // TODO i8n
                         case GameStatus.cantando => <.p("Estamos a medio juego (cantando)") // TODO i8n
@@ -546,7 +551,7 @@ object LobbyComponent extends ChutiPage {
                       <.tbody(
                         s.invites.toVdomArray { game =>
                           <.tr(
-                            ^.key := game.id.fold("")(_.toString),
+                            ^.key := game.id.toString,
                             <.td(
                               s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" // TODO i8n
                             ),
@@ -561,7 +566,7 @@ object LobbyComponent extends ChutiPage {
                                     _
                                   ) =>
                                     GameClient.game
-                                      .acceptGameInvitation(game.id.getOrElse(GameId(0)))
+                                      .acceptGameInvitation(game.id)
                                       .flatMap(game => p.gameInProgress.setState(Some(game)).asAsyncCallback)
                                       .completeWith {
                                         case Success(_)         => Callback.empty
@@ -577,7 +582,7 @@ object LobbyComponent extends ChutiPage {
                                     _
                                   ) =>
                                     GameClient.game
-                                      .declineGameInvitation(game.id.getOrElse(GameId(0)))
+                                      .declineGameInvitation(game.id)
                                       .completeWith {
                                         case Success(_) =>
                                           Toast.success("Invitación rechazada") >> // TODO i8n
@@ -652,10 +657,7 @@ object LobbyComponent extends ChutiPage {
                                   )(
                                     DropdownMenu()(
                                       (for {
-                                        game     <- p.gameInProgress.value
-                                        _        <- user.id
-                                        playerId <- player.user.id
-                                        gameId   <- game.id
+                                        game <- p.gameInProgress.value
                                       } yield
                                         if (
                                           game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
@@ -669,7 +671,7 @@ object LobbyComponent extends ChutiPage {
                                                 _
                                               ) =>
                                                 GameClient.game
-                                                  .inviteToGame(playerId, gameId)
+                                                  .inviteToGame(player.user.id, game.id)
                                                   .completeWith {
                                                     case Success(true) => Toast.success("Jugador Invitado!") // TODO i8n
                                                     case Success(false) => Toast.error("Error invitando jugador!") // TODO i8n
@@ -686,7 +688,7 @@ object LobbyComponent extends ChutiPage {
                                               _
                                             ) =>
                                               GameClient.user
-                                                .unfriend(player.user.id.getOrElse(UserId.empty))
+                                                .unfriend(player.user.id)
                                                 .completeWith {
                                                   case Success(true) =>
                                                     refresh() >> Toast.success(
@@ -704,7 +706,7 @@ object LobbyComponent extends ChutiPage {
                                               _
                                             ) =>
                                               GameClient.user
-                                                .friend(player.user.id.getOrElse(UserId.empty))
+                                                .friend(player.user.id)
                                                 .completeWith {
                                                   case Success(true) =>
                                                     chutiState.onRequestGameRefresh() >> refresh() >> Toast

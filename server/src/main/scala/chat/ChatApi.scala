@@ -51,7 +51,7 @@ object ChatApi {
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
-      ChatService & ZIORepository & AuthConfig & AuthServer[User, Option[UserId], ConnectionId],
+      ChatService & ZIORepository & AuthConfig & AuthServer[User, UserId, ConnectionId],
       GameError,
       ChatMessage
     ]
@@ -77,9 +77,10 @@ object ChatApi {
   private given ArgBuilder[User] = ArgBuilder.derived[User]
   private given ArgBuilder[SayRequest] = ArgBuilder.derived[SayRequest]
 
-  lazy val api: GraphQL[ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, Option[UserId], ConnectionId]] =
+  lazy val api
+    : GraphQL[ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, UserId, ConnectionId]] =
     graphQL[
-      ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, Option[UserId], ConnectionId],
+      ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, UserId, ConnectionId],
       Queries,
       Mutations,
       Subscriptions
@@ -91,7 +92,7 @@ object ChatApi {
           chatStream = chatStreamArgs =>
             ZStream.unwrap(
               for {
-                authServer <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+                authServer <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
                 sessionLayer <- authServer
                   .sessionLayerFromToken(
                     chatStreamArgs.token,

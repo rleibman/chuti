@@ -35,6 +35,7 @@ object ConnectionId {
 
     def value:    String = connectionId
     def nonEmpty: Boolean = connectionId.value != ConnectionId.empty
+    def isEmpty:  Boolean = connectionId.value == ConnectionId.empty
 
   }
 

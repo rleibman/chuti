@@ -87,11 +87,10 @@ object GamePage extends ChutiPage with TimerSupport {
   }
   case class Props(chutiState: ChutiState)
   import scala.language.unsafeNulls
-  given messageReuse: Reusability[ChatMessage] =
-    Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
-  given gameReuse:         Reusability[Game] = Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
-  given userIdReuse:       Reusability[UserId] = Reusability.by(_.value)
-  given userReuse:         Reusability[User] = Reusability.by(_.id)
+  given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.value))
+  given gameReuse:    Reusability[Game] = Reusability.by(game => (game.id.value, game.currentEventIndex))
+  given userIdReuse:  Reusability[UserId] = Reusability.by(_.value)
+  given userReuse:    Reusability[User] = Reusability.by(_.id)
   given bigDecimalReuse:   Reusability[BigDecimal] = Reusability.by(_.toLong)
   given walletReuse:       Reusability[UserWallet] = Reusability.derive[UserWallet]
   given gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)

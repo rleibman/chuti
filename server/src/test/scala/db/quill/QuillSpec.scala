@@ -38,7 +38,7 @@ abstract class QuillSpec extends ZIOSpec[ChutiEnvironment] {
   protected val password: String = "testPassword123"
   protected val satan: User = // A user with no permissions
     User(
-      id = Some(UserId(999)),
+      id = UserId(999),
       email = "Satan@hell.com",
       name = "Lucifer Morningstar",
       created = Instant.now().nn,
@@ -54,7 +54,13 @@ abstract class QuillSpec extends ZIOSpec[ChutiEnvironment] {
     for {
       now <- Clock.instant
       str <- Random.nextString(5)
-    } yield User(None, email = s"$str@example.com", name = "Frank Lloyd Wright", created = now, lastUpdated = now)
+    } yield User(
+      UserId.empty,
+      email = s"$str@example.com",
+      name = "Frank Lloyd Wright",
+      created = now,
+      lastUpdated = now
+    )
   }
 
   //  protected val clockLayer: ULayer[Clock] =

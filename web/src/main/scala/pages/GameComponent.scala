@@ -219,7 +219,7 @@ object GameComponent {
                                 _
                               ) =>
                                 play(
-                                  game.id.get,
+                                  game.id,
                                   Canta(s.cuantasCantas.getOrElse(defaultCuantas))
                                 )
                             }("Canta") // TODO i8n
@@ -234,7 +234,7 @@ object GameComponent {
                               _,
                               _
                             ) =>
-                              play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
+                              play(game.id, Da(ficha = s.fichaSeleccionada.get))
                           }("Dá") // TODO i8n
                       case jugadorState @ (JugadorState.pidiendo | JugadorState.pidiendoInicial) =>
                         <.span(
@@ -317,7 +317,7 @@ object GameComponent {
                                   _
                                 ) =>
                                   play(
-                                    game.id.get,
+                                    game.id,
                                     Pide(
                                       ficha = s.fichaSeleccionada.get,
                                       triunfo = s.triunfo,
@@ -338,7 +338,7 @@ object GameComponent {
                                     _,
                                     _
                                   ) =>
-                                    play(game.id.get, Caete(triunfo = s.triunfo))
+                                    play(game.id, Caete(triunfo = s.triunfo))
                                 }("Cáete") // TODO i8n
                             } else
                               EmptyVdom
@@ -353,7 +353,7 @@ object GameComponent {
                               _,
                               _
                             ) =>
-                              play(game.id.get, Sopa())
+                              play(game.id, Sopa())
                           }("Sopa") // TODO i8n
                       case JugadorState.esperandoCanto   => EmptyVdom
                       case JugadorState.esperando        => EmptyVdom
@@ -371,7 +371,7 @@ object GameComponent {
                           ) =>
                             Confirm.confirm(
                               question = "Estas seguro que te quieres rendir?", // TODO i8n
-                              onConfirm = play(game.id.get, MeRindo())
+                              onConfirm = play(game.id, MeRindo())
                             )
                         }("Me Rindo") // TODO i8n
                     } else
@@ -559,7 +559,7 @@ object GameComponent {
                     <.div(
                       ^.key       := "fichasEnJuegoName",
                       ^.className := "fichasEnJuegoName",
-                      game.jugador(Option(user)).user.name
+                      game.jugador(user).user.name
                     ),
                     <.img(
                       ^.key := "dominoEnJuego",
@@ -593,7 +593,7 @@ object GameComponent {
 
   import scala.language.unsafeNulls
   given Reusability[Triunfo] = Reusability.by(_.toString)
-  given Reusability[Game] = Reusability.by(game => (game.id.map(_.value), game.currentEventIndex))
+  given Reusability[Game] = Reusability.by(game => (game.id.value, game.currentEventIndex))
   given Reusability[CuantasCantas] = Reusability.by(_.toString)
   given Reusability[Ficha] = Reusability.by(_.toString)
   given Reusability[State] = Reusability.derive[State]

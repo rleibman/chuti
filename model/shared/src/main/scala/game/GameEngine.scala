@@ -26,12 +26,12 @@ trait GameEngine[F[_]] {
   def play(
     gameId:    GameId,
     playEvent: PlayEvent
-  ): F[Game] //Note, this mutates the game
+  ): F[Game] // Note, this mutates the game
 
   def playSilently(
     gameId:    GameId,
     playEvent: PlayEvent
-  ): F[Boolean] //In the cases we don't want to return the whole game object after a play
+  ): F[Boolean] // In the cases we don't want to return the whole game object after a play
 
   def joinRandomGame(): F[Game]
 

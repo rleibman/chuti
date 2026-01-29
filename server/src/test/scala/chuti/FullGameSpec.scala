@@ -75,7 +75,8 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
           )
         }
       }
-      val game = Game(None, created = Instant.now.nn, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
+      val game =
+        Game(GameId.empty, created = Instant.now.nn, GameStatus.jugando, triunfo = triunfo, jugadores = jugadores)
 
       GameTester(description, game, testEndState)
     }
@@ -168,7 +169,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
                   .upsert(tester.game).provideSomeLayer[ChutiEnvironment](
                     godLayer
                   )
-              played <- juegaHastaElFinal(saved.id.get)
+              played <- juegaHastaElFinal(saved.id)
             } yield tester.testEndState(played)
           )
         }

@@ -209,7 +209,7 @@ object Fila {
   def apply(
     index:  Int,
     fichas: Ficha*
-  ): Fila = Fila(fichas.toSeq, index)
+  ): Fila = new Fila(fichas.toSeq, index)
 
 }
 
@@ -253,18 +253,18 @@ enum JugadorType {
 }
 
 case class Jugador(
-  user:             User,
-  jugadorType:      JugadorType,
-  invited:          Boolean = false, // Should really reverse this and call it "accepted"
-  fichas:           List[Ficha] = List.empty,
-  filas:            List[Fila] = List.empty,
-  turno:            Boolean = false, // A quien le tocaba cantar este juego
-  cantante:         Boolean = false, // Quien esta cantando este juego
-  mano:             Boolean = false, // Quien tiene la mano en este momento
-  cuantasCantas:    Option[CuantasCantas] = None,
-  statusString:     String = "",
-  ganadorDePartido: Boolean = false,
-  cuenta:           Seq[Cuenta] = Seq.empty
+  user:                 User,
+  jugadorType:          JugadorType,
+  invited:              Boolean = false, // Should really reverse this and call it "accepted"
+  fichas:               List[Ficha] = List.empty,
+  filas:                List[Fila] = List.empty,
+  turno:                Boolean = false, // A quien le tocaba cantar este juego
+  cantante:             Boolean = false, // Quien esta cantando este juego
+  mano:                 Boolean = false, // Quien tiene la mano en este momento
+  cuantasCantas:        Option[CuantasCantas] = None,
+  statusString:         String = "",
+  fueGanadorDelPartido: Boolean = false,
+  cuenta:               Seq[Cuenta] = Seq.empty
 ) {
 
   lazy val yaSeHizo: Boolean = {
@@ -291,7 +291,7 @@ case class Jugador(
     }
   }
 
-  lazy val id: Option[UserId] = user.id
+  lazy val id: UserId = user.id
 
 }
 
@@ -399,7 +399,7 @@ object Game {
 }
 
 case class Game(
-  id:                Option[GameId],
+  id:                GameId,
   created:           Instant,
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
@@ -435,7 +435,7 @@ case class Game(
           JugadorState.pidiendo
         else if (
           enJuego.nonEmpty && !enJuego
-            .exists(_._1 == jugador.id.get)
+            .exists(_._1 == jugador.id)
         )
           JugadorState.dando
         else
@@ -451,9 +451,9 @@ case class Game(
   }
 
   @transient
-  lazy val ganadorDePartido: Option[Jugador] = jugadores.find(_.ganadorDePartido)
+  lazy val ganadorDePartido: Option[Jugador] = jugadores.find(_.fueGanadorDelPartido)
   @transient
-  lazy val channelId: Option[ChannelId] = id.map(i => ChannelId(i.value))
+  lazy val channelId: ChannelId = ChannelId(id.value)
   @transient
   lazy val mano: Option[Jugador] = jugadores.find(_.mano)
   @transient
@@ -468,20 +468,20 @@ case class Game(
     val conPuntos = jugadores.map(j => (j, j.cuenta.map(_.puntos).sum))
     conPuntos.map { case (j, puntos) =>
       val total: Long =
-        (if (j.ganadorDePartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
+        (if (j.fueGanadorDelPartido) 3 else -1) + // Si ganas cada uno te da 1 (o sea, recibes 3)
           (if (puntos < 0) -2
            else
              0) + // Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
           (if (puntos == 0) -1
            else
              0) + // Si alguien quedó en cero, le da un punt al ganador.
-          (if (j.ganadorDePartido) conPuntos.count(_._2 < 0) * 2
+          (if (j.fueGanadorDelPartido) conPuntos.count(_._2 < 0) * 2
            else
              0) + // Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.
-          (if (j.ganadorDePartido) conPuntos.count(_._2 == 0) * 1
+          (if (j.fueGanadorDelPartido) conPuntos.count(_._2 == 0) * 1
            else
              0) + // Si alguien quedó en cero, le da un punt al ganador.
-          (if (j.ganadorDePartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
+          (if (j.fueGanadorDelPartido && j.cuenta.lastOption.fold(false)(_.puntos == 21)) 3
            else if (ganadorDePartido.fold(false)(_.cuenta.lastOption.fold(false)(_.puntos == 21)))
              -1
            else 0) + // Si se va con chuti, recibe 6 o dos de cada jugador.
@@ -629,7 +629,7 @@ case class Game(
     }
 
   def partidoTerminado: Boolean = {
-    jugadores.exists(_.ganadorDePartido)
+    jugadores.exists(_.fueGanadorDelPartido)
   }
 
   def setStatusStrings(
@@ -639,7 +639,7 @@ case class Game(
     val a = jugadorStatusStrings.headOption.fold(this) { _ =>
       val map = jugadorStatusStrings.toMap
       val newJugadores = jugadores.map { j =>
-        val strOpt = map.get(j.id.get)
+        val strOpt = map.get(j.id)
         strOpt.fold(j)(str => j.copy(statusString = str))
       }
       copy(jugadores = newJugadores)
@@ -647,7 +647,7 @@ case class Game(
     gameStatusString.fold(a)(str => a.copy(statusString = str))
   }
 
-  def jugador(id: Option[UserId]): Jugador =
+  def jugador(id: UserId): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
         throw GameError("Este usuario no esta jugando en este juego")
@@ -709,18 +709,13 @@ case class Game(
     }
   }
 
+  // Returns the newly modified state, and any changes to the event
   def applyEvent(
     user:  User,
     event: GameEvent
-  ): (Game, GameEvent) = applyEvent(Some(user), event)
-
-  // Returns the newly modified state, and any changes to the event
-  def applyEvent(
-    userOpt: Option[User],
-    event:   GameEvent
   ): (Game, GameEvent) = {
     // It is the responsibility of each event to make sure the event *can* be applied "legally"
-    val processed = event.doEvent(userOpt, game = this)
+    val processed = event.doEvent(user, game = this)
     if (processed._2.index.getOrElse(-1) != currentEventIndex)
       throw GameError("Error! El evento no tenia el indice correcto")
     (processed._1.copy(currentEventIndex = nextIndex), processed._2)
@@ -730,7 +725,11 @@ case class Game(
   // No new events are generated
   def reapplyEvent(event: GameEvent): Game = {
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
-    val user = jugadores.find(_.user.id == event.userId).map(_.user)
+    val user = jugadores
+      .find(_.user.id == event.userId).map(_.user).getOrElse(
+        throw GameError("Este usuario no esta jugando en este juego")
+      )
+
     val processed = event.redoEvent(user, game = this)
     if (event.index.getOrElse(-1) != currentEventIndex)
       throw GameError("Error! No puedes re-aplicar este evento al juego!")

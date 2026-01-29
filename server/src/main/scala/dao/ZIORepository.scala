@@ -62,7 +62,7 @@ object ZIORepository {
         override def userInGame(id: GameId): RepositoryIO[Boolean] = repository.gameOperations.userInGame(id)
 
         override def updatePlayers(game: Game): RepositoryIO[Game] =
-          game.id.fold(ZIO.unit)(i => gameCache.invalidate(i)) *>
+          gameCache.invalidate(game.id) *>
             repository.gameOperations.updatePlayers(game)
 
         override def gameInvites: RepositoryIO[Seq[Game]] = repository.gameOperations.gameInvites
@@ -73,8 +73,7 @@ object ZIORepository {
         override def getGameForUser: RepositoryIO[Option[Game]] = repository.gameOperations.getGameForUser
 
         override def upsert(game: Game): RepositoryIO[Game] =
-          game.id.fold(ZIO.unit)(i => gameCache.invalidate(i)) *>
-            repository.gameOperations.upsert(game)
+          gameCache.invalidate(game.id) *> repository.gameOperations.upsert(game)
 
         override def get(pk: GameId): RepositoryIO[Option[Game]] = gameCache.get(pk).map(Option.apply)
 

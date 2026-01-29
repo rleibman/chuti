@@ -17,7 +17,12 @@
 package chuti
 
 import caliban.client.SelectionBuilder
-import caliban.client.scalajs.GameClient.{User as CalibanUser, UserEvent as CalibanUserEvent, UserEventType as CalibanUserEventType, *}
+import caliban.client.scalajs.GameClient.{
+  User as CalibanUser,
+  UserEvent as CalibanUserEvent,
+  UserEventType as CalibanUserEventType,
+  *
+}
 import caliban.client.scalajs.given
 import caliban.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.*
@@ -54,7 +59,7 @@ object GameClient {
 
   private val userSB = CalibanUser.view.map { u =>
     chuti.User(
-      id = u.id.map(UserId.apply),
+      id = UserId(u.id),
       name = u.name,
       email = u.email,
       created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
@@ -143,7 +148,7 @@ object GameClient {
     override def play(
       gameId:    GameId,
       gameEvent: PlayEvent
-    ): AsyncCallback[Game] = ??? //We really don't want to get the game every time we play a turn
+    ): AsyncCallback[Game] = ??? // We really don't want to get the game every time we play a turn
 
     override def playSilently(
       gameId:    GameId,
@@ -227,11 +232,15 @@ object GameClient {
 
   val chat: ChatOperations[AsyncCallback] = new ChatOperations[AsyncCallback] {
 
-    import caliban.client.scalajs.ChatClient.{ChatMessage as CalibanChatMessage, Instant as ChatInstant, User as ChatUser}
+    import caliban.client.scalajs.ChatClient.{
+      ChatMessage as CalibanChatMessage,
+      Instant as ChatInstant,
+      User as ChatUser
+    }
 
     private val chatUserSB: SelectionBuilder[ChatUser, chuti.User] = ChatUser.view.map { u =>
       chuti.User(
-        id = u.id.map(UserId.apply),
+        id = UserId(u.id),
         name = u.name,
         email = u.email,
         created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
@@ -278,7 +287,7 @@ object GameClient {
           // The say mutation returns Boolean, so we construct a minimal ChatMessage as acknowledgment
           // The actual message will be received through the WebSocket subscription
           ChatMessage(
-            fromUser = chuti.User(None, "", "", java.time.Instant.now(), java.time.Instant.now()),
+            fromUser = chuti.User(UserId.empty, "", "", java.time.Instant.now(), java.time.Instant.now()),
             msg = request.msg,
             channelId = request.channelId,
             date = java.time.Instant.now(),
@@ -393,19 +402,19 @@ object GameClient {
         .asyncCalibanCallWithAuth(Queries.getGameForUser)
         .map(_.map(decodeGame))
 
-    override def upsert(e: Game): AsyncCallback[Game] =
+    override def upsert(game: Game): AsyncCallback[Game] =
       // For new games, use newGame mutation
       // For existing games, the state is typically updated through play events
-      e.id match {
-        case None =>
+      game.id match {
+        case GameId.empty =>
           // New game - use satoshiPerPoint from the game
           gameClient
-            .asyncCalibanCallWithAuth(Mutations.newGame(e.satoshiPerPoint))
+            .asyncCalibanCallWithAuth(Mutations.newGame(game.satoshiPerPoint))
             .map {
               case Some(json) => decodeGame(json)
               case None       => throw RuntimeException("Failed to create new game")
             }
-        case Some(_) =>
+        case _ =>
           // Existing games are updated through play events, not direct upsert
           AsyncCallback.throwException(NotImplementedError("Game updates happen through play events"))
       }

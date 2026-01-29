@@ -83,7 +83,7 @@ object GameHistoryPage extends ChutiPage {
                       TableRow()
 //                        key = s"cuenta$jugadorIndex",
                         .className(
-                          if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else ""
+                          if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else ""
                         )(
                           TableCell()(jugador.user.name),
                           TableCell()(
@@ -97,7 +97,7 @@ object GameHistoryPage extends ChutiPage {
                             <.span(
                               ^.fontSize := "large",
                               ^.color    := "blue",
-                              if (jugador.ganadorDePartido) "➠" else ""
+                              if (jugador.fueGanadorDelPartido) "➠" else ""
                             )
                           ),
                           TableCell()(

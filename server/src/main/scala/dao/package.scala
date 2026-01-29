@@ -36,7 +36,7 @@ package object dao {
 
     def fromUser(value: User): UserRow =
       UserRow(
-        id = value.id.fold(0L)(_.value),
+        id = value.id.value,
         name = value.name,
         email = value.email,
         created = Timestamp.from(value.created).nn,
@@ -59,7 +59,7 @@ package object dao {
 
     def toUser: User =
       User(
-        id = Some(UserId(id)),
+        id = UserId(id),
         email = email,
         name = name,
         created = created.toInstant.nn,
@@ -74,7 +74,7 @@ package object dao {
 
     def fromGame(value: Game): GameRow = {
       val ret = GameRow(
-        id = value.id.fold(0L)(_.value),
+        id = value.id.value,
         current_index = value.currentEventIndex,
         lastSnapshot = value.toJson,
         status = value.gameStatus,
@@ -100,7 +100,7 @@ package object dao {
       ZIO
         .fromEither(lastSnapshot.fromJson[Game].map {
           _.copy(
-            id = Option(GameId(id)),
+            id = GameId(id),
             currentEventIndex = current_index,
             gameStatus = status
           )

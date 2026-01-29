@@ -18,7 +18,7 @@ package db.quill
 
 import api.ChutiEnvironment
 import chuti.*
-import dao.{ZIORepository, RepositoryError, RepositoryPermissionError}
+import dao.{RepositoryError, RepositoryPermissionError, ZIORepository}
 import db.quill.QuillGameSpec.fixedClock
 import zio.*
 import zio.logging.*
@@ -35,7 +35,7 @@ object QuillUserSpec extends QuillSpec {
     suite("Quill User Suite")(
       test("random") {
         for {
-          tok <- Random.nextBytes(16).map(r =>  BigInteger(r.toArray).toString(32))
+          tok <- Random.nextBytes(16).map(r => BigInteger(r.toArray).toString(32))
           _   <- ZIO.logInfo(tok)
         } yield assert(tok.length)(isGreaterThan(0))
       },
@@ -47,7 +47,7 @@ object QuillUserSpec extends QuillSpec {
           inserted             <- repo.upsert(testUser)
           allUsersAfterInsert  <- repo.search()
           count                <- repo.count()
-          deleted              <- repo.delete(inserted.id.get)
+          deleted              <- repo.delete(inserted.id)
           allUsersAfterDelete  <- repo.search()
         } yield assertTrue(allUsersBeforeInsert.isEmpty) &&
           assertTrue(inserted.id.nonEmpty) &&
@@ -94,7 +94,7 @@ object QuillUserSpec extends QuillSpec {
         (for {
           repo     <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser <- testUserZIO
-          _        <- repo.upsert(testUser.copy(id = Some(UserId(123)), name = "ChangedName"))
+          _        <- repo.upsert(testUser.copy(id = UserId(123), name = "ChangedName"))
         } yield assertTrue(false))
           .withClock(fixedClock)
           .tapError(e => ZIO.logInfo(e.getMessage.nn))
@@ -157,10 +157,10 @@ object QuillUserSpec extends QuillSpec {
           inserted2  <- repo.upsert(testUser2.copy(active = true))
           noFriends1 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           noFriends2 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
-          friended   <- repo.friend(inserted2.id.get).provideSomeLayer[ZIORepository](userSession(inserted1))
+          friended   <- repo.friend(inserted2.id).provideSomeLayer[ZIORepository](userSession(inserted1))
           aFriend1   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           aFriend2   <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
-          unfriended <- repo.unfriend(inserted1.id.get).provideSomeLayer[ZIORepository](userSession(inserted2))
+          unfriended <- repo.unfriend(inserted1.id).provideSomeLayer[ZIORepository](userSession(inserted2))
           noFriends3 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted1))
           noFriends4 <- repo.friends.provideSomeLayer[ZIORepository](userSession(inserted2))
         } yield {
@@ -179,9 +179,9 @@ object QuillUserSpec extends QuillSpec {
           repo          <- ZIO.serviceWith[ZIORepository](_.userOperations)
           testUser1     <- testUserZIO
           inserted1     <- repo.upsert(testUser1.copy(active = true))
-          wallet        <- repo.getWallet(inserted1.id.get)
+          wallet        <- repo.getWallet(inserted1.id)
           updated       <- repo.updateWallet(wallet.get.copy(amount = 12345))
-          walletUpdated <- repo.getWallet(inserted1.id.get)
+          walletUpdated <- repo.getWallet(inserted1.id)
         } yield assertTrue(wallet.nonEmpty) &&
           assert(wallet.get.amount)(equalTo(BigDecimal(10000))) &&
           assertTrue(updated == walletUpdated.get) &&

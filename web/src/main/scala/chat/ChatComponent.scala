@@ -163,12 +163,13 @@ object ChatComponent {
               msg:          String
             ) =>
               ChatMessage(
-                fromUser = User(None, "", fromUsername, created = Instant.now().nn, lastUpdated = Instant.now().nn),
+                fromUser =
+                  User(UserId.empty, "", fromUsername, created = Instant.now().nn, lastUpdated = Instant.now().nn),
                 msg = msg,
                 channelId = p.channel,
                 date = Instant.parse(date).nn,
                 toUser = toUsername.map(name =>
-                  User(None, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn)
+                  User(UserId.empty, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn)
                 )
               )
           )
@@ -209,10 +210,9 @@ object ChatComponent {
   )
 
   import scala.language.unsafeNulls
-  given messageReuse: Reusability[ChatMessage] =
-    Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.value)))
-  given propsReuse: Reusability[Props] = Reusability.by(_.channel.value)
-  given stateReuse: Reusability[State] = Reusability.caseClassExcept("ws")
+  given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.value))
+  given propsReuse:   Reusability[Props] = Reusability.by(_.channel.value)
+  given stateReuse:   Reusability[State] = Reusability.caseClassExcept("ws")
 
   private val component = ScalaComponent
     .builder[Props]("content")

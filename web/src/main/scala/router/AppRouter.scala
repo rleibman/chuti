@@ -86,7 +86,7 @@ object AppRouter extends ChutiComponent {
                         case ((jugador, puntos, satoshi), jugadorIndex) =>
                           TableRow()
 //                          key(s"cuenta$jugadorIndex",
-                            .className(if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else "")(
+                            .className(if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else "")(
                               TableCell()(jugador.user.name),
                               TableCell()(
                                 jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
@@ -99,7 +99,7 @@ object AppRouter extends ChutiComponent {
                                 <.span(
                                   ^.fontSize := "large",
                                   ^.color    := "blue",
-                                  if (jugador.ganadorDePartido) "➠" else ""
+                                  if (jugador.fueGanadorDelPartido) "➠" else ""
                                 )
                               ),
                               TableCell()(
@@ -314,7 +314,7 @@ object AppRouter extends ChutiComponent {
           val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
             chutiState.gameViewMode match {
               case GameViewMode.lobby => ChannelId.lobbyChannel
-              case GameViewMode.game  => game.channelId.getOrElse(ChannelId.lobbyChannel)
+              case GameViewMode.game  => game.channelId.orElse(ChannelId.lobbyChannel)
               case GameViewMode.none  => ChannelId.lobbyChannel
             }
           )

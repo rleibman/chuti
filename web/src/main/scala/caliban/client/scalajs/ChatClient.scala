@@ -61,7 +61,7 @@ object ChatClient {
   object User {
 
     final case class UserView(
-      id:          scala.Option[Long],
+      id:          Long,
       email:       String,
       name:        String,
       created:     Instant,
@@ -80,8 +80,7 @@ object ChatClient {
           UserView(id, email, name, created, lastUpdated, active, deleted, isAdmin, locale)
       }
 
-    def id: SelectionBuilder[User, scala.Option[Long]] =
-      _root_.caliban.client.SelectionBuilder.Field("id", OptionOf(Scalar()))
+    def id:      SelectionBuilder[User, Long] = _root_.caliban.client.SelectionBuilder.Field("id", Scalar())
     def email:   SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("email", Scalar())
     def name:    SelectionBuilder[User, String] = _root_.caliban.client.SelectionBuilder.Field("name", Scalar())
     def created: SelectionBuilder[User, Instant] = _root_.caliban.client.SelectionBuilder.Field("created", Scalar())
@@ -95,7 +94,7 @@ object ChatClient {
   }
 
   final case class UserInput(
-    id:          scala.Option[Long] = None,
+    id:          Long,
     email:       String,
     name:        String,
     created:     Instant,
@@ -111,7 +110,7 @@ object ChatClient {
       override def encode(value: UserInput): __Value =
         __ObjectValue(
           List(
-            "id"          -> value.id.fold(__NullValue: __Value)(value => implicitly[ArgEncoder[Long]].encode(value)),
+            "id"          -> implicitly[ArgEncoder[Long]].encode(value.id),
             "email"       -> implicitly[ArgEncoder[String]].encode(value.email),
             "name"        -> implicitly[ArgEncoder[String]].encode(value.name),
             "created"     -> implicitly[ArgEncoder[Instant]].encode(value.created),

@@ -33,8 +33,8 @@ import zio.json.*
 import java.util.Locale
 
 type ChutiEnvironment = AuthConfig & ZIORepository & ConfigurationService & Postman &
-  AuthServer[User, Option[UserId], ConnectionId] & TokenHolder & OAuthService & OAuthStateStore & GameService &
-  ChatService & FlywayMigration
+  AuthServer[User, UserId, ConnectionId] & TokenHolder & OAuthService & OAuthStateStore & GameService & ChatService &
+  FlywayMigration
 //  RateLimiter &
 //  RateLimitConfig &
 //net.leibman.analytics.AnalyticsZIORepository &

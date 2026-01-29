@@ -344,7 +344,7 @@ object Content extends ChutiComponent with TimerSupport {
               userStream = Option(
                 GameClient.gameRepo.makeUserWebSocket { event =>
                   whoami.fold(Callback.empty)(currentUser =>
-                    onUserStreamData(currentUser, gameInProgressOpt.flatMap(_.id))(event)
+                    onUserStreamData(currentUser, gameInProgressOpt.map(_.id))(event)
                   )
                 }
               )
@@ -361,7 +361,7 @@ object Content extends ChutiComponent with TimerSupport {
             gameStream =
               if (!needNewGameStream) copy.chutiState.gameStream
               else
-                gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id.get, onGameEvent))
+                gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id, onGameEvent))
           )
         )
       }

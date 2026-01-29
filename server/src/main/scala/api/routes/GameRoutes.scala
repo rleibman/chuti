@@ -62,9 +62,8 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
             Handler.fromFunctionZIO[Request] { request =>
               (for {
                 session    <- ZIO.service[ChutiSession]
-                authServer <- ZIO.service[AuthServer[User, Option[UserId], ConnectionId]]
+                authServer <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
                 user       <- ZIO.fromOption(session.user).orElseFail(GameError("Not logged in"))
-                userId     <- ZIO.fromOption(user.id).orElseFail(GameError("User does not have id"))
                 bodyStr    <- request.body.asString.mapError(e => GameError(e))
                 changePasswordRequest <- ZIO
                   .fromEither(bodyStr.fromJson[ChangePasswordRequest]).mapError(e => GameError(e))
@@ -76,7 +75,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
                 _ <- ZIO.when(loginResult.isEmpty)(ZIO.fail(GameError("Current password is incorrect")))
                 // Change the password
                 _ <- authServer
-                  .changePassword(Option(userId), changePasswordRequest.newPassword).mapError(e => GameError(e))
+                  .changePassword(user.id, changePasswordRequest.newPassword).mapError(e => GameError(e))
               } yield Response.ok).catchAll { error =>
                 ZIO.succeed(Response.text(error.getMessage).status(Status.BadRequest))
               }
