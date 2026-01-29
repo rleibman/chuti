@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-import java.util.Locale
-
 /*
  * Copyright 2020 Roberto Leibman
  *
@@ -32,18 +30,16 @@ import java.util.Locale
  * limitations under the License.
  */
 
-package object scalai8n {
+package i8n
 
-  opaque type I8NString = String
+opaque type I8NString = String
 
-  extension (sc: StringContext) {
+extension (sc: StringContext) {
 
-    def i8n(args: Any*): I8NString = {
-      println(sc.parts.map(s => s"'$s'").mkString(","))
-      println(args.mkString(":"))
-      sc.s(args*)
-    }
-
+  def i8n(args: Any*): I8NString = {
+    println(sc.parts.map(s => s"'$s'").mkString(","))
+    println(args.mkString(":"))
+    sc.s(args*)
   }
 
 }

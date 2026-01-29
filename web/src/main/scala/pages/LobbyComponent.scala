@@ -431,11 +431,11 @@ object LobbyComponent extends ChutiPage {
                         case _ => EmptyVdom
                       },
                       if (!game.gameStatus.acabado) {
-                        val costo: Option[Double] =
+                        val costo: Option[Long] =
                           if (game.gameStatus.enJuego)
                             game.cuentasCalculadas
                               .find(_.jugador.id == user.id).map(n =>
-                                game.satoshiPerPoint * (n.puntos.toLong + game.abandonedPenalty)
+                                game.satoshiPerPoint * (n.puntos + game.abandonedPenalty)
                               )
                           else
                             None

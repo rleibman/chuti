@@ -29,8 +29,8 @@ import zio.*
 import zio.json.*
 import zio.stream.ZStream
 
-type GameEnvironment = ChutiSession & ZIORepository & ChatService & TokenHolder & Postman
-type GameTask[A] = ZIO[GameEnvironment, GameError, A]
+type GameEnvironment = ZIORepository & ChatService & TokenHolder & Postman
+type GameTask[A] = ZIO[GameEnvironment & ChutiSession, GameError, A]
 
 trait GameService extends GameEngine[GameTask] {
 
@@ -158,8 +158,7 @@ object GameService {
         ChutiSession.botSession(hal9000).toLayer
       }
 
-      override def startGame(gameId: GameId)
-        : ZIO[ZIORepository & Postman & TokenHolder & ChutiSession, GameError, Boolean] =
+      override def startGame(gameId: GameId): ZIO[GameEnvironment & ChutiSession, GameError, Boolean] =
         (for {
           gameOpt <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
           gameStarted <- ZIO.foreach(gameOpt) { game =>
@@ -183,24 +182,34 @@ object GameService {
                   )
               )
           }
-          _ <- ZIO.foreachDiscard(gameStarted)(playIfBot)
+          _ <- ZIO.log(s"Game started $gameStarted")
+          _ <- ZIO.foreachDiscard(gameStarted)(playBots)
         } yield true).mapError(GameError.apply)
 
-      val bots = Map[JugadorType, ChutiBot](
+      private val botsByJugadorType: Map[JugadorType, ChutiBot] = Map[JugadorType, ChutiBot](
         JugadorType.dumbBot -> DumbChutiBot
       )
 
       private val botDelay = Schedule.fixed(10.seconds).jittered.addDelay(_ => 2.seconds)
 
-      private def playIfBot(game: Game): ZIO[ChutiSession & ZIORepository, GameError, Game] = {
-        // TODO figure out if the player in turn is a bot, in which case we start an autobot process
-        //
-
-        val r = ZIO.foreach(game.jugadores) { jugador =>
-          val botOpt = bots.get(jugador.jugadorType)
-          ZIO.foreach(botOpt)(_.takeTurn(game.id.get))
+      // TODO, we need to call this after human players play, don't blindly add it to `play` though, otherwise we get infinite loops
+      private def playBots(game: Game): ZIO[GameEnvironment, GameError, Game] = {
+        ZIO.foldLeft(game.jugadores)(game) {
+          (
+            current,
+            jugador
+          ) =>
+            val botOpt = botsByJugadorType.get(jugador.jugadorType)
+            ZIO
+              .foreach(botOpt)(bot =>
+                bot
+                  .takeTurn(current.id.get).provideSome[GameEnvironment](
+                    ChutiSession.botSession(jugador.user).toLayer,
+                    ZLayer.succeed(this: GameService)
+                  )
+              )
+              .map(_.getOrElse(current))
         }
-        ZIO.succeed(game)
       }
 
       override def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game] =

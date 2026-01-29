@@ -31,7 +31,11 @@
     </root>
 
     <!-- Application loggers -->
+    <logger name="game" level="INFO"/>
+    <logger name="dao" level="INFO"/>
+    <logger name="chat" level="INFO"/>
     <logger name="chuti" level="INFO"/>
+    <logger name="api" level="INFO"/>
     <logger name="auth" level="INFO"/>
 
     <!-- Third-party library loggers -->

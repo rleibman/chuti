@@ -72,30 +72,30 @@ object GameApi {
   ) derives ArgBuilder
 
   case class Queries(
-    getGame:                GameId => ZIO[GameService & ChutiSession & ZIORepository, GameError, Json],
-    getGameForUser:         ZIO[GameService & GameEnvironment, GameError, Json],
-    getFriends:             ZIO[GameService & GameEnvironment, GameError, Seq[User]],
-    getGameInvites:         ZIO[GameService & GameEnvironment, GameError, Json],
-    getLoggedInUsers:       ZIO[GameService & GameEnvironment, GameError, Seq[User]],
-    getHistoricalUserGames: ZIO[GameService & GameEnvironment, GameError, Json],
-    getWallet:              ZIO[GameService & GameEnvironment, GameError, Option[UserWallet]],
-    isFirstLoginToday:      ZIO[GameService & GameEnvironment, GameError, Boolean]
+    getGame:                GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    getGameForUser:         ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    getFriends:             ZIO[GameService & GameEnvironment & ChutiSession, GameError, Seq[User]],
+    getGameInvites:         ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    getLoggedInUsers:       ZIO[GameService & GameEnvironment & ChutiSession, GameError, Seq[User]],
+    getHistoricalUserGames: ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    getWallet:              ZIO[GameService & GameEnvironment & ChutiSession, GameError, Option[UserWallet]],
+    isFirstLoginToday:      ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean]
   )
   case class Mutations(
-    newGame:                     NewGameArgs => ZIO[GameService & GameEnvironment, GameError, Json],
-    newGameSameUsers:            GameId => ZIO[GameService & GameEnvironment, GameError, Json],
-    joinRandomGame:              ZIO[GameService & GameEnvironment, GameError, Json],
-    abandonGame:                 GameId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    inviteByEmail:               InviteByEmailArgs => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    startGame:                   GameId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    inviteToGame:                GameInviteArgs => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    acceptGameInvitation:        GameId => ZIO[GameService & GameEnvironment, GameError, Json],
-    declineGameInvitation:       GameId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    cancelUnacceptedInvitations: GameId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    friend:                      UserId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    unfriend:                    UserId => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    play:                        PlayArgs => ZIO[GameService & GameEnvironment, GameError, Boolean],
-    changePassword:              String => ZIO[GameService & GameEnvironment, GameError, Boolean]
+    newGame:                     NewGameArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    newGameSameUsers:            GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    joinRandomGame:              ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    abandonGame:                 GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    inviteByEmail:               InviteByEmailArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    startGame:                   GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    inviteToGame:                GameInviteArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    acceptGameInvitation:        GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    declineGameInvitation:       GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    cancelUnacceptedInvitations: GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    friend:                      UserId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    unfriend:                    UserId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    play:                        PlayArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    changePassword:              String => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean]
   )
   case class Subscriptions(
     gameStream: GameStreamArgs => ZStream[

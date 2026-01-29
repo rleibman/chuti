@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package scalai8n
+package i8n
 
 import org.scalatest.flatspec.AnyFlatSpec
 
