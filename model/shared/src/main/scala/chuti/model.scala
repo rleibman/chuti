@@ -705,6 +705,9 @@ case class Game(
           gameStatus == GameStatus.esperandoJugadoresAzar ||
           gameStatus == GameStatus.esperandoJugadoresInvitados) &&
         jugadores.forall(!_.invited) // Not everyone has accepted
+      case GameStatus.cantando =>
+        gameStatus == GameStatus.cantando || gameStatus == GameStatus.requiereSopa
+
       case _ => false
     }
   }

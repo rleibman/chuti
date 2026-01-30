@@ -108,6 +108,6 @@ object ChatApi {
     ) @@ maxFields(50)
       @@ maxDepth(30)
       @@ printErrors
-      @@ timeout(3.seconds)
+      @@ timeout(30.seconds)
 
 }

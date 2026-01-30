@@ -17,10 +17,9 @@
 package pages
 
 import _root_.util.LocalizedMessages
-import chuti.{ChutiState, GameClient, GameViewMode}
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import chuti.{*, given}
+import chuti.*
 import components.{Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -28,12 +27,7 @@ import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
-  SemanticCOLORS,
-  SemanticICONS,
-  SemanticSIZES,
-  SemanticShorthandItem
-}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 
 import scala.scalajs.js.JSConverters.*
@@ -358,7 +352,7 @@ object GameComponent {
                       case JugadorState.esperandoCanto   => EmptyVdom
                       case JugadorState.esperando        => EmptyVdom
                       case JugadorState.partidoTerminado => EmptyVdom
-                      case _                             => throw RuntimeException("Should never, ever get here")
+                      case s => throw RuntimeException(s"Should never, ever get here, invalid state: $s")
                     },
                     if (puedeRendirse) {
                       Button

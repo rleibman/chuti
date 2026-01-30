@@ -28,6 +28,7 @@ import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.Input
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
 import org.scalajs.dom.HTMLInputElement
 
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 //NOTE: things that change the state indirectly need to ask the snapshot to regen
 object LobbyComponent extends ChutiPage {
@@ -106,7 +107,9 @@ object LobbyComponent extends ChutiPage {
                   Callback.log("Starting game") >>
                     p.gameInProgress.value.map(_.id).fold(Callback.empty) { gameId =>
                       GameClient.game.startGame(gameId).completeWith {
-                        case Success(_) => Toast.success("Juego creado!") // TODO i8n
+                        case Success(_) =>
+                          $.modState(_.copy(dlg = Dialog.none)) >>
+                            Toast.success("Juego creado! Esperando actualizacion...") // TODO i8n
                         case Failure(_) => Toast.error("Error creando juego!")
                       }
                     }
@@ -168,7 +171,7 @@ object LobbyComponent extends ChutiPage {
                         (p.gameInProgress.setState(
                           Some(game),
                           $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
-                        ) >> Toast.success("Juego empezado!")).asAsyncCallback // TODO i8n
+                        ) >> Toast.success("Juego creado!")).asAsyncCallback // TODO i8n
                       }
                       .completeWith {
                         case Success(_)         => Callback.empty
@@ -334,8 +337,8 @@ object LobbyComponent extends ChutiPage {
                             GameClient.game
                               .joinRandomGame()
                               .flatMap { game =>
-                                (Toast.success("Sentado a la mesa!") >> p.gameInProgress
-                                  .setState(Some(game))).asAsyncCallback // TODO i8n
+                                (Toast.success("Sentado a la mesa!") >>
+                                  p.gameInProgress.setState(Some(game))).asAsyncCallback // TODO i8n
                               }
                               .completeWith {
                                 case Success(_)         => Callback.empty
@@ -481,7 +484,7 @@ object LobbyComponent extends ChutiPage {
                               GameClient.game
                                 .newGameSameUsers(game.id)
                                 .flatMap { game =>
-                                  (Toast.success("Juego empezado!") >> p.gameInProgress // TODO i8n
+                                  (Toast.success("Juego creado!") >> p.gameInProgress // TODO i8n
                                     .setState(Some(game)) >> $.modState(
                                     _.copy(dlg = Dialog.none)
                                   ) >> refresh()).asAsyncCallback

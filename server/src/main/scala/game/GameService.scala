@@ -61,18 +61,23 @@ object GameService {
     allQueuesRef: Ref[List[EventQueue[EventType]]],
     event:        EventType
   ): ZIO[Any, Nothing, EventType] = {
-    for {
-      _         <- ZIO.logInfo(s"Broadcasting event $event")
-      allQueues <- allQueuesRef.get
-      sent <-
-        ZIO
-          .foreachPar(allQueues) { queue =>
-            queue.queue
-              .offer(event)
-              .onInterrupt(allQueuesRef.update(_.filterNot(_ == queue)))
-          }
-          .as(event)
-    } yield sent
+    event match {
+      case _: NoOp => ZIO.succeed(event) //Don't broadcast no-ops
+      case _ =>
+
+        for {
+          _         <- ZIO.logInfo(s"Broadcasting event $event")
+          allQueues <- allQueuesRef.get
+          sent <-
+            ZIO
+              .foreachPar(allQueues) { queue =>
+                queue.queue
+                  .offer(event)
+                  .onInterrupt(allQueuesRef.update(_.filterNot(_ == queue)))
+              }
+              .as(event)
+        } yield sent
+    }
   }
 
   def make(): ULayer[GameService] =
@@ -89,32 +94,34 @@ object GameService {
           user <- ZIO
             .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
           repository <- ZIO.service[ZIORepository]
-          gameOpt    <- repository.gameOperations.get(gameId)
-          savedOpt <- ZIO.foreach(gameOpt) { game =>
-            if (!game.jugadores.exists(_.id == user.id))
-              ZIO.fail(GameError("Ese usuario no esta jugando matarile-rile-ron"))
-            else {
-              val (gameAfterApply, appliedEvent) =
-                game.applyEvent(user, AbandonGame())
-              // God needs to save this user, because the user has already left the game
-              repository.gameOperations
-                .upsert(gameAfterApply).map((_, appliedEvent)).provideLayer(godLayer)
-            }
+          game <- repository.gameOperations
+            .get(gameId).flatMap(g => ZIO.fromOption(g).orElseFail(RepositoryError("Could not find game", None)))
+          _ <- ZIO
+            .fail(GameError("Ese usuario no esta jugando matarile-rile-ron")).when(
+              !game.jugadores.exists(_.id == user.id)
+            )
+          (saved, event) <- {
+            val (gameAfterApply, appliedEvent) =
+              game.applyEvent(user, AbandonGame())
+            // God needs to save this user, because the user has already left the game
+            repository.gameOperations
+              .upsert(gameAfterApply).map((_, appliedEvent)).provideLayer(godLayer)
           }
-          players <- ZIO.foreach(savedOpt) { case (game, event) =>
-            repository.gameOperations.updatePlayers(game).map((_, event))
-          }
-          _ <- ZIO.foreachDiscard(players) {
-            case (game, _)
+          withoutPlayers <-
+            repository.gameOperations
+              .updatePlayers(game)
+              .provideLayer(godLayer) // Need to do this as god, because we've already taken the player out of the game and saved it
+          _ <- withoutPlayers match {
+            case game
                 if game.jugadores.isEmpty &&
                   (game.gameStatus == GameStatus.esperandoJugadoresInvitados ||
                     game.gameStatus == GameStatus.esperandoJugadoresAzar) =>
-              repository.gameOperations
-                .delete(game.id).provideLayer(godLayer)
-            case (game, _) if game.jugadores.isEmpty =>
-              repository.gameOperations
-                .delete(game.id, softDelete = true).provideLayer(godLayer)
-            case (game, _) => ZIO.succeed(game)
+              // The game is not even anything, so just delete it completely
+              repository.gameOperations.delete(game.id, softDelete = false).provideLayer(godLayer)
+            case game if game.jugadores.isEmpty =>
+              // The game had already started, so we soft delete it
+              repository.gameOperations.delete(game.id, softDelete = true).provideLayer(godLayer)
+            case game => ZIO.succeed(true)
           }
           //          _ <- ZIO.foreachPar(players) { game =>
           // TODO make sure that current losses in this game are also assigned to the user
@@ -128,7 +135,7 @@ object GameService {
           //              )
           //          }
           walletOpt <- repository.userOperations.getWallet
-          _ <- ZIO.foreachDiscard(gameOpt.flatMap(g => walletOpt.map(w => (g, w)))) {
+          _ <- ZIO.foreachDiscard(walletOpt.map(w => (withoutPlayers, w))) {
             case (game, wallet) if game.gameStatus.enJuego =>
               val lostPoints =
                 game.cuentasCalculadas.find(_.jugador.id == user.id).map(_.puntos).getOrElse(0)
@@ -139,14 +146,12 @@ object GameService {
                 ).provideLayer(godLayer)
             case _ => ZIO.succeed(true)
           }
-          _ <- ZIO.foreachDiscard(savedOpt) { case (_, appliedEvent) =>
-            broadcast(gameEventQueues, appliedEvent)
-          }
+          _ <- broadcast(gameEventQueues, event)
           _ <- broadcast(
             userEventQueues,
-            UserEvent(user, UserEventType.AbandonedGame, savedOpt.map(_._1.id))
+            UserEvent(user, UserEventType.AbandonedGame, Some(withoutPlayers.id))
           )
-        } yield savedOpt.nonEmpty).mapError(GameError.apply)
+        } yield true).mapError(GameError.apply)
 
       override def broadcastGameEvent(
         gameEvent: GameEvent
@@ -160,30 +165,25 @@ object GameService {
 
       override def startGame(gameId: GameId): ZIO[GameEnvironment & ChutiSession, GameError, Boolean] =
         (for {
-          gameOpt <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
-          gameStarted <- ZIO.foreach(gameOpt) { game =>
-            (game.jugadores.size until game.numPlayers)
-              .foldLeft(
-                ZIO
-                  .succeed(game).asInstanceOf[
-                    ZIO[ZIORepository & Postman & TokenHolder, Throwable, Game]
-                  ]
-              )(
-                (
-                  foldedGame,
-                  _
-                ) =>
-                  foldedGame.flatMap(g =>
-                    // If there's not enough human players, we need to add some bots
-                    joinGame(Option(g), JugadorType.dumbBot)
-                      .provideSomeLayer[ZIORepository & Postman & TokenHolder](
-                        botLayer
-                      )
+          repository <- ZIO.service[ZIORepository]
+          game <- ZIO.serviceWithZIO[ZIORepository](
+            _.gameOperations
+              .get(gameId).flatMap(g => ZIO.fromOption(g).orElseFail(RepositoryError("Could not find game", None)))
+          )
+          gameStarted <-
+            ZIO.foldLeft(game.jugadores.size until game.numPlayers)(game) {
+              (
+                foldedGame,
+                _
+              ) =>
+                // If there's not enough human players, we need to add some bots
+                joinGame(Option(foldedGame), JugadorType.dumbBot)
+                  .provideSomeLayer[ZIORepository & Postman & TokenHolder](
+                    botLayer
                   )
-              )
-          }
-          _ <- ZIO.log(s"Game started $gameStarted")
-          _ <- ZIO.foreachDiscard(gameStarted)(playBots)
+            }
+          _ <- ZIO.log(s"Game started: $gameStarted")
+          _ <- doAutoPlay(gameStarted)
         } yield true).mapError(GameError.apply)
 
       private val botsByJugadorType: Map[JugadorType, ChutiBot] = Map[JugadorType, ChutiBot](
@@ -193,15 +193,17 @@ object GameService {
       private val botDelay = Schedule.fixed(10.seconds).jittered.addDelay(_ => 2.seconds)
 
       // TODO, we need to call this after human players play, don't blindly add it to `play` though, otherwise we get infinite loops
-      private def playBots(game: Game): ZIO[GameEnvironment, GameError, Game] = {
+      private def doAutoPlay(game: Game): ZIO[GameEnvironment, GameError, Game] = {
         ZIO.foldLeft(game.jugadores)(game) {
           (
             current,
             jugador
           ) =>
             val botOpt = botsByJugadorType.get(jugador.jugadorType)
+            ZIO.log(s"bot $botOpt selected for player ${jugador.user.name}, jugadorType = ${jugador.jugadorType}") *>
             ZIO
               .foreach(botOpt)(bot =>
+                ZIO.log(s"Bot for player ${jugador.user.name} is playing") *>
                 bot
                   .takeTurn(current.id).provideSome[GameEnvironment](
                     ChutiSession.botSession(jugador.user).toLayer,
@@ -238,7 +240,7 @@ object GameService {
               satoshiPerPoint = oldGame.satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(user, JoinGame(user))
+            val (game2, _) = newGame.applyEvent(user, JoinGame(user, JugadorType.human))
             repository.gameOperations.upsert(game2)
           }
           _ <- ZIO.foreachDiscard(oldGame.jugadores.filter(_.id != user.id).map(_.user)) { u =>
@@ -264,7 +266,7 @@ object GameService {
               satoshiPerPoint = satoshiPerPoint,
               created = now
             )
-            val (game2, _) = newGame.applyEvent(user, JoinGame(user))
+            val (game2, _) = newGame.applyEvent(user, JoinGame(user, JugadorType.human))
             repository.gameOperations.upsert(game2)
           }
           _ <- repository.gameOperations.updatePlayers(upserted)
@@ -385,9 +387,9 @@ object GameService {
               ).provideLayer(godLayer)
           )(game => ZIO.succeed(game))
           afterApply <- {
-            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame(user, jugadorType: JugadorType))
+            val (joined, joinGame) = newOrRetrieved.applyEvent(user, JoinGame(user, jugadorType))
             val (started, startGame: GameEvent) =
-              if (joined.canTransitionTo(GameStatus.requiereSopa)) {
+              if (joined.canTransitionTo(GameStatus.cantando)) {
                 joined
                   .copy(gameStatus = GameStatus.requiereSopa)
                   .applyEvent(user, Sopa(firstSopa = true))

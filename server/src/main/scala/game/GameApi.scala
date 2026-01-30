@@ -304,6 +304,6 @@ object GameApi {
       @@ maxDepth(30)
       @@ printErrors
       @@ gameErrorHandler
-      @@ timeout(3.seconds)
+      @@ timeout(30.seconds)
 
 }

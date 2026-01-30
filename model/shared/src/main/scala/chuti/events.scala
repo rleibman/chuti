@@ -366,7 +366,7 @@ final case class InviteToGame(
 
 final case class JoinGame(
   joinedUser:          User,
-  jugadorType:         JugadorType = JugadorType.human,
+  jugadorType:         JugadorType,
   gameId:              GameId = GameId.empty,
   userId:              UserId = UserId.empty,
   index:               Option[Int] = None,
@@ -384,12 +384,24 @@ final case class JoinGame(
       throw GameError("Un jugador no puede estar dos veces en el mismo juego")
 
     val newPlayer = game.jugadores
-      .find(_.id == user.id).fold(Jugador(user, JugadorType.human))(j => j.copy(invited = false))
+      .find(_.id == user.id).fold(Jugador(user, jugadorType))(j => j.copy(invited = false))
+
+    val gameWithNewPlayer = game.copy(
+      jugadores = game.jugadores.filter(_.id != user.id) :+ newPlayer
+    )
+
+    // Check if we should transition to requiereSopa now that a player joined
+    val updatedGame =
+      if (gameWithNewPlayer.canTransitionTo(GameStatus.requiereSopa)) {
+        gameWithNewPlayer.copy(
+          jugadores = gameWithNewPlayer.jugadores.map(_.copy(invited = false)),
+          gameStatus = GameStatus.requiereSopa
+        )
+      } else
+        gameWithNewPlayer
 
     (
-      game.copy(
-        jugadores = game.jugadores.filter(_.id != user.id) :+ newPlayer
-      ),
+      updatedGame,
       copy(
         joinedUser = user,
         index = Option(game.currentEventIndex),
