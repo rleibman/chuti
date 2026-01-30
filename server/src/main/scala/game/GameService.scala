@@ -43,6 +43,9 @@ trait GameService extends GameEngine[GameTask] {
 
   def userStream(connectionId: ConnectionId): ZStream[ChutiSession & ZIORepository, GameError, UserEvent]
 
+  /** Resumes all games that may be stuck waiting for bot moves after server restart */
+  def resumeStuckGames(): ZIO[GameEnvironment, GameError, Int]
+
 }
 
 object GameService {
@@ -62,7 +65,7 @@ object GameService {
     event:        EventType
   ): ZIO[Any, Nothing, EventType] = {
     event match {
-      case _: NoOp => ZIO.succeed(event) //Don't broadcast no-ops
+      case _: NoOp => ZIO.succeed(event) // Don't broadcast no-ops
       case _ =>
 
         for {
@@ -183,7 +186,7 @@ object GameService {
                   )
             }
           _ <- ZIO.log(s"Game started: $gameStarted")
-          _ <- doAutoPlay(gameStarted)
+          _ <- doBotsAutoPlay(gameStarted)
         } yield true).mapError(GameError.apply)
 
       private val botsByJugadorType: Map[JugadorType, ChutiBot] = Map[JugadorType, ChutiBot](
@@ -192,26 +195,96 @@ object GameService {
 
       private val botDelay = Schedule.fixed(10.seconds).jittered.addDelay(_ => 2.seconds)
 
-      // TODO, we need to call this after human players play, don't blindly add it to `play` though, otherwise we get infinite loops
-      private def doAutoPlay(game: Game): ZIO[GameEnvironment, GameError, Game] = {
-        ZIO.foldLeft(game.jugadores)(game) {
-          (
-            current,
-            jugador
-          ) =>
-            val botOpt = botsByJugadorType.get(jugador.jugadorType)
-            ZIO.log(s"bot $botOpt selected for player ${jugador.user.name}, jugadorType = ${jugador.jugadorType}") *>
-            ZIO
-              .foreach(botOpt)(bot =>
-                ZIO.log(s"Bot for player ${jugador.user.name} is playing") *>
-                bot
-                  .takeTurn(current.id).provideSome[GameEnvironment](
-                    ChutiSession.botSession(jugador.user).toLayer,
-                    ZLayer.succeed(this: GameService)
+      // After human plays, let bots play in turn order until it's a human's turn
+      private def doBotsAutoPlay(game: Game): ZIO[GameEnvironment, GameError, Game] = {
+        ZIO.log(
+          s"doBotsAutoPlay: gameId=${game.id}, status=${game.gameStatus}, triunfo=${game.triunfo.map(_.toString).getOrElse("none")}, enJuego.size=${game.enJuego.size}"
+        ) *>
+          ZIO.log(
+            s"doBotsAutoPlay: players - ${game.jugadores.map(j => s"${j.user.name}(mano=${j.mano},cantante=${j.cantante},turno=${j.turno},cuantasCantas=${j.cuantasCantas.map(_.toString).getOrElse("none")})").mkString(", ")}"
+          ) *> {
+            // Determine who should play next based on game state
+            def getNextPlayer(game: Game): Option[Jugador] = {
+              game.gameStatus match {
+                case GameStatus.requiereSopa =>
+                  // Need to shuffle - player with turno=true
+                  game.jugadores.find(_.turno)
+                case GameStatus.cantando =>
+                  // During bidding, players go in turn order starting from turno
+                  // Find first player in turn order who hasn't bid yet
+                  game.jugadores.find(_.turno).flatMap { turnoPlayer =>
+                    // Check players in turn order: turno, next, next, next
+                    // scanLeft produces numPlayers+1 elements (initial + numPlayers iterations)
+                    // so we take only numPlayers elements to get exactly the right sequence
+                    val playersInOrder = (0 until game.numPlayers)
+                      .scanLeft(turnoPlayer) {
+                        (
+                          current,
+                          _
+                        ) =>
+                          game.nextPlayer(current)
+                      }.take(game.numPlayers) // Take only numPlayers elements (includes turno)
+
+                    playersInOrder.find(_.cuantasCantas.isEmpty)
+                  }
+                case GameStatus.jugando =>
+                  if (game.enJuego.isEmpty) {
+                    // Need to pide - player with mano=true
+                    game.jugadores.find(_.mano)
+                  } else {
+                    // Need to da - find next player who hasn't played in this trick
+                    val playedIds = game.enJuego.map(_._1).toSet
+                    val notPlayedYet = game.jugadores.filterNot(j => playedIds.contains(j.id))
+
+                    if (game.estrictaDerecha) {
+                      // Must go in strict order - next player after last one who played
+                      val lastPlayer = game.jugadores.find(_.id == game.enJuego.last._1).get
+                      val nextInOrder = game.nextPlayer(lastPlayer)
+                      if (!playedIds.contains(nextInOrder.id)) Some(nextInOrder) else None
+                    } else {
+                      // Can go in any order, but prefer going in order for bots
+                      notPlayedYet.headOption
+                    }
+                  }
+                case _ =>
+                  // Not in a playing state
+                  None
+              }
+            }
+
+            getNextPlayer(game) match {
+              case Some(nextPlayer) if botsByJugadorType.contains(nextPlayer.jugadorType) =>
+                // It's a bot's turn - use playInternal with the in-memory game
+                val bot = botsByJugadorType(nextPlayer.jugadorType)
+                for {
+                  _ <- ZIO.log(
+                    s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
                   )
-              )
-              .map(_.getOrElse(current))
-        }
+                  playEvent <- bot.decideTurn(nextPlayer.user, game)
+                  _         <- ZIO.log(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
+                  // Play the event using playInternal with the in-memory game and recursion disabled
+                  updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
+                    .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
+                  // Recursively check if another bot should play, but only if game state changed
+                  // If game didn't change (e.g., NoOpPlay), stop to prevent infinite recursion
+                  finalGame <-
+                    if (updatedGame.currentEventIndex == game.currentEventIndex) {
+                      ZIO.log(s"Bot play didn't change game state, stopping auto-play") *> ZIO.succeed(updatedGame)
+                    } else {
+                      doBotsAutoPlay(updatedGame)
+                    }
+                } yield finalGame
+              case Some(nextPlayer) =>
+                // It's a human's turn
+                ZIO.log(s"Auto-play: Next player is human ${nextPlayer.user.name}, stopping auto-play") *> ZIO.succeed(
+                  game
+                )
+              case None =>
+                // No one should play next
+                ZIO.log(s"Auto-play: No next player found in state ${game.gameStatus}, stopping auto-play") *> ZIO
+                  .succeed(game)
+            }
+          }
       }
 
       override def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game] =
@@ -243,15 +316,46 @@ object GameService {
             val (game2, _) = newGame.applyEvent(user, JoinGame(user, JugadorType.human))
             repository.gameOperations.upsert(game2)
           }
-          _ <- ZIO.foreachDiscard(oldGame.jugadores.filter(_.id != user.id).map(_.user)) { u =>
+          // Separate human and bot players
+          otherJugadores = oldGame.jugadores.filter(_.id != user.id)
+          humanPlayers = otherJugadores.filter(!_.user.isBot)
+          botPlayers = otherJugadores.filter(_.user.isBot)
+          // Invite human players
+          _ <- ZIO.foreachDiscard(humanPlayers.map(_.user)) { u =>
             inviteToGame(u.id, withFirstUser.id)
+          }
+          // Add bot players directly
+          withBots <- ZIO.foldLeft(botPlayers)(withFirstUser) {
+            (
+              game,
+              jugador
+            ) =>
+              val (withBot, _) = game.applyEvent(user, InviteToGame(invited = jugador.user))
+              repository.gameOperations.upsert(withBot)
           }
           afterInvites <-
             repository.gameOperations
-              .get(withFirstUser.id).map(
+              .get(withBots.id).map(
                 _.getOrElse(throw GameError("No existe juego previo"))
               )
-        } yield afterInvites).mapError(GameError.apply)
+          // Update game_players table for all players
+          _ <- repository.gameOperations.updatePlayers(afterInvites)
+          // If all players are now in the game, transition to requiereSopa and start
+          gameStarted <-
+            if (afterInvites.jugadores.size >= afterInvites.numPlayers) {
+              val (started, sopaEvent) = afterInvites
+                .copy(gameStatus = GameStatus.requiereSopa)
+                .applyEvent(user, Sopa(firstSopa = true))
+              for {
+                saved <- repository.gameOperations.upsert(started)
+                _     <- repository.gameOperations.updatePlayers(saved)
+                _     <- broadcast(gameEventQueues, sopaEvent)
+                _     <- doBotsAutoPlay(saved)
+              } yield saved
+            } else {
+              ZIO.succeed(afterInvites)
+            }
+        } yield gameStarted).mapError(GameError.apply)
 
       override def newGame(satoshiPerPoint: Long): ZIO[ChutiSession & ZIORepository, GameError, Game] =
         (for {
@@ -339,10 +443,9 @@ object GameService {
           repository <- ZIO.service[ZIORepository]
           postman    <- ZIO.service[Postman]
           gameOpt    <- repository.gameOperations.get(gameId)
-          invitedOpt <- repository.userOperations.get(userId)
+          invitedOpt <- repository.userOperations.get(userId).provideLayer(godLayer)
           afterInvitation <- ZIO.foreach(gameOpt) { game =>
-            if (invitedOpt.isEmpty)
-              ZIO.fail(GameError(s"El usuario $userId no existe"))
+            if (invitedOpt.isEmpty) ZIO.fail(GameError(s"El usuario $userId no existe"))
             else if (!game.jugadores.exists(_.user.id == user.id))
               ZIO.fail(
                 GameError(
@@ -571,34 +674,63 @@ object GameService {
       override def play(
         gameId:    GameId,
         playEvent: PlayEvent
-      ): ZIO[ZIORepository & ChutiSession, GameError, Game] = {
+      ): GameTask[Game] = playInternal(gameId, playEvent, triggerBotAutoPlay = true, gameOpt = None)
+
+      private def playInternal(
+        gameId:             GameId,
+        playEvent:          PlayEvent,
+        triggerBotAutoPlay: Boolean,
+        gameOpt:            Option[Game] = None
+      ): GameTask[Game] = {
 
         (for {
           repository <- ZIO.service[ZIORepository]
           userOpt    <- ZIO.serviceWith[ChutiSession](_.user)
           user       <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
 
-          gameOpt <- repository.gameOperations.get(gameId)
-          played <-
-            gameOpt.fold(throw GameError("No encontre ese juego")) { game =>
-              if (!game.jugadores.exists(_.user.id == user.id))
-                throw GameError("El usuario no esta jugando en este juego!!")
-              playEvent match {
-                case _: NoOpPlay =>
-                  // NoOp plays just return the current game state without changes
-                  ZIO.succeed((game, Seq.empty[GameEvent]))
-                case _ =>
-                  val (played, event) = game.applyEvent(user, playEvent)
-                  val withStatus = event.processStatusMessages(played)
-                  val (transitioned, transitionEvents) = checkPlayTransition(user, withStatus, event)
-                  repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
-              }
-            }
+          // Use provided game or fetch from DB
+          game <- gameOpt.fold(
+            repository.gameOperations
+              .get(gameId).flatMap(opt => ZIO.fromOption(opt).orElseFail(GameError("No encontre ese juego")))
+          )(ZIO.succeed(_))
+
+          _ <- ZIO.when(!game.jugadores.exists(_.user.id == user.id)) {
+            ZIO.fail(GameError("El usuario no esta jugando en este juego!!"))
+          }
+
+          played <- playEvent match {
+            case _: NoOpPlay =>
+              // NoOp plays just return the current game state without changes
+              ZIO.succeed((game, Seq.empty[GameEvent]))
+            case _ =>
+              val (played, event) = game.applyEvent(user, playEvent)
+              val withStatus = event.processStatusMessages(played)
+              val (transitioned, transitionEvents) = checkPlayTransition(user, withStatus, event)
+              repository.gameOperations.upsert(transitioned).map((_, event +: transitionEvents))
+          }
+
           _ <- ZIO.when(played._1.gameStatus == GameStatus.partidoTerminado) {
             updateAccounting(played._1)
           }
           _ <- ZIO.foreachDiscard(played._2)(broadcast(gameEventQueues, _))
-        } yield played._1).mapError(GameError.apply)
+          // Send chat message for game end events
+          _ <- ZIO.foreachDiscard(played._2) {
+            case terminaJuego: TerminaJuego =>
+              terminaJuego.gameStatusString.fold(ZIO.unit) { statusMsg =>
+                ChatService
+                  .sendMessage(
+                    statusMsg,
+                    played._1.channelId,
+                    None
+                  ).catchAll(error => ZIO.logError(s"Failed to send game end message to chat: ${error.msg}"))
+              }
+            case _ => ZIO.unit
+          }
+          // After broadcasting, let bots play if it's their turn (only if triggered by human play)
+          finalGame <-
+            if (triggerBotAutoPlay) doBotsAutoPlay(played._1)
+            else ZIO.succeed(played._1)
+        } yield finalGame).mapError(GameError.apply)
       }
 
       def updateAccounting(
@@ -678,6 +810,28 @@ object GameService {
             }
         }
 
+      override def resumeStuckGames(): ZIO[GameEnvironment, GameError, Int] =
+        (for {
+          repository <- ZIO.service[ZIORepository]
+          // Get all games in active states that might be waiting for bot moves
+          allGames <- repository.gameOperations.search(None).provideSomeLayer[ZIORepository](godLayer)
+          activeGames = allGames.filter(game =>
+            game.gameStatus == GameStatus.requiereSopa ||
+              game.gameStatus == GameStatus.cantando ||
+              game.gameStatus == GameStatus.jugando
+          )
+          _ <- ZIO.log(s"Found ${activeGames.size} active games, resuming bots...")
+          // For each active game, trigger bot auto-play (sequentially to avoid race conditions)
+          resumed <- ZIO.foreach(activeGames) { game =>
+            ZIO.log(s"Resuming game ${game.id}...") *>
+              doBotsAutoPlay(game)
+                .provideSomeLayer[GameEnvironment](godLayer)
+                .catchAll { error =>
+                  ZIO.logError(s"Error resuming game ${game.id}: ${error.msg}").as(game)
+                }
+          }
+        } yield resumed.size).provideSomeLayer[GameEnvironment](godLayer).mapError(GameError.apply)
+
     })
 
   def friend(
@@ -687,7 +841,7 @@ object GameService {
       user <- ZIO
         .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
       repository <- ZIO.service[ZIORepository]
-      friendOpt  <- repository.userOperations.get(friendId)
+      friendOpt  <- repository.userOperations.get(friendId).provideLayer(godLayer)
       friended   <- ZIO.foreach(friendOpt)(friend => repository.userOperations.friend(friendId))
       _ <- ZIO.foreachDiscard(friendOpt) { person =>
         ChatService
@@ -706,7 +860,7 @@ object GameService {
       user <- ZIO
         .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
       repository <- ZIO.service[ZIORepository]
-      enemyOpt   <- repository.userOperations.get(enemyId)
+      enemyOpt   <- repository.userOperations.get(enemyId).provideLayer(godLayer)
       unfriended <- ZIO.foreach(enemyOpt)(enemy => repository.userOperations.unfriend(enemyId))
       _ <- ZIO.foreachDiscard(enemyOpt) { person =>
         ChatService.sendMessage(

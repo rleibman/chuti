@@ -25,7 +25,12 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.react.reactStrings.center
 import net.leibman.chuti.semanticUiReact.components.{ModalActions, *}
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticWIDTHS}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
+  SemanticCOLORS,
+  SemanticICONS,
+  SemanticSIZES,
+  SemanticWIDTHS
+}
 import org.scalajs.dom.HTMLInputElement
 
 import scala.concurrent.duration.*

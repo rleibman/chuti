@@ -1240,6 +1240,10 @@ final case class TerminaJuego(
       val regalados =
         game.jugadores.filter(j => !j.cantante && j.filas.nonEmpty).map(_.user.name).mkString(",")
 
+      println(
+        s"TerminaJuego: ${j.user.name} bid ${j.cuantasCantas.map(c => s"$c (numFilas=${c.numFilas})").getOrElse("nothing")}, won ${j.filas.size} filas, yaSeHizo=${j.yaSeHizo}"
+      )
+
       if (j.yaSeHizo) {
         (
           false,

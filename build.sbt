@@ -56,10 +56,10 @@ enablePlugins(
 val betterFilesVersion = "3.9.2"
 val calibanVersion = "3.0.0"
 val calibanClientVersion = "3.0.0"
-val commonsCodecVersion = "1.20.0"
+val commonsCodecVersion = "1.21.0"
 val courierVersion = "4.0.0-RC1"
 val stlibVersion = "1.0.0"
-val flywayVersion = "11.20.3"
+val flywayVersion = "12.0.0"
 val izumiReflectVersion = "3.0.9"
 val jsoniterVersion = "2.38.8"
 val justSemverCoreVersion = "1.1.1"
@@ -68,7 +68,7 @@ val jwtZioJsonVersion = "11.0.3"
 val langchain4jOllamaVersion = "1.10.0"
 val langchainCoreVersion = "1.10.0"
 val langchainLibrariesVersion = "1.10.0-beta18"
-val logbackVersion = "1.5.26"
+val logbackVersion = "1.5.27"
 val mariadbVersion = "3.5.7"
 val openPdfVersion = "3.0.0"
 val qdrantVersion = "1.21.4"
@@ -213,7 +213,8 @@ lazy val server = project
     JavaServerAppPackaging,
     SystemloaderPlugin,
     SystemdPlugin,
-    CalibanPlugin
+    CalibanPlugin,
+    BuildInfoPlugin
   )
   .settings(debianSettings, commonSettings)
   .dependsOn(modelJVM, ai, analyticsJVM)

@@ -116,6 +116,7 @@ object GameApi {
   private given Schema[Any, Locale] = Schema.stringSchema.contramap(_.toString)
   private given Schema[Any, User] = Schema.gen[Any, User]
   private given Schema[Any, UserWallet] = Schema.gen[Any, UserWallet]
+  private given Schema[Any, Ficha] = Schema.gen[Any, Ficha]
   private given Schema[Any, Game] = Schema.gen[Any, Game]
 
   private given ArgBuilder[UserId] = ArgBuilder.long.map(UserId.apply)

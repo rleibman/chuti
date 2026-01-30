@@ -22,9 +22,9 @@
   at dao.RepositoryPermissionError$.apply(RepositoryError.scala:44)
   at dao.quill.QuillRepository.assertAuth$$anonfun$1$$anonfun$1(QuillRepository.scala:164)
 
-- (After fixing above) Abandona juego is not clearing the page correctly.
-- _ <- ZIO.logDebug("Game started"), is not showing in the logs.
-- Drop down for "cuantas cantas" is not working.
+DONE - (After fixing above) Abandona juego is not clearing the page correctly.
+DONE - _ <- ZIO.logDebug("Game started"), is not showingv in the logs.
+DONE - Drop down for "cuantas cantas" is not working.
 - Sounds don't always play.
 - Starting a game should automatically bring the user to the game page.
 - Entrar al juego should be removed from the menu if you're already in the game.

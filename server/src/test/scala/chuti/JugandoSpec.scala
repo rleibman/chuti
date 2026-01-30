@@ -42,7 +42,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
           gameStream
             .takeUntil {
               case PoisonPill(id, _) if id == gameId => true
-              case _                                       => false
+              case _                                 => false
             }.runCollect.fork
         _     <- Clock.sleep(1.second)
         mano1 <- juegaMano(gameId)
@@ -77,7 +77,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
           gameStream
             .takeUntil {
               case PoisonPill(id, _) if id == gameId => true
-              case _                                       => false
+              case _                                 => false
             }.runCollect.fork
         _     <- Clock.sleep(1.second)
         _     <- juegaMano(gameId)
@@ -114,7 +114,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
           gameStream
             .takeWhile {
               case PoisonPill(id, _) if id == gameId => false
-              case _                                       => true
+              case _                                 => true
             }.runCollect.fork
         _   <- Clock.sleep(1.second)
         end <- juegaHastaElFinal(gameId)

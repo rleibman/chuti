@@ -129,6 +129,12 @@ object Chuti extends ZIOApp {
       config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       // Run Flyway migrations first, before anything else
       _ <- FlywayMigration.runMigrations
+      // Resume any stuck games after restart
+      gameService <- ZIO.service[GameService]
+      resumedCount <- gameService
+        .resumeStuckGames()
+        .catchAll(error => ZIO.logError(s"Error resuming stuck games: ${error.msg}").as(0))
+      _ <- ZIO.logInfo(s"Resumed $resumedCount active games")
 //      rateLimiter <- ZIO.service[RateLimiter]
 //      _           <- RateLimiter.cleanupSchedule(rateLimiter)
 //      _           <- ZIO.logInfo("Rate limiter cleanup schedule started")

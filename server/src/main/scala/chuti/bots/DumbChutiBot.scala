@@ -186,26 +186,30 @@ case object DumbChutiBot extends ChutiBot {
     jugador: Jugador,
     game:    Game
   ): IO[GameError, PlayEvent] =
-    ZIO.succeed {
-      import CuantasCantas.*
-      val (cuantas, _) = calculaCanto(jugador, game)
+    ZIO
+      .succeed {
+        import CuantasCantas.*
+        val (cuantas, _) = calculaCanto(jugador, game)
 
-      val cuantasCantas =
-        if (cuantas <= 4 && jugador.turno)
-          Casa
-        else if (cuantas <= 4)
-          Buenas
-        else CuantasCantas.byNum(cuantas)
+        val cuantasCantas =
+          if (cuantas <= 4 && jugador.turno)
+            Casa
+          else if (cuantas <= 4)
+            Buenas
+          else CuantasCantas.byNum(cuantas)
 
-      if (jugador.turno) Canta(cuantasCantas)
-      else {
-        val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
-        if (cuantasCantas.prioridad > prev.prioridad)
-          Canta(cuantasCantas)
-        else
-          Canta(Buenas)
-      }
-    }
+        val result =
+          if (jugador.turno) Canta(cuantasCantas)
+          else {
+            val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
+            if (cuantasCantas.prioridad > prev.prioridad)
+              Canta(cuantasCantas)
+            else
+              Canta(Buenas)
+          }
+
+        result
+      }.tap(result => ZIO.log(s"Bot ${jugador.user.name} bidding: ${result.cuantasCantas}"))
 
   override def decideTurn(
     user: User,
@@ -230,8 +234,12 @@ case object DumbChutiBot extends ChutiBot {
           da(jugador, game)
       case GameStatus.cantando =>
         canta(jugador, game)
-      case GameStatus.partidoTerminado | GameStatus.`requiereSopa` =>
-        // Ya pa' que?
+      case GameStatus.requiereSopa =>
+        // Bot needs to shuffle the deck
+        // firstSopa is true if this is the very first shuffle (no events yet)
+        ZIO.succeed(Sopa(firstSopa = game.currentEventIndex == 0))
+      case GameStatus.partidoTerminado =>
+        // Game is over, nothing to do
         ZIO.succeed(NoOpPlay())
       case other =>
         ZIO.logInfo(s"I'm too dumb to know what to do when $other").as(NoOpPlay())

@@ -265,7 +265,7 @@ trait GameAbstractSpec {
         gameStream
           .takeUntil {
             case PoisonPill(id, _) if id == start.id => true
-            case _                                         => false
+            case _                                   => false
           }.runCollect.fork
       _           <- Clock.sleep(1.second)
       readyToPlay <- getReadyToPlay(start.id)
@@ -336,7 +336,7 @@ trait GameAbstractSpec {
         gameStream
           .takeUntil {
             case PoisonPill(id, _) if id == game.id => true
-            case _                                        => false
+            case _                                  => false
           }.runCollect.fork
       _      <- Clock.sleep(1.second)
       played <- juegaHastaElFinal(game.id)

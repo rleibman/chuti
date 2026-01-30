@@ -178,34 +178,44 @@ object Content extends ChutiComponent with TimerSupport {
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
     val audio = Audio("")
+
+    def playNextSound(): Unit = {
+      if (audioQueue.nonEmpty) {
+        audio.src = audioQueue.head
+        try {
+          audio.play()
+          ()
+        } catch {
+          case e: Exception =>
+            println(s"Error playing ${audio.src}: ${e.getMessage}")
+            // Skip this sound and try the next one
+            audioQueue.dequeue()
+            playNextSound()
+        }
+      }
+    }
+
     audio.onended = { (_: Event) =>
       if (audioQueue.size > 4) {
         // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
         println("play queue got bigger than 4, clearing queue")
         audioQueue.clear()
       } else audioQueue.dequeue()
-      if (audioQueue.nonEmpty) {
-        audio.src = audioQueue.head
-        audio.play()
-      }
+      playNextSound()
     }
 
-    def fn(
-      event:  Any,
-      source: js.UndefOr[java.lang.String],
-      lineno: js.UndefOr[scala.Double],
-      colno:  js.UndefOr[scala.Double],
-      error:  js.UndefOr[js.Error]
-    ) =
-      js.Any.fromUnit {
-        println(s"Error playing ${audio.src} ${error.map(_.message)}")
+    // Add error handler for when audio fails to load
+    audio.addEventListener(
+      "error",
+      { (_: Event) =>
+        println(s"Error loading sound: ${audio.src}")
+        // Skip this sound and try the next one
         if (audioQueue.nonEmpty) {
           audioQueue.dequeue()
-          audio.src = audioQueue.head
-          audio.play()
-          ()
         }
+        playNextSound()
       }
+    )
 
     def playSound(url: String): Callback = {
       $.state.flatMap { s =>
@@ -219,8 +229,7 @@ object Content extends ChutiComponent with TimerSupport {
             }
             audioQueue.enqueue(url)
             if (audioQueue.size == 1) {
-              audio.src = url
-              audio.play()
+              playNextSound()
             }
           }
         }

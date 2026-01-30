@@ -205,17 +205,20 @@ object AppRouter extends ChutiComponent {
                   chutiState.gameInProgress
                     .filter(g => g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado).map { _ =>
                       VdomArray(
-                        MenuItem()
+                        // Only show "Entrar al juego" if not already in game mode
+                        if (chutiState.gameViewMode != GameViewMode.game)
+                          MenuItem()
 //                          key("menuEntrarAlJuego",
-                          .onClick {
-                            (
-                              e,
-                              _
-                            ) =>
-                              chutiState
-                                .onGameViewModeChanged(GameViewMode.game) >> page
-                                .setEH(GameAppPage)(e)
-                          }(localized("Chuti.entrarAlJuego")),
+                            .onClick {
+                              (
+                                e,
+                                _
+                              ) =>
+                                chutiState
+                                  .onGameViewModeChanged(GameViewMode.game) >> page
+                                  .setEH(GameAppPage)(e)
+                            }(localized("Chuti.entrarAlJuego"))
+                        else EmptyVdom,
                         MenuItem()
 //                          key("menuCuentas",
                           .onClick {

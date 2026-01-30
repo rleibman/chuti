@@ -77,13 +77,17 @@ object CuantasCantas {
       case _ => Casa
     }
 
-  def byPriority(prioridad: Int): CuantasCantas = (Buenas +: values).find(_.prioridad == prioridad).get
+  def byPriority(prioridad: Int): Option[CuantasCantas] = (Buenas +: values).find(_.prioridad == prioridad)
 
   sealed abstract class CuantasCantas protected (
     val numFilas:  Int,
     val score:     Int,
     val prioridad: Int
-  ) {}
+  ) {
+
+    override def toString: String = s"CuantasCantas($numFilas, $score, $prioridad)"
+
+  }
 
   case object Casa extends CuantasCantas(4, 4, 4) {
 

@@ -594,6 +594,9 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
                 .filter(gp => gp.userId == lift(userId.value) && !gp.invited)
                 .join(games.filter(g => liftQuery(runningGames).contains(g.status)))
                 .on(_.gameId == _.id)
+                .sortBy { case (_, game) =>
+                  (game.status == lift(GameStatus.partidoTerminado: GameStatus), game.lastUpdated)
+                }(Ord(Ord.asc, Ord.descNullsLast))
                 .map(_._2)
             )
             .flatMap(a => ZIO.foreach(a.headOption)(_.toGame))

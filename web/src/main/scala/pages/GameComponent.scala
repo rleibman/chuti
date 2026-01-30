@@ -27,7 +27,12 @@ import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
+  SemanticCOLORS,
+  SemanticICONS,
+  SemanticSIZES,
+  SemanticShorthandItem
+}
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 
 import scala.scalajs.js.JSConverters.*
@@ -175,14 +180,14 @@ object GameComponent {
                         val cantanteActual =
                           game.jugadores.find(_.cantante).getOrElse(jugador)
                         val min = cantanteActual.cuantasCantas
-                          .map(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
+                          .flatMap(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
                             Canto5
                           )
                         val cantasOptions = (defaultCuantas +: CuantasCantas.posibilidades(min)).map { cuantas =>
                           DropdownItemProps()
                             .setText(cuantas.toString)
                             .set("key", cuantas.prioridad.toString)
-                            .setValue(cuantas.prioridad.toString)
+                            .setValue(cuantas.prioridad)
                         }.toJSArray
 
                         <.div(
@@ -192,16 +197,16 @@ object GameComponent {
                             .fluid(false)
                             .placeholder("Cuantas Cantas?") // TODO i8n
                             .selection(true)
-                            .value(s.cuantasCantas.getOrElse(defaultCuantas).prioridad.toDouble)
+                            .value(s.cuantasCantas.getOrElse(defaultCuantas).prioridad)
                             .options(cantasOptions)
                             .onChange {
                               (
                                 _,
                                 dropDownProps
                               ) =>
-                                val value = dropDownProps.value.asInstanceOf[Double].toInt
+                                val value = dropDownProps.value.asInstanceOf[Int]
                                 $.modState(
-                                  _.copy(cuantasCantas = Option(CuantasCantas.byPriority(value)))
+                                  _.copy(cuantasCantas = CuantasCantas.byPriority(value))
                                 )
                             }(),
                           Button
