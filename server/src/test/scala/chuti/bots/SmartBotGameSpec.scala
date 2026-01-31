@@ -48,7 +48,7 @@ object SmartBotGameSpec extends ZIOSpecDefault {
       val smartBot = SmartChutiBot.live(mockLLMService, config)
 
       for {
-        game <- ZIO.succeed(Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando))
+        game <- ZIO.succeed(TestGameHelper.createTestGame(gameStatus = GameStatus.cantando))
 
         // Test cantando phase
         turnoPlayer = game.jugadores.find(_.turno).get
@@ -69,7 +69,7 @@ object SmartBotGameSpec extends ZIOSpecDefault {
       val mockLLMService = new DumbBotBasedLLMService()
       val smartBot = SmartChutiBot.live(mockLLMService, config)
 
-      val game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.requiereSopa)
+      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.requiereSopa)
       val turnoPlayer = game.jugadores.find(_.turno).get
 
       for {
@@ -90,7 +90,7 @@ object SmartBotGameSpec extends ZIOSpecDefault {
       val smartBot = SmartChutiBot.live(mockLLMService, config)
 
       for {
-        game <- ZIO.succeed(Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando))
+        game <- ZIO.succeed(TestGameHelper.createTestGame(gameStatus = GameStatus.cantando))
 
         // Test that turno player never bids Buenas
         turnoPlayer = game.jugadores.find(_.turno).get

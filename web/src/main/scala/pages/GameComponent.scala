@@ -17,23 +17,20 @@
 package pages
 
 import _root_.util.LocalizedMessages
+import chuti.*
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import chuti.*
 import components.{Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
 import japgolly.scalajs.react.vdom.html_<^.*
+import net.leibman.chuti.react.mod.CSSProperties
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
-  SemanticCOLORS,
-  SemanticICONS,
-  SemanticSIZES,
-  SemanticShorthandItem
-}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
+import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.*
 
 import scala.scalajs.js.JSConverters.*
 
@@ -551,7 +548,61 @@ object GameComponent {
                       )
                     case None => <.div()
                   },
-                  <.div(^.className := "juegoStatusString", game.statusString)
+                  <.div(
+                    ^.className := "juegoStatusString",
+                    Popup()
+                      .style(CSSProperties().set("cursor", "pointer"))
+                      .trigger(
+                        Icon()
+                          .name(SemanticICONS.calculator)
+                          .size(SemanticSIZES.large)
+                      )
+                      .hoverable(true)
+                      .position(`bottom center`)(
+                        <.div(
+                          Table()
+                            .compact(true)
+                            .size(SemanticSIZES.small)(
+                              TableHeader()(
+                                TableRow()(
+                                  TableHeaderCell()("Jugador"),
+                                  TableHeaderCell()("Cuentas"),
+                                  TableHeaderCell()("Total")
+                                )
+                              ),
+                              TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                                case ((jugador, puntos, satoshi), jugadorIndex) =>
+                                  TableRow()
+                                    .withKey(s"cuentaPopup$jugadorIndex")
+                                    .className(
+                                      if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else ""
+                                    )(
+                                      TableCell()(jugador.user.name),
+                                      TableCell()(
+                                        jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                                          <.span(
+                                            ^.key         := s"cuenta_popup${jugadorIndex}_$cuentaIndex",
+                                            ^.className   := (if (cuenta.esHoyo) "hoyo" else ""),
+                                            ^.marginRight := 5.px,
+                                            s"${if (cuenta.puntos >= 0) "+" else ""}${cuenta.puntos}"
+                                          )
+                                        },
+                                        <.span(
+                                          ^.fontSize := "large",
+                                          ^.color    := "blue",
+                                          if (jugador.fueGanadorDelPartido) "➠" else ""
+                                        )
+                                      ),
+                                      TableCell()(
+                                        <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                                      )
+                                    )
+                              })
+                            )
+                        )
+                      ),
+                    game.statusString
+                  )
                 ),
                 game.enJuego.toVdomArray { case (user, ficha) =>
                   VdomArray(

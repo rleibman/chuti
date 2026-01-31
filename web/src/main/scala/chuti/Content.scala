@@ -113,10 +113,10 @@ object Content extends ChutiComponent with TimerSupport {
               // In a few seconds, just get the full game.
               Option(currentGame)
             case Some(index) =>
-              // If it's past, mark an error, how could we have a past event???
-              throw GameError(
-                s"Esto es imposible eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}"
-              )
+              // If it's a past event, just ignore it (already applied)
+              // This can happen when events are broadcast and the client has already caught up
+              println(s"Ignoring past event: eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}")
+              Option(currentGame)
           }
         }
         s.copy(chutiState =
@@ -177,45 +177,63 @@ object Content extends ChutiComponent with TimerSupport {
     }
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
-    val audio = Audio("")
+    // Cache Audio objects by URL to avoid re-fetching from server
+    val audioCache: mutable.Map[String, Audio] = mutable.Map()
+    var currentlyPlayingAudio: Option[Audio] = None
+
+    def getOrCreateAudio(url: String): Audio = {
+      audioCache.getOrElseUpdate(
+        url, {
+          val audio = Audio(url)
+
+          audio.onended = { (_: Event) =>
+            currentlyPlayingAudio = None
+            if (audioQueue.size > 4) {
+              // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
+              println("play queue got bigger than 4, clearing queue")
+              audioQueue.clear()
+            } else audioQueue.dequeue()
+            playNextSound()
+          }
+
+          // Add error handler for when audio fails to load
+          audio.addEventListener(
+            "error",
+            { (_: Event) =>
+              println(s"Error loading sound: ${audio.src}")
+              currentlyPlayingAudio = None
+              // Skip this sound and try the next one
+              if (audioQueue.nonEmpty) {
+                audioQueue.dequeue()
+              }
+              playNextSound()
+            }
+          )
+
+          audio
+        }
+      )
+    }
 
     def playNextSound(): Unit = {
       if (audioQueue.nonEmpty) {
-        audio.src = audioQueue.head
+        val url = audioQueue.head
+        val audio = getOrCreateAudio(url)
+        currentlyPlayingAudio = Some(audio)
         try {
+          audio.currentTime = 0 // Reset to start in case it was played before
           audio.play()
           ()
         } catch {
           case e: Exception =>
-            println(s"Error playing ${audio.src}: ${e.getMessage}")
+            println(s"Error playing $url: ${e.getMessage}")
+            currentlyPlayingAudio = None
             // Skip this sound and try the next one
             audioQueue.dequeue()
             playNextSound()
         }
       }
     }
-
-    audio.onended = { (_: Event) =>
-      if (audioQueue.size > 4) {
-        // If for whatever reason there's a bunch of errors, clear the queue after we've reached 4
-        println("play queue got bigger than 4, clearing queue")
-        audioQueue.clear()
-      } else audioQueue.dequeue()
-      playNextSound()
-    }
-
-    // Add error handler for when audio fails to load
-    audio.addEventListener(
-      "error",
-      { (_: Event) =>
-        println(s"Error loading sound: ${audio.src}")
-        // Skip this sound and try the next one
-        if (audioQueue.nonEmpty) {
-          audioQueue.dequeue()
-        }
-        playNextSound()
-      }
-    )
 
     def playSound(url: String): Callback = {
       $.state.flatMap { s =>

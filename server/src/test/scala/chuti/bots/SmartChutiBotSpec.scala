@@ -59,7 +59,7 @@ object SmartChutiBotSpec extends ZIOSpecDefault {
           timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
         )
         bot = SmartChutiBot.live(mockService, config)
-        game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
         jugador = game.jugadores.find(_.turno).get
         event <- bot.decideTurn(jugador.user, game)
       } yield assertTrue(
@@ -80,7 +80,7 @@ object SmartChutiBotSpec extends ZIOSpecDefault {
           timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
         )
         bot = SmartChutiBot.live(mockService, config)
-        game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
         jugador = game.jugadores.find(_.turno).get
         event <- bot.decideTurn(jugador.user, game)
       } yield assertTrue(
@@ -99,7 +99,7 @@ object SmartChutiBotSpec extends ZIOSpecDefault {
           timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
         )
         bot = SmartChutiBot.live(mockService, config)
-        game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
         jugador = game.jugadores.find(_.turno).get
         event <- bot.decideTurn(jugador.user, game)
       } yield assertTrue(

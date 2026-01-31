@@ -84,31 +84,69 @@ class SmartChutiBot(
       // 1. Generate legal moves
       legalMoves <- ZIO.succeed(MoveValidator.getLegalMoves(jugador, game))
 
-      // 2. Build prompt
-      prompt = PromptBuilder.buildPrompt(jugador, game, legalMoves)
+      // 2. Check if there's only one legal move - if so, skip LLM
+      event <- countLegalMoves(legalMoves) match {
+        case 1 =>
+          for {
+            _ <- ZIO.logInfo(s"Only one legal move for ${jugador.user.name}, skipping LLM")
+            singleMove <- getSingleLegalMove(legalMoves, game)
+          } yield singleMove
 
-      // 3. Call LLM with timeout and fallback
-      event <- llmService
-        .generate(prompt)
-        .timeout(config.timeout)
-        .flatMap {
-          case Some(response) =>
-            for {
-              _         <- ZIO.log(s"LLM raw response: $response")
-              decision  <- parseResponse(response, legalMoves)
-              playEvent <- convertToPlayEvent(decision, legalMoves, game)
-            } yield playEvent
-          case None =>
-            ZIO.logWarning(s"LLM timeout for bot ${jugador.user.name}, falling back to DumbBot") *>
-              DumbChutiBot.decideTurn(user, game)
-        }
-        .catchAll { error =>
-          ZIO.logError(s"LLM error for bot ${jugador.user.name}: $error, falling back to DumbBot") *>
-            DumbChutiBot.decideTurn(user, game)
-        }
+        case _ =>
+          // 3. Build prompt
+          val prompt = PromptBuilder.buildPrompt(jugador, game, legalMoves)
+
+          // 4. Call LLM with timeout and fallback
+          llmService
+            .generate(prompt)
+            .timeout(config.timeout)
+            .flatMap {
+              case Some(response) =>
+                for {
+                  _         <- ZIO.log(s"LLM raw response: $response")
+                  decision  <- parseResponse(response, legalMoves)
+                  playEvent <- convertToPlayEvent(decision, legalMoves, game)
+                } yield playEvent
+              case None =>
+                ZIO.logWarning(s"LLM timeout for bot ${jugador.user.name}, falling back to DumbBot") *>
+                  DumbChutiBot.decideTurn(user, game)
+            }
+            .catchAll { error =>
+              ZIO.logError(s"LLM error for bot ${jugador.user.name}: $error, falling back to DumbBot") *>
+                DumbChutiBot.decideTurn(user, game)
+            }
+      }
 
       _ <- ZIO.log(s"SmartBot ${jugador.user.name} decided: $event")
     } yield event
+  }
+
+  private def countLegalMoves(legalMoves: LegalMoves): Int = {
+    legalMoves.cantas.size +
+      legalMoves.pides.size +
+      legalMoves.das.size +
+      (if (legalMoves.caete) 1 else 0) +
+      (if (legalMoves.sopa) 1 else 0)
+  }
+
+  private def getSingleLegalMove(
+    legalMoves: LegalMoves,
+    game:       Game
+  ): IO[GameError, PlayEvent] = {
+    if (legalMoves.cantas.size == 1) {
+      ZIO.succeed(Canta(legalMoves.cantas.head))
+    } else if (legalMoves.pides.size == 1) {
+      val (ficha, triunfo, estrictaDerecha) = legalMoves.pides.head
+      ZIO.succeed(Pide(ficha = ficha, triunfo = Option(triunfo), estrictaDerecha = estrictaDerecha))
+    } else if (legalMoves.das.size == 1) {
+      ZIO.succeed(Da(legalMoves.das.head))
+    } else if (legalMoves.caete) {
+      ZIO.succeed(Caete())
+    } else if (legalMoves.sopa) {
+      ZIO.succeed(Sopa(firstSopa = game.currentEventIndex == 0))
+    } else {
+      ZIO.fail(GameError("No single legal move found"))
+    }
   }
 
   private def parseResponse(
@@ -159,9 +197,11 @@ class SmartChutiBot(
               f == ficha
             })
           _ <- ZIO
-            .fail(GameError(s"Invalid Pide ficha: you can't change triunfo"))
-            .when(triunfo != game.triunfo)
-        } yield Pide(ficha = ficha, triunfo = triunfo, estrictaDerecha = details.estrictaDerecha)
+            .fail(GameError(s"Cannot change triunfo: game has ${game.triunfo}, LLM suggested $triunfo"))
+            .when(triunfo.isDefined && triunfo != game.triunfo)
+          // Always use game's triunfo if already set, otherwise use LLM's suggestion (for initial pide)
+          finalTriunfo = if (game.triunfo.isDefined) game.triunfo else triunfo
+        } yield Pide(ficha = ficha, triunfo = finalTriunfo, estrictaDerecha = details.estrictaDerecha)
 
       case "da" =>
         for {

@@ -50,25 +50,33 @@ Strategic Heuristics (consider these when deciding):
    - Opponent close to 21: Don't save them! Let them fail their bid if possible
 
 3. **Playing Strategy**:
-   - Protect your bid if you're cantante (don't waste high tiles)
+   - Protect your bid if you're cantante (don't waste your highest value tiles)
    - If opponent is cantante and close to 21: Try to make them fail (hoyar)
-   - Save your strongest tiles (la mulota 6:6, high mules) for critical moments
+   - Save your strongest tiles (doubles and high value tiles) for critical moments
 
 4. **Risk Management**:
    - Making your bid >> winning maximum tricks
    - A hoyo (failed bid) costs you heavily - be conservative on close calls
    - If you can Caete (drop) safely, consider it rather than risk hoyo
 
-Legal Moves (choose ONE):
+Legal Moves (choose ONE from the list below):
 $legalMovesJson
+
+CRITICAL RULES:
+1. You MUST choose a move from the Legal Moves list above. NO other moves are valid.
+2. For "pide" and "da" moves, you can ONLY play tiles that are in YOUR HAND (shown in Game State).
+3. If trump is already set (shown in Game State above), you CANNOT change it.
+4. DO NOT play tiles you don't have - check your hand carefully!
 
 $examples
 
 Think step-by-step about:
-1. What is my hand strength? (count trump tiles, high tiles, mules)
-2. What is my position in the match? (am I winning/losing?)
-3. What are the risks? (can I make my bid? will opponents beat me?)
-4. What is the best strategy given the score? (conservative/aggressive)
+1. What tiles are in my hand? (Look at "Your hand" in Game State)
+2. What are my legal moves? (Look at the Legal Moves list - you can ONLY choose from this list)
+3. What is my position in the match? (am I winning/losing?)
+4. What are the risks? (can I make my bid? will opponents beat me?)
+5. What is the best strategy given the score? (conservative/aggressive)
+6. Which legal move best fits my strategy?
 
 Respond with ONLY a valid JSON object:
 {
@@ -173,25 +181,25 @@ Input: hand=[5:3, 4:2, 3:1, 2:0, 1:0, 4:1, 3:0], your_score=12, opponent_scores=
         """Examples with reasoning:
 
 **Example 1 - Playing to deny opponent:**
-Input: hand=[4:2, 4:5], table=[opponent:3:3], trump=6, cantante=opponent, opponent_score=17
+Input: hand=[4:2, 4:5], table=[opponent:3:3], trump=6, cantante=opponent, opponent_score=17, legal_moves=[4:2, 4:5]
 {
-  "reasoning": "Opponent is cantante with 17 points and bid Casa (4 tricks). They've won 3 tricks already - one more and they hit 21 and win the match! The 4 is requested suit. Strategic heuristic: Deny opponent their win. Play my strongest 4 (4:5) to try to win this trick and deny them.",
+  "reasoning": "First, I check my hand: 4:2, 4:5. Opponent is cantante with 17 points and bid Casa (4 tricks). They've won 3 tricks already - one more and they hit 21 and win the match! The 4 is requested suit. My legal moves are 4:2 and 4:5 - I must play a 4. Strategic heuristic: Deny opponent their win. Play my strongest 4 (4:5) to try to win this trick.",
   "moveType": "da",
   "details": {"ficha": "4:5"}
 }
 
 **Example 2 - Saving strong tiles:**
-Input: hand=[6:6, 5:2, 3:1], table=[opponent:4:2], trump=6, cantante=me, my_bid=Casa, won_tricks=3
+Input: hand=[6:6, 5:2, 3:1], table=[opponent:4:2], trump=6, cantante=me, my_bid=Casa, won_tricks=3, legal_moves=[6:6, 5:2, 3:1]
 {
-  "reasoning": "I'm cantante and already won 3 tricks - I only need 1 more to make my Casa bid. Opponent played 4:2. I don't have a 4, so I can play anything. Strategic heuristic: Protect my high tiles (6:6) for later tricks. Play my weakest tile (3:1) since I don't need to win this trick.",
+  "reasoning": "First, I check my hand: 6:6, 5:2, 3:1. I'm cantante and already won 3 tricks - I only need 1 more to make my Casa bid. Opponent played 4:2. I don't have a 4, so my legal moves show I can play any of my tiles: 6:6, 5:2, or 3:1. Strategic heuristic: Protect my high tiles for later. Play my weakest tile (3:1) since I don't need to win this trick.",
   "moveType": "da",
   "details": {"ficha": "3:1"}
 }
 
-**Example 3 - Initial pide with strong hand:**
-Input: hand=[6:6, 6:5, 6:4, 6:3, 5:2, 4:1, 3:0], cantante=me, bid=Cinco
+**Example 3 - Initial pide choosing trump:**
+Input: hand=[6:6, 6:5, 6:4, 6:3, 5:2, 4:1, 3:0], cantante=me, bid=Cinco, legal_moves=[6:6, 6:5, 6:4, 6:3, 5:2, 4:1, 3:0]
 {
-  "reasoning": "I'm cantante with very strong 6s (6:6, 6:5, 6:4, 6:3). I bid Cinco (5 tricks). Strategic heuristic: Choose trump that maximizes my winning potential. Trump 6 gives me 4 strong trump tiles. I'll pide 6:6 (la mulota) to establish trump 6.",
+  "reasoning": "First, I check my hand: 6:6, 6:5, 6:4, 6:3, 5:2, 4:1, 3:0. I'm cantante and bid Cinco (5 tricks). I have four 6s which is my strongest suit. Strategic heuristic: Choose trump that maximizes my winning potential. Trump 6 gives me 4 strong trump tiles. Looking at my legal moves, I can pide any tile from my hand. I'll pide my strongest tile 6:6 to establish trump 6.",
   "moveType": "pide",
   "details": {"ficha": "6:6", "triunfo": "6", "estrictaDerecha": false}
 }"""

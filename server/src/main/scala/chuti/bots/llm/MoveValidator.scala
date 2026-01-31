@@ -126,9 +126,10 @@ object MoveValidator {
     game:    Game
   ): LegalMoves = {
     // All player's fichas are valid for pide
-    // triunfo is already set in the game, so we use a dummy value here
+    // Use the actual game triunfo (already set, cannot be changed)
+    val currentTriunfo = game.triunfo.getOrElse(SinTriunfos)
     val pides = jugador.fichas.map { ficha =>
-      (ficha, SinTriunfos: Triunfo, false) // triunfo already set in game, estrictaDerecha defaults to false
+      (ficha, currentTriunfo, false) // Use game's triunfo, estrictaDerecha defaults to false
     }
 
     val canCaete = game.puedesCaerte(jugador)
@@ -216,6 +217,10 @@ object MoveValidator {
       )
     }
 
+    // Check if all pides have the same triunfo (means triunfo is already set and cannot change)
+    val allSameTriunfo = moves.pides.nonEmpty && moves.pides.map(_._2).distinct.size <= 1
+    val includeTriunfoInJson = !allSameTriunfo
+
     // Add Pide options
     moves.pides.foreach {
       case (ficha, triunfo, estrictaDerecha) =>
@@ -224,7 +229,7 @@ object MoveValidator {
           "ficha" -> Json.Str(ficha.toString)
         )
         val triunfoField =
-          if (triunfo != SinTriunfos) Seq("triunfo" -> Json.Str(triunfo.toString))
+          if (includeTriunfoInJson && triunfo != SinTriunfos) Seq("triunfo" -> Json.Str(triunfo.toString))
           else Seq.empty
         val derechaField =
           if (estrictaDerecha) Seq("estrictaDerecha" -> Json.Bool(true))

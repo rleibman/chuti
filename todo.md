@@ -1,5 +1,5 @@
 # Bugs
-- I'm playing with bots only, and at the end of the game it seems like it's trying to update the wallet (games against bots don't use wallet). On top of that it gets the error:
+DONE - I'm playing with bots only, and at the end of the game it seems like it's trying to update the wallet (games against bots don't use wallet). On top of that it gets the error:
   Execution Error: GameError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`)) dao.RepositoryError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`))
   dao.RepositoryError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`))
   at dao.RepositoryError$.apply(RepositoryError.scala:26)
@@ -11,9 +11,9 @@
   at zio.internal.FiberRuntime.runLoop(FiberRuntime.scala:1195)
   at zio.internal.FiberRuntime.runLoop(FiberRuntime.scala:1311)
 
-- In GameService:
-- After starting a game, the game should immediately allow bots to play. 
-- After anyone (bot or human) plays, the game shoud allow bots to play.
+DONE - In GameService:
+DONE - After starting a game, the game should immediately allow bots to play. 
+DONE - After anyone (bot or human) plays, the game shoud allow bots to play.
 
 - When I get to the lobby I see: 
 - Initializing LobbyComponent
@@ -37,10 +37,11 @@
 DONE - (After fixing above) Abandona juego is not clearing the page correctly.
 DONE - _ <- ZIO.logDebug("Game started"), is not showingv in the logs.
 DONE - Drop down for "cuantas cantas" is not working.
-- Sounds don't always play.
+BETTER - Sounds don't always play.
 - Starting a game should automatically bring the user to the game page.
-- Entrar al juego should be removed from the menu if you're already in the game.
+BETTER - Entrar al juego should be removed from the menu if you're already in the game.
 
 # Enhancements
-- Make sure the domino images are cached by the browser so they load instantly and you don't have to get them again.
-- Figure out how to make translations work. Right now everything is in spanish, we've put in a lot of `TODO i8n` throughut. Look at https://taig.github.io/babel/ and see if we can use that library 
+DONE - Make sure the domino images are cached by the browser so they load instantly and you don't have to get them again.
+- Figure out how to make translations work. Right now everything is in spanish, we've put in a lot of `TODO i8n` throughut. Look at https://taig.github.io/babel/ and see if we can use that library
+INPROG - Cuentas: aside from a menu item, it should also be a hover on an image in the center console.

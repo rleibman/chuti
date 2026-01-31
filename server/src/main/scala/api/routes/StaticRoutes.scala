@@ -38,6 +38,35 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
     }
   }
 
+  private def getCacheHeaders(path: String): Headers = {
+    val isImage = path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
+                  path.endsWith(".svg") || path.endsWith(".gif") || path.endsWith(".webp")
+    val isFont = path.endsWith(".woff") || path.endsWith(".woff2") || path.endsWith(".ttf") || path.endsWith(".eot")
+    val isSound = path.endsWith(".mp3") || path.endsWith(".wav") || path.endsWith(".ogg") ||
+                  path.endsWith(".m4a") || path.endsWith(".aac")
+    val isJs = path.endsWith(".js") || path.endsWith(".js.map")
+    val isCss = path.endsWith(".css")
+
+    if (isImage || isFont || isSound) {
+      // Cache images, fonts, and sounds for 1 year (they rarely change)
+      // public: can be cached by browsers and CDNs
+      // immutable: tells browser the file will never change at this URL
+      Headers(
+        Header.Custom("Cache-Control", "public, max-age=31536000, immutable")
+      )
+    } else if (isJs || isCss) {
+      // Cache JS and CSS for 1 day (may change with deployments)
+      Headers(
+        Header.Custom("Cache-Control", "public, max-age=86400")
+      )
+    } else {
+      // HTML and other files: cache for 5 minutes
+      Headers(
+        Header.Custom("Cache-Control", "public, max-age=300, must-revalidate")
+      )
+    }
+  }
+
   override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
     ZIO.succeed(
       Routes(
@@ -53,6 +82,7 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
                   file <- file(s"$staticContentDir/index.html")
                 } yield file
               }.mapError(GameError(_))
+              .map(response => response.updateHeaders(_ => getCacheHeaders("index.html")))
         }.flatten,
         Method.GET / trailing -> handler {
           (
@@ -68,8 +98,11 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
                   config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
                   staticContentDir = config.chuti.http.staticContentDir
                   file <- file(s"$staticContentDir/$somethingElse")
+                  cacheHeaders = getCacheHeaders(somethingElse)
+                  _ <- ZIO.logDebug(s"Serving static file: $somethingElse with cache headers")
                 } yield file
               }.mapError(GameError(_))
+              .map(response => response.updateHeaders(_ => getCacheHeaders(somethingElse)))
               .contramap[(Path, Request)](_._2)
         }
       )

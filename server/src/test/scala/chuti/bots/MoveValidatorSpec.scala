@@ -28,7 +28,7 @@ object MoveValidatorSpec extends ZIOSpecDefault {
 
   def spec = suite("MoveValidatorSpec")(
     test("generates valid Canta options for turno player") {
-      val game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
       val jugador = game.jugadores.find(_.turno).get
 
       val legalMoves = MoveValidator.getLegalMoves(jugador, game)
@@ -42,7 +42,7 @@ object MoveValidatorSpec extends ZIOSpecDefault {
       )
     },
     test("generates Buenas for non-turno player") {
-      val game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
       val jugador = game.jugadores.find(!_.turno).get
 
       val legalMoves = MoveValidator.getLegalMoves(jugador, game)
@@ -50,7 +50,7 @@ object MoveValidatorSpec extends ZIOSpecDefault {
       assertTrue(legalMoves.cantas.contains(Buenas))
     },
     test("allows Sopa only for turno player in requiereSopa phase") {
-      val game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.requiereSopa)
+      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.requiereSopa)
       val turnoJugador = game.jugadores.find(_.turno).get
       val otherJugador = game.jugadores.find(!_.turno).get
 
@@ -63,7 +63,7 @@ object MoveValidatorSpec extends ZIOSpecDefault {
       )
     },
     test("toJsonOptions generates valid JSON") {
-      val game = Game(id = GameId.empty, created = java.time.Instant.now.nn).copy(gameStatus = GameStatus.cantando)
+      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
       val jugador = game.jugadores.find(_.turno).get
       val legalMoves = MoveValidator.getLegalMoves(jugador, game)
 

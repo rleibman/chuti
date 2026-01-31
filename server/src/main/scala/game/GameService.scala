@@ -738,14 +738,19 @@ object GameService {
       ): ZIO[ZIORepository, RepositoryError, List[UserWallet]] = {
         ZIO
           .foreach(game.cuentasCalculadas) { case (jugador, _, satoshi) =>
-            for {
-              repository <- ZIO.service[ZIORepository]
-              walletOpt  <- repository.userOperations.getWallet(jugador.id)
-              updated <- ZIO.foreach(walletOpt)(wallet =>
-                repository.userOperations
-                  .updateWallet(wallet.copy(amount = wallet.amount + satoshi)).provideLayer(godLayer)
-              )
-            } yield updated.toList
+            // Only update wallet for human players (bots don't have wallet entries)
+            if (jugador.jugadorType == JugadorType.human) {
+              for {
+                repository <- ZIO.service[ZIORepository]
+                walletOpt  <- repository.userOperations.getWallet(jugador.id)
+                updated <- ZIO.foreach(walletOpt)(wallet =>
+                  repository.userOperations
+                    .updateWallet(wallet.copy(amount = wallet.amount + satoshi)).provideLayer(godLayer)
+                )
+              } yield updated.toList
+            } else {
+              ZIO.succeed(List.empty[UserWallet])
+            }
           }.provideSomeLayer[
             ZIORepository
           ](godLayer).map(_.flatten.toList)
