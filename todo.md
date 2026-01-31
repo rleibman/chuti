@@ -1,4 +1,16 @@
 # Bugs
+- I'm playing with bots only, and at the end of the game it seems like it's trying to update the wallet (games against bots don't use wallet). On top of that it gets the error:
+  Execution Error: GameError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`)) dao.RepositoryError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`))
+  dao.RepositoryError: (conn=26710) Cannot add or update a child row: a foreign key constraint fails (`chuti`.`userWallet`, CONSTRAINT `wallet_user_1` FOREIGN KEY (`userId`) REFERENCES `user` (`id`))
+  at dao.RepositoryError$.apply(RepositoryError.scala:26)
+  at dao.quill.QuillRepository.dao$quill$QuillRepository$$anon$1$$_$getWallet$$anonfun$8(QuillRepository.scala:447)
+  at zio.Cause$Fail.map(Cause.scala:998)
+  at zio.ZIO.mapError$$anonfun$1(ZIO.scala:1003)
+  at zio.ZIO.mapErrorCause$$anonfun$1(ZIO.scala:1015)
+  at zio.internal.FiberRuntime.runLoop(FiberRuntime.scala:1235)
+  at zio.internal.FiberRuntime.runLoop(FiberRuntime.scala:1195)
+  at zio.internal.FiberRuntime.runLoop(FiberRuntime.scala:1311)
+
 - In GameService:
 - After starting a game, the game should immediately allow bots to play. 
 - After anyone (bot or human) plays, the game shoud allow bots to play.

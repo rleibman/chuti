@@ -669,8 +669,9 @@ final case class Pide(
     jugador:         Jugador,
     game:            Game
   ): (Game, Pide) = {
-    if (game.triunfo.fold(false)(_ != triunfo))
-      throw GameError("No puedes cambiar triunfos cuando se te antoje.")
+    if (game.triunfo.fold(false)(_ != triunfo)) {
+      throw GameError(s"No puedes cambiar triunfos cuando se te antoje. Era ${game.triunfo} y quieres $triunfo")
+    }
     val modified = game
       .copy(
         triunfo = Option(triunfo),

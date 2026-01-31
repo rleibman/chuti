@@ -21,6 +21,7 @@ import auth.*
 import auth.oauth.{OAuthService, OAuthStateStore}
 import chat.ChatService
 import chuti.*
+import chuti.bots.SmartChutiBot
 import dao.*
 import dao.quill.QuillRepository
 import game.GameService
@@ -84,6 +85,24 @@ object EnvironmentBuilder {
   val repoLayer: ZLayer[ConfigurationService, ConfigurationError, ZIORepository] =
     QuillRepository.uncached >>> ZIORepository.cached
 
+  // AI layers - optional, only created if config is present
+  private val smartBotLayer: ZLayer[ConfigurationService, Nothing, Option[SmartChutiBot]] =
+    ZLayer.fromZIO(
+      ZIO
+        .serviceWithZIO[ConfigurationService](_.appConfig)
+        .flatMap { appConfig =>
+          appConfig.chuti.ai match {
+            case Some(aiConfig) =>
+              val config = aiConfig.ollama
+              val smartBot = SmartChutiBot.liveWithConfig(config)
+                ZIO.some(smartBot) <* ZIO.logInfo(s"SmartBot initialized with Ollama at ${config.baseUrl}")
+            case None =>
+                ZIO.none <* ZIO.logInfo("AI config not found, SmartBot will not be available")
+          }
+        }
+        .orDieWith(e => new RuntimeException(s"Failed to initialize SmartBot: $e"))
+    )
+
   val live: ULayer[ChutiEnvironment] = ZLayer
     .make[ChutiEnvironment](
       ChutiAuthServer.live,
@@ -94,6 +113,7 @@ object EnvironmentBuilder {
       oauthServiceLayer,
       OAuthStateStore.live(),
       ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
+      smartBotLayer,
       GameService.make(),
       ChatService.make(),
       FlywayMigration.live
@@ -110,6 +130,7 @@ object EnvironmentBuilder {
       TokenHolder.liveLayer,
       oauthServiceLayer,
       OAuthStateStore.live(),
+      smartBotLayer,
       GameService.make(),
       ChatService.make(),
       FlywayMigration.live
@@ -141,6 +162,7 @@ object EnvironmentBuilder {
             .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
         } yield TokenHolder.tempCache(cache)),
         OAuthStateStore.live(),
+        smartBotLayer,
         GameService.make(),
         ChatService.make(),
         ChutiAuthServer.live,

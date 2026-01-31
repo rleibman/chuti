@@ -16,6 +16,7 @@
 
 package api
 
+import ai.{AIConfig, OllamaConfig}
 import auth.oauth.OAuthProviderConfig
 import auth.{AuthConfig, SecretKey}
 import chuti.GameError
@@ -101,7 +102,8 @@ case class ChutiConfig(
   rateLimit: RateLimitConfig,
   flyway:    FlywayConfig,
   oauth:     Map[String, OAuthProviderConfig],
-  analytics: AnalyticsConfig
+  analytics: AnalyticsConfig,
+  ai:        Option[AIConfig] = None
 )
 
 object AppConfig {

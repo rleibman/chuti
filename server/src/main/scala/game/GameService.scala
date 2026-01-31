@@ -21,7 +21,7 @@ import api.{*, given}
 import chat.*
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
-import chuti.bots.{ChutiBot, DumbChutiBot}
+import chuti.bots.{ChutiBot, DumbChutiBot, SmartChutiBot}
 import chuti.{*, given}
 import dao.{RepositoryError, ZIORepository}
 import mail.Postman
@@ -83,10 +83,11 @@ object GameService {
     }
   }
 
-  def make(): ULayer[GameService] =
+  def make(): ZLayer[Option[SmartChutiBot], Nothing, GameService] =
     ZLayer.fromZIO(for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])
+      smartBotOpt     <- ZIO.service[Option[SmartChutiBot]]
     } yield new GameService {
 
       val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
@@ -180,7 +181,7 @@ object GameService {
                 _
               ) =>
                 // If there's not enough human players, we need to add some bots
-                joinGame(Option(foldedGame), JugadorType.dumbBot)
+                joinGame(Option(foldedGame), JugadorType.smartBot)
                   .provideSomeLayer[ZIORepository & Postman & TokenHolder](
                     botLayer
                   )
@@ -189,102 +190,101 @@ object GameService {
           _ <- doBotsAutoPlay(gameStarted)
         } yield true).mapError(GameError.apply)
 
-      private val botsByJugadorType: Map[JugadorType, ChutiBot] = Map[JugadorType, ChutiBot](
-        JugadorType.dumbBot -> DumbChutiBot
-      )
+      private val botsByJugadorType: Map[JugadorType, ChutiBot] = {
+        val base = Map[JugadorType, ChutiBot](
+          JugadorType.dumbBot -> DumbChutiBot
+        )
+        smartBotOpt match {
+          case Some(smartBot) => base + (JugadorType.smartBot -> smartBot)
+          case None           => base
+        }
+      }
 
       private val botDelay = Schedule.fixed(10.seconds).jittered.addDelay(_ => 2.seconds)
 
       // After human plays, let bots play in turn order until it's a human's turn
       private def doBotsAutoPlay(game: Game): ZIO[GameEnvironment, GameError, Game] = {
-        ZIO.log(
-          s"doBotsAutoPlay: gameId=${game.id}, status=${game.gameStatus}, triunfo=${game.triunfo.map(_.toString).getOrElse("none")}, enJuego.size=${game.enJuego.size}"
-        ) *>
-          ZIO.log(
-            s"doBotsAutoPlay: players - ${game.jugadores.map(j => s"${j.user.name}(mano=${j.mano},cantante=${j.cantante},turno=${j.turno},cuantasCantas=${j.cuantasCantas.map(_.toString).getOrElse("none")})").mkString(", ")}"
-          ) *> {
-            // Determine who should play next based on game state
-            def getNextPlayer(game: Game): Option[Jugador] = {
-              game.gameStatus match {
-                case GameStatus.requiereSopa =>
-                  // Need to shuffle - player with turno=true
-                  game.jugadores.find(_.turno)
-                case GameStatus.cantando =>
-                  // During bidding, players go in turn order starting from turno
-                  // Find first player in turn order who hasn't bid yet
-                  game.jugadores.find(_.turno).flatMap { turnoPlayer =>
-                    // Check players in turn order: turno, next, next, next
-                    // scanLeft produces numPlayers+1 elements (initial + numPlayers iterations)
-                    // so we take only numPlayers elements to get exactly the right sequence
-                    val playersInOrder = (0 until game.numPlayers)
-                      .scanLeft(turnoPlayer) {
-                        (
-                          current,
-                          _
-                        ) =>
-                          game.nextPlayer(current)
-                      }.take(game.numPlayers) // Take only numPlayers elements (includes turno)
+        // Determine who should play next based on game state
+        def getNextPlayer(game: Game): Option[Jugador] = {
+          game.gameStatus match {
+            case GameStatus.requiereSopa =>
+              // Need to shuffle - player with turno=true
+              game.jugadores.find(_.turno)
+            case GameStatus.cantando =>
+              // During bidding, players go in turn order starting from turno
+              // Find first player in turn order who hasn't bid yet
+              game.jugadores.find(_.turno).flatMap { turnoPlayer =>
+                // Check players in turn order: turno, next, next, next
+                // scanLeft produces numPlayers+1 elements (initial + numPlayers iterations)
+                // so we take only numPlayers elements to get exactly the right sequence
+                val playersInOrder = (0 until game.numPlayers)
+                  .scanLeft(turnoPlayer) {
+                    (
+                      current,
+                      _
+                    ) =>
+                      game.nextPlayer(current)
+                  }.take(game.numPlayers) // Take only numPlayers elements (includes turno)
 
-                    playersInOrder.find(_.cuantasCantas.isEmpty)
-                  }
-                case GameStatus.jugando =>
-                  if (game.enJuego.isEmpty) {
-                    // Need to pide - player with mano=true
-                    game.jugadores.find(_.mano)
-                  } else {
-                    // Need to da - find next player who hasn't played in this trick
-                    val playedIds = game.enJuego.map(_._1).toSet
-                    val notPlayedYet = game.jugadores.filterNot(j => playedIds.contains(j.id))
-
-                    if (game.estrictaDerecha) {
-                      // Must go in strict order - next player after last one who played
-                      val lastPlayer = game.jugadores.find(_.id == game.enJuego.last._1).get
-                      val nextInOrder = game.nextPlayer(lastPlayer)
-                      if (!playedIds.contains(nextInOrder.id)) Some(nextInOrder) else None
-                    } else {
-                      // Can go in any order, but prefer going in order for bots
-                      notPlayedYet.headOption
-                    }
-                  }
-                case _ =>
-                  // Not in a playing state
-                  None
+                playersInOrder.find(_.cuantasCantas.isEmpty)
               }
-            }
+            case GameStatus.jugando =>
+              if (game.enJuego.isEmpty) {
+                // Need to pide - player with mano=true
+                game.jugadores.find(_.mano)
+              } else {
+                // Need to da - find next player who hasn't played in this trick
+                val playedIds = game.enJuego.map(_._1).toSet
+                val notPlayedYet = game.jugadores.filterNot(j => playedIds.contains(j.id))
 
-            getNextPlayer(game) match {
-              case Some(nextPlayer) if botsByJugadorType.contains(nextPlayer.jugadorType) =>
-                // It's a bot's turn - use playInternal with the in-memory game
-                val bot = botsByJugadorType(nextPlayer.jugadorType)
-                for {
-                  _ <- ZIO.log(
-                    s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
-                  )
-                  playEvent <- bot.decideTurn(nextPlayer.user, game)
-                  _         <- ZIO.log(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
-                  // Play the event using playInternal with the in-memory game and recursion disabled
-                  updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
-                    .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
-                  // Recursively check if another bot should play, but only if game state changed
-                  // If game didn't change (e.g., NoOpPlay), stop to prevent infinite recursion
-                  finalGame <-
-                    if (updatedGame.currentEventIndex == game.currentEventIndex) {
-                      ZIO.log(s"Bot play didn't change game state, stopping auto-play") *> ZIO.succeed(updatedGame)
-                    } else {
-                      doBotsAutoPlay(updatedGame)
-                    }
-                } yield finalGame
-              case Some(nextPlayer) =>
-                // It's a human's turn
-                ZIO.log(s"Auto-play: Next player is human ${nextPlayer.user.name}, stopping auto-play") *> ZIO.succeed(
-                  game
-                )
-              case None =>
-                // No one should play next
-                ZIO.log(s"Auto-play: No next player found in state ${game.gameStatus}, stopping auto-play") *> ZIO
-                  .succeed(game)
-            }
+                if (game.estrictaDerecha) {
+                  // Must go in strict order - next player after last one who played
+                  val lastPlayer = game.jugadores.find(_.id == game.enJuego.last._1).get
+                  val nextInOrder = game.nextPlayer(lastPlayer)
+                  if (!playedIds.contains(nextInOrder.id)) Some(nextInOrder) else None
+                } else {
+                  // Can go in any order, but prefer going in order for bots
+                  notPlayedYet.headOption
+                }
+              }
+            case _ =>
+              // Not in a playing state
+              None
           }
+        }
+
+        getNextPlayer(game) match {
+          case Some(nextPlayer) if botsByJugadorType.contains(nextPlayer.jugadorType) =>
+            // It's a bot's turn - use playInternal with the in-memory game
+            val bot = botsByJugadorType(nextPlayer.jugadorType)
+            for {
+              _ <- ZIO.log(
+                s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
+              )
+              playEvent <- bot.decideTurn(nextPlayer.user, game)
+              _         <- ZIO.log(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
+              // Play the event using playInternal with the in-memory game and recursion disabled
+              updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
+                .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
+              // Recursively check if another bot should play, but only if game state changed
+              // If game didn't change (e.g., NoOpPlay), stop to prevent infinite recursion
+              finalGame <-
+                if (updatedGame.currentEventIndex == game.currentEventIndex) {
+                  ZIO.log(s"Bot play didn't change game state, stopping auto-play") *> ZIO.succeed(updatedGame)
+                } else {
+                  doBotsAutoPlay(updatedGame)
+                }
+            } yield finalGame
+          case Some(nextPlayer) =>
+            // It's a human's turn
+            ZIO.log(s"Auto-play: Next player is human ${nextPlayer.user.name}, stopping auto-play") *> ZIO.succeed(
+              game
+            )
+          case None =>
+            // No one should play next
+            ZIO.log(s"Auto-play: No next player found in state ${game.gameStatus}, stopping auto-play") *> ZIO
+              .succeed(game)
+        }
       }
 
       override def joinRandomGame(): ZIO[ChutiSession & ZIORepository, GameError, Game] =
@@ -870,5 +870,8 @@ object GameService {
         )
       }
     } yield unfriended.getOrElse(false)).mapError(GameError.apply)
+
+  // Convenience layer for tests that don't need SmartBot
+  def makeWithoutSmartBot(): ULayer[GameService] = ZLayer.succeed(None: Option[SmartChutiBot]) >>> make()
 
 }
