@@ -52,7 +52,7 @@ case object DumbChutiBot extends ChutiBot {
     // Este jugador es muy conservador, no se fija en el numero de fichas de un numero que tiene, solo en cuantas son de caida
     // En el futuro podemos inventar jugadores que se fijen en ambas partes y que sean mas o menos conservadores
     // Esta bien que las mulas cuenten por dos.
-    val numerosQueTengo = jugador.fichas
+    val numerosQueTengo: Seq[Numero] = jugador.fichas
       .flatMap(f => Seq(f.arriba, f.abajo))
       .distinct
     val fichasDeOtros = Game.todaLaFicha.diff(jugador.fichas)
@@ -99,7 +99,7 @@ case object DumbChutiBot extends ChutiBot {
         Caete(triunfo = Option(triunfo))
       else {
         Pide(
-          ficha = hypotheticalGame.maxByTriunfo(jugador.fichas).get,
+          ficha = hypotheticalGame.highestValueByTriunfo(jugador.fichas).get,
           triunfo = Option(triunfo),
           estrictaDerecha = false
         )

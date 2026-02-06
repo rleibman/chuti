@@ -367,6 +367,7 @@ h4 {
     display: inline-block;
     writing-mode: vertical-rl;
     transform: rotate(180deg);
+    margin-right: 10px;
 }
 
 .jugadorActionBar {
@@ -430,6 +431,156 @@ h4 {
     justify-self: center;
     padding: 4px;
     grid-row-start: 3;
+}
+
+/* Slide animations from each player position */
+.slideFromPlayer0 {
+    animation: slideFromBottom 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slideFromPlayer1 {
+    animation: slideFromRight 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slideFromPlayer2 {
+    animation: slideFromTop 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.slideFromPlayer3 {
+    animation: slideFromLeft 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideFromBottom {
+    0% {
+        transform: translateY(250px) scale(0.7) rotate(5deg);
+        opacity: 0;
+    }
+    70% {
+        transform: translateY(-15px) scale(1.15) rotate(-2deg);
+    }
+    100% {
+        transform: translateY(0) scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideFromTop {
+    0% {
+        transform: translateY(-250px) scale(0.7) rotate(-5deg);
+        opacity: 0;
+    }
+    70% {
+        transform: translateY(15px) scale(1.15) rotate(2deg);
+    }
+    100% {
+        transform: translateY(0) scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideFromLeft {
+    0% {
+        transform: translateX(-250px) scale(0.7) rotate(-5deg);
+        opacity: 0;
+    }
+    70% {
+        transform: translateX(15px) scale(1.15) rotate(2deg);
+    }
+    100% {
+        transform: translateX(0) scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideFromRight {
+    0% {
+        transform: translateX(250px) scale(0.7) rotate(5deg);
+        opacity: 0;
+    }
+    70% {
+        transform: translateX(-15px) scale(1.15) rotate(-2deg);
+    }
+    100% {
+        transform: translateX(0) scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+/* Animations for collecting tricks to winner's hand */
+.collectToPlayer0 {
+    animation: collectToBottom 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collectToPlayer1 {
+    animation: collectToRight 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collectToPlayer2 {
+    animation: collectToTop 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.collectToPlayer3 {
+    animation: collectToLeft 1200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes collectToBottom {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(30px) scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(200px) scale(0.6);
+        opacity: 0;
+    }
+}
+
+@keyframes collectToTop {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateY(-30px) scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-200px) scale(0.6);
+        opacity: 0;
+    }
+}
+
+@keyframes collectToLeft {
+    0% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(-30px) scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(-200px) scale(0.6);
+        opacity: 0;
+    }
+}
+
+@keyframes collectToRight {
+    0% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translateX(30px) scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(200px) scale(0.6);
+        opacity: 0;
+    }
 }
 
 .domino0Container {
@@ -532,6 +683,30 @@ h4 {
     grid-column-start: 1;
 }
 
+/* Animate tiles appearing in hand after dealing (only when just-dealt class is present) */
+.fichas0.just-dealt .domino0Container {
+    animation: dealToHand 300ms ease-out backwards;
+}
+
+.fichas0.just-dealt .domino0Container:nth-child(1) { animation-delay: 0ms; }
+.fichas0.just-dealt .domino0Container:nth-child(2) { animation-delay: 50ms; }
+.fichas0.just-dealt .domino0Container:nth-child(3) { animation-delay: 100ms; }
+.fichas0.just-dealt .domino0Container:nth-child(4) { animation-delay: 150ms; }
+.fichas0.just-dealt .domino0Container:nth-child(5) { animation-delay: 200ms; }
+.fichas0.just-dealt .domino0Container:nth-child(6) { animation-delay: 250ms; }
+.fichas0.just-dealt .domino0Container:nth-child(7) { animation-delay: 300ms; }
+
+@keyframes dealToHand {
+    from {
+        transform: translateY(-50px) scale(0.5);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
 .filas0 {
     padding: 2px;
     grid-column-start: 2;
@@ -543,6 +718,21 @@ h4 {
 .filaFichas0 {
     white-space: nowrap;
     padding: 1px;
+}
+
+.filaFichas0 .dominoJugado0Container:last-child {
+    animation: trickCollect 500ms ease-in-out;
+}
+
+@keyframes trickCollect {
+    0% {
+        transform: scale(1.5) translateY(-20px);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
 }
 
 .domino1Container {
@@ -582,6 +772,18 @@ h4 {
     padding: 2px;
 }
 
+.fichas1.just-dealt .domino1Container {
+    animation: dealToHand 300ms ease-out backwards;
+}
+
+.fichas1.just-dealt .domino1Container:nth-child(1) { animation-delay: 0ms; }
+.fichas1.just-dealt .domino1Container:nth-child(2) { animation-delay: 50ms; }
+.fichas1.just-dealt .domino1Container:nth-child(3) { animation-delay: 100ms; }
+.fichas1.just-dealt .domino1Container:nth-child(4) { animation-delay: 150ms; }
+.fichas1.just-dealt .domino1Container:nth-child(5) { animation-delay: 200ms; }
+.fichas1.just-dealt .domino1Container:nth-child(6) { animation-delay: 250ms; }
+.fichas1.just-dealt .domino1Container:nth-child(7) { animation-delay: 300ms; }
+
 .filas1 {
     display: flex;
     flex-wrap: wrap;
@@ -592,6 +794,10 @@ h4 {
 .filaFichas1 {
     padding: 5px;
     white-space: nowrap;
+}
+
+.filaFichas1 .dominoJugado1Container:last-child {
+    animation: trickCollect 500ms ease-in-out;
 }
 
 .domino2Container {
@@ -637,6 +843,7 @@ h4 {
     display: grid;
     grid-template-rows: auto calc(1em + 30px);
     grid-template-columns: 1fr minmax(calc(calc(var(--domino-width) + 4) * 7), 1fr);
+    margin-top: 10px;
 }
 
 .statusBar2 {
@@ -650,6 +857,7 @@ h4 {
     align-items: center;
     justify-content: end;
     width: 100%;
+    margin-top: 10px;
 }
 
 .fichas2 {
@@ -660,6 +868,18 @@ h4 {
     grid-row-start: 1;
     justify-self: end;
 }
+
+.fichas2.just-dealt .domino2Container {
+    animation: dealToHand 300ms ease-out backwards;
+}
+
+.fichas2.just-dealt .domino2Container:nth-child(1) { animation-delay: 0ms; }
+.fichas2.just-dealt .domino2Container:nth-child(2) { animation-delay: 50ms; }
+.fichas2.just-dealt .domino2Container:nth-child(3) { animation-delay: 100ms; }
+.fichas2.just-dealt .domino2Container:nth-child(4) { animation-delay: 150ms; }
+.fichas2.just-dealt .domino2Container:nth-child(5) { animation-delay: 200ms; }
+.fichas2.just-dealt .domino2Container:nth-child(6) { animation-delay: 250ms; }
+.fichas2.just-dealt .domino2Container:nth-child(7) { animation-delay: 300ms; }
 
 .filas2 {
     padding: 2px;
@@ -675,6 +895,10 @@ h4 {
 .filaFichas2 {
     white-space: nowrap;
     padding: 1px 10px;
+}
+
+.filaFichas2 .dominoJugado2Container:last-child {
+    animation: trickCollect 500ms ease-in-out;
 }
 
 .jugador3 {
@@ -695,6 +919,7 @@ h4 {
     height: 100%;
     display: inline-block;
     writing-mode: vertical-rl;
+    margin-left: 10px;
 }
 
 .domino3Container {
@@ -742,6 +967,18 @@ h4 {
     justify-self: end;
 }
 
+.fichas3.just-dealt .domino3Container {
+    animation: dealToHand 300ms ease-out backwards;
+}
+
+.fichas3.just-dealt .domino3Container:nth-child(1) { animation-delay: 0ms; }
+.fichas3.just-dealt .domino3Container:nth-child(2) { animation-delay: 50ms; }
+.fichas3.just-dealt .domino3Container:nth-child(3) { animation-delay: 100ms; }
+.fichas3.just-dealt .domino3Container:nth-child(4) { animation-delay: 150ms; }
+.fichas3.just-dealt .domino3Container:nth-child(5) { animation-delay: 200ms; }
+.fichas3.just-dealt .domino3Container:nth-child(6) { animation-delay: 250ms; }
+.fichas3.just-dealt .domino3Container:nth-child(7) { animation-delay: 300ms; }
+
 .filas3 {
     display: flex;
     flex-wrap: wrap;
@@ -756,6 +993,10 @@ h4 {
 .filaFichas3 {
     padding: 5px;
     white-space: nowrap;
+}
+
+.filaFichas3 .dominoJugado3Container:last-child {
+    animation: trickCollect 500ms ease-in-out;
 }
 
 .hoyo {
@@ -788,4 +1029,331 @@ tr.cuentasSelf {
 
 b {
     color: brown;
+}
+
+/* ========================================
+   Phase 1: Tile Movement Animations
+   ======================================== */
+
+/* Animation for tiles moving from hand to center when played */
+@keyframes slideToCenter {
+    from {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    to {
+        transform: translate(var(--target-x, 0), var(--target-y, 0));
+        opacity: 0.3;
+    }
+}
+
+/* Animation for collecting won tricks */
+@keyframes collectTrick {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translate(var(--winner-x, 0), var(--winner-y, 0)) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* Animation for dealing tiles at game start */
+@keyframes dealCard {
+    from {
+        transform: translate(var(--dealer-x, 0), var(--dealer-y, 0)) scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Classes to apply animations */
+.domino-animating {
+    animation: slideToCenter 400ms cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+}
+
+.trick-collecting {
+    animation: collectTrick 500ms ease-in-out;
+    will-change: transform, opacity;
+}
+
+.domino-dealing {
+    animation: dealCard 300ms ease-out;
+    animation-delay: calc(var(--card-index, 0) * 50ms);
+    will-change: transform, opacity;
+}
+
+/* ========================================
+   Phase 2: Bot Indicators
+   ======================================== */
+
+/* Bot thinking animation */
+@keyframes botThinking {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+.bot-thinking {
+    animation: botThinking 1s ease-in-out infinite;
+}
+
+.bot-indicator {
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(89, 34, 140, 0.9);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    z-index: 10;
+}
+
+.bot-badge {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 0.9em;
+}
+
+.bot-rationale-icon {
+    display: inline-block;
+    margin-left: 5px;
+    cursor: help;
+    color: #59228C;
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+}
+
+.bot-rationale-icon:hover {
+    opacity: 1;
+}
+
+.playerName.bot-player {
+    background-color: rgba(89, 34, 140, 0.8);
+}
+
+/* ========================================
+   Phase 3: Celebration Animations
+   ======================================== */
+
+/* Score reveal animation */
+@keyframes scoreReveal {
+    0% {
+        transform: scale(0) rotate(-10deg);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.2) rotate(5deg);
+    }
+    100% {
+        transform: scale(1) rotate(0);
+        opacity: 1;
+    }
+}
+
+.score-popup {
+    animation: scoreReveal 600ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Confetti animation */
+@keyframes confetti {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+.confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: var(--confetti-color);
+    animation: confetti 3s linear;
+    animation-delay: calc(var(--piece-index, 0) * 50ms);
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.celebration-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.celebration-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 500px;
+}
+
+.celebration-winner {
+    font-size: 2em;
+    font-weight: bold;
+    color: #59228C;
+    margin-bottom: 20px;
+}
+
+.celebration-trophy {
+    font-size: 4em;
+    margin: 20px 0;
+}
+
+/* Red flash for hoyo */
+@keyframes hoyoFlash {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: rgba(255, 0, 0, 0.3); }
+}
+
+.hoyo-flash {
+    animation: hoyoFlash 500ms ease-in-out;
+}
+
+/* ========================================
+   Phase 4: Chat System Messages
+   ======================================== */
+
+.system-message {
+    background: rgba(89, 34, 140, 0.1);
+    border-left: 3px solid #59228C;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-style: italic;
+}
+
+.special-event-message {
+    background: rgba(255, 203, 5, 0.2);
+    border-left: 3px solid #FFCB05;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-weight: bold;
+}
+
+/* ========================================
+   Phase 5: Micro-animations and Polish
+   ======================================== */
+
+/* Tile hover and selection improvements */
+.domino0 {
+    transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.domino0:hover {
+    transform: translateY(-10px);
+    cursor: pointer;
+}
+
+.domino0.selected {
+    transform: translateY(-15px) scale(1.05);
+}
+
+/* Button press feedback */
+button {
+    transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+button:active {
+    transform: scale(0.95);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Score change animations */
+@keyframes scoreIncrement {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); color: #00AA00; }
+}
+
+@keyframes scoreDecrement {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); color: #CC0000; }
+}
+
+.score-changed-up {
+    animation: scoreIncrement 400ms ease;
+}
+
+.score-changed-down {
+    animation: scoreDecrement 400ms ease;
+}
+
+/* Active player turn glow */
+@keyframes turnGlow {
+    0%, 100% { box-shadow: 0 0 0 rgba(89, 34, 140, 0); }
+    50% { box-shadow: 0 0 20px rgba(89, 34, 140, 0.8); }
+}
+
+.playerName.active-turn {
+    animation: turnGlow 2s ease-in-out infinite;
+}
+
+/* Trump declaration flip animation */
+@keyframes trumpReveal {
+    0% {
+        transform: scale(0) rotateY(180deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotateY(0);
+        opacity: 1;
+    }
+}
+
+.triunfan img {
+    animation: trumpReveal 500ms cubic-bezier(0.68, -0.55, 0.27, 1.55);
+}
+
+/* Accessibility: Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .domino-animating,
+    .trick-collecting,
+    .domino-dealing,
+    .bot-thinking,
+    .score-popup,
+    .confetti-piece,
+    .score-changed-up,
+    .score-changed-down,
+    .playerName.active-turn,
+    .triunfan img,
+    .dominoEnJuego,
+    .domino0Container,
+    .domino1Container,
+    .domino2Container,
+    .domino3Container,
+    .dominoJugado0Container,
+    .dominoJugado1Container,
+    .dominoJugado2Container,
+    .dominoJugado3Container {
+        animation: none !important;
+        transition: none;
+    }
+
+    .domino0:hover {
+        transform: none;
+    }
+
+    button:active {
+        transform: none;
+    }
 }

@@ -71,6 +71,8 @@ object GameEvent {}
 sealed trait PreGameEvent extends GameEvent
 sealed trait PlayEvent extends GameEvent {
 
+  def reasoning: Option[String] = None
+
   def doEvent(
     jugador: Jugador,
     game:    Game
@@ -123,12 +125,12 @@ object NoOp extends EventInfo[NoOp] {
 }
 
 final case class NoOp(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends GameEvent {
 
   override val reapplyMode:    ReapplyMode = none
@@ -160,7 +162,8 @@ final case class NoOpPlay(
   override val index:               Option[Int] = None,
   override val gameStatusString:    Option[String] = None,
   override val soundUrl:            Option[String] = None,
-  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override val reapplyMode:    ReapplyMode = none
@@ -183,12 +186,12 @@ final case class NoOpPlay(
 }
 
 final case class BorloteEvent(
-  borlote:             Borlote,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  borlote:                          Borlote,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends GameEvent {
 
   override def soundUrl: Option[String] =
@@ -220,8 +223,8 @@ final case class BorloteEvent(
 
 //This event ends the game and shuts down the server... it can only be called by god
 final case class PoisonPill(
-  gameId: GameId = GameId.empty,
-  userId: UserId = UserId.empty
+  override val gameId: GameId = GameId.empty,
+  override val userId: UserId = UserId.empty
 ) extends GameEvent {
 
   override val index:               Option[Int] = None
@@ -252,12 +255,12 @@ final case class PoisonPill(
 //////////////////////////////////////////////////////////////////////////////////////
 // Start game and invitations
 final case class AbandonGame(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
 
   override def expectedStatus: Option[GameStatus] = None
@@ -294,12 +297,12 @@ final case class AbandonGame(
 }
 
 final case class DeclineInvite(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -327,13 +330,13 @@ final case class DeclineInvite(
 }
 
 final case class InviteToGame(
-  invited:             User,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  invited:                          User,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -365,14 +368,14 @@ final case class InviteToGame(
 }
 
 final case class JoinGame(
-  joinedUser:          User,
-  jugadorType:         JugadorType,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  joinedUser:                       User,
+  jugadorType:                      JugadorType,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.esperandoJugadoresInvitados)
@@ -430,12 +433,12 @@ final case class JoinGame(
 }
 
 final case class NuevoPartido(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty
 ) extends PreGameEvent {
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.comienzo)
@@ -475,13 +478,14 @@ final case class NuevoPartido(
 
 //If you want to be able to store and replay events, Sopa needs to carry the whole new game after it's done.
 final case class Sopa(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/sopa.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
-  firstSopa:           Boolean = false
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = Option("sounds/sopa.mp3"),
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  firstSopa:                        Boolean = false,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override val reapplyMode: ReapplyMode = fullRefresh
@@ -513,7 +517,8 @@ final case class Sopa(
             .contains(laMulota)) || (!firstSopa && nextTurno.id == jugador.id),
           mano = (firstSopa && fichas
             .contains(laMulota)) || (!firstSopa && nextTurno.id == jugador.id),
-          cuantasCantas = None
+          cuantasCantas = None,
+          lastBotRationale = None // Clear old reasoning when starting new round
         )
       }
       .toList
@@ -554,13 +559,14 @@ final case class Sopa(
 import chuti.CuantasCantas.*
 
 final case class Canta(
-  cuantasCantas:       CuantasCantas,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/canta.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  cuantasCantas:                    CuantasCantas,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = Option("sounds/canta.mp3"),
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override def expectedStatus: Option[GameStatus] = Option(GameStatus.cantando)
@@ -576,14 +582,17 @@ final case class Canta(
     val cantanteActual = game.jugadores.find(_.cantante).getOrElse(jugador)
     val nuevoCantante = cantanteActual.cuantasCantas.fold {
       // primer jugador cantando
-      jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas))
+      println(s"Canta (first bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
+      jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas), lastBotRationale = reasoning)
     } { cuantasCanto =>
       if (cuantasCantas.prioridad <= cuantasCanto.prioridad || cuantasCanto == CuantasCantas.CantoTodas)
         // No es suficiente para salvarlo, dejalo como esta
         cantanteActual
-      else
+      else {
         // Lo salvaste, ahora eres el cantante
-        jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas))
+        println(s"Canta (saving bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
+        jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas), lastBotRationale = reasoning)
+      }
     }
 
     val nextJugador = game.nextPlayer(jugador)
@@ -594,9 +603,11 @@ final case class Canta(
           nuevoCantante
         else
           other.copy(cantante = false, mano = false)
-      if (a.id == jugador.id && cuantasCantas == CuantasCantas.Buenas)
-        // Si canto buenas márcalo asi
-        a.copy(cuantasCantas = Option(CuantasCantas.Buenas))
+      if (a.id == jugador.id && cuantasCantas == CuantasCantas.Buenas) {
+        // Si canto buenas márcalo asi, and preserve reasoning
+        println(s"Canta (Buenas): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
+        a.copy(cuantasCantas = Option(CuantasCantas.Buenas), lastBotRationale = reasoning)
+      }
       else if (a.id == nextJugador.id && !(nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas))
         // Pásale la mano al siguiente jugador, a menos que sea el ultimo jugador
         a.copy(mano = true)
@@ -650,16 +661,17 @@ final case class Canta(
 // Jugando
 
 final case class Pide(
-  ficha:               Ficha,
-  estrictaDerecha:     Boolean,
-  triunfo:             Option[Triunfo] = None,
-  hoyoTecnico:         Option[String] = None,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  ficha:                            Ficha,
+  estrictaDerecha:                  Boolean,
+  triunfo:                          Option[Triunfo] = None,
+  hoyoTecnico:                      Option[String] = None,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   private def pideInicial(
@@ -680,10 +692,14 @@ final case class Pide(
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
           { j =>
-            j.copy(
-              fichas = j.dropFicha(ficha),
-              cuantasCantas = if (j.cantante) j.cuantasCantas else None
-            )
+            {
+              println(s"Pide: Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
+              j.copy(
+                fichas = j.dropFicha(ficha),
+                cuantasCantas = if (j.cantante) j.cuantasCantas else None,
+                lastBotRationale = reasoning
+              )
+            }
           },
           j => j.copy(cuantasCantas = if (j.cantante) j.cuantasCantas else None)
         ) // Ya no importa quien canto que
@@ -719,7 +735,8 @@ final case class Pide(
       .copy(
         enJuego = List((jugador.id, ficha)),
         estrictaDerecha = estrictaDerecha,
-        jugadores = game.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+        jugadores = game
+          .modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning))
       )
     (
       // transfiere la ficha al centro
@@ -801,15 +818,16 @@ final case class Pide(
 }
 
 final case class Da(
-  ficha:               Ficha,
-  ganador:             Option[UserId] = None,
-  hoyoTecnico:         Option[String] = None,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  ficha:                            Ficha,
+  ganador:                          Option[UserId] = None,
+  hoyoTecnico:                      Option[String] = None,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = Option("sounds/ficha.mp3"),
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override def doEvent(
@@ -851,7 +869,13 @@ final case class Da(
         )
         (
           a.copy(
-            jugadores = a.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+            jugadores = a.modifiedJugadores(
+              _.id == jugador.id,
+              j => {
+                println(s"Da (trick complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
+                j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
+              }
+            )
           ),
           Option(ganadorId),
           Option(s"${game.jugador(ganadorId).user.name} gano la ultima mano")
@@ -862,7 +886,13 @@ final case class Da(
           game
             .copy(
               enJuego = enJuego,
-              jugadores = game.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+              jugadores = game.modifiedJugadores(
+                _.id == jugador.id,
+                j => {
+                  println(s"Da (not complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
+                  j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
+                }
+              )
             ),
           None,
           None
@@ -953,16 +983,17 @@ final case class Da(
 
 //Acuerdate de los regalos
 final case class Caete(
-  regalos:             Seq[(UserId, Seq[Fila])] = Seq.empty,
-  deCaida:             Seq[Fila] = Seq.empty,
-  triunfo:             Option[Triunfo] = None,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
-  ganadorDePartido:    Option[UserId] = None
+  regalos:                          Seq[(UserId, Seq[Fila])] = Seq.empty,
+  deCaida:                          Seq[Fila] = Seq.empty,
+  triunfo:                          Option[Triunfo] = None,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  ganadorDePartido:                 Option[UserId] = None,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override def doEvent(
@@ -998,7 +1029,8 @@ final case class Caete(
           j.copy(
             filas = j.filas ++ deCaída,
             fichas = List.empty,
-            fueGanadorDelPartido = fueGanadorDelPartido
+            fueGanadorDelPartido = fueGanadorDelPartido,
+            lastBotRationale = reasoning
           )
         },
         j => j.copy(fichas = j.fichas.diff(deCaída.flatMap(_.fichas)))
@@ -1102,12 +1134,13 @@ final case class Caete(
 }
 
 final case class MeRindo(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = Option("sounds/merindo.mp3"),
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = Option("sounds/merindo.mp3"),
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override def doEvent(
@@ -1124,11 +1157,12 @@ final case class MeRindo(
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
           guey =>
-            guey.copy(cuenta =
-              guey.cuenta :+ Cuenta(
+            guey.copy(
+              cuenta = guey.cuenta :+ Cuenta(
                 -guey.cuantasCantas.fold(0)(_.score),
                 esHoyo = true
-              )
+              ),
+              lastBotRationale = reasoning
             )
         )
       ),
@@ -1149,13 +1183,14 @@ final case class MeRindo(
 }
 
 final case class HoyoTecnico(
-  razon:               String,
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty
+  razon:                            String,
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override def doEvent(
@@ -1197,13 +1232,14 @@ final case class HoyoTecnico(
 //////////////////////////////////////////////////////////////////////////////////////
 // Game End
 final case class TerminaJuego(
-  gameId:              GameId = GameId.empty,
-  userId:              UserId = UserId.empty,
-  index:               Option[Int] = None,
-  gameStatusString:    Option[String] = None,
-  soundUrl:            Option[String] = None,
-  jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
-  partidoTerminado:    Boolean = false
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  partidoTerminado:                 Boolean = false,
+  override val reasoning:           Option[String] = None
 ) extends PlayEvent {
 
   override val reapplyMode: ReapplyMode = fullRefresh

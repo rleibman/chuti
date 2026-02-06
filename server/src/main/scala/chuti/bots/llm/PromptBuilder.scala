@@ -19,16 +19,47 @@ package chuti.bots.llm
 import chuti.*
 
 object PromptBuilder {
+  opaque type Prompt = String
+
+  def buildPropmtNew(
+                      jugador:               Jugador,
+                      game:                  Game,
+                      legalMoves:            LegalMoves,
+                      dumbBotRecommendation: Option[PlayEvent] = None
+                    ): Prompt | PlayEvent = {
+    game.gameStatus match {
+      case GameStatus.cantando =>
+        // If it's your turn to bid
+        // If it's not your turn to bid
+        ""
+      case GameStatus.jugando =>
+        // If you won the bid
+        // Pide Inicial (you won the bid)
+        // Pide
+        // Da (if it's your bid)
+        // Da (if it's not your bid)
+        // 
+        ""
+      case _ =>
+        throw new IllegalArgumentException(s"Unsupported game status for prompt building: ${game.gameStatus}")
+    }
+
+  }
+
+
+
 
   def buildPrompt(
-    jugador:    Jugador,
-    game:       Game,
-    legalMoves: LegalMoves
+    jugador:               Jugador,
+    game:                  Game,
+    legalMoves:            LegalMoves,
+    dumbBotRecommendation: Option[PlayEvent] = None
   ): String = {
     val strategicContext = calculateStrategicContext(jugador, game)
     val gameState = formatGameState(jugador, game)
     val legalMovesJson = MoveValidator.toJsonOptions(legalMoves)
     val examples = getFewShotExamples(game.gameStatus)
+    val conservativeRecommendation = dumbBotRecommendation.map(formatConservativeRecommendation).getOrElse("")
 
     s"""You are playing Chuti, a 4-player domino game. Match is played to 21 points.
 
@@ -37,6 +68,8 @@ $gameState
 
 Strategic Context:
 $strategicContext
+
+$conservativeRecommendation
 
 Strategic Heuristics (consider these when deciding):
 1. **Position in Match**:
@@ -47,7 +80,7 @@ Strategic Heuristics (consider these when deciding):
 2. **Bidding Strategy**:
    - Leading by 10+ points: Bid minimum (Casa) unless very strong hand
    - Behind by 10+ points: Bid aggressively to catch up, take calculated risks
-   - Opponent close to 21: Don't save them! Let them fail their bid if possible
+   - Opponent close to 21: Don't save them unless you can win the match! Let them fail their bid if possible
 
 3. **Playing Strategy**:
    - Protect your bid if you're cantante (don't waste your highest value tiles)
@@ -93,9 +126,10 @@ Your response:"""
     game:    Game
   ): String = {
     val myScore = jugador.cuenta.map(_.puntos).sum
-    val scores = game.jugadores.map { j =>
-      s"${j.user.name}: ${j.cuenta.map(_.puntos).sum} points"
-    }.mkString(", ")
+    val scores = game.jugadores
+      .map { j =>
+        s"${j.user.name}: ${j.cuenta.map(_.puntos).sum} points"
+      }.mkString(", ")
 
     val sortedPlayers = game.jugadores.sortBy(-_.cuenta.map(_.puntos).sum)
     val leader = sortedPlayers.head
@@ -116,12 +150,12 @@ Your response:"""
 - Leading player: ${leader.user.name} with $leaderScore points
 - Players in danger zone (18+): $dangerPlayers
 - Match situation: ${
-      if (myScore >= 18) "You're close to winning!"
-      else if (leaderScore >= 18 && leader != jugador) "Leader is close to winning!"
-      else if (myScore >= leaderScore - 3) "Close race"
-      else if (myScore <= leaderScore - 10) "You're far behind"
-      else "Normal game flow"
-    }"""
+        if (myScore >= 18) "You're close to winning!"
+        else if (leaderScore >= 18 && leader != jugador) "Leader is close to winning!"
+        else if (myScore >= leaderScore - 3) "Close race"
+        else if (myScore <= leaderScore - 10) "You're far behind"
+        else "Normal game flow"
+      }"""
   }
 
   private def formatGameState(
@@ -134,10 +168,12 @@ Your response:"""
     val cantante = game.jugadores.find(_.cantante).map(_.user.name).getOrElse("none")
     val enJuego =
       if (game.enJuego.isEmpty) "none"
-      else game.enJuego.map { case (userId, ficha) =>
-        val player = game.jugadores.find(_.user.id == userId).get
-        s"${player.user.name}: $ficha"
-      }.mkString(", ")
+      else
+        game.enJuego
+          .map { case (userId, ficha) =>
+            val player = game.jugadores.find(_.user.id == userId).get
+            s"${player.user.name}: $ficha"
+          }.mkString(", ")
 
     s"""- Your hand: [$hand]
 - Trump: $trump
@@ -217,6 +253,36 @@ Input: game_phase=requiereSopa, turno=true
 
       case _ => ""
     }
+  }
+
+  private def formatConservativeRecommendation(playEvent: PlayEvent): String = {
+    val moveDescription = playEvent match {
+      case Canta(cuantasCantas, _, _, _, _, _, _, _) =>
+        s"Bid: $cuantasCantas"
+      case Pide(ficha, estrictaDerecha, triunfo, _, _, _, _, _, _, _, _) =>
+        s"Play: $ficha${triunfo.map(t => s" (trump: $t)").getOrElse("")}${
+            if (estrictaDerecha) " (strict right)" else ""
+          }"
+      case Da(ficha, _, _, _, _, _, _, _, _, _) =>
+        s"Play: $ficha"
+      case Caete(_, _, _, _, _, _, _, _, _, _, _) =>
+        "Fall (Caete) - claim remaining tricks"
+      case Sopa(_, _, _, _, _, _, _, _) =>
+        "Shuffle and deal (Sopa)"
+      case MeRindo(_, _, _, _, _, _, _) =>
+        "Surrender (Me Rindo)"
+      case _ =>
+        playEvent.getClass.getSimpleName
+    }
+
+    s"""Conservative Recommendation (DumbBot's suggestion):
+The conservative strategy suggests: $moveDescription
+
+This is a safe, risk-averse baseline. You may choose to follow it, improve upon it, or take a different strategic approach based on the match situation. Consider:
+- Is this recommendation too conservative given the match score?
+- Can you afford to be more aggressive or should you play it safe?
+- Does the recommendation align with the strategic heuristics above?
+"""
   }
 
 }

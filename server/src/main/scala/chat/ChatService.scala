@@ -35,6 +35,11 @@ trait ChatService {
 
   def say(msg: SayRequest): ZIO[ZIORepository & ChutiSession, GameError, ChatMessage]
 
+  def sayAsSystem(
+    msg:       String,
+    channelId: ChannelId
+  ): ZIO[ZIORepository, GameError, ChatMessage]
+
   def chatStream(
     channelId:    ChannelId,
     connectionId: ConnectionId
@@ -117,6 +122,46 @@ object ChatService {
                 .foreach(
                   allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id))
                 )(_.queue.offer(sendMe))
+                .as(sendMe)
+            }
+            _ <- {
+              val timeAgo = now.minus(ttl.toMillis, ChronoUnit.MILLIS).nn
+              recentMessages.update(old => old.filter(dateFilter(timeAgo, _)) :+ sent)
+            }
+          } yield sent
+
+        override def sayAsSystem(
+          msg:       String,
+          channelId: ChannelId
+        ): ZIO[ZIORepository, GameError, ChatMessage] =
+          for {
+            allSubscriptions <- chatMessageQueue.get
+            now              <- Clock.instant
+            _                <- ZIO.logInfo(s"System sending: $msg")
+            sent <- {
+              // System user with special ID
+              val systemUser = User(
+                id = UserId(-999),
+                email = "system@chuti.fun",
+                name = "Sistema",
+                created = now,
+                lastUpdated = now,
+                active = true,
+                deleted = false,
+                isAdmin = false
+              )
+
+              val sendMe =
+                ChatMessage(
+                  fromUser = systemUser,
+                  msg = msg,
+                  channelId = channelId,
+                  toUser = None,
+                  date = now
+                )
+
+              ZIO
+                .foreach(allSubscriptions)(_.queue.offer(sendMe))
                 .as(sendMe)
             }
             _ <- {

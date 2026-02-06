@@ -80,9 +80,9 @@ object CuantasCantas {
   def byPriority(prioridad: Int): Option[CuantasCantas] = (Buenas +: values).find(_.prioridad == prioridad)
 
   sealed abstract class CuantasCantas protected (
-    val numFilas:  Int,
-    val score:     Int,
-    val prioridad: Int
+    val numFilas:  Int, // Cuantas filas se tienen que hacer para cantar esto
+    val score:     Int, // Cuantos puntos se van a anotar con este canto (chuti son 7 filas, pero valen 21 puntos)
+    val prioridad: Int  // Quien gana en prioridad. (buenas siempre pierde)
   ) {
 
     override def toString: String = s"CuantasCantas($numFilas, $score, $prioridad)"
@@ -180,6 +180,7 @@ sealed trait Ficha extends Product with Serializable {
   def value:              Int
   def es(num:    Numero): Boolean
   def other(num: Numero): Numero
+  override def toString:  String
 
 }
 
@@ -252,7 +253,7 @@ object JugadorState {
 
 enum JugadorType {
 
-  case human, dumbBot, smartBot
+  case human, dumbBot, aiBot
 
 }
 
@@ -268,7 +269,8 @@ case class Jugador(
   cuantasCantas:        Option[CuantasCantas] = None,
   statusString:         String = "",
   fueGanadorDelPartido: Boolean = false,
-  cuenta:               Seq[Cuenta] = Seq.empty
+  cuenta:               Seq[Cuenta] = Seq.empty,
+  lastBotRationale:     Option[String] = None // Explanation of last bot decision
 ) {
 
   lazy val yaSeHizo: Boolean = {
@@ -299,7 +301,9 @@ case class Jugador(
 
 }
 
-sealed trait Triunfo extends Product with Serializable
+sealed trait Triunfo {
+  override def toString: String
+}
 
 object Triunfo {
 
@@ -408,12 +412,13 @@ case class Game(
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
   // Game State
-  triunfo:         Option[Triunfo] = None,
-  enJuego:         List[(UserId, Ficha)] = List.empty,
-  estrictaDerecha: Boolean = false,
-  jugadores:       List[Jugador] = List.empty,
-  statusString:    String = "",
-  satoshiPerPoint: Long = 100L
+  triunfo:          Option[Triunfo] = None,
+  enJuego:          List[(UserId, Ficha)] = List.empty,
+  estrictaDerecha:  Boolean = false,
+  jugadores:        List[Jugador] = List.empty,
+  statusString:     String = "",
+  satoshiPerPoint:  Long = 100L,
+  explainReasoning: Boolean = true // Show bot reasoning to users
 ) {
 
   def jugadorState(jugador: Jugador): JugadorState = {
@@ -506,7 +511,7 @@ case class Game(
       remainder: Seq[Ficha],
       filas:     Seq[Fila]
     ): Seq[Fila] = {
-      val pideOpt = maxByTriunfo(fichas)
+      val pideOpt = highestValueByTriunfo(fichas)
       pideOpt match {
         case None => filas
         case Some(pide) =>
@@ -616,7 +621,7 @@ case class Game(
     }
   }
 
-  def maxByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
+  def highestValueByTriunfo(fichas: Seq[Ficha]): Option[Ficha] =
     triunfo match {
       case None              => throw GameError("Nuncamente!")
       case Some(SinTriunfos) => fichas.maxByOption(f => if (f.esMula) 100 else f.arriba.value)

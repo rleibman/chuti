@@ -42,7 +42,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa sin salve should get it done")(
       for {
-        gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+        gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
         gameStream = gameService
           .gameStream(GameId(1), connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
             ChutiSession(user1).toLayer
@@ -112,7 +112,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //        testRuntime.unsafe
 //          .run {
 //            for {
-//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
 //              gameStream =
 //                gameService
 //                  .gameStream(GameId(1), connectionId).provideSomeLayer[ChutiEnvironment](
@@ -185,7 +185,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //        testRuntime.unsafe
 //          .run {
 //            for {
-//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
 //              gameStream =
 //                gameService
 //                  .gameStream(GameId(1), connectionId).provideSomeLayer[ChutiEnvironment](
@@ -241,7 +241,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //        testRuntime.unsafe
 //          .run {
 //            for {
-//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
 //              gameStream =
 //                gameService
 //                  .gameStream(GameId(1), connectionId).provideSomeLayer[ChutiEnvironment](
@@ -318,7 +318,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //        testRuntime.unsafe
 //          .run {
 //            for {
-//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
 //              gameStream =
 //                gameService
 //                  .gameStream(GameId(1), connectionId).provideSomeLayer[ChutiEnvironment](
@@ -383,7 +383,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 //        testRuntime.unsafe
 //          .run {
 //            for {
-//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutSmartBot())
+//              gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBotAIBot())
 //              gameStream =
 //                gameService
 //                  .gameStream(GameId(1), connectionId).provideSomeLayer[ChutiEnvironment](

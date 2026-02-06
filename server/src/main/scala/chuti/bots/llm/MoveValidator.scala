@@ -17,9 +17,7 @@
 package chuti.bots.llm
 
 import chuti.*
-import chuti.CuantasCantas.*
 import chuti.Triunfo.*
-import zio.json.*
 import zio.json.ast.Json
 
 case class LegalMoves(
@@ -212,7 +210,7 @@ object MoveValidator {
     // Add Canta options
     moves.cantas.foreach { cuantasCantas =>
       options += Json.Obj(
-        "moveType" -> Json.Str("canta"),
+        "moveType"      -> Json.Str("canta"),
         "cuantasCantas" -> Json.Str(cuantasCantas.toString)
       )
     }
@@ -222,26 +220,25 @@ object MoveValidator {
     val includeTriunfoInJson = !allSameTriunfo
 
     // Add Pide options
-    moves.pides.foreach {
-      case (ficha, triunfo, estrictaDerecha) =>
-        val baseFields = Seq(
-          "moveType" -> Json.Str("pide"),
-          "ficha" -> Json.Str(ficha.toString)
-        )
-        val triunfoField =
-          if (includeTriunfoInJson && triunfo != SinTriunfos) Seq("triunfo" -> Json.Str(triunfo.toString))
-          else Seq.empty
-        val derechaField =
-          if (estrictaDerecha) Seq("estrictaDerecha" -> Json.Bool(true))
-          else Seq.empty
-        options += Json.Obj((baseFields ++ triunfoField ++ derechaField)*)
+    moves.pides.foreach { case (ficha, triunfo, estrictaDerecha) =>
+      val baseFields = Seq(
+        "moveType" -> Json.Str("pide"),
+        "ficha"    -> Json.Str(ficha.toString)
+      )
+      val triunfoField =
+        if (includeTriunfoInJson && triunfo != SinTriunfos) Seq("triunfo" -> Json.Str(triunfo.toString))
+        else Seq.empty
+      val derechaField =
+        if (estrictaDerecha) Seq("estrictaDerecha" -> Json.Bool(true))
+        else Seq.empty
+      options += Json.Obj((baseFields ++ triunfoField ++ derechaField)*)
     }
 
     // Add Da options
     moves.das.foreach { ficha =>
       options += Json.Obj(
         "moveType" -> Json.Str("da"),
-        "ficha" -> Json.Str(ficha.toString)
+        "ficha"    -> Json.Str(ficha.toString)
       )
     }
 
@@ -255,7 +252,7 @@ object MoveValidator {
     // Add Sopa option
     if (moves.sopa) {
       options += Json.Obj(
-        "moveType" -> Json.Str("sopa"),
+        "moveType"  -> Json.Str("sopa"),
         "firstSopa" -> Json.Bool(false) // Will be determined from game context
       )
     }

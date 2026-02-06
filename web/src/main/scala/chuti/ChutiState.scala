@@ -34,13 +34,23 @@ enum GameViewMode {
 
 enum GlobalDialog {
 
-  case cuentas, none
+  case cuentas, celebration, none
 
 }
+
+import components.CelebrationOverlay.CelebrationType
+
+case class CelebrationData(
+  celebrationType: CelebrationType,
+  winner:          Option[String],
+  scores:          Map[String, Int],
+  bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None // (cantante, bid, madeIt)
+)
 
 case class ChutiState(
   flipFicha:     Ficha => Callback = _ => Callback.empty,
   ultimoBorlote: Option[Borlote] = None,
+  celebration:   Option[CelebrationData] = None,
   flippedFichas: Set[Ficha] = Set.empty,
   onSessionChanged: (Option[User], String) => Callback = (
     _,

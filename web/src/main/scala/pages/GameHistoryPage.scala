@@ -66,7 +66,7 @@ object GameHistoryPage extends ChutiPage {
 //                      key = "cuentasHeader1"
                     )(
                       TableHeaderCell().colSpan(4)(
-                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO i8n
+                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto" // TODO i8n
                       )
                     ),
                     TableRow(

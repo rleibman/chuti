@@ -26,54 +26,55 @@ import zio.test.*
 
 object MoveValidatorSpec extends ZIOSpecDefault {
 
-  def spec = suite("MoveValidatorSpec")(
-    test("generates valid Canta options for turno player") {
-      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-      val jugador = game.jugadores.find(_.turno).get
+  def spec =
+    suite("MoveValidatorSpec")(
+      test("generates valid Canta options for turno player") {
+        val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+        val jugador = game.jugadores.find(_.turno).get
 
-      val legalMoves = MoveValidator.getLegalMoves(jugador, game)
+        val legalMoves = MoveValidator.getLegalMoves(jugador, game)
 
-      assertTrue(
-        legalMoves.cantas.contains(Casa),
-        legalMoves.cantas.contains(Canto5),
-        legalMoves.cantas.contains(Canto6),
-        legalMoves.cantas.contains(CantoTodas),
-        !legalMoves.cantas.contains(Buenas) // Turno player must bid
-      )
-    },
-    test("generates Buenas for non-turno player") {
-      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-      val jugador = game.jugadores.find(!_.turno).get
+        assertTrue(
+          legalMoves.cantas.contains(Casa),
+          legalMoves.cantas.contains(Canto5),
+          legalMoves.cantas.contains(Canto6),
+          legalMoves.cantas.contains(CantoTodas),
+          !legalMoves.cantas.contains(Buenas) // Turno player must bid
+        )
+      },
+      test("generates Buenas for non-turno player") {
+        val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+        val jugador = game.jugadores.find(!_.turno).get
 
-      val legalMoves = MoveValidator.getLegalMoves(jugador, game)
+        val legalMoves = MoveValidator.getLegalMoves(jugador, game)
 
-      assertTrue(legalMoves.cantas.contains(Buenas))
-    },
-    test("allows Sopa only for turno player in requiereSopa phase") {
-      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.requiereSopa)
-      val turnoJugador = game.jugadores.find(_.turno).get
-      val otherJugador = game.jugadores.find(!_.turno).get
+        assertTrue(legalMoves.cantas.contains(Buenas))
+      },
+      test("allows Sopa only for turno player in requiereSopa phase") {
+        val game = TestGameHelper.createTestGame(gameStatus = GameStatus.requiereSopa)
+        val turnoJugador = game.jugadores.find(_.turno).get
+        val otherJugador = game.jugadores.find(!_.turno).get
 
-      val turnoMoves = MoveValidator.getLegalMoves(turnoJugador, game)
-      val otherMoves = MoveValidator.getLegalMoves(otherJugador, game)
+        val turnoMoves = MoveValidator.getLegalMoves(turnoJugador, game)
+        val otherMoves = MoveValidator.getLegalMoves(otherJugador, game)
 
-      assertTrue(
-        turnoMoves.sopa,
-        !otherMoves.sopa
-      )
-    },
-    test("toJsonOptions generates valid JSON") {
-      val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-      val jugador = game.jugadores.find(_.turno).get
-      val legalMoves = MoveValidator.getLegalMoves(jugador, game)
+        assertTrue(
+          turnoMoves.sopa,
+          !otherMoves.sopa
+        )
+      },
+      test("toJsonOptions generates valid JSON") {
+        val game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+        val jugador = game.jugadores.find(_.turno).get
+        val legalMoves = MoveValidator.getLegalMoves(jugador, game)
 
-      val jsonString = MoveValidator.toJsonOptions(legalMoves)
+        val jsonString = MoveValidator.toJsonOptions(legalMoves)
 
-      // Should be valid JSON array
-      assertTrue(jsonString.startsWith("[") && jsonString.endsWith("]"))
-      // Should contain Canta options
-      assertTrue(jsonString.contains("\"moveType\"") && jsonString.contains("\"canta\""))
-    }
-  )
+        // Should be valid JSON array
+        assertTrue(jsonString.startsWith("[") && jsonString.endsWith("]"))
+        // Should contain Canta options
+        assertTrue(jsonString.contains("\"moveType\"") && jsonString.contains("\"canta\""))
+      }
+    )
 
 }

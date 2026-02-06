@@ -27,10 +27,8 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.{Audio, Event, window}
 import router.AppRouter
 
-import java.time.{Instant, LocalDate, ZoneId}
 import java.util.Locale
 import scala.collection.mutable
-import scala.scalajs.js
 
 /** This is a helper class meant to load initial app state, scalajs-react normally suggests (and rightfully so) that the
   * router should be the main content of the app, but having a middle piece that loads app state makes some sense, that
@@ -84,10 +82,104 @@ object Content extends ChutiComponent with TimerSupport {
         Callback.traverse(gameEvent.soundUrl.toSeq)(playSound) >>
         updateGame >> {
           gameEvent match {
-            case e: TerminaJuego if e.partidoTerminado =>
-              refresh(initial = false)() >> $.modState(s =>
-                s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
+            case e: TerminaJuego =>
+              $.state.flatMap { s =>
+                s.chutiState.gameInProgress.fold(Callback.empty) { game =>
+                  import components.CelebrationOverlay.CelebrationType
+
+                    import scala.scalajs.js.timers
+
+                  val celebrationType =
+                    if (e.partidoTerminado) CelebrationType.GameEnd
+                    else CelebrationType.RoundEnd
+
+                  val winner =
+                    if (e.partidoTerminado) {
+                      game.jugadores.find(_.fueGanadorDelPartido).map(_.user.name)
+                    } else {
+                      // For round end, find who scored the most points this round
+                      game.jugadores
+                        .flatMap(j => j.cuenta.lastOption.map(c => (j, c.puntos)))
+                        .maxByOption(_._2)
+                        .filter(_._2 > 0) // Only show winner if they gained points
+                        .map(_._1.user.name)
+                    }
+
+                  val scores = game.cuentasCalculadas.map { case (jugador, puntos, _) =>
+                    jugador.user.name -> puntos
+                  }.toMap
+
+                  // Calculate bid result for round end
+                  val bidResult =
+                    if (!e.partidoTerminado) {
+                      game.jugadores.find(_.mano).flatMap { cantante =>
+                        cantante.cuantasCantas.map { bid =>
+                          val madeIt = cantante.cuenta.lastOption.exists(_.puntos >= bid.numFilas)
+                          (cantante.user.name, bid.toString, madeIt)
+                        }
+                      }
+                    } else None
+
+                  val celebrationData = CelebrationData(celebrationType, winner, scores, bidResult)
+
+                  val showCelebration = refresh(initial = false)() >> $.modState(s =>
+                    s.copy(chutiState =
+                      s.chutiState.copy(
+                        celebration = Some(celebrationData),
+                        currentDialog = GlobalDialog.celebration
+                      )
+                    )
+                  )
+
+                  // Auto-dismiss for RoundEnd only (GameEnd requires manual click)
+                  if (celebrationType == CelebrationType.RoundEnd) {
+                    showCelebration >> Callback {
+                      timers.setTimeout(3000) {
+                        $.modState(s =>
+                          s.copy(chutiState =
+                            s.chutiState.copy(
+                              celebration = None,
+                              currentDialog = GlobalDialog.none
+                            )
+                          )
+                        ).runNow()
+                      }
+                    }
+                  } else {
+                    showCelebration
+                  }
+                }
+              }
+            case b: BorloteEvent =>
+              import scala.scalajs.js.timers
+              // Show celebrations for special borlote events
+              val celebrationData = CelebrationData(
+                components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
+                None,
+                Map.empty
               )
+              val showCelebration = $.modState(s =>
+                s.copy(chutiState =
+                  s.chutiState.copy(
+                    celebration = Some(celebrationData),
+                    currentDialog = GlobalDialog.celebration
+                  )
+                )
+              )
+
+              // Auto-dismiss special events after 3 seconds
+              showCelebration >> Callback {
+                timers.setTimeout(3000) {
+                  $.modState(s =>
+                    s.copy(chutiState =
+                      s.chutiState.copy(
+                        celebration = None,
+                        currentDialog = GlobalDialog.none
+                      )
+                    )
+                  ).runNow()
+                }
+              }
             case _ => Callback.empty
           }
         }
@@ -178,7 +270,7 @@ object Content extends ChutiComponent with TimerSupport {
 
     val audioQueue: mutable.Queue[String] = mutable.Queue()
     // Cache Audio objects by URL to avoid re-fetching from server
-    val audioCache: mutable.Map[String, Audio] = mutable.Map()
+    val audioCache:            mutable.Map[String, Audio] = mutable.Map()
     var currentlyPlayingAudio: Option[Audio] = None
 
     def getOrCreateAudio(url: String): Audio = {

@@ -111,11 +111,22 @@ object ChatComponent {
         <.div(
           ^.className := "messages",
           s.chatMessages.zipWithIndex.toVdomArray { case (msg, index) =>
+            val isSystemMessage = msg.fromUser.id == UserId(-999)
+            val isSpecialEvent = msg.msg.contains("🔔") || msg.msg.contains("🎅") || msg.msg.contains("🎂")
+            val messageClass =
+              if (isSystemMessage && isSpecialEvent) "special-event-message"
+              else if (isSystemMessage) "system-message"
+              else "receivedMessage"
+
             val div = <.div(
               ^.key       := s"msg$index",
-              ^.className := "receivedMessage",
-              <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
-              <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
+              ^.className := messageClass,
+              if (!isSystemMessage) {
+                VdomArray(
+                  <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
+                  <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date))
+                )
+              } else EmptyVdom,
               <.div(^.className := "messageText", msg.msg)
             )
             if (index == s.chatMessages.size - 1)

@@ -23,19 +23,21 @@ import zio.*
 
 import scala.language.unsafeNulls
 
-trait LLMService[E] {
+case class LLMError(message: String, cause: Option[Throwable] = None) extends Throwable(message, cause.orNull)
 
-  def generate(prompt: String): IO[E, String]
+
+trait LLMService {
+
+  def generate(prompt: String): IO[LLMError, String]
 
 }
 
 object LLMService {
 
-  def live[E](
-    config:       OllamaConfig,
-    errorHandler: Throwable => E
-  ): LLMService[E] =
-    new LLMService[E] {
+  def live(
+    config:       OllamaConfig
+  ): LLMService =
+    new LLMService {
 
       private val model: OllamaChatModel = OllamaChatModel
         .builder()
@@ -46,7 +48,7 @@ object LLMService {
         .maxRetries(0)
         .build()
 
-      override def generate(prompt: String): IO[E, String] = {
+      override def generate(prompt: String): IO[LLMError, String] = {
 
         ZIO
           .attemptBlocking {
@@ -64,7 +66,7 @@ object LLMService {
 
             model.chat(request).aiMessage().text()
           }
-          .mapError(errorHandler)
+          .mapError(e => LLMError("", Option(e)))
       }
 
     }

@@ -16,7 +16,7 @@
 
 package chuti.bots
 
-import ai.{LLMService, OllamaConfig}
+import ai.{LLMError, LLMService, OllamaConfig}
 import chuti.*
 import chuti.CuantasCantas.*
 import chuti.Triunfo.*
@@ -28,84 +28,86 @@ import zio.test.*
 object SmartChutiBotSpec extends ZIOSpecDefault {
 
   // Mock LLM service that returns predefined responses
-  class MockLLMService(responses: Ref[List[String]]) extends LLMService[GameError] {
+  class MockLLMService(responses: Ref[List[String]]) extends LLMService {
 
-    override def generate(prompt: String): IO[GameError, String] = {
+    override def generate(prompt: String): IO[LLMError, String] = {
       for {
         list <- responses.get
         response <- list match {
           case head :: tail =>
             responses.set(tail) *> ZIO.succeed(head)
           case Nil =>
-            ZIO.fail(GameError("No more mock responses"))
+            ZIO.fail(LLMError("No more mock responses"))
         }
       } yield response
     }
 
   }
 
-  def spec = suite("SmartChutiBotSpec")(
-    test("parses valid Canta response and falls back to DumbBot") {
-      val json = """{"reasoning": "I have a strong hand", "moveType": "canta", "details": {"cuantasCantas": "Casa"}}"""
+  def spec =
+    suite("SmartChutiBotSpec")(
+      test("parses valid Canta response and falls back to DumbBot") {
+        val json =
+          """{"reasoning": "I have a strong hand", "moveType": "canta", "details": {"cuantasCantas": "Casa"}}"""
 
-      for {
-        responses <- Ref.make(List(json))
-        mockService = new MockLLMService(responses)
-        config = OllamaConfig(
-          baseUrl = "http://localhost:11434",
-          modelName = "test",
-          temperature = 0.7,
-          maxTokens = 500,
-          timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+        for {
+          responses <- Ref.make(List(json))
+          mockService = new MockLLMService(responses)
+          config = OllamaConfig(
+            baseUrl = "http://localhost:11434",
+            modelName = "test",
+            temperature = 0.7,
+            maxTokens = 500,
+            timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+          )
+          bot = AIChutiBot.live(mockService, config)
+          game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+          jugador = game.jugadores.find(_.turno).get
+          event <- bot.decideTurn(jugador.user, game)
+        } yield assertTrue(
+          event.isInstanceOf[Canta]
         )
-        bot = SmartChutiBot.live(mockService, config)
-        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-        jugador = game.jugadores.find(_.turno).get
-        event <- bot.decideTurn(jugador.user, game)
-      } yield assertTrue(
-        event.isInstanceOf[Canta]
-      )
-    },
-    test("falls back to DumbBot on invalid JSON") {
-      val invalidJson = """this is not valid JSON"""
+      },
+      test("falls back to DumbBot on invalid JSON") {
+        val invalidJson = """this is not valid JSON"""
 
-      for {
-        responses <- Ref.make(List(invalidJson))
-        mockService = new MockLLMService(responses)
-        config = OllamaConfig(
-          baseUrl = "http://localhost:11434",
-          modelName = "test",
-          temperature = 0.7,
-          maxTokens = 500,
-          timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+        for {
+          responses <- Ref.make(List(invalidJson))
+          mockService = new MockLLMService(responses)
+          config = OllamaConfig(
+            baseUrl = "http://localhost:11434",
+            modelName = "test",
+            temperature = 0.7,
+            maxTokens = 500,
+            timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+          )
+          bot = AIChutiBot.live(mockService, config)
+          game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+          jugador = game.jugadores.find(_.turno).get
+          event <- bot.decideTurn(jugador.user, game)
+        } yield assertTrue(
+          event.isInstanceOf[Canta] // DumbBot should still return a valid Canta
         )
-        bot = SmartChutiBot.live(mockService, config)
-        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-        jugador = game.jugadores.find(_.turno).get
-        event <- bot.decideTurn(jugador.user, game)
-      } yield assertTrue(
-        event.isInstanceOf[Canta] // DumbBot should still return a valid Canta
-      )
-    },
-    test("falls back to DumbBot on timeout") {
-      for {
-        responses <- Ref.make(List.empty[String]) // No responses, will cause error
-        mockService = new MockLLMService(responses)
-        config = OllamaConfig(
-          baseUrl = "http://localhost:11434",
-          modelName = "test",
-          temperature = 0.7,
-          maxTokens = 500,
-          timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+      },
+      test("falls back to DumbBot on timeout") {
+        for {
+          responses <- Ref.make(List.empty[String]) // No responses, will cause error
+          mockService = new MockLLMService(responses)
+          config = OllamaConfig(
+            baseUrl = "http://localhost:11434",
+            modelName = "test",
+            temperature = 0.7,
+            maxTokens = 500,
+            timeout = Duration(10, java.util.concurrent.TimeUnit.SECONDS)
+          )
+          bot = AIChutiBot.live(mockService, config)
+          game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
+          jugador = game.jugadores.find(_.turno).get
+          event <- bot.decideTurn(jugador.user, game)
+        } yield assertTrue(
+          event.isInstanceOf[Canta] // DumbBot fallback
         )
-        bot = SmartChutiBot.live(mockService, config)
-        game = TestGameHelper.createTestGame(gameStatus = GameStatus.cantando)
-        jugador = game.jugadores.find(_.turno).get
-        event <- bot.decideTurn(jugador.user, game)
-      } yield assertTrue(
-        event.isInstanceOf[Canta] // DumbBot fallback
-      )
-    }
-  )
+      }
+    )
 
 }

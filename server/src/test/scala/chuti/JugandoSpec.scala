@@ -136,7 +136,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
 
   override def bootstrap: ZLayer[Any, Any, GameService & ChatService] =
     ZLayer.make[GameService & ChatService](
-      GameService.makeWithoutSmartBot(),
+      GameService.makeWithoutAIBot(),
       ChatService.make()
     )
 

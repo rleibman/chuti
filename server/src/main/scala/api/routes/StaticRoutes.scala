@@ -38,12 +38,36 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
     }
   }
 
-  private def getCacheHeaders(path: String): Headers = {
+  private def getHeaders(path: String): Headers = {
+    // Determine content type
+    val contentType = path match {
+      case p if p.endsWith(".svg")     => "image/svg+xml"
+      case p if p.endsWith(".png")     => "image/png"
+      case p if p.endsWith(".jpg")     => "image/jpeg"
+      case p if p.endsWith(".jpeg")    => "image/jpeg"
+      case p if p.endsWith(".gif")     => "image/gif"
+      case p if p.endsWith(".webp")    => "image/webp"
+      case p if p.endsWith(".woff")    => "font/woff"
+      case p if p.endsWith(".woff2")   => "font/woff2"
+      case p if p.endsWith(".ttf")     => "font/ttf"
+      case p if p.endsWith(".eot")     => "application/vnd.ms-fontobject"
+      case p if p.endsWith(".mp3")     => "audio/mpeg"
+      case p if p.endsWith(".wav")     => "audio/wav"
+      case p if p.endsWith(".ogg")     => "audio/ogg"
+      case p if p.endsWith(".m4a")     => "audio/mp4"
+      case p if p.endsWith(".aac")     => "audio/aac"
+      case p if p.endsWith(".js")      => "application/javascript"
+      case p if p.endsWith(".js.map")  => "application/json"
+      case p if p.endsWith(".css")     => "text/css"
+      case p if p.endsWith(".html")    => "text/html"
+      case _                           => "application/octet-stream"
+    }
+
     val isImage = path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg") ||
-                  path.endsWith(".svg") || path.endsWith(".gif") || path.endsWith(".webp")
+      path.endsWith(".svg") || path.endsWith(".gif") || path.endsWith(".webp")
     val isFont = path.endsWith(".woff") || path.endsWith(".woff2") || path.endsWith(".ttf") || path.endsWith(".eot")
     val isSound = path.endsWith(".mp3") || path.endsWith(".wav") || path.endsWith(".ogg") ||
-                  path.endsWith(".m4a") || path.endsWith(".aac")
+      path.endsWith(".m4a") || path.endsWith(".aac")
     val isJs = path.endsWith(".js") || path.endsWith(".js.map")
     val isCss = path.endsWith(".css")
 
@@ -52,16 +76,19 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
       // public: can be cached by browsers and CDNs
       // immutable: tells browser the file will never change at this URL
       Headers(
+        Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
         Header.Custom("Cache-Control", "public, max-age=31536000, immutable")
       )
     } else if (isJs || isCss) {
       // Cache JS and CSS for 1 day (may change with deployments)
       Headers(
+        Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
         Header.Custom("Cache-Control", "public, max-age=86400")
       )
     } else {
       // HTML and other files: cache for 5 minutes
       Headers(
+        Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
         Header.Custom("Cache-Control", "public, max-age=300, must-revalidate")
       )
     }
@@ -82,7 +109,7 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
                   file <- file(s"$staticContentDir/index.html")
                 } yield file
               }.mapError(GameError(_))
-              .map(response => response.updateHeaders(_ => getCacheHeaders("index.html")))
+              .map(response => response.updateHeaders(_ => getHeaders("index.html")))
         }.flatten,
         Method.GET / trailing -> handler {
           (
@@ -98,11 +125,10 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
                   config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
                   staticContentDir = config.chuti.http.staticContentDir
                   file <- file(s"$staticContentDir/$somethingElse")
-                  cacheHeaders = getCacheHeaders(somethingElse)
-                  _ <- ZIO.logDebug(s"Serving static file: $somethingElse with cache headers")
+                  cacheHeaders = getHeaders(somethingElse)
                 } yield file
               }.mapError(GameError(_))
-              .map(response => response.updateHeaders(_ => getCacheHeaders(somethingElse)))
+              .map(response => response.updateHeaders(_ => getHeaders(somethingElse)))
               .contramap[(Path, Request)](_._2)
         }
       )

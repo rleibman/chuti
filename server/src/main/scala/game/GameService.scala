@@ -19,9 +19,10 @@ package game
 import api.token.TokenHolder
 import api.{*, given}
 import chat.*
+import chuti.Borlote.TodoConDos
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
-import chuti.bots.{ChutiBot, DumbChutiBot, SmartChutiBot}
+import chuti.bots.{ChutiBot, DumbChutiBot, AIChutiBot}
 import chuti.{*, given}
 import dao.{RepositoryError, ZIORepository}
 import mail.Postman
@@ -83,11 +84,11 @@ object GameService {
     }
   }
 
-  def make(): ZLayer[Option[SmartChutiBot], Nothing, GameService] =
+  def make(): ZLayer[Option[AIChutiBot], Nothing, GameService] =
     ZLayer.fromZIO(for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])
-      smartBotOpt     <- ZIO.service[Option[SmartChutiBot]]
+      aiBotOpt     <- ZIO.service[Option[AIChutiBot]]
     } yield new GameService {
 
       val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
@@ -181,7 +182,7 @@ object GameService {
                 _
               ) =>
                 // If there's not enough human players, we need to add some bots
-                joinGame(Option(foldedGame), JugadorType.smartBot)
+                joinGame(Option(foldedGame), JugadorType.aiBot)
                   .provideSomeLayer[ZIORepository & Postman & TokenHolder](
                     botLayer
                   )
@@ -194,8 +195,8 @@ object GameService {
         val base = Map[JugadorType, ChutiBot](
           JugadorType.dumbBot -> DumbChutiBot
         )
-        smartBotOpt match {
-          case Some(smartBot) => base + (JugadorType.smartBot -> smartBot)
+        aiBotOpt match {
+          case Some(aiBot) => base + (JugadorType.aiBot -> aiBot)
           case None           => base
         }
       }
@@ -666,6 +667,57 @@ object GameService {
         }
       }
 
+      // Generate system chat messages for key game events
+      private def getSystemMessageForEvent(
+        event: GameEvent,
+        game:  Game,
+        user:  User
+      ): Option[String] = {
+        import chuti.Triunfo.*
+        event match {
+          case _: Sopa =>
+            Option(s"🎲 Nueva ronda! ${user.name} reparte las fichas")
+          case c: Canta if c.cuantasCantas != CuantasCantas.Buenas =>
+            Option(s"🃏 ${user.name} canta ${c.cuantasCantas}")
+          case p: Pide if p.triunfo.nonEmpty =>
+            val triunfoStr = p.triunfo.get match {
+              case SinTriunfos        => "Sin Triunfos"
+              case TriunfoNumero(num) => s"${num.value}"
+            }
+            Option(s"♠️ Triunfan: $triunfoStr")
+          case t: TerminaJuego =>
+            if (t.partidoTerminado) {
+              val ganador = game.jugadores.find(_.fueGanadorDelPartido)
+              ganador.map(g => s"🏆 ¡Partido terminado! ${g.user.name} gana el partido!")
+            } else {
+              val cuentas = game.cuentasCalculadas
+                .map { case (jugador, puntos, _) =>
+                  s"${jugador.user.name}: ${if (puntos >= 0) "+" else ""}$puntos"
+                }.mkString(", ")
+              Option(s"🎉 Juego terminado! Puntos: $cuentas")
+            }
+          case b: BorloteEvent =>
+            b.borlote match {
+              case Borlote.Campanita =>
+                Option(s"🔔 ¡Campanita! ${user.name} jugó el 0:1")
+              case Borlote.SantaClaus =>
+                Option(s"🎅 ¡Santa Claus!")
+              case Borlote.ElNiñoDelCumpleaños =>
+                Option(s"🎂 ¡El Niño del Cumpleaños!")
+              case Borlote.Helecho =>
+                Option(s"🌿 ¡Helecho!")
+              case Borlote.TodoConDos =>
+                Option(s"2️⃣ ¡Borlote Todo con Dos!")
+              case Borlote.HoyoTecnico =>
+                None // Don't announce technical fouls in chat
+              case Borlote.Hoyo =>
+                val cantante = game.jugadores.find(_.cantante)
+                cantante.map(c => s"⚠️ ¡${c.user.name} tiene un hoyo!")
+            }
+          case _ => None
+        }
+      }
+
       override def playSilently(
         gameId:    GameId,
         playEvent: PlayEvent
@@ -713,23 +765,26 @@ object GameService {
             updateAccounting(played._1)
           }
           _ <- ZIO.foreachDiscard(played._2)(broadcast(gameEventQueues, _))
-          // Send chat message for game end events
-          _ <- ZIO.foreachDiscard(played._2) {
-            case terminaJuego: TerminaJuego =>
-              terminaJuego.gameStatusString.fold(ZIO.unit) { statusMsg =>
-                ChatService
-                  .sendMessage(
-                    statusMsg,
-                    played._1.channelId,
-                    None
-                  ).catchAll(error => ZIO.logError(s"Failed to send game end message to chat: ${error.msg}"))
-              }
-            case _ => ZIO.unit
+          // Send system chat messages for key game events
+          chatService <- ZIO.service[ChatService]
+          _ <- ZIO.foreachDiscard(played._2) { event =>
+            getSystemMessageForEvent(event, played._1, user) match {
+              case Some(msg) =>
+                chatService
+                  .sayAsSystem(msg, played._1.channelId)
+                  .catchAll(error => ZIO.logError(s"Failed to send system message to chat: ${error.msg}"))
+              case None => ZIO.unit
+            }
           }
           // After broadcasting, let bots play if it's their turn (only if triggered by human play)
           finalGame <-
-            if (triggerBotAutoPlay) doBotsAutoPlay(played._1)
-            else ZIO.succeed(played._1)
+            if (triggerBotAutoPlay) {
+              doBotsAutoPlay(played._1)
+                .catchAll(error =>
+                  ZIO.logError(s"Bot auto-play failed: ${error.msg}") *>
+                    ZIO.succeed(played._1) // Return game state before bot auto-play on error
+                )
+            } else ZIO.succeed(played._1)
         } yield finalGame).mapError(GameError.apply)
       }
 
@@ -876,7 +931,7 @@ object GameService {
       }
     } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
-  // Convenience layer for tests that don't need SmartBot
-  def makeWithoutSmartBot(): ULayer[GameService] = ZLayer.succeed(None: Option[SmartChutiBot]) >>> make()
+  // Convenience layer for tests that don't need AIBot
+  def makeWithoutAIBot(): ULayer[GameService] = ZLayer.succeed(None: Option[AIChutiBot]) >>> make()
 
 }

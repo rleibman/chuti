@@ -68,7 +68,7 @@ object AppRouter extends ChutiComponent {
                 //                key = "cuentasDialog",
                 .open(chutiState.currentDialog == GlobalDialog.cuentas)(
                   ModalHeader()(
-                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO I8n
+                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto" // TODO I8n
                   ),
                   ModalContent()(
                     Table()(
@@ -158,7 +158,29 @@ object AppRouter extends ChutiComponent {
             }
           }
 
-          VdomArray(renderCuentasDialog)
+          def renderCelebrationOverlay: VdomArray = {
+            chutiState.celebration.toVdomArray { celebrationData =>
+              import components.CelebrationOverlay
+
+              CelebrationOverlay(
+                celebrationType = celebrationData.celebrationType,
+                winner = celebrationData.winner,
+                scores = celebrationData.scores,
+                bidResult = celebrationData.bidResult,
+                onDismiss = {
+                  // After dismissing celebration, show cuentas if it was game end
+                  import components.CelebrationOverlay.CelebrationType
+                  val nextDialog = celebrationData.celebrationType match {
+                    case CelebrationType.GameEnd => GlobalDialog.cuentas
+                    case _                       => GlobalDialog.none
+                  }
+                  chutiState.showDialog(nextDialog)
+                }
+              )
+            }
+          }
+
+          VdomArray(renderCuentasDialog, renderCelebrationOverlay)
         }
 
     }

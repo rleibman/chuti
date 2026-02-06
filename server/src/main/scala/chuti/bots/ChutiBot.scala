@@ -40,12 +40,12 @@ trait ChutiBot {
       turn    <- decideTurn(user, game)
 
       delayInSeconds = turn match {
-        case chuti.NoOpPlay(_, _, _, _, _, _) | chuti.HoyoTecnico(_, _, _, _, _, _, _) |
-            chuti.TerminaJuego(_, _, _, _, _, _, _) | chuti.Sopa(_, _, _, _, _, _, _) =>
+        case chuti.NoOpPlay(_, _, _, _, _, _, _) | chuti.HoyoTecnico(_, _, _, _, _, _, _, _) |
+            chuti.TerminaJuego(_, _, _, _, _, _, _, _) | chuti.Sopa(_, _, _, _, _, _, _, _) =>
           0
-        case chuti.Da(_, _, _, _, _, _, _, _, _) | chuti.Pide(_, _, _, _, _, _, _, _, _, _) |
-            chuti.Canta(_, _, _, _, _, _, _) | chuti.Caete(_, _, _, _, _, _, _, _, _, _) |
-            chuti.MeRindo(_, _, _, _, _, _) =>
+        case chuti.Da(_, _, _, _, _, _, _, _, _, _) | chuti.Pide(_, _, _, _, _, _, _, _, _, _, _) |
+            chuti.Canta(_, _, _, _, _, _, _, _) | chuti.Caete(_, _, _, _, _, _, _, _, _, _, _) |
+            chuti.MeRindo(_, _, _, _, _, _, _) =>
           10
       }
 
