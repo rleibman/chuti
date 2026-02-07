@@ -16,11 +16,12 @@
 
 package ai
 
-import dev.langchain4j.data.message.UserMessage
+import dev.langchain4j.data.message.{SystemMessage, UserMessage}
 import dev.langchain4j.model.chat.request.*
 import dev.langchain4j.model.ollama.OllamaChatModel
 import zio.*
 
+import scala.io.Source
 import scala.language.unsafeNulls
 
 case class LLMError(message: String, cause: Option[Throwable] = None) extends Throwable(message, cause.orNull)
@@ -33,6 +34,19 @@ trait LLMService {
 }
 
 object LLMService {
+
+  // Load condensed game rules from resources (fallback mode)
+  private lazy val gameRules: String = {
+    val stream = getClass.getResourceAsStream("/chuti_game_rules.txt")
+    if (stream == null) {
+      throw new RuntimeException("Game rules resource not found at /chuti_game_rules.txt")
+    }
+    try {
+      Source.fromInputStream(stream).mkString
+    } finally {
+      stream.close()
+    }
+  }
 
   def live(
     config:       OllamaConfig
@@ -52,6 +66,18 @@ object LLMService {
 
         ZIO
           .attemptBlocking {
+            // Build message list based on configuration
+            val messages = if (config.useSystemMessage && !config.customModel) {
+              // Standard model: send rules via SystemMessage (fallback mode)
+              java.util.List.of(
+                SystemMessage.from(gameRules),
+                UserMessage.from(prompt)
+              )
+            } else {
+              // Custom model: rules already baked in
+              java.util.List.of(UserMessage.from(prompt))
+            }
+
             val request =
               ChatRequest
                 .builder()
@@ -61,12 +87,12 @@ object LLMService {
                     .responseFormat(ResponseFormat.JSON)
                     .build()
                 )
-                .messages(UserMessage(prompt))
+                .messages(messages)
                 .build()
 
             model.chat(request).aiMessage().text()
           }
-          .mapError(e => LLMError("", Option(e)))
+          .mapError(e => LLMError("LLM generation failed", Option(e)))
       }
 
     }

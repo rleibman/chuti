@@ -29,37 +29,16 @@ case class UpdateInvitedUserRequest(
   user:     User,
   password: String,
   token:    String
-)
+) derives JsonCodec
 
-object UpdateInvitedUserResponse {
-
-  given JsonDecoder[UpdateInvitedUserResponse] = DeriveJsonDecoder.gen[UpdateInvitedUserResponse]
-  given JsonEncoder[UpdateInvitedUserResponse] = DeriveJsonEncoder.gen[UpdateInvitedUserResponse]
-
-}
-
-case class UpdateInvitedUserResponse(error: Option[String])
-
-object UserCreationRequest {
-
-  given JsonDecoder[UserCreationRequest] = DeriveJsonDecoder.gen[UserCreationRequest]
-  given JsonEncoder[UserCreationRequest] = DeriveJsonEncoder.gen[UserCreationRequest]
-
-}
+case class UpdateInvitedUserResponse(error: Option[String]) derives JsonCodec
 
 case class UserCreationRequest(
   user:     User,
   password: String
-)
+) derives JsonCodec
 
-object UserCreationResponse {
-
-  given JsonDecoder[UserCreationResponse] = DeriveJsonDecoder.gen[UserCreationResponse]
-  given JsonEncoder[UserCreationResponse] = DeriveJsonEncoder.gen[UserCreationResponse]
-
-}
-
-case class UserCreationResponse(error: Option[String])
+case class UserCreationResponse(error: Option[String]) derives JsonCodec
 
 trait Search
 

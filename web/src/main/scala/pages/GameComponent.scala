@@ -28,7 +28,12 @@ import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.react.mod.CSSProperties
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
-import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{SemanticCOLORS, SemanticICONS, SemanticSIZES, SemanticShorthandItem}
+import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
+  SemanticCOLORS,
+  SemanticICONS,
+  SemanticSIZES,
+  SemanticShorthandItem
+}
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.*
 import org.scalajs.dom
@@ -247,8 +252,7 @@ object GameComponent {
                     // Add bot badge and rationale icon
                     if (jugador.jugadorType != JugadorType.human) {
                       TagMod(
-                        <.span(^.className := "bot-badge", " 🤖"),
-                        {
+                        <.span(^.className := "bot-badge", " 🤖"), {
                           dom.console.log(s"Bot ${jugador.user.name}: lastBotRationale = ${jugador.lastBotRationale}")
                           jugador.lastBotRationale match {
                             case Some(rationale) =>

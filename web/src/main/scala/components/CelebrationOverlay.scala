@@ -223,7 +223,8 @@ object CelebrationOverlay {
 
   import scala.language.unsafeNulls
   given Reusability[CelebrationType] = Reusability.by(_.toString)
-  given Reusability[(cantante: String, bid: String, madeIt: Boolean)] = Reusability.by(t => (t.cantante, t.bid, t.madeIt))
+  given Reusability[(cantante: String, bid: String, madeIt: Boolean)] =
+    Reusability.by(t => (t.cantante, t.bid, t.madeIt))
   given Reusability[Props] = Reusability.by(p => (p.celebrationType.toString, p.winner, p.scores.hashCode, p.bidResult))
   given Reusability[State] = Reusability.by(_.confettiPieces.size) // Ignore timerHandle changes
 

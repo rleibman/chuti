@@ -16,14 +16,16 @@
 
 package api.token
 
-enum TokenPurpose(override val toString: String) {
+import zio.json.JsonCodec
+
+enum TokenPurpose(override val toString: String) derives JsonCodec {
 
   case NewUser extends TokenPurpose(toString = "NewUser")
   case LostPassword extends TokenPurpose(toString = "LostPassword")
 
 }
 
-case class Token(tok: String) {
+case class Token(tok: String) derives JsonCodec {
 
   override def toString: String = tok
 

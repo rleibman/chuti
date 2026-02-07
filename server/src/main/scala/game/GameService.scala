@@ -22,7 +22,7 @@ import chat.*
 import chuti.Borlote.TodoConDos
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
-import chuti.bots.{ChutiBot, DumbChutiBot, AIChutiBot}
+import chuti.bots.{AIBot, ChutiBot, DumbChutiBot}
 import chuti.{*, given}
 import dao.{RepositoryError, ZIORepository}
 import mail.Postman
@@ -84,11 +84,11 @@ object GameService {
     }
   }
 
-  def make(): ZLayer[Option[AIChutiBot], Nothing, GameService] =
+  def make(): ZLayer[Option[AIBot], Nothing, GameService] =
     ZLayer.fromZIO(for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])
-      aiBotOpt     <- ZIO.service[Option[AIChutiBot]]
+      aiBotOpt        <- ZIO.service[Option[AIBot]]
     } yield new GameService {
 
       val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
@@ -197,7 +197,7 @@ object GameService {
         )
         aiBotOpt match {
           case Some(aiBot) => base + (JugadorType.aiBot -> aiBot)
-          case None           => base
+          case None        => base
         }
       }
 
@@ -932,6 +932,6 @@ object GameService {
     } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
   // Convenience layer for tests that don't need AIBot
-  def makeWithoutAIBot(): ULayer[GameService] = ZLayer.succeed(None: Option[AIChutiBot]) >>> make()
+  def makeWithoutAIBot(): ULayer[GameService] = ZLayer.succeed(None: Option[AIBot]) >>> make()
 
 }

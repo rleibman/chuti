@@ -19,11 +19,13 @@ package ai
 import zio.Duration
 
 case class OllamaConfig(
-  baseUrl:     String = "http://localhost:11434",
-  modelName:   String = "llama3.2:1b",
-  temperature: Double = 0.7,
-  maxTokens:   Int = 500,
-  timeout:     Duration = Duration(5, java.util.concurrent.TimeUnit.MINUTES)
+  baseUrl:          String = "http://localhost:11434",
+  modelName:        String = "chuti-llama3.2:1b",
+  temperature:      Double = 0.7,
+  maxTokens:        Int = 500,
+  timeout:          Duration = Duration(5, java.util.concurrent.TimeUnit.MINUTES),
+  useSystemMessage: Boolean = false, // Send rules via SystemMessage (fallback mode)
+  customModel:      Boolean = true   // Assume rules baked into custom model
 )
 
 case class AIConfig(

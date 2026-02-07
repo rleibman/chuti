@@ -17,6 +17,7 @@
 package chuti
 
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
+import zio.json.JsonCodec
 
 import scala.annotation.tailrec
 import scala.util.Random
@@ -33,7 +34,7 @@ sealed trait EventInfo[T <: GameEvent] {
 
 }
 
-enum ReapplyMode {
+enum ReapplyMode derives JsonCodec {
 
   case none, fullRefresh, reapply
 
@@ -41,7 +42,7 @@ enum ReapplyMode {
 
 import chuti.ReapplyMode.*
 
-sealed trait GameEvent {
+sealed trait GameEvent derives JsonCodec {
 
   val gameId:           GameId
   val userId:           UserId
@@ -68,8 +69,8 @@ sealed trait GameEvent {
 
 object GameEvent {}
 
-sealed trait PreGameEvent extends GameEvent
-sealed trait PlayEvent extends GameEvent {
+sealed trait PreGameEvent extends GameEvent derives JsonCodec
+sealed trait PlayEvent extends GameEvent derives JsonCodec {
 
   def reasoning: Option[String] = None
 
@@ -590,7 +591,9 @@ final case class Canta(
         cantanteActual
       else {
         // Lo salvaste, ahora eres el cantante
-        println(s"Canta (saving bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
+        println(
+          s"Canta (saving bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}"
+        )
         jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas), lastBotRationale = reasoning)
       }
     }
@@ -607,8 +610,7 @@ final case class Canta(
         // Si canto buenas márcalo asi, and preserve reasoning
         println(s"Canta (Buenas): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
         a.copy(cuantasCantas = Option(CuantasCantas.Buenas), lastBotRationale = reasoning)
-      }
-      else if (a.id == nextJugador.id && !(nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas))
+      } else if (a.id == nextJugador.id && !(nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas))
         // Pásale la mano al siguiente jugador, a menos que sea el ultimo jugador
         a.copy(mano = true)
       else
@@ -781,7 +783,7 @@ final case class Pide(
         )
     )
 
-  def redoPideInicial(
+  private def redoPideInicial(
     ficha:           Ficha,
     triunfo:         Triunfo,
     estrictaDerecha: Boolean,
@@ -872,7 +874,9 @@ final case class Da(
             jugadores = a.modifiedJugadores(
               _.id == jugador.id,
               j => {
-                println(s"Da (trick complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
+                println(
+                  s"Da (trick complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}"
+                )
                 j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
               }
             )
@@ -889,7 +893,9 @@ final case class Da(
               jugadores = game.modifiedJugadores(
                 _.id == jugador.id,
                 j => {
-                  println(s"Da (not complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
+                  println(
+                    s"Da (not complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}"
+                  )
                   j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
                 }
               )

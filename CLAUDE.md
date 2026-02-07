@@ -44,6 +44,16 @@ The project depends on a local library `chuti-stlib`. Before building, you must 
 cd stLib && sbt --error publishLocal && cd ..
 ```
 
+### AI Bot Setup (Optional)
+
+To enable AI-powered bots using Ollama:
+
+1. **Install Ollama**: Download from [ollama.ai](https://ollama.ai)
+2. **Build custom model**: Run `./scripts/setup-chuti-llm.sh`
+3. **Verify setup**: Run `ollama list | grep chuti-llama3.2`
+
+See `ai/README.md` for detailed configuration options and troubleshooting.
+
 ## Architecture
 
 ### Project Structure

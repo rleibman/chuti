@@ -18,20 +18,9 @@ package chuti
 
 import chuti.CuantasCantas.CuantasCantas
 import zio.json.*
-import chat.given
 
 given JsonCodec[UserId] = JsonCodec.long.transform(UserId.apply, _.value)
 given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _.value)
-given JsonCodec[JugadorType] = JsonCodec.string.transform(JugadorType.valueOf, _.toString)
 given JsonCodec[GameId] = JsonCodec.long.transform(GameId.apply, _.value)
-given JsonCodec[Triunfo] = JsonCodec.derived[Triunfo]
-given JsonCodec[Fila] = JsonCodec.derived[Fila]
-given JsonCodec[CuantasCantas] = JsonCodec.derived[CuantasCantas]
 given JsonCodec[(UserId, Seq[Fila])] = JsonCodec.derived[(UserId, Seq[Fila])]
-given JsonCodec[Borlote] = JsonCodec.derived[Borlote]
-given JsonCodec[PlayEvent] = JsonCodec.derived[PlayEvent]
-given JsonCodec[GameEvent] = JsonCodec.derived[GameEvent]
-given JsonCodec[Cuenta] = JsonCodec.derived[Cuenta]
-given JsonCodec[Jugador] = JsonCodec.derived[Jugador]
-given JsonCodec[GameStatus] = JsonCodec.derived[GameStatus]
-given JsonCodec[Game] = JsonCodec.derived[Game]
+given JsonCodec[CuantasCantas] = JsonCodec.derived[CuantasCantas]

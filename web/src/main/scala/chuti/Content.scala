@@ -87,7 +87,7 @@ object Content extends ChutiComponent with TimerSupport {
                 s.chutiState.gameInProgress.fold(Callback.empty) { game =>
                   import components.CelebrationOverlay.CelebrationType
 
-                    import scala.scalajs.js.timers
+                  import scala.scalajs.js.timers
 
                   val celebrationType =
                     if (e.partidoTerminado) CelebrationType.GameEnd

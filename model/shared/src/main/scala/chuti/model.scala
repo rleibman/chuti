@@ -79,10 +79,10 @@ object CuantasCantas {
 
   def byPriority(prioridad: Int): Option[CuantasCantas] = (Buenas +: values).find(_.prioridad == prioridad)
 
-  sealed abstract class CuantasCantas protected (
+  sealed abstract class CuantasCantas(
     val numFilas:  Int, // Cuantas filas se tienen que hacer para cantar esto
     val score:     Int, // Cuantos puntos se van a anotar con este canto (chuti son 7 filas, pero valen 21 puntos)
-    val prioridad: Int  // Quien gana en prioridad. (buenas siempre pierde)
+    val prioridad: Int // Quien gana en prioridad. (buenas siempre pierde)
   ) {
 
     override def toString: String = s"CuantasCantas($numFilas, $score, $prioridad)"
@@ -221,11 +221,11 @@ object Fila {
 case class Fila(
   fichas: Seq[Ficha],
   index:  Int = 0
-)
+) derives JsonCodec
 
 import chuti.CuantasCantas.*
 
-enum JugadorState {
+enum JugadorState derives JsonCodec {
 
   case dando, cantando, esperandoCanto, pidiendoInicial, pidiendo, esperando, haciendoSopa, partidoTerminado,
     invitedNotAnswered,
@@ -251,7 +251,7 @@ object JugadorState {
 
 }
 
-enum JugadorType {
+enum JugadorType derives JsonCodec {
 
   case human, dumbBot, aiBot
 
@@ -271,7 +271,7 @@ case class Jugador(
   fueGanadorDelPartido: Boolean = false,
   cuenta:               Seq[Cuenta] = Seq.empty,
   lastBotRationale:     Option[String] = None // Explanation of last bot decision
-) {
+) derives JsonCodec {
 
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
@@ -301,8 +301,10 @@ case class Jugador(
 
 }
 
-sealed trait Triunfo {
+sealed trait Triunfo derives JsonCodec {
+
   override def toString: String
+
 }
 
 object Triunfo {
@@ -332,7 +334,7 @@ enum GameStatus(
   val value:   String,
   val enJuego: Boolean = false,
   val acabado: Boolean = false
-) {
+) derives JsonCodec {
 
   case esperandoJugadoresInvitados extends GameStatus(value = "esperandoJugadoresInvitados")
   case esperandoJugadoresAzar extends GameStatus(value = "esperandoJugadoresAzar")
@@ -359,7 +361,7 @@ enum GameStatus(
 
 import chuti.GameStatus.*
 
-enum Borlote(override val toString: String) {
+enum Borlote(override val toString: String) derives JsonCodec {
 
   case Hoyo extends Borlote(toString = "Hoyo!")
   case HoyoTecnico extends Borlote(toString = "Hoyo Tecnico!")
@@ -406,20 +408,27 @@ object Game {
 
 }
 
+enum BotDifficultyLevel derives JsonCodec {
+
+  case easy, intermediate, advanced
+
+}
+
 case class Game(
   id:                GameId,
   created:           Instant,
   gameStatus:        GameStatus = comienzo,
   currentEventIndex: Int = 0,
   // Game State
-  triunfo:          Option[Triunfo] = None,
-  enJuego:          List[(UserId, Ficha)] = List.empty,
-  estrictaDerecha:  Boolean = false,
-  jugadores:        List[Jugador] = List.empty,
-  statusString:     String = "",
-  satoshiPerPoint:  Long = 100L,
-  explainReasoning: Boolean = true // Show bot reasoning to users
-) {
+  triunfo:            Option[Triunfo] = None,
+  enJuego:            List[(UserId, Ficha)] = List.empty,
+  estrictaDerecha:    Boolean = false,
+  jugadores:          List[Jugador] = List.empty,
+  statusString:       String = "",
+  satoshiPerPoint:    Long = 100L,
+  botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.intermediate,
+  explainReasoning:   Boolean = true // Show bot reasoning to users
+) derives JsonCodec {
 
   def jugadorState(jugador: Jugador): JugadorState = {
     gameStatus match {
@@ -774,4 +783,4 @@ case class Game(
 case class Cuenta(
   puntos: Int,
   esHoyo: Boolean = false
-)
+) derives JsonCodec

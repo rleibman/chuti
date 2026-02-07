@@ -16,12 +16,13 @@
 
 package api
 
+import ai.LLMService
 import api.token.{TokenHolder, TokenPurpose}
 import auth.*
 import auth.oauth.{OAuthService, OAuthStateStore}
 import chat.ChatService
 import chuti.*
-import chuti.bots.AIChutiBot
+import chuti.bots.AIBot
 import dao.*
 import dao.quill.QuillRepository
 import game.GameService
@@ -86,22 +87,27 @@ object EnvironmentBuilder {
     QuillRepository.uncached >>> ZIORepository.cached
 
   // AI layers - optional, only created if config is present
-  private val aiBotLayer: ZLayer[ConfigurationService, Nothing, Option[AIChutiBot]] =
-    ZLayer.fromZIO(
-      ZIO
-        .serviceWithZIO[ConfigurationService](_.appConfig)
-        .flatMap { appConfig =>
-          appConfig.chuti.ai match {
-            case Some(aiConfig) =>
-              val config = aiConfig.ollama
-              val aiBot = AIChutiBot.liveWithConfig(config)
-              ZIO.some(aiBot) <* ZIO.logInfo(s"AIBot initialized with Ollama at ${config.baseUrl}")
-            case None =>
-              ZIO.none <* ZIO.logInfo("AI config not found, AIBot will not be available")
+  private val llmServiceLayer: ZLayer[ConfigurationService, ConfigurationError, ai.LLMService] = ZLayer.fromZIO {
+    ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map { appConfig =>
+      appConfig.chuti.ai match {
+        case Some(aiConfig) => ai.LLMService.live(aiConfig.ollama)
+        case None           =>
+          // Provide a no-op LLMService when AI config is not present
+          new ai.LLMService {
+            def generate(prompt: String): IO[ai.LLMError, String] =
+              ZIO.fail(ai.LLMError("AI configuration not provided"))
           }
-        }
-        .orDieWith(e => new RuntimeException(s"Failed to initialize AIBot: $e"))
-    )
+      }
+    }
+  }
+
+  private val aiBotLayer: ZLayer[ai.LLMService & ConfigurationService, ConfigurationError, Option[AIBot]] = ZLayer
+    .fromZIO {
+      for {
+        config     <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.ai)
+        llmService <- ZIO.service[ai.LLMService]
+      } yield config.map(c => AIBot(config = c.ollama, llmService = llmService))
+    }
 
   val live: ULayer[ChutiEnvironment] = ZLayer
     .make[ChutiEnvironment](
@@ -113,6 +119,7 @@ object EnvironmentBuilder {
       oauthServiceLayer,
       OAuthStateStore.live(),
       ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
+      llmServiceLayer,
       aiBotLayer,
       GameService.make(),
       ChatService.make(),
@@ -130,6 +137,7 @@ object EnvironmentBuilder {
       TokenHolder.liveLayer,
       oauthServiceLayer,
       OAuthStateStore.live(),
+      llmServiceLayer,
       aiBotLayer,
       GameService.make(),
       ChatService.make(),
@@ -162,6 +170,7 @@ object EnvironmentBuilder {
             .make[(String, TokenPurpose), Any, Nothing, User](100, 5.days, Lookup(_ => ZIO.succeed(chuti.god)))
         } yield TokenHolder.tempCache(cache)),
         OAuthStateStore.live(),
+        llmServiceLayer,
         aiBotLayer,
         GameService.make(),
         ChatService.make(),

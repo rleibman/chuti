@@ -57,16 +57,9 @@ object User {
 case class UserWallet(
   userId: UserId,
   amount: BigDecimal = 0.0
-)
+) derives JsonCodec
 
-object UserWallet {
-
-  given JsonDecoder[UserWallet] = DeriveJsonDecoder.gen[UserWallet]
-  given JsonEncoder[UserWallet] = DeriveJsonEncoder.gen[UserWallet]
-
-}
-
-enum UserEventType {
+enum UserEventType derives JsonCodec {
 
   case Disconnected, Connected, Modified, JoinedGame, AbandonedGame
 
