@@ -39,7 +39,7 @@ case class DataSourceConfig(
   user:                  String,
   password:              String,
   maximumPoolSize:       Int = 20,
-  minimumIdle:           Int = 1000,
+  minimumIdle:           Int = 5,
   connectionTimeoutMins: Long = 5
 )
 

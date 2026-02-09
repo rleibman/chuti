@@ -34,8 +34,10 @@ import scala.concurrent.duration.Duration as ScalaDuration
 
 object QuillRepository {
 
-  val uncached: ZLayer[ConfigurationService, ConfigurationError, QuillRepository] =
+  val uncached: ZLayer[ConfigurationService & FlywayMigration, ConfigurationError, QuillRepository] =
     ZLayer.fromZIO(for {
+      migration <- ZIO.service[FlywayMigration]
+      _         <- migration.migrate.mapError(e => ConfigurationError(s"Migration failed: ${e.getMessage}", Some(e)))
       configService <- ZIO.service[ConfigurationService]
       appConfig     <- configService.appConfig
     } yield QuillRepository(appConfig))

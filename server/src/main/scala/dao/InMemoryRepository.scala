@@ -49,8 +49,10 @@ object InMemoryRepository {
           UserId(4) -> user4
         )
       )
-      tokens <- Ref.make(Map.empty[String, Token])
-    } yield InMemoryRepository(games, users, tokens))
+      tokens        <- Ref.make(Map.empty[String, Token])
+      gameIdCounter <- Ref.make(1L)
+      userIdCounter <- Ref.make(10L) // Start at 10 to avoid conflicts with test users
+    } yield InMemoryRepository(games, users, tokens, gameIdCounter, userIdCounter))
 
   val make: ULayer[ZIORepository] = ZLayer.fromZIO(for {
     games <- Ref.make(Map.empty[GameId, Game])
@@ -62,15 +64,19 @@ object InMemoryRepository {
         UserId(4) -> user4
       )
     )
-    tokens <- Ref.make(Map.empty[String, Token])
-  } yield InMemoryRepository(games, users, tokens))
+    tokens        <- Ref.make(Map.empty[String, Token])
+    gameIdCounter <- Ref.make(1L)
+    userIdCounter <- Ref.make(10L) // Start at 10 to avoid conflicts with test users
+  } yield InMemoryRepository(games, users, tokens, gameIdCounter, userIdCounter))
 
 }
 
 case class InMemoryRepository(
-  games:  Ref[Map[GameId, Game]],
-  users:  Ref[Map[UserId, User]],
-  tokens: Ref[Map[String, Token]]
+  games:         Ref[Map[GameId, Game]],
+  users:         Ref[Map[UserId, User]],
+  tokens:        Ref[Map[String, Token]],
+  gameIdCounter: Ref[Long],
+  userIdCounter: Ref[Long]
 ) extends ZIORepository {
 
   import InMemoryRepository.*
@@ -87,7 +93,7 @@ case class InMemoryRepository(
 
     override def upsert(game: Game): RepositoryIO[Game] =
       for {
-        id <- zio.Random.nextInt
+        id <- gameIdCounter.getAndUpdate(_ + 1)
         newGame = game.copy(id = game.id.orElse(GameId(id)))
         _ <- games.update(map => map + (newGame.id -> newGame))
       } yield newGame
@@ -137,7 +143,7 @@ case class InMemoryRepository(
 
     override def upsert(user: User): RepositoryIO[User] =
       for {
-        id <- zio.Random.nextInt
+        id <- userIdCounter.getAndUpdate(_ + 1)
         newUser = user.copy(id = user.id.orElse(UserId(id)))
         _ <- users.update(map => map + (newUser.id -> newUser))
       } yield newUser

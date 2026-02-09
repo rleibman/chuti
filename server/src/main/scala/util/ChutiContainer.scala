@@ -29,18 +29,24 @@ trait ChutiContainer {
 
 object ChutiContainer {
 
-  val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.fromZIO(for {
-    _ <- ZIO.logDebug("Creating container")
-    c <- ZIO.succeed {
-      val c = MariaDBContainer()
-      c.container.start()
-      c
+  val containerLayer: Layer[RepositoryError, ChutiContainer] = ZLayer.scoped {
+    ZIO.acquireRelease {
+      for {
+        _ <- ZIO.logDebug("Creating container")
+        c <- ZIO.succeed {
+          val c = MariaDBContainer()
+          c.container.start()
+          c
+        }
+      } yield new ChutiContainer {
+        override def container: MariaDBContainer = c
+      }
+    } { chutiContainer =>
+      ZIO.succeed {
+        chutiContainer.container.container.stop()
+      }.ignoreLogged *> ZIO.logDebug("Container stopped")
     }
-  } yield new ChutiContainer {
-
-    override def container: MariaDBContainer = c
-
-  })
+  }
 
   private def getConfig(container: MariaDBContainer): DatabaseConfig = {
     DatabaseConfig(

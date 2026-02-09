@@ -38,11 +38,11 @@ object QuillGameSpec extends QuillSpec {
         file.contentAsString.fromJson[Game]
       }.mapError(Error(_))
 
-  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
-  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
+  val GAME_NEW = "server/src/test/resources/newGame.json"
+  val GAME_STARTED = "server/src/test/resources/startedGame.json"
   val GAME_WITH_2USERS =
-    "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
-  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
+    "server/src/test/resources/with2Users.json"
+  val GAME_CANTO4 = "server/src/test/resources/canto4.json"
 
   override def spec =
     suite("Quill Game Suite")(

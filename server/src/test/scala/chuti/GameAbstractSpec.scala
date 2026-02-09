@@ -28,17 +28,17 @@ import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import zio.*
 import zio.json.*
-import zio.test.{TestResult, assertTrue}
+import zio.test.{TestClock, TestResult, assertTrue}
 
 trait GameAbstractSpec {
 
   val connectionId: ConnectionId = ConnectionId("5")
 
-  val GAME_NEW = "/Volumes/Personal/projects/chuti/server/src/test/resources/newGame.json"
-  val GAME_STARTED = "/Volumes/Personal/projects/chuti/server/src/test/resources/startedGame.json"
+  val GAME_NEW = "server/src/test/resources/newGame.json"
+  val GAME_STARTED = "server/src/test/resources/startedGame.json"
   val GAME_WITH_2USERS =
-    "/Volumes/Personal/projects/chuti/server/src/test/resources/with2Users.json"
-  val GAME_CANTO4 = "/Volumes/Personal/projects/chuti/server/src/test/resources/canto4.json"
+    "server/src/test/resources/with2Users.json"
+  val GAME_CANTO4 = "server/src/test/resources/canto4.json"
 
   def writeGame(
     game:     Game,
@@ -129,7 +129,7 @@ trait GameAbstractSpec {
   }
 
   def WEIRD_GAME(prefix: String) =
-    s"/Volumes/Personal/projects/chuti/server/src/test/resources/$prefix${java.lang.System
+    s"server/src/test/resources/$prefix${java.lang.System
         .currentTimeMillis() / 1000}.json"
 
   protected def userLayer(user: User): ULayer[ChutiSession] = {
@@ -267,7 +267,7 @@ trait GameAbstractSpec {
             case PoisonPill(id, _) if id == start.id => true
             case _                                   => false
           }.runCollect.fork
-      _           <- Clock.sleep(1.second)
+      _           <- ZIO.yieldNow *> TestClock.adjust(1.second)
       readyToPlay <- getReadyToPlay(start.id)
       _ <- ZIO.succeed {
         assert(readyToPlay.gameStatus == GameStatus.cantando)

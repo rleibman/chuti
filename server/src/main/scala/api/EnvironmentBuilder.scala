@@ -35,8 +35,7 @@ import zio.json.*
 import java.util.Locale
 
 type ChutiEnvironment = AuthConfig & ZIORepository & ConfigurationService & Postman &
-  AuthServer[User, UserId, ConnectionId] & TokenHolder & OAuthService & OAuthStateStore & GameService & ChatService &
-  FlywayMigration
+  AuthServer[User, UserId, ConnectionId] & TokenHolder & OAuthService & OAuthStateStore & GameService & ChatService
 //  RateLimiter &
 //  RateLimitConfig &
 //net.leibman.analytics.AnalyticsZIORepository &
@@ -84,7 +83,7 @@ object EnvironmentBuilder {
   } yield CourierPostman.live(appConfig.chuti.smtp))
 
   val repoLayer: ZLayer[ConfigurationService, ConfigurationError, ZIORepository] =
-    QuillRepository.uncached >>> ZIORepository.cached
+    (ZLayer.service[ConfigurationService] ++ FlywayMigration.live) >>> QuillRepository.uncached >>> ZIORepository.cached
 
   // AI layers - optional, only created if config is present
   private val llmServiceLayer: ZLayer[ConfigurationService, ConfigurationError, ai.LLMService] = ZLayer.fromZIO {
@@ -122,8 +121,7 @@ object EnvironmentBuilder {
       llmServiceLayer,
       aiBotLayer,
       GameService.make(),
-      ChatService.make(),
-      FlywayMigration.live
+      ChatService.make()
     ).orDie
 
   val withContainer: ULayer[ChutiEnvironment] = ZLayer
@@ -140,8 +138,7 @@ object EnvironmentBuilder {
       llmServiceLayer,
       aiBotLayer,
       GameService.make(),
-      ChatService.make(),
-      FlywayMigration.live
+      ChatService.make()
     ).orDie
 
   final def testLayer(gameFiles: String*): ULayer[ChutiEnvironment] = {
@@ -176,8 +173,7 @@ object EnvironmentBuilder {
         ChatService.make(),
         ChutiAuthServer.live,
         oauthServiceLayer,
-        ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
-        FlywayMigration.live
+        ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session))
       ).orDie
   }
 

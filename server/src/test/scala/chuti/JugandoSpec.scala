@@ -25,7 +25,7 @@ import game.GameService
 import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
-import zio.test.{ZIOSpec, ZIOSpecDefault, assertTrue}
+import zio.test.{TestClock, ZIOSpec, ZIOSpecDefault, assertTrue}
 
 object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractSpec {
 
@@ -44,7 +44,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
               case PoisonPill(id, _) if id == gameId => true
               case _                                 => false
             }.runCollect.fork
-        _     <- Clock.sleep(1.second)
+        _     <- ZIO.yieldNow *> TestClock.adjust(1.second)
         mano1 <- juegaMano(gameId)
         _ <-
           gameService
@@ -79,7 +79,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
               case PoisonPill(id, _) if id == gameId => true
               case _                                 => false
             }.runCollect.fork
-        _     <- Clock.sleep(1.second)
+        _     <- ZIO.yieldNow *> TestClock.adjust(1.second)
         _     <- juegaMano(gameId)
         _     <- juegaMano(gameId)
         _     <- juegaMano(gameId)
@@ -116,7 +116,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
               case PoisonPill(id, _) if id == gameId => false
               case _                                 => true
             }.runCollect.fork
-        _   <- Clock.sleep(1.second)
+        _   <- ZIO.yieldNow *> TestClock.adjust(1.second)
         end <- juegaHastaElFinal(gameId)
         _ <-
           gameService

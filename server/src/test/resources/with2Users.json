@@ -20,6 +20,7 @@
         "isAdmin" : false
       },
       "invited" : false,
+      "jugadorType": "human",
       "fichas" : [
       ],
       "filas" : [
@@ -29,7 +30,7 @@
       "mano" : false,
       "cuantasCantas" : null,
       "statusString" : "",
-      "ganadorDePartido" : false,
+      "fueGanadorDelPartido" : false,
       "cuenta" : [
       ]
     },
@@ -45,6 +46,7 @@
         "isAdmin" : false
       },
       "invited" : false,
+      "jugadorType": "human",
       "fichas" : [
       ],
       "filas" : [
@@ -54,11 +56,11 @@
       "mano" : false,
       "cuantasCantas" : null,
       "statusString" : "",
-      "ganadorDePartido" : false,
+      "fueGanadorDelPartido" : false,
       "cuenta" : [
       ]
     }
   ],
   "statusString" : "",
-  "satoshiPerPoint" : 100.0
+  "satoshiPerPoint" : 100
 }

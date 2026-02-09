@@ -239,9 +239,9 @@ case class AIBot(
         case pide: Pide =>
           s"""{
               "type"           : "pide",
-              "ficha"          : ${pide.ficha.toString},
+              "ficha"          : "${pide.ficha.toString}",
               "estrictaDerecha": ${pide.estrictaDerecha},
-              "triunfo"        : ${pide.triunfo.getOrElse(SinTriunfos).toString},
+              "triunfo"        : "${pide.triunfo.getOrElse(SinTriunfos).toString}",
               "reasoning"      : "<Step-by-step explanation of your thinking>"
             }""".fromJson[Json]
         case da: Da =>

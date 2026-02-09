@@ -127,8 +127,6 @@ object Chuti extends ZIOApp {
     // Configure thread count using CLI
     for {
       config <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
-      // Run Flyway migrations first, before anything else
-      _ <- FlywayMigration.runMigrations
       // Resume any stuck games after restart
       gameService <- ZIO.service[GameService]
       resumedCount <- gameService

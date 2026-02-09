@@ -21,6 +21,7 @@
         "deleted": false
       },
       "invited": false,
+      "jugadorType": "human",
       "fichas": [
         "6:5",
         "5:4",
@@ -50,6 +51,7 @@
         "deleted": false
       },
       "invited": false,
+      "jugadorType": "human",
       "fichas": [
         "4:4",
         "5:5",
@@ -79,6 +81,7 @@
         "deleted": false
       },
       "invited": false,
+      "jugadorType": "human",
       "fichas": [ "5:2", "6:0", "6:3", "6:1", "2:2", "0:0", "4:2"],
       "filas": [],
       "turno": false,
@@ -100,6 +103,7 @@
         "deleted": false
       },
       "invited": false,
+      "jugadorType": "human",
       "fichas": [ "4:1", "3:0", "3:2", "3:3", "6:6", "3:1", "4:0"],
       "filas": [],
       "turno": true,
@@ -109,5 +113,5 @@
       "cuenta": []
     }
   ],
-  "pointsPerDollar": 100.0
+  "satoshiPerPoint": 100
 }

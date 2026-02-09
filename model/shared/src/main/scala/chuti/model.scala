@@ -145,20 +145,31 @@ object Ficha {
 
   given JsonDecoder[Ficha] =
     JsonDecoder[Json].mapOrFail { json =>
-      def parseNumero(j: Json): Either[String, Numero] =
-        // Support both formats: plain int or {"value": int}
-        j.asNumber
-          .map(n => Numero(n.value.intValue())).toRight("Invalid numero")
-          .orElse(j.as[Numero])
+      // Try string format first ("6:1")
+      json.asString match {
+        case Some(str) =>
+          try
+            Right(fromString(str))
+          catch {
+            case e: Exception => Left(s"Invalid ficha string: $str - ${e.getMessage}")
+          }
+        case None =>
+          // Fall back to object format
+          def parseNumero(j: Json): Either[String, Numero] =
+            // Support both formats: plain int or {"value": int}
+            j.asNumber
+              .map(n => Numero(n.value.intValue())).toRight("Invalid numero")
+              .orElse(j.as[Numero])
 
-      for {
-        obj        <- json.asObject.toRight("Not an object")
-        theType    <- obj.get("type").flatMap(_.asString).toRight("No type")
-        arribaJson <- obj.get("arriba").toRight("No arriba")
-        abajoJson  <- obj.get("abajo").toRight("No abajo")
-        arriba     <- parseNumero(arribaJson)
-        abajo      <- parseNumero(abajoJson)
-      } yield if (theType.equals("tapada")) FichaTapada else apply(arriba, abajo)
+          for {
+            obj        <- json.asObject.toRight("Not an object")
+            theType    <- obj.get("type").flatMap(_.asString).toRight("No type")
+            arribaJson <- obj.get("arriba").toRight("No arriba")
+            abajoJson  <- obj.get("abajo").toRight("No abajo")
+            arriba     <- parseNumero(arribaJson)
+            abajo      <- parseNumero(abajoJson)
+          } yield if (theType.equals("tapada")) FichaTapada else apply(arriba, abajo)
+      }
     }
 
   given JsonEncoder[Ficha] =
