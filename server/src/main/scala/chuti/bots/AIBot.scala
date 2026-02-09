@@ -234,7 +234,7 @@ case class AIBot(
           s"""{
               "type"           : "canta",
               "cuantasCantas"  : ${canta.cuantasCantas.numFilas},
-              "reasoning"      : "<Step-by-step explanation of your thinking>"
+              "reasoning"      : "[Explain why you chose this bid based on your hand strength and de caída count. End with your hand: [1:1, 2:2, ...]]"
             }""".fromJson[Json]
         case pide: Pide =>
           s"""{
@@ -242,23 +242,23 @@ case class AIBot(
               "ficha"          : "${pide.ficha.toString}",
               "estrictaDerecha": ${pide.estrictaDerecha},
               "triunfo"        : "${pide.triunfo.getOrElse(SinTriunfos).toString}",
-              "reasoning"      : "<Step-by-step explanation of your thinking>"
+              "reasoning"      : "[Explain why you chose this tile and trump. End with your hand: [1:1, 2:2, ...]]"
             }""".fromJson[Json]
         case da: Da =>
           s"""{
               "type"           : "da",
               "ficha"          : "${da.ficha.toString}",
-              "reasoning"      : "<Step-by-step explanation of your thinking>"
+              "reasoning"      : "[Explain your strategy for this tile. End with your hand: [1:1, 2:2, ...]]"
             }""".fromJson[Json]
         case caete: Caete =>
           s"""{
               "type"           : "caete",
-              "reasoning"      : "<Step-by-step explanation of your thinking>"
+              "reasoning"      : "[Explain why you can win all remaining tricks. End with your hand: [1:1, 2:2, ...]]"
             }""".fromJson[Json]
         case meRindo: MeRindo =>
           s"""{
               "type"           : "meRindo",
-              "reasoning"      : "<Step-by-step explanation of your thinking>"
+              "reasoning"      : "[Explain why you're surrendering. End with your hand: [1:1, 2:2, ...]]"
             }""".fromJson[Json]
         case _ => throw new RuntimeException("Unsupported event type for simplified json")
       }
@@ -289,7 +289,7 @@ case class AIBot(
               gameId = game.id,
               userId = jugador.user.id,
               cuantasCantas = CuantasCantas.byNum(d.cuantasCantas),
-              reasoning = if (game.explainReasoning) d.reasoning else None
+              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
             )
           ).mapError(e => GameError(s"Failed to parse Canta details: $e"))
 
@@ -322,7 +322,7 @@ case class AIBot(
               ficha = ficha,
               triunfo = triunfo,
               estrictaDerecha = d.estrictaDerecha,
-              reasoning = if (game.explainReasoning) d.reasoning else None
+              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
             )
           }.mapError(e => GameError(s"Failed to parse Pide details: $e"))
 
@@ -341,7 +341,7 @@ case class AIBot(
                   gameId = game.id,
                   userId = jugador.user.id,
                   ficha = ficha,
-                  reasoning = if (game.explainReasoning) d.reasoning else None
+                  reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
                 )
               )
           }.mapError(e => GameError(s"Failed to parse Da details: $e"))
@@ -500,6 +500,39 @@ case class AIBot(
     }
   }
 
+  def promptRules(): String = {
+    """
+    |CHUTI GAME RULES (Quick Reference):
+    |
+    |COMPONENTS: 28 domino tiles (0:0 to 6:6), 4 players, first to 21 points wins.
+    |  - Mula = double tile (e.g., 6:6). La Mulota (6:6) = first dealer. Campanita (0:1) = special event.
+    |
+    |PHASES PER ROUND (Juego):
+    |  1. SOPA (Deal): Turno player deals 7 tiles to each player
+    |  2. CANTANDO (Bid): Players bid tricks they'll win:
+    |     - Casa(4), Canto5(5), Canto6(6), Chuti(7=all tricks, instant win)
+    |     - Buenas = pass. Turno MUST bid at least Casa.
+    |     - Cantante = player who bid (or was "saved" by higher bid)
+    |  3. JUGANDO (Play): Cantante leads first, declaring trump (0-6 or SinTriunfos)
+    |     - Must follow suit if able, else must play trump if able
+    |     - Highest matching number wins (or highest trump if trump played)
+    |     - Mulas: If mula led, only that exact mula wins
+    |
+    |CRITICAL RULES:
+    |  - MUST follow suit/trump when able (or HOYO TÉCNICO = automatic penalty)
+    |  - MUST "caerse" (fall) when you can prove winning all remaining tricks
+    |  - Hoyo = failed bid, cantante LOSES bid points (can go negative)
+    |  - Only play tiles in YOUR hand, choose from LEGAL moves provided
+    |
+    |STRATEGY:
+    |  - Conservative when leading near 21 (protect your lead)
+    |  - Aggressive when behind (take risks to catch up)
+    |  - Cantante risks most (hoyo penalty), bid carefully
+    |  - Track tiles played to calculate "de caída" (guaranteed wins)
+    |
+    """.stripMargin
+  }
+
   def promptFooter(): String = {
     s"""
    |Think step-by-step about:
@@ -510,12 +543,16 @@ case class AIBot(
    |5. What is the best strategy given the score? (conservative/aggressive)
    |6. Which legal move best fits my strategy?
    |
-   |Respond with ONLY a valid JSON object that is equivalent to the format given in the valid options:
-   |{
-   |  "reasoning": "Step-by-step explanation of your thinking",
-   |  "type": "canta|pide|da|caete|meRindo",
-   |  ... additional fields depending on the type
-   |}
+   |IMPORTANT: Respond with ONLY a valid JSON object matching the format of one of the valid options above.
+   |
+   |The "reasoning" field must contain YOUR ACTUAL step-by-step thinking process, NOT placeholder text.
+   |Explain WHY you chose this move, considering:
+   | - Your hand strength and tiles
+   | - The current score and match situation
+   | - Your strategy (conservative if leading, aggressive if behind)
+   | - What you're trying to accomplish with this move
+   |
+   |DO NOT use placeholder text like "Step-by-step explanation" or "[Explain why...]".
    |""".stripMargin
   }
 
@@ -559,7 +596,9 @@ case class AIBot(
         }
       |""".stripMargin
 
-    s"""You are playing Chuti, a 4-player domino game. Match is played to 21 points.
+    s"""${promptRules()}
+       |
+       |You are playing Chuti, a 4-player domino game. Match is played to 21 points.
        | The overall game score is currently
        |
        | $formatCuentas
@@ -589,8 +628,7 @@ case class AIBot(
             gameId = game.id,
             userId = jugador.user.id,
             reasoning = Option(
-              s"Special Chuti hand detected with trump $specialTriunfo! " +
-                s"Guaranteed to win all 7 tricks. Bidding Chuti automatically."
+              s"Special Chuti hand detected with trump $specialTriunfo! Guaranteed to win all 7 tricks. Bidding Chuti automatically. ${formatHand(jugador)}"
             )
           )
         )
@@ -617,7 +655,7 @@ case class AIBot(
               MeRindo(
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option("No tengo nada de nada! me rindo")
+                reasoning = Option(s"No tengo nada de nada! me rindo ${formatHand(jugador)}")
               ): PlayEvent
             )
           } { max =>
@@ -629,7 +667,7 @@ case class AIBot(
                   gameId = game.id,
                   userId = jugador.user.id,
                   reasoning =
-                    Option(s"Canto Casa porque tengo ${max.cuantasDeCaida} de caida, no me queda de otra, a lo mejor alguien me salva")
+                    Option(s"Canto Casa porque tengo ${max.cuantasDeCaida} de caida, no me queda de otra, a lo mejor alguien me salva ${formatHand(jugador)}")
                 )
               )
             } else {
@@ -685,7 +723,8 @@ case class AIBot(
                 CuantasCantas.CantoTodas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Siempre que es de caida, canta chuti, asi es mas emocionante")
+                reasoning =
+                  Option(s"Siempre que es de caida, canta chuti, asi es mas emocionante ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers == 7) {
@@ -694,7 +733,7 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"No puedes salvar a alguien que ya canto chuti")
+                reasoning = Option(s"No puedes salvar a alguien que ya canto chuti ${formatHand(jugador)}")
               )
             )
           } else if (diff >= 0) {
@@ -704,7 +743,7 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Canto buenas, porque no tengo mejor juego que el mejor.")
+                reasoning = Option(s"Canto buenas, porque no tengo mejor juego que el mejor. ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers > 4 && diff < 0) {
@@ -714,7 +753,8 @@ case class AIBot(
                 CuantasCantas.byNum(topMove),
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"La cantada ya es mas de cuatro, mejor yo me quedo con los puntos.")
+                reasoning =
+                  Option(s"La cantada ya es mas de cuatro, mejor yo me quedo con los puntos. ${formatHand(jugador)}")
               )
             )
           } else {
@@ -805,11 +845,13 @@ case class AIBot(
          |
          | $formatValidOptions
          |
-         | Context:
+         | Context and strategy:
          | - You won the bid and bid ${jugador.cuantasCantas.fold(4)(_.numFilas)} tricks
          | - Trump is not yet set - you must choose now (cannot change later)
          | - Choose the trump that maximizes your "de caída" (guaranteed wins)
          | - Lead with your strongest tile in that suit to take control
+         | - Don't elect SinTriunfos unless you have a very strong hand of mulas and high tiles, particularly if you're trying to just make Casa (4)
+         | - Remember, if you elect SinTriunfos, and you lose the hand, it's very hard to recover it, so you should choose this sparingly.
          |
          | CRITICAL RULES:
          | 1. You MUST choose a play from the valid options list above. NO other plays are valid.
@@ -876,8 +918,7 @@ case class AIBot(
           gameId = game.id,
           userId = jugador.user.id,
           reasoning = Option(
-            s"Surrender: Need ${jugador.cuantasCantas.fold(4)(_.numFilas) - jugador.filas.size} more tricks " +
-              s"with ${jugador.fichas.size} tiles remaining, hoyo is imminent. Better to cut losses now."
+            s"Surrender: Need ${jugador.cuantasCantas.fold(4)(_.numFilas) - jugador.filas.size} more tricks with ${jugador.fichas.size} tiles remaining, hoyo is imminent. Better to cut losses now. ${formatHand(jugador)}"
           )
         )
       )
@@ -1058,7 +1099,9 @@ case class AIBot(
           ficha = legalMoves.head,
           gameId = game.id,
           userId = jugador.user.id,
-          reasoning = Option("Only one legal tile to play")
+          reasoning = Option(
+            s"Only one legal tile to play ${legalMoves.head.toString}, playing it automatically ${formatHand(jugador)}"
+          )
         )
       )
     } else if (jugador.cantante) {
@@ -1077,7 +1120,8 @@ case class AIBot(
             ficha = lowestTile,
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option("Can't follow suit or trump, playing lowest tile to minimize loss")
+            reasoning =
+              Option(s"Can't follow suit or trump, playing lowest tile to minimize loss ${formatHand(jugador)}")
           )
         )
       } else {
@@ -1093,6 +1137,11 @@ case class AIBot(
           }*).toString
 
         val currentWinningTile = game.enJuego.map(_._2).maxBy(f => fichaValue(f, game.triunfo))
+        val tilesOnTable = game.enJuego
+          .map { case (userId, ficha) =>
+            val playerName = game.jugadores.find(_.user.id == userId).map(_.user.name).getOrElse("Unknown")
+            s"$playerName played ${ficha.toString}"
+          }.mkString(", ")
 
         val prompt = promptHeader(jugador, game) +
           s"""
@@ -1103,6 +1152,7 @@ case class AIBot(
              | - You are the cantante (bidder) but lost the lead
              | - You bid $bidAmount, won $tricksWon, need $tricksNeeded more tricks
              | - They asked for: $pedido
+             | - Tiles already played this trick: $tilesOnTable
              | - Current winning tile on table: ${currentWinningTile.toString}
              | - Your goal: RECOVER the lead by winning this trick if possible
              |
@@ -1150,7 +1200,7 @@ case class AIBot(
             ficha = lowestTile,
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option("Can't follow or trump, dumping lowest tile")
+            reasoning = Option(s"Can't follow or trump, dumping lowest tile ${formatHand(jugador)}")
           )
         )
       } else if (askingForTrump) {
@@ -1168,7 +1218,7 @@ case class AIBot(
                   ficha = tile,
                   gameId = game.id,
                   userId = jugador.user.id,
-                  reasoning = Option("Asking for trump, can't win, playing smallest trump")
+                  reasoning = Option(s"Asking for trump, can't win, playing smallest trump ${formatHand(jugador)}")
                 )
               )
             case None =>
@@ -1179,7 +1229,7 @@ case class AIBot(
                   ficha = smallestTile,
                   gameId = game.id,
                   userId = jugador.user.id,
-                  reasoning = Option("Asking for trump, don't have it, playing smallest tile")
+                  reasoning = Option(s"Asking for trump, don't have it, playing smallest tile ${formatHand(jugador)}")
                 )
               )
           }
@@ -1202,7 +1252,7 @@ case class AIBot(
                 ficha = smallestTrump,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option("Cantante already beaten, saving trumps, playing smallest")
+                reasoning = Option(s"Cantante already beaten, saving trumps, playing smallest ${formatHand(jugador)}")
               )
             )
           } else {
@@ -1215,7 +1265,7 @@ case class AIBot(
                 ficha = smallestWinning,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option("Winning with smallest trump to deny cantante")
+                reasoning = Option(s"Winning with smallest trump to deny cantante ${formatHand(jugador)}")
               )
             )
           }
@@ -1230,7 +1280,9 @@ case class AIBot(
                 ficha = tile,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option("Non-trump double or 6:5 with different trumps, playing smallest matching")
+                reasoning = Option(
+                  s"Non-trump double or 6:5 with different trumps, playing smallest matching ${formatHand(jugador)}"
+                )
               )
             )
           case None =>
@@ -1241,7 +1293,7 @@ case class AIBot(
                 ficha = smallestTile,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option("Playing smallest tile")
+                reasoning = Option(s"Playing smallest tile ${formatHand(jugador)}")
               )
             )
         }
@@ -1258,6 +1310,11 @@ case class AIBot(
           }*).toString
 
         val currentWinningTile = game.enJuego.map(_._2).maxBy(f => fichaValue(f, game.triunfo))
+        val tilesOnTable = game.enJuego
+          .map { case (userId, ficha) =>
+            val playerName = game.jugadores.find(_.user.id == userId).map(_.user.name).getOrElse("Unknown")
+            s"$playerName played ${ficha.toString}"
+          }.mkString(", ")
 
         val prompt = promptHeader(jugador, game) +
           s"""
@@ -1268,6 +1325,7 @@ case class AIBot(
              | - ${cantante.user.name} is the cantante (bidder)
              | - They bid $cantanteBid, won $cantanteTricks, need $cantanteNeeds more tricks
              | - They asked for: $pedido
+             | - Tiles already played this trick: $tilesOnTable
              | - Current winning tile on table: ${currentWinningTile.toString}
              | - Your goal: PREVENT the cantante from winning tricks
              |
@@ -1303,7 +1361,7 @@ case class AIBot(
       case GameStatus.cantando =>
         canta(jugador, game)
       case GameStatus.jugando =>
-        if (jugador.mano && game.puedesCaerte(jugador))
+        if (jugador.mano && game.triunfo.isDefined && game.puedesCaerte(jugador))
           ZIO.succeed(
             Caete(
               triunfo = game.triunfo,
@@ -1340,26 +1398,32 @@ case class AIBot(
     jugador: Jugador,
     game:    Game
   ): IO[GameError, PlayEvent] = {
-    (for {
-      response <- llmService
-        .generate(prompt)
-        .timeout(config.timeout)
-        .mapError(GameError.apply)
-        .flatMap(o =>
-          ZIO
-            .fromOption(o)
-            .orElseFail(GameError("LLM timeout"))
-        )
-      decision <- ZIO
-        .fromEither(response.fromJson[Json]).mapError(e =>
-          GameError(s"Failed to parse LLM response as JSON: $e, response was: $response")
-        )
-      playEvent <- fromSimplifiedJson(decision, game, jugador)
-    } yield playEvent)
-      .catchAll { error =>
-        ZIO.logError(s"LLM error for bot ${jugador.user.name}: $error, using DumbBot recommendation") *>
-          DumbChutiBot.decideTurn(jugador.user, game)
-      }
+    ZIO.log(s"🎮 Bot ${jugador.user.name} starting decision (Game ${game.id}, Status: ${game.gameStatus})") *>
+      (for {
+        _ <- ZIO.log(s"⏰ LLM timeout set to ${config.timeout.toSeconds} seconds")
+        response <- llmService
+          .generate(prompt)
+          .timeout(config.timeout)
+          .mapError(GameError.apply)
+          .flatMap(o =>
+            ZIO
+              .fromOption(o)
+              .orElseFail(GameError("LLM timeout"))
+          )
+        _ <- ZIO.log(s"🔍 Parsing LLM response for ${jugador.user.name}")
+        decision <- ZIO
+          .fromEither(response.fromJson[Json]).mapError(e =>
+            GameError(s"Failed to parse LLM response as JSON: $e, response was: $response")
+          )
+        _         <- ZIO.log(s"🎯 Converting JSON to PlayEvent for ${jugador.user.name}")
+        playEvent <- fromSimplifiedJson(decision, game, jugador)
+        _         <- ZIO.log(s"✨ Bot ${jugador.user.name} decided: ${playEvent.getClass.getSimpleName}")
+      } yield playEvent)
+        .catchAll { error =>
+          ZIO.logError(s"❌ LLM error for bot ${jugador.user.name}: $error") *>
+            ZIO.logWarning(s"🔄 Falling back to DumbBot for ${jugador.user.name}") *>
+            DumbChutiBot.decideTurn(jugador.user, game)
+        }
   }
 
 }

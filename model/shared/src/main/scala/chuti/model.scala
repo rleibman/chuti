@@ -232,7 +232,11 @@ object Fila {
 case class Fila(
   fichas: Seq[Ficha],
   index:  Int = 0
-) derives JsonCodec
+) derives JsonCodec {
+
+  override def toString: String = fichas.map(_.toString).mkString("[", ",", "]")
+
+}
 
 import chuti.CuantasCantas.*
 
@@ -262,7 +266,7 @@ object JugadorState {
 
 }
 
-enum JugadorType derives JsonCodec {
+enum JugadorType {
 
   case human, dumbBot, aiBot
 
@@ -438,7 +442,8 @@ case class Game(
   statusString:       String = "",
   satoshiPerPoint:    Long = 100L,
   botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.intermediate,
-  explainReasoning:   Boolean = true // Show bot reasoning to users
+  explainReasoning:   Boolean = true, // Show bot reasoning to users
+  triggeredBorlotes:  Set[Borlote] = Set.empty // Track borlotes triggered in current juego
 ) derives JsonCodec {
 
   def jugadorState(jugador: Jugador): JugadorState = {

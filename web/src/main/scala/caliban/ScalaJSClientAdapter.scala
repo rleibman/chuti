@@ -257,7 +257,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
       private val graphql: GraphQLRequest = query.toGraphQL()
 
-      val socket: WebSocket = webSocket.getOrElse {
+      var socket: WebSocket = webSocket.getOrElse {
         // Use wss:// on server (HTTPS), ws:// locally (HTTP)
         val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
         val uri = URI(s"$protocol://${ClientConfiguration.live.host}/$path")
@@ -268,14 +268,203 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
       // Enhancement, move this into some sort of Ref/state class
       case class ConnectionState(
-        lastKAOpt:       Option[Instant] = None,
-        kaIntervalOpt:   Option[Int] = None,
-        firstConnection: Boolean = true,
-        reconnectCount:  Int = 0,
-        closed:          Boolean = false
+        lastKAOpt:          Option[Instant] = None,
+        kaIntervalOpt:      Option[Int] = None,
+        firstConnection:    Boolean = true,
+        reconnectCount:     Int = 0,
+        closed:             Boolean = false,
+        firstReconnectTime: Option[Instant] = None,
+        reconnectTimeoutId: Option[Int] = None
       )
 
       private var connectionState: ConnectionState = ConnectionState()
+
+      private val MAX_RECONNECT_DELAY_MS = 10 * 60 * 1000 // 10 minutes
+      private val MAX_TOTAL_RECONNECT_TIME_MS = 60 * 60 * 1000 // 60 minutes
+      private val BASE_RECONNECT_DELAY_MS = 1000 // 1 second
+
+      def calculateBackoffDelay(attemptNumber: Int): Int = {
+        val exponentialDelay = (BASE_RECONNECT_DELAY_MS * scala.math.pow(2, attemptNumber)).toInt
+        scala.math.min(exponentialDelay, MAX_RECONNECT_DELAY_MS)
+      }
+
+      def attemptReconnect(): Unit = {
+        if (connectionState.closed) {
+          println("Not reconnecting - connection was explicitly closed")
+          return
+        }
+
+        val now = Instant.now()
+        val firstReconnect = connectionState.firstReconnectTime.getOrElse(now)
+        val totalReconnectTime = java.time.Duration.between(firstReconnect, now).toMillis
+
+        if (totalReconnectTime > MAX_TOTAL_RECONNECT_TIME_MS) {
+          println(s"Giving up reconnection after ${totalReconnectTime / 1000 / 60} minutes")
+          onClientError(Exception("Failed to reconnect after 60 minutes")).runNow()
+          return
+        }
+
+        val delay = calculateBackoffDelay(connectionState.reconnectCount)
+        println(
+          s"Attempting reconnection #${connectionState.reconnectCount + 1} in ${delay}ms (total reconnect time: ${totalReconnectTime / 1000}s)"
+        )
+
+        connectionState = connectionState.copy(
+          firstReconnectTime = Some(firstReconnect),
+          reconnectCount = connectionState.reconnectCount + 1
+        )
+
+        val timeoutId = org.scalajs.dom.window.setTimeout(
+          { () =>
+            onReconnecting(operationId).runNow()
+            // Create a new websocket connection
+            val protocol = if (org.scalajs.dom.window.location.protocol == "https:") "wss" else "ws"
+            val uri = URI(s"$protocol://${ClientConfiguration.live.host}/$path")
+            val newSocket = org.scalajs.dom.WebSocket(uri.toString, "graphql-ws")
+
+            // Replace the old socket with the new one
+            socket = newSocket
+
+            // Setup all handlers on the new socket
+            setupSocketHandlers(newSocket)
+          },
+          delay
+        )
+
+        connectionState = connectionState.copy(reconnectTimeoutId = Some(timeoutId))
+      }
+
+      def setupSocketHandlers(ws: WebSocket): Unit = {
+        ws.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
+          val strMsg = e.data.toString
+          val msg: Either[String, GQLOperationMessage] = strMsg.fromJson[GQLOperationMessage]
+          //      println(s"Received: $strMsg")
+          msg match {
+            case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
+              connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
+              onDisconnected(id.getOrElse(""), payload).runNow()
+            case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
+              // We should only do this the first time
+              if (connectionState.firstConnection) {
+                onConnected(id.getOrElse(""), payload).runNow()
+                connectionState = connectionState.copy(firstConnection = false, reconnectCount = 0)
+              } else onReconnected(id.getOrElse(""), payload).runNow()
+              val sendMe = GQLStart(graphql)
+              println(s"Sending: $sendMe")
+              ws.send(sendMe.toJson)
+            case Right(GQLOperationMessage(GQL_CONNECTION_ERROR, id, payload)) =>
+              // if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
+              onServerError(id.getOrElse(""), payload).runNow()
+              println(s"Connection Error from server $payload")
+            case Right(GQLOperationMessage(GQL_CONNECTION_KEEP_ALIVE, id, payload)) =>
+              println("ka")
+              connectionState = connectionState.copy(reconnectCount = 0)
+
+              if (connectionState.lastKAOpt.isEmpty) {
+                // This is the first time we get a keep alive, which means the server is configured for keep-alive,
+                // If we never get this, then the server does not support it
+
+                connectionState = connectionState.copy(kaIntervalOpt =
+                  Option(
+                    org.scalajs.dom.window.setInterval(
+                      () => {
+                        connectionState.lastKAOpt.map { lastKA =>
+                          val timeFromLastKA =
+                            java.time.Duration
+                              .between(lastKA, Instant.now).nn.toMillis.milliseconds
+                          if (timeFromLastKA > timeout) {
+                            // Assume we've gotten disconnected, we haven't received a KA in a while
+                            if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
+                              connectionState =
+                                connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
+                              onReconnecting(id.getOrElse("")).runNow()
+                              doConnect()
+                            } else if (connectionState.reconnectCount > reconnectionAttempts)
+                              println("Maximum number of connection retries exceeded")
+                          }
+                        }
+                      },
+                      timeout.toMillis.toDouble
+                    )
+                  )
+                )
+              }
+              connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
+              onKeepAlive(payload).runNow()
+            case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
+              if (connectionState.closed) println("Connection is already closed")
+              else {
+                connectionState = connectionState.copy(reconnectCount = 0)
+                val res = for {
+                  payload <- payloadOpt.toRight(DecodingError("No payload"))
+                  parsed <-
+                    payload
+                      .as[GraphQLResponse]
+                      .left
+                      .map(ex => DecodingError(s"Json deserialization error: $ex"))
+                  data <-
+                    if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
+                    else Right(parsed.data)
+                  objectValue <- data match {
+                    case Some(o) => Right(o)
+                    case _       => Left(DecodingError(s"Result is not an object ($data)"))
+                  }
+                  result <- query.fromGraphQL(objectValue)
+                } yield result
+
+                res match {
+                  case Right(data) =>
+                    onData(id.getOrElse(""), Option(data)).runNow()
+                  case Left(error) =>
+                    error.printStackTrace()
+                    onClientError(error).runNow()
+                }
+              }
+            case Right(GQLOperationMessage(GQL_ERROR, id, payload)) =>
+              println(s"Error from server $payload")
+              onServerError(id.getOrElse(""), payload)
+            case Right(GQLOperationMessage(GQL_UNKNOWN, id, payload)) =>
+              println(s"Unknown server operation! GQL_UNKNOWN $payload")
+              onServerError(id.getOrElse(""), payload)
+            case Right(GQLOperationMessage(typ, id, payload)) =>
+              println(s"Unknown server operation! $typ $payload $id")
+            case Left(error) =>
+              onClientError(DecodingError(error))
+          }
+        }
+
+        ws.onerror = { (e: org.scalajs.dom.Event) =>
+          println(s"Got error $e")
+          onClientError(Exception(s"We've got a socket error, no further info ($e)")).runNow()
+          // Try to reconnect after error if not explicitly closed
+          if (!connectionState.closed) {
+            attemptReconnect()
+          }
+        }
+
+        ws.onopen = { (_: org.scalajs.dom.Event) =>
+          println("WebSocket opened")
+          onConnecting.runNow()
+          // Reset reconnect state on successful connection
+          connectionState = connectionState.copy(
+            reconnectCount = 0,
+            firstReconnectTime = None
+          )
+          doConnect()
+        }
+
+        ws.onclose = { (e: org.scalajs.dom.CloseEvent) =>
+          if (connectionState.firstConnection) {
+            println(s"Socket closed before connection could be established: $query, ${e.reason}")
+          } else {
+            println(s"Socket closed: $query, ${e.reason}")
+          }
+          // Try to reconnect after close if not explicitly closed
+          if (!connectionState.closed) {
+            attemptReconnect()
+          }
+        }
+      }
 
       def doConnect(): Unit = {
         if (!connectionState.closed) {
@@ -285,126 +474,8 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
         } else println("Connection is already closed")
       }
 
-      socket.onmessage = { (e: org.scalajs.dom.MessageEvent) =>
-        val strMsg = e.data.toString
-        val msg: Either[String, GQLOperationMessage] = strMsg.fromJson[GQLOperationMessage]
-        //      println(s"Received: $strMsg")
-        msg match {
-          case Right(GQLOperationMessage(GQL_COMPLETE, id, payload)) =>
-            connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
-            onDisconnected(id.getOrElse(""), payload).runNow()
-          //          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
-          //            connectionState =
-          //              connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
-          //            onReconnecting(id.getOrElse(""))
-          //            doConnect()
-          //          } else if (connectionState.reconnectCount > reconnectionAttempts) {
-          //            println("Maximum number of connection retries exceeded")
-          //          }
-          // Nothing else to do, really
-          case Right(GQLOperationMessage(GQL_CONNECTION_ACK, id, payload)) =>
-            // We should only do this the first time
-            if (connectionState.firstConnection) {
-              onConnected(id.getOrElse(""), payload).runNow()
-              connectionState = connectionState.copy(firstConnection = false, reconnectCount = 0)
-            } else onReconnected(id.getOrElse(""), payload).runNow()
-            val sendMe = GQLStart(graphql)
-            println(s"Sending: $sendMe")
-            socket.send(sendMe.toJson)
-          case Right(GQLOperationMessage(GQL_CONNECTION_ERROR, id, payload)) =>
-            // if this is part of the initial connection, there's nothing to do, we could't connect and that's that.
-            onServerError(id.getOrElse(""), payload).runNow()
-            println(s"Connection Error from server $payload")
-          case Right(GQLOperationMessage(GQL_CONNECTION_KEEP_ALIVE, id, payload)) =>
-            println("ka")
-            connectionState = connectionState.copy(reconnectCount = 0)
-
-            if (connectionState.lastKAOpt.isEmpty) {
-              // This is the first time we get a keep alive, which means the server is configured for keep-alive,
-              // If we never get this, then the server does not support it
-
-              connectionState = connectionState.copy(kaIntervalOpt =
-                Option(
-                  org.scalajs.dom.window.setInterval(
-                    () => {
-                      connectionState.lastKAOpt.map { lastKA =>
-                        val timeFromLastKA =
-                          java.time.Duration
-                            .between(lastKA, Instant.now).nn.toMillis.milliseconds
-                        if (timeFromLastKA > timeout) {
-                          // Assume we've gotten disconnected, we haven't received a KA in a while
-                          if (reconnect && connectionState.reconnectCount <= reconnectionAttempts) {
-                            connectionState = connectionState.copy(reconnectCount = connectionState.reconnectCount + 1)
-                            onReconnecting(id.getOrElse("")).runNow()
-                            doConnect()
-                          } else if (connectionState.reconnectCount > reconnectionAttempts)
-                            println("Maximum number of connection retries exceeded")
-                        }
-                      }
-                    },
-                    timeout.toMillis.toDouble
-                  )
-                )
-              )
-            }
-            connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
-            onKeepAlive(payload).runNow()
-          case Right(GQLOperationMessage(GQL_DATA, id, payloadOpt)) =>
-            if (connectionState.closed) println("Connection is already closed")
-            else {
-              connectionState = connectionState.copy(reconnectCount = 0)
-              val res = for {
-                payload <- payloadOpt.toRight(DecodingError("No payload"))
-                parsed <-
-                  payload
-                    .as[GraphQLResponse]
-                    .left
-                    .map(ex => DecodingError(s"Json deserialization error: $ex"))
-                data <-
-                  if (parsed.errors.nonEmpty) Left(ServerError(parsed.errors))
-                  else Right(parsed.data)
-                objectValue <- data match {
-                  case Some(o) => Right(o)
-                  case _       => Left(DecodingError(s"Result is not an object ($data)"))
-                }
-                result <- query.fromGraphQL(objectValue)
-              } yield result
-
-              res match {
-                case Right(data) =>
-                  onData(id.getOrElse(""), Option(data)).runNow()
-                case Left(error) =>
-                  error.printStackTrace()
-                  onClientError(error).runNow()
-              }
-            }
-          case Right(GQLOperationMessage(GQL_ERROR, id, payload)) =>
-            println(s"Error from server $payload")
-            onServerError(id.getOrElse(""), payload)
-          case Right(GQLOperationMessage(GQL_UNKNOWN, id, payload)) =>
-            println(s"Unknown server operation! GQL_UNKNOWN $payload")
-            onServerError(id.getOrElse(""), payload)
-          case Right(GQLOperationMessage(typ, id, payload)) =>
-            println(s"Unknown server operation! $typ $payload $id")
-          case Left(error) =>
-            onClientError(DecodingError(error))
-        }
-      }
-      socket.onerror = { (e: org.scalajs.dom.Event) =>
-        println(s"Got error $e")
-        onClientError(Exception(s"We've got a socket error, no further info ($e)"))
-      }
-      socket.onopen = { (_: org.scalajs.dom.Event) =>
-        onConnecting.runNow()
-        doConnect()
-      }
-
-      socket.onclose = { (e: org.scalajs.dom.CloseEvent) =>
-        if (connectionState.firstConnection) {
-          println(s"Socket closed before connection could be established: $query, ${e.reason}")
-        }
-        println(s"Socket closed: $query, ${e.reason}")
-      }
+      // Setup handlers for the initial socket connection
+      setupSocketHandlers(socket)
 
       override def close(): Callback = {
         if (socket.readyState == WebSocket.CONNECTING) {
@@ -415,6 +486,8 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
         } else if (socket.readyState == WebSocket.OPEN) {
           Callback.log(s"Closing socket: $query") >> Callback {
             connectionState = connectionState.copy(closed = true)
+            // Cancel any pending reconnection attempts
+            connectionState.reconnectTimeoutId.foreach(id => org.scalajs.dom.window.clearTimeout(id))
             connectionState.kaIntervalOpt.foreach(id => org.scalajs.dom.window.clearInterval(id))
             socket.send(GQLStop().toJson)
             socket.send(GQLConnectionTerminate().toJson)

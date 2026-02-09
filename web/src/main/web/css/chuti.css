@@ -59,34 +59,41 @@
     --domino-jugado-height: 60px;
     --domino-jugado-width: 30px;
 
-    --player-name-color: #59228C;
-    --header-color: #59228C;
-    --player-name-border: #59228C;
-    --player-name-canPlay-background: #59228C;
+    /* Bright Sky Blue theme - headers and active player */
+    --player-name-color: #2E5CB8;
+    --header-color: #2E5CB8;
+    --player-name-border: #4A90E2;
+    --player-name-canPlay-background: #4A90E2;
 
-    --header-background: #CDAFEA;
-    --player-name-background: #CDAFEA;
-    --player-name-canPlay-color: #CDAFEA;
-    --player-name-canPlay-border: #CDAFEA;
+    /* Light blue backgrounds */
+    --header-background: #E3F2FD;
+    --player-name-background: #F0F8FF;
+    --player-name-canPlay-color: #FFFFFF;
+    --player-name-canPlay-border: #2196F3;
 
-    --chat-background: #EAAFCB;
-    --lobby-border: #EAAFCB;
+    /* Warm peach/cream for chat */
+    --chat-background: #FFF8F0;
+    --lobby-border: #FFE4CC;
 
-    --chat-color: #666666;
-    --chat-h1-color: #8C2255;
-    --chat-border: #BB5C8A;
-    --chat-message-border: #BB5C8A;
+    /* Chat text colors */
+    --chat-color: #5D4E37;
+    --chat-h1-color: #D2691E;
+    --chat-border: #FFA07A;
+    --chat-message-border: #FFB84D;
 
-    --juegoStatus-color: #AFEAB0;
-    --fichasEnJuegoName-color: #AFEAB0;
+    /* Bright green for game status - lighter felt look */
+    --juegoStatus-color: #E8F5E9;
+    --fichasEnJuegoName-color: #FFFFFF;
 
-    --fichasEnJuego-background: #228B22;
-    --fichasEnJuego-border: #006400;
+    /* Lighter, brighter game table */
+    --fichasEnJuego-background: #66BB6A;
+    --fichasEnJuego-border: #4CAF50;
 
-    --users-table-border: #CCCCCC;
+    --users-table-border: #BDBDBD;
 
-    --domino-selected-border: #FFA500;
-    --domino-fichaGanadora-border: #FF8C00;
+    /* Bright selection colors */
+    --domino-selected-border: #FF6F00;
+    --domino-fichaGanadora-border: #FF9800;
 }
 
 html {

@@ -244,8 +244,12 @@ object GameService {
                   val nextInOrder = game.nextPlayer(lastPlayer)
                   if (!playedIds.contains(nextInOrder.id)) Some(nextInOrder) else None
                 } else {
-                  // Can go in any order, but prefer going in order for bots
-                  notPlayedYet.headOption
+                  // Can go in any order, but prefer going in turn order starting from the player with mano
+                  // Get players in turn order starting from the one who has mano (who led this trick)
+                  val manoPlayer = game.jugadores.find(_.mano).get
+                  val playersInTurnOrder = Iterator.iterate(manoPlayer)(game.nextPlayer).take(game.numPlayers).toList
+                  // Find first player in turn order who hasn't played yet
+                  playersInTurnOrder.find(p => !playedIds.contains(p.id))
                 }
               }
             case _ =>
@@ -255,8 +259,10 @@ object GameService {
         }
 
         getNextPlayer(game) match {
-          case Some(nextPlayer) if botsByJugadorType.contains(nextPlayer.jugadorType) =>
+          case Some(nextPlayer)
+              if botsByJugadorType.contains(nextPlayer.jugadorType) && game.gameStatus != GameStatus.requiereSopa =>
             // It's a bot's turn - use playInternal with the in-memory game
+            // Skip auto-play for sopa - humans need to press button to continue
             val bot = botsByJugadorType(nextPlayer.jugadorType)
             for {
               _ <- ZIO.log(
@@ -331,6 +337,7 @@ object GameService {
               game,
               jugador
             ) =>
+              // TODO Note, this is wrong, we shouldn't have to invite bot players, we should add them directly.
               val (withBot, _) = game.applyEvent(user, InviteToGame(invited = jugador.user))
               repository.gameOperations.upsert(withBot)
           }
@@ -611,20 +618,26 @@ object GameService {
             (a._1, Seq(a._2))
           case _ =>
             val (regalosGame, regalosBorlote) =
-              if (game.jugadores.filter(!_.cantante).count(_.filas.size == 1) == 3) {
+              if (
+                game.jugadores.filter(!_.cantante).count(_.filas.size == 1) == 3 && !game.triggeredBorlotes
+                  .contains(Borlote.SantaClaus)
+              ) {
                 val a = game.applyEvent(user, BorloteEvent(Borlote.SantaClaus))
                 (a._1, Seq(a._2))
-              } else if (game.jugadores.filter(!_.cantante).exists(_.filas.size == 3)) {
+              } else if (
+                game.jugadores.filter(!_.cantante).exists(_.filas.size == 3) && !game.triggeredBorlotes
+                  .contains(Borlote.ElNiñoDelCumpleaños)
+              ) {
                 val a = game.applyEvent(user, BorloteEvent(Borlote.ElNiñoDelCumpleaños))
                 (a._1, Seq(a._2))
               } else (game, Seq.empty)
 
             val (helechoGame, helechoBorlote) =
               if (
-                game.jugadores.find(!_.cantante).fold(false)(_.filas.size == 4) && game.jugadores
-                  .exists(_.filas.size < 4)
+                regalosGame.jugadores.find(!_.cantante).fold(false)(_.filas.size == 4) && regalosGame.jugadores
+                  .exists(_.filas.size < 4) && !regalosGame.triggeredBorlotes.contains(Borlote.Helecho)
               ) {
-                val a = game.applyEvent(user, BorloteEvent(Borlote.Helecho))
+                val a = regalosGame.applyEvent(user, BorloteEvent(Borlote.Helecho))
                 (a._1, Seq(a._2))
               } else (regalosGame, regalosBorlote)
 

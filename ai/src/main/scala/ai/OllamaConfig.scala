@@ -23,7 +23,8 @@ case class OllamaConfig(
   modelName:        String = "chuti-llama3.2:1b",
   temperature:      Double = 0.7,
   maxTokens:        Int = 500,
-  timeout:          Duration = Duration(5, java.util.concurrent.TimeUnit.MINUTES),
+  timeout:          Duration = Duration(1, java.util.concurrent.TimeUnit.MINUTES),     // Outer (ZIO) timeout
+  httpTimeout:      Duration = Duration(55, java.util.concurrent.TimeUnit.SECONDS),   // Inner (HTTP) timeout
   useSystemMessage: Boolean = false, // Send rules via SystemMessage (fallback mode)
   customModel:      Boolean = true   // Assume rules baked into custom model
 )

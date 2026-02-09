@@ -89,9 +89,7 @@ object Content extends ChutiComponent with TimerSupport {
 
                   import scala.scalajs.js.timers
 
-                  val celebrationType =
-                    if (e.partidoTerminado) CelebrationType.GameEnd
-                    else CelebrationType.RoundEnd
+                  val celebrationType = CelebrationType.RoundEnd
 
                   val winner =
                     if (e.partidoTerminado) {

@@ -211,14 +211,14 @@ final case class BorloteEvent(
     game: Game
   ): (Game, GameEvent) =
     (
-      game,
+      game.copy(triggeredBorlotes = game.triggeredBorlotes + borlote),
       copy(index = Option(game.currentEventIndex), gameId = game.id, userId = user.id)
     )
 
   override def redoEvent(
     user: User,
     game: Game
-  ): Game = processStatusMessages(game)
+  ): Game = processStatusMessages(game.copy(triggeredBorlotes = game.triggeredBorlotes + borlote))
 
 }
 
@@ -497,11 +497,20 @@ final case class Sopa(
     jugador: Jugador,
     game:    Game
   ): (Game, GameEvent) = {
-    // La sopa siempre la debe de hacer el jugador anterior al turno
-    // Realmente no importa, pero hay que mantener la tradición :)
-    if (!firstSopa && !jugador.turno)
-      throw GameError("Quien canto la ultima vez tiene que hacer la sopa")
-    val nextTurno: Jugador = game.nextPlayer(jugador)
+    // Normally, sopa must be done by the player with turno
+    // But if it's a bot's turn and a human triggers it (requiereSopa state), allow it
+    val actualJugador =
+      if (!firstSopa && !jugador.turno && game.gameStatus == GameStatus.requiereSopa) {
+        // Human clicked button to start next round on behalf of bot with turno
+        game.jugadores.find(_.turno).getOrElse(jugador)
+      } else {
+        // Normal case - validate it's the right player
+        if (!firstSopa && !jugador.turno)
+          throw GameError("Quien canto la ultima vez tiene que hacer la sopa")
+        jugador
+      }
+
+    val nextTurno: Jugador = game.nextPlayer(actualJugador)
 
     val jugadores = game.jugadores
     val newJugadores = sopa
@@ -528,7 +537,8 @@ final case class Sopa(
       jugadores = newJugadores,
       gameStatus = GameStatus.cantando,
       enJuego = List.empty,
-      triunfo = None
+      triunfo = None,
+      triggeredBorlotes = Set.empty // Reset borlotes for new juego
     )
 
     (
@@ -536,9 +546,9 @@ final case class Sopa(
       copy(
         index = Option(newGame.currentEventIndex),
         gameId = game.id,
-        userId = jugador.id,
+        userId = actualJugador.id,
         gameStatusString = Option(
-          s"${jugador.user.name} hizo la sopa${newGame.quienCanta.fold("")(j => s", ${j.user.name} canta.")}"
+          s"${actualJugador.user.name} hizo la sopa${newGame.quienCanta.fold("")(j => s", ${j.user.name} canta.")}"
         )
       )
     )
@@ -638,9 +648,9 @@ final case class Canta(
     (
       modified.copy(jugadores = modified.jugadores.map { j =>
         if (j.cantante && newGameStatus == GameStatus.jugando)
-          j.copy(mano = true)
+          j.copy(mano = true) // lastBotRationale is preserved automatically
         else if (newGameStatus == GameStatus.jugando)
-          j.copy(cuantasCantas = Option(CuantasCantas.Buenas))
+          j.copy(cuantasCantas = Option(CuantasCantas.Buenas)) // lastBotRationale is preserved automatically
         else j
       }),
       copy(
@@ -779,7 +789,10 @@ final case class Pide(
         .copy(
           enJuego = List((jugador.id, ficha)),
           estrictaDerecha = estrictaDerecha,
-          jugadores = game.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+          jugadores = game.modifiedJugadores(
+            _.id == jugador.id,
+            j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
+          )
         )
     )
 
@@ -800,7 +813,8 @@ final case class Pide(
           { j =>
             j.copy(
               fichas = j.dropFicha(ficha),
-              cuantasCantas = if (j.cantante) j.cuantasCantas else None
+              cuantasCantas = if (j.cantante) j.cuantasCantas else None,
+              lastBotRationale = reasoning
             )
           },
           j => j.copy(cuantasCantas = if (j.cantante) j.cuantasCantas else None)
@@ -973,14 +987,18 @@ final case class Da(
         )
       )
       a.copy(
-        jugadores = a.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+        jugadores = a
+          .modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning))
       )
     } else {
       // transfiere la ficha al centro
       game
         .copy(
           enJuego = enJuego,
-          jugadores = game.modifiedJugadores(_.id == jugador.id, j => j.copy(fichas = j.dropFicha(ficha)))
+          jugadores = game.modifiedJugadores(
+            _.id == jugador.id,
+            j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
+          )
         )
     }
   }
@@ -1125,7 +1143,8 @@ final case class Caete(
           j.copy(
             filas = j.filas ++ deCaida ++ regalosMap.getOrElse(j.id, Seq.empty),
             fichas = List.empty,
-            fueGanadorDelPartido = ganadorDePartido.contains(j.id)
+            fueGanadorDelPartido = ganadorDePartido.contains(j.id),
+            lastBotRationale = reasoning
           ),
         j =>
           j.copy(

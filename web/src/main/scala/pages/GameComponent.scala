@@ -224,19 +224,6 @@ object GameComponent {
                 ^.className := s"jugador$playerPosition ${if (isSelf) " self" else ""}",
                 <.div(
                   ^.className := s"statusBar$playerPosition",
-                  // Only show bot indicator for horizontal positions (0 = bottom, 2 = top)
-                  // Vertical positions (1 = right, 3 = left) have constrained width
-                  if (
-                    (playerPosition == 0 || playerPosition == 2) && canPlay && jugador.jugadorType != JugadorType.human
-                  ) {
-                    TagMod(
-                      ^.position := "relative",
-                      <.div(
-                        ^.className := "bot-indicator bot-thinking",
-                        "Pensando..." // TODO i18n
-                      )
-                    )
-                  } else EmptyVdom,
                   <.div(
                     ^.className := s"playerName ${
                         if (canPlay) "canPlay"
@@ -720,61 +707,82 @@ object GameComponent {
                     game.statusString
                   )
                 ),
-                game.enJuego.toVdomArray { case (user, ficha) =>
-                  val playingJugador = game.jugador(user)
-                  val playingPosition =
-                    if (chutiState.user.fold(false)(_.id == playingJugador.id))
-                      0
-                    else if (chutiState.user.fold(false)(game.nextPlayer(_).id == playingJugador.id))
-                      1
-                    else if (chutiState.user.fold(false)(game.prevPlayer(_).id == playingJugador.id))
-                      3
-                    else
-                      2
-
-                  // Calculate winner position if collecting
-                  val collectClass = s.collectingTo
-                    .flatMap { winnerIdValue =>
-                      game.jugadores.find(_.id.value.toInt == winnerIdValue).map { winner =>
-                        val winnerPosition =
-                          if (chutiState.user.fold(false)(_.id == winner.id))
-                            0
-                          else if (chutiState.user.fold(false)(game.nextPlayer(_).id == winner.id))
-                            1
-                          else if (chutiState.user.fold(false)(game.prevPlayer(_).id == winner.id))
-                            3
-                          else
-                            2
-                        s" collectToPlayer$winnerPosition"
-                      }
-                    }.getOrElse("")
-
-                  VdomArray(
-                    <.div(
-                      ^.key       := "fichasEnJuegoName",
-                      ^.className := "fichasEnJuegoName",
-                      playingJugador.user.name
-                    ),
-                    <.img(
-                      ^.key := "dominoEnJuego",
-                      ^.transform := (
-                        if (
-                          game.triunfo match {
-                            case Some(TriunfoNumero(num)) =>
-                              ficha.es(
-                                num
-                              ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
-                            case _ => false
-                          }
-                        )
-                          "rotate(180deg)"
-                        else
-                          "none"
-                      ),
-                      ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
-                      ^.className := s"dominoEnJuego slideFromPlayer$playingPosition$collectClass"
-                    )
+                // Show "Start Next Round" button when requiereSopa, otherwise show tiles in play
+                if (game.gameStatus == GameStatus.requiereSopa) {
+                  <.div(
+                    ^.className := "dominoEnJuego",
+                    ^.display.flex,
+                    ^.alignItems.center,
+                    ^.justifyContent.center,
+                    Button
+                      .color(SemanticCOLORS.green)
+                      .size(SemanticSIZES.huge)
+                      .onClick {
+                        (
+                          _,
+                          _
+                        ) =>
+                          // Any human player can trigger sopa on behalf of the bot who has turno
+                          play(game.id, Sopa(firstSopa = game.currentEventIndex == 0))
+                      }("Listo para la sopa") // TODO i18n "Start Next Round"
                   )
+                } else {
+                  game.enJuego.toVdomArray { case (user, ficha) =>
+                    val playingJugador = game.jugador(user)
+                    val playingPosition =
+                      if (chutiState.user.fold(false)(_.id == playingJugador.id))
+                        0
+                      else if (chutiState.user.fold(false)(game.nextPlayer(_).id == playingJugador.id))
+                        1
+                      else if (chutiState.user.fold(false)(game.prevPlayer(_).id == playingJugador.id))
+                        3
+                      else
+                        2
+
+                    // Calculate winner position if collecting
+                    val collectClass = s.collectingTo
+                      .flatMap { winnerIdValue =>
+                        game.jugadores.find(_.id.value.toInt == winnerIdValue).map { winner =>
+                          val winnerPosition =
+                            if (chutiState.user.fold(false)(_.id == winner.id))
+                              0
+                            else if (chutiState.user.fold(false)(game.nextPlayer(_).id == winner.id))
+                              1
+                            else if (chutiState.user.fold(false)(game.prevPlayer(_).id == winner.id))
+                              3
+                            else
+                              2
+                          s" collectToPlayer$winnerPosition"
+                        }
+                      }.getOrElse("")
+
+                    VdomArray(
+                      <.div(
+                        ^.key       := "fichasEnJuegoName",
+                        ^.className := "fichasEnJuegoName",
+                        playingJugador.user.name
+                      ),
+                      <.img(
+                        ^.key := "dominoEnJuego",
+                        ^.transform := (
+                          if (
+                            game.triunfo match {
+                              case Some(TriunfoNumero(num)) =>
+                                ficha.es(
+                                  num
+                                ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
+                              case _ => false
+                            }
+                          )
+                            "rotate(180deg)"
+                          else
+                            "none"
+                        ),
+                        ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
+                        ^.className := s"dominoEnJuego slideFromPlayer$playingPosition$collectClass"
+                      )
+                    )
+                  }
                 }
               )
             }

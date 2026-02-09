@@ -27,7 +27,6 @@ object CelebrationOverlay {
   object CelebrationType {
 
     case object RoundEnd extends CelebrationType
-    case object GameEnd extends CelebrationType
     case class Hoyo(jugador: String) extends CelebrationType
     case class SpecialEvent(borlote: Borlote) extends CelebrationType
 
@@ -75,21 +74,6 @@ object CelebrationOverlay {
       <.div(
         ^.className := "celebration-overlay",
         ^.onClick --> p.onDismiss,
-        // Confetti (only for game end)
-        p.celebrationType match {
-          case GameEnd =>
-            s.confettiPieces.toVdomArray { piece =>
-              <.div(
-                ^.key                         := s"confetti-${piece.index}",
-                ^.className                   := "confetti-piece",
-                ^.left                        := piece.left.pct,
-                ^.top                         := "-10vh",
-                VdomStyle("--confetti-color") := piece.color,
-                VdomStyle("--piece-index")    := piece.index.toString
-              )
-            }
-          case _ => EmptyVdom
-        },
         // Celebration content
         <.div(
           ^.className := "celebration-content score-popup",
@@ -141,39 +125,6 @@ object CelebrationOverlay {
                     }
                   )
                 } else EmptyVdom
-              )
-
-            case GameEnd =>
-              VdomArray(
-                <.div(^.className := "celebration-trophy", "🏆"),
-                <.div(
-                  ^.className := "celebration-winner",
-                  p.winner.fold("¡Partido terminado!")(w => s"¡$w gana el partido!")
-                ),
-                if (p.scores.nonEmpty) {
-                  <.div(
-                    <.h3("Puntuación final:"),
-                    p.scores.toVdomArray { case (player, points) =>
-                      <.div(
-                        ^.key        := s"final-score-$player",
-                        ^.fontSize   := "1.2em",
-                        ^.margin     := "10px 0",
-                        ^.fontWeight := (if (p.winner.contains(player)) "bold" else "normal"),
-                        <.span(player, ": "),
-                        <.span(
-                          ^.color := (if (points >= 0) "#00AA00" else "#CC0000"),
-                          points.toString
-                        )
-                      )
-                    }
-                  )
-                } else EmptyVdom,
-                <.div(
-                  ^.marginTop := 20.px,
-                  ^.fontSize  := "0.9em",
-                  ^.fontStyle := "italic",
-                  "Haz clic para continuar"
-                )
               )
 
             case Hoyo(jugador) =>

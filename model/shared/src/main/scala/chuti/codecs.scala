@@ -24,3 +24,19 @@ given JsonCodec[ConnectionId] = JsonCodec.string.transform(ConnectionId.apply, _
 given JsonCodec[GameId] = JsonCodec.long.transform(GameId.apply, _.value)
 given JsonCodec[(UserId, Seq[Fila])] = JsonCodec.derived[(UserId, Seq[Fila])]
 given JsonCodec[CuantasCantas] = JsonCodec.derived[CuantasCantas]
+
+// Custom codec for JugadorType with backwards compatibility for old bot names
+given JsonCodec[JugadorType] =
+  JsonCodec.string.transformOrFail(
+    str =>
+      str match {
+        case "human"   => Right(JugadorType.human)
+        case "dumbBot" => Right(JugadorType.dumbBot)
+        case "aiBot"   => Right(JugadorType.aiBot)
+        // Backwards compatibility mappings for old bot types
+        case "smartBot" => Right(JugadorType.aiBot) // Old name for AI bot
+        case "ai"       => Right(JugadorType.aiBot) // Another possible old name
+        case other      => Left(s"Unknown JugadorType: $other (valid values: human, dumbBot, aiBot)")
+      },
+    jugadorType => jugadorType.toString
+  )

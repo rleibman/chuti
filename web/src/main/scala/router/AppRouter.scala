@@ -18,6 +18,7 @@ package router
 
 import auth.AuthClient
 import chat.*
+import chuti.GlobalDialog.none
 import chuti.{ChutiState, GameStatus, GameViewMode, GlobalDialog}
 import components.*
 import japgolly.scalajs.react.component.Scala.Unmounted
@@ -158,7 +159,7 @@ object AppRouter extends ChutiComponent {
             }
           }
 
-          def renderCelebrationOverlay: VdomArray = {
+          def renderCelebrationOverlay: VdomArray =
             chutiState.celebration.toVdomArray { celebrationData =>
               import components.CelebrationOverlay
 
@@ -167,18 +168,9 @@ object AppRouter extends ChutiComponent {
                 winner = celebrationData.winner,
                 scores = celebrationData.scores,
                 bidResult = celebrationData.bidResult,
-                onDismiss = {
-                  // After dismissing celebration, show cuentas if it was game end
-                  import components.CelebrationOverlay.CelebrationType
-                  val nextDialog = celebrationData.celebrationType match {
-                    case CelebrationType.GameEnd => GlobalDialog.cuentas
-                    case _                       => GlobalDialog.none
-                  }
-                  chutiState.showDialog(nextDialog)
-                }
+                onDismiss = chutiState.showDialog(none)
               )
             }
-          }
 
           VdomArray(renderCuentasDialog, renderCelebrationOverlay)
         }
