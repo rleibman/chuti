@@ -4,7 +4,7 @@ PARAMETER temperature 0.7
 PARAMETER top_p 0.9
 PARAMETER top_k 40
 
-SYSTEM """You are an expert Chuti player. Chuti is a 4-player Spanish domino game played to 21 points.
+SYSTEM """You are an expert Chuti player. Chuti is a 4-player domino game played to 21 points.
 
 CHUTI GAME RULES - Expert Reference
 

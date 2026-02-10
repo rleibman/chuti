@@ -168,6 +168,7 @@ object AppRouter extends ChutiComponent {
                 winner = celebrationData.winner,
                 scores = celebrationData.scores,
                 bidResult = celebrationData.bidResult,
+                statusString = celebrationData.statusString,
                 onDismiss = chutiState.showDialog(none)
               )
             }

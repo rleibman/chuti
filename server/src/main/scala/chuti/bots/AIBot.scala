@@ -743,7 +743,7 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Canto buenas, porque no tengo mejor juego que el mejor. ${formatHand(jugador)}")
+                reasoning = Option(s"Buenas, porque no tengo mejor juego que el mejor. ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers > 4 && diff < 0) {
@@ -879,35 +879,20 @@ case class AIBot(
 
       // Analyze tiles that have ACTUALLY been played so far
       val fichasJugadas = game.jugadores.flatMap(_.filas.flatMap(_.fichas))
+      // TODO should check to see how little we got, if we didn't get a big showing, maybe we should give up
 
-      // Calculate remaining tiles (not in my hand, not yet played)
-      val fichasRestantes = Game.todaLaFicha.diff(jugador.fichas).diff(fichasJugadas)
-
-      // Calculate de caída with remaining tiles
-      val deCaida = game.cuantasDeCaida(jugador.fichas, fichasRestantes).size
-
-      // Look at opponent strength based on played tiles
-      val opponentTricksWon = game.jugadores.filterNot(_.user.id == jugador.user.id).map(_.filas.size).sum
-
-      // Check if strong tiles (mulas, high trumps) have already been played by opponents
-      val strongTilesPlayedByOpponents = fichasJugadas
-        .filter { f =>
-          f.esMula || game.triunfo.exists {
-            case TriunfoNumero(num) => f.es(num) && f.arriba.value >= 5
-            case SinTriunfos        => false
-          }
-        }.filterNot(jugador.filas.flatMap(_.fichas).contains)
+      val triunfosYMulasEnMano = jugador.fichas.count(f =>
+        f.esMula || game.triunfo.exists {
+          case TriunfoNumero(num) => f.es(num)
+          case SinTriunfos        => false
+        }
+      )
 
       // Surrender if:
       // 1. Mathematically impossible (need more tricks than remaining)
       // 2. Very unlikely (need more tricks than we can guarantee + 1 buffer)
-      // 3. Special case: bid Casa, won 0 after first trick, low de caída OR strong tiles already out
-      // 4. Opponents dominating: won 2+ tricks while we have 0
       tricksNeeded > tricksRemaining ||
-      tricksNeeded > deCaida + 1 ||
-      (bidAmount == 4 && tricksWonSoFar == 0 && jugador.fichas.size == 6 &&
-        (deCaida < 3 || strongTilesPlayedByOpponents.size >= 2)) ||
-      (opponentTricksWon >= 2 && tricksWonSoFar == 0)
+      tricksNeeded > triunfosYMulasEnMano + 1
     } else {
       false
     }
@@ -922,6 +907,32 @@ case class AIBot(
           )
         )
       )
+    } else if (jugador.fichas.size == 1) {
+      // Only one tile left - check if can caerse, otherwise just play it
+      val singleFicha = jugador.fichas.head
+      val currentTriunfo = game.triunfo.getOrElse(SinTriunfos)
+
+      if (game.puedesCaerte(jugador)) {
+        ZIO.succeed(
+          Caete(
+            triunfo = Some(currentTriunfo),
+            gameId = game.id,
+            userId = jugador.user.id,
+            reasoning = Option(s"Auto-play: Last tile ($singleFicha) and can caerse")
+          )
+        )
+      } else {
+        ZIO.succeed(
+          Pide(
+            ficha = singleFicha,
+            estrictaDerecha = false,
+            triunfo = Some(currentTriunfo),
+            gameId = game.id,
+            userId = jugador.user.id,
+            reasoning = Option(s"Auto-play: Last tile remaining ($singleFicha)")
+          )
+        )
+      }
     } else if (jugador.cantante) {
       // You're the cantante (bidder) and have the lead - focus on making your bid
       val legalMoves: Seq[PlayEvent] = {
@@ -1094,7 +1105,7 @@ case class AIBot(
 
     // Auto-play if only one legal option
     if (legalMoves.size == 1) {
-      ZIO.succeed(
+      ZIO.sleep(2.seconds) *> ZIO.succeed(
         Da(
           ficha = legalMoves.head,
           gameId = game.id,
@@ -1115,7 +1126,7 @@ case class AIBot(
       if (!canFollowSuit && trumps.isEmpty) {
         // Can't follow, no trumps - play lowest tile (least valuable)
         val lowestTile = legalMoves.minBy(_.value)
-        ZIO.succeed(
+        ZIO.sleep(2.seconds) *> ZIO.succeed(
           Da(
             ficha = lowestTile,
             gameId = game.id,
@@ -1195,7 +1206,7 @@ case class AIBot(
       if (!canFollowSuit && trumps.isEmpty) {
         // Can't follow, no trumps - dump lowest/worthless tile
         val lowestTile = legalMoves.minBy(_.value)
-        ZIO.succeed(
+        ZIO.sleep(2.seconds) *> ZIO.succeed(
           Da(
             ficha = lowestTile,
             gameId = game.id,
@@ -1213,7 +1224,7 @@ case class AIBot(
           val smallestTrump = legalMoves.filter(f => trumpNum.exists(f.es)).minByOption(_.value)
           smallestTrump match {
             case Some(tile) =>
-              ZIO.succeed(
+              ZIO.sleep(2.seconds) *> ZIO.succeed(
                 Da(
                   ficha = tile,
                   gameId = game.id,
@@ -1224,7 +1235,7 @@ case class AIBot(
             case None =>
               // No trumps, play smallest tile
               val smallestTile = legalMoves.minBy(_.value)
-              ZIO.succeed(
+              ZIO.sleep(2.seconds) *> ZIO.succeed(
                 Da(
                   ficha = smallestTile,
                   gameId = game.id,
@@ -1247,7 +1258,7 @@ case class AIBot(
             // Someone already beat cantante, save your trumps
             val smallestTrump =
               legalMoves.filter(f => trumpNum.exists(f.es)).minByOption(_.value).getOrElse(legalMoves.minBy(_.value))
-            ZIO.succeed(
+            ZIO.sleep(2.seconds) *> ZIO.succeed(
               Da(
                 ficha = smallestTrump,
                 gameId = game.id,
@@ -1260,7 +1271,7 @@ case class AIBot(
             val winningTrumps =
               legalMoves.filter(f => fichaValue(f, game.triunfo) > fichaValue(currentWinningTile, game.triunfo))
             val smallestWinning = winningTrumps.minBy(_.value)
-            ZIO.succeed(
+            ZIO.sleep(2.seconds) *> ZIO.succeed(
               Da(
                 ficha = smallestWinning,
                 gameId = game.id,
@@ -1275,7 +1286,7 @@ case class AIBot(
         val smallestMatching = legalMoves.filter(_.es(pedido)).minByOption(_.value)
         smallestMatching match {
           case Some(tile) =>
-            ZIO.succeed(
+            ZIO.sleep(2.seconds) *> ZIO.succeed(
               Da(
                 ficha = tile,
                 gameId = game.id,
@@ -1288,7 +1299,7 @@ case class AIBot(
           case None =>
             // Shouldn't happen if legal moves are correct, but fallback
             val smallestTile = legalMoves.minBy(_.value)
-            ZIO.succeed(
+            ZIO.sleep(2.seconds) *> ZIO.succeed(
               Da(
                 ficha = smallestTile,
                 gameId = game.id,
@@ -1362,7 +1373,7 @@ case class AIBot(
         canta(jugador, game)
       case GameStatus.jugando =>
         if (jugador.mano && game.triunfo.isDefined && game.puedesCaerte(jugador))
-          ZIO.succeed(
+          ZIO.sleep(2.seconds) *> ZIO.succeed(
             Caete(
               triunfo = game.triunfo,
               gameId = game.id,
@@ -1398,9 +1409,9 @@ case class AIBot(
     jugador: Jugador,
     game:    Game
   ): IO[GameError, PlayEvent] = {
-    ZIO.log(s"🎮 Bot ${jugador.user.name} starting decision (Game ${game.id}, Status: ${game.gameStatus})") *>
+    ZIO.logDebug(s"🎮 Bot ${jugador.user.name} starting decision (Game ${game.id}, Status: ${game.gameStatus})") *>
       (for {
-        _ <- ZIO.log(s"⏰ LLM timeout set to ${config.timeout.toSeconds} seconds")
+        _ <- ZIO.logDebug(s"⏰ LLM timeout set to ${config.timeout.toSeconds} seconds")
         response <- llmService
           .generate(prompt)
           .timeout(config.timeout)
@@ -1410,19 +1421,19 @@ case class AIBot(
               .fromOption(o)
               .orElseFail(GameError("LLM timeout"))
           )
-        _ <- ZIO.log(s"🔍 Parsing LLM response for ${jugador.user.name}")
+        _ <- ZIO.logDebug(s"🔍 Parsing LLM response for ${jugador.user.name}")
         decision <- ZIO
           .fromEither(response.fromJson[Json]).mapError(e =>
             GameError(s"Failed to parse LLM response as JSON: $e, response was: $response")
           )
-        _         <- ZIO.log(s"🎯 Converting JSON to PlayEvent for ${jugador.user.name}")
+        _         <- ZIO.logDebug(s"🎯 Converting JSON to PlayEvent for ${jugador.user.name}")
         playEvent <- fromSimplifiedJson(decision, game, jugador)
-        _         <- ZIO.log(s"✨ Bot ${jugador.user.name} decided: ${playEvent.getClass.getSimpleName}")
+        _         <- ZIO.logDebug(s"✨ Bot ${jugador.user.name} decided: ${playEvent.getClass.getSimpleName}")
       } yield playEvent)
         .catchAll { error =>
           ZIO.logError(s"❌ LLM error for bot ${jugador.user.name}: $error") *>
-            ZIO.logWarning(s"🔄 Falling back to DumbBot for ${jugador.user.name}") *>
-            DumbChutiBot.decideTurn(jugador.user, game)
+            ZIO.logInfo(s"🔄 Falling back to DumbBot for ${jugador.user.name}") *>
+            ZIO.sleep(2.seconds) *> DumbChutiBot.decideTurn(jugador.user, game)
         }
   }
 

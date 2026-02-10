@@ -83,70 +83,48 @@ object Content extends ChutiComponent with TimerSupport {
         updateGame >> {
           gameEvent match {
             case e: TerminaJuego =>
-              $.state.flatMap { s =>
-                s.chutiState.gameInProgress.fold(Callback.empty) { game =>
-                  import components.CelebrationOverlay.CelebrationType
+              import components.CelebrationOverlay.CelebrationType
+              import scala.scalajs.js.timers
 
-                  import scala.scalajs.js.timers
+              val celebrationType = CelebrationType.RoundEnd
 
-                  val celebrationType = CelebrationType.RoundEnd
-
-                  val winner =
-                    if (e.partidoTerminado) {
-                      game.jugadores.find(_.fueGanadorDelPartido).map(_.user.name)
-                    } else {
-                      // For round end, find who scored the most points this round
-                      game.jugadores
-                        .flatMap(j => j.cuenta.lastOption.map(c => (j, c.puntos)))
-                        .maxByOption(_._2)
-                        .filter(_._2 > 0) // Only show winner if they gained points
-                        .map(_._1.user.name)
-                    }
-
-                  val scores = game.cuentasCalculadas.map { case (jugador, puntos, _) =>
-                    jugador.user.name -> puntos
-                  }.toMap
-
-                  // Calculate bid result for round end
-                  val bidResult =
-                    if (!e.partidoTerminado) {
-                      game.jugadores.find(_.mano).flatMap { cantante =>
-                        cantante.cuantasCantas.map { bid =>
-                          val madeIt = cantante.cuenta.lastOption.exists(_.puntos >= bid.numFilas)
-                          (cantante.user.name, bid.toString, madeIt)
-                        }
-                      }
-                    } else None
-
-                  val celebrationData = CelebrationData(celebrationType, winner, scores, bidResult)
-
-                  val showCelebration = refresh(initial = false)() >> $.modState(s =>
-                    s.copy(chutiState =
-                      s.chutiState.copy(
-                        celebration = Some(celebrationData),
-                        currentDialog = GlobalDialog.celebration
-                      )
-                    )
+              // First refresh to get the updated game state, THEN show celebration with updated statusString
+              val showCelebration = refresh(initial = false)() >> $.modState(s =>
+                s.chutiState.gameInProgress.fold(s) { updatedGame =>
+                  // Now we have the updated game with the correct statusString
+                  val celebrationData = CelebrationData(
+                    celebrationType = celebrationType,
+                    winner = None,
+                    scores = Map.empty,
+                    bidResult = None,
+                    statusString = Some(updatedGame.statusString)
                   )
 
-                  // Auto-dismiss for RoundEnd only (GameEnd requires manual click)
-                  if (celebrationType == CelebrationType.RoundEnd) {
-                    showCelebration >> Callback {
-                      timers.setTimeout(3000) {
-                        $.modState(s =>
-                          s.copy(chutiState =
-                            s.chutiState.copy(
-                              celebration = None,
-                              currentDialog = GlobalDialog.none
-                            )
-                          )
-                        ).runNow()
-                      }
-                    }
-                  } else {
-                    showCelebration
+                  s.copy(chutiState =
+                    s.chutiState.copy(
+                      celebration = Some(celebrationData),
+                      currentDialog = GlobalDialog.celebration
+                    )
+                  )
+                }
+              )
+
+              // Auto-dismiss for RoundEnd only (GameEnd requires manual click)
+              if (celebrationType == CelebrationType.RoundEnd) {
+                showCelebration >> Callback {
+                  timers.setTimeout(3000) {
+                    $.modState(s =>
+                      s.copy(chutiState =
+                        s.chutiState.copy(
+                          celebration = None,
+                          currentDialog = GlobalDialog.none
+                        )
+                      )
+                    ).runNow()
                   }
                 }
+              } else {
+                showCelebration
               }
             case b: BorloteEvent =>
               import scala.scalajs.js.timers
@@ -364,9 +342,9 @@ object Content extends ChutiComponent with TimerSupport {
       }
 
     def onGameViewModeChanged(gameViewMode: GameViewMode): Callback =
-      Callback.log("============== onGameViewModeChanged") >> $.modState(s =>
-        s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode))
-      )
+      Callback.log("============== onGameViewModeChanged") >>
+        Callback(window.sessionStorage.setItem("gamePageMode", gameViewMode.toString)) >>
+        $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
 
     def showDialog(dlg: GlobalDialog): Callback =
       $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
@@ -469,18 +447,38 @@ object Content extends ChutiComponent with TimerSupport {
           )
         } else s
 
-        copy.copy(chutiState =
-          copy.chutiState.copy(
-            wallet = wallet,
-            friends = friends.toList,
-            loggedInUsers = loggedInUsers.toList.distinctBy(_.id),
-            gameInProgress = gameInProgressOpt,
-            gameStream =
-              if (!needNewGameStream) copy.chutiState.gameStream
-              else
-                gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id, onGameEvent))
+        {
+          import scala.language.unsafeNulls
+          // Auto-switch to game view when reconnecting with a game in progress (but not if waiting for players)
+          val newGameViewMode = gameInProgressOpt.fold(copy.chutiState.gameViewMode) { game =>
+            if (
+              game.gameStatus == GameStatus.esperandoJugadoresInvitados || game.gameStatus == GameStatus.esperandoJugadoresAzar
+            ) {
+              // Game is waiting for players - stay in lobby
+              GameViewMode.lobby
+            } else {
+              // Game is actually in progress - switch to game view
+              GameViewMode.game
+            }
+          }
+          if (newGameViewMode != copy.chutiState.gameViewMode) {
+            window.sessionStorage.setItem("gamePageMode", newGameViewMode.toString)
+          }
+
+          copy.copy(chutiState =
+            copy.chutiState.copy(
+              wallet = wallet,
+              friends = friends.toList,
+              loggedInUsers = loggedInUsers.toList.distinctBy(_.id),
+              gameInProgress = gameInProgressOpt,
+              gameViewMode = newGameViewMode,
+              gameStream =
+                if (!needNewGameStream) copy.chutiState.gameStream
+                else
+                  gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id, onGameEvent))
+            )
           )
-        )
+        }
       }
 
       for {

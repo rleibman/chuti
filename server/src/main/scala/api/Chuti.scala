@@ -104,14 +104,21 @@ object Chuti extends ZIOApp {
       case _: GameError                        => Status.InternalServerError
       case _ => Status.InternalServerError
     }
-    ZIO
-      .logErrorCause("Error in Chuti", original).as(
-        Response.apply(body = Body.fromString(body), status = status, headers = contentTypeJson)
-      )
+
+    (squashed match {
+      case e: NotFoundError if e.path.endsWith("com.chrome.devtools.json") =>
+        // Don't log this error, it's just a browser trying to access its devtools protocol
+        ZIO.unit
+      case _ =>
+        ZIO
+          .logErrorCause("Error in Chuti", original)
+    }).as(
+      Response.apply(body = Body.fromString(body), status = status, headers = contentTypeJson)
+    )
   }
 
   lazy val zapp: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, Nothing]] = for {
-    _                <- ZIO.log("Initializing Routes")
+    _                <- ZIO.logInfo("Initializing Routes")
     authServer       <- ZIO.service[AuthServer[User, UserId, ConnectionId]]
     authServerApi    <- authServer.authRoutes
     authServerUnauth <- authServer.unauthRoutes

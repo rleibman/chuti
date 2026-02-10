@@ -452,9 +452,11 @@ object GameComponent {
                             ) =>
                               play(game.id, Sopa())
                           }("Sopa") // TODO i8n
-                      case JugadorState.esperandoCanto   => EmptyVdom
-                      case JugadorState.esperando        => EmptyVdom
-                      case JugadorState.partidoTerminado => EmptyVdom
+                      case JugadorState.esperandoCanto          => EmptyVdom
+                      case JugadorState.esperando               => EmptyVdom
+                      case JugadorState.partidoTerminado        => EmptyVdom
+                      case JugadorState.invitedNotAnswered      => EmptyVdom
+                      case JugadorState.waitingOthersAcceptance => EmptyVdom
                       case s => throw RuntimeException(s"Should never, ever get here, invalid state: $s")
                     },
                     if (puedeRendirse) {
@@ -785,7 +787,7 @@ object GameComponent {
                   }
                 }
               )
-            }
+            } // end else (game is in progress)
           )
         )
       }

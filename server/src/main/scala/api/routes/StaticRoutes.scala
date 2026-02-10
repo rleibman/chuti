@@ -32,8 +32,9 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
     fileName: String
   ): IO[GameError, java.io.File] = {
     JPaths.get(fileName) match {
-      case path: java.nio.file.Path if !Files.exists(path) => ZIO.fail(NotFoundError(s"File not found: $fileName"))
-      case path: java.nio.file.Path                        => ZIO.succeed(path.toFile.nn)
+      case path: java.nio.file.Path if !Files.exists(path) =>
+        ZIO.fail(NotFoundError(path, s"File not found: $fileName"))
+      case path: java.nio.file.Path => ZIO.succeed(path.toFile.nn)
       case null => ZIO.fail(GameError(s"HttpError.InternalServerError(Could not find file $fileName))"))
     }
   }

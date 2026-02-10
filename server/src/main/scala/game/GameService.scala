@@ -187,7 +187,7 @@ object GameService {
                     botLayer
                   )
             }
-          _ <- ZIO.log(s"Game started: $gameStarted")
+          _ <- ZIO.logInfo(s"Game started: $gameStarted")
           _ <- doBotsAutoPlay(gameStarted)
         } yield true).mapError(GameError.apply)
 
@@ -265,11 +265,11 @@ object GameService {
             // Skip auto-play for sopa - humans need to press button to continue
             val bot = botsByJugadorType(nextPlayer.jugadorType)
             for {
-              _ <- ZIO.log(
+              _ <- ZIO.logDebug(
                 s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
               )
               playEvent <- bot.decideTurn(nextPlayer.user, game)
-              _         <- ZIO.log(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
+              _         <- ZIO.logDebug(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
               // Play the event using playInternal with the in-memory game and recursion disabled
               updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
                 .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
@@ -277,19 +277,19 @@ object GameService {
               // If game didn't change (e.g., NoOpPlay), stop to prevent infinite recursion
               finalGame <-
                 if (updatedGame.currentEventIndex == game.currentEventIndex) {
-                  ZIO.log(s"Bot play didn't change game state, stopping auto-play") *> ZIO.succeed(updatedGame)
+                  ZIO.logDebug(s"Bot play didn't change game state, stopping auto-play") *> ZIO.succeed(updatedGame)
                 } else {
                   doBotsAutoPlay(updatedGame)
                 }
             } yield finalGame
           case Some(nextPlayer) =>
             // It's a human's turn
-            ZIO.log(s"Auto-play: Next player is human ${nextPlayer.user.name}, stopping auto-play") *> ZIO.succeed(
+            ZIO.logDebug(s"Auto-play: Next player is human ${nextPlayer.user.name}, stopping auto-play") *> ZIO.succeed(
               game
             )
           case None =>
             // No one should play next
-            ZIO.log(s"Auto-play: No next player found in state ${game.gameStatus}, stopping auto-play") *> ZIO
+            ZIO.logDebug(s"Auto-play: No next player found in state ${game.gameStatus}, stopping auto-play") *> ZIO
               .succeed(game)
         }
       }
@@ -331,14 +331,15 @@ object GameService {
           _ <- ZIO.foreachDiscard(humanPlayers.map(_.user)) { u =>
             inviteToGame(u.id, withFirstUser.id)
           }
-          // Add bot players directly
+          // Add bot players directly (no invitations needed)
           withBots <- ZIO.foldLeft(botPlayers)(withFirstUser) {
             (
               game,
               jugador
             ) =>
-              // TODO Note, this is wrong, we shouldn't have to invite bot players, we should add them directly.
-              val (withBot, _) = game.applyEvent(user, InviteToGame(invited = jugador.user))
+              // Bots join directly with their jugadorType (no invitation needed)
+              val (withBot, _) =
+                game.applyEvent(user, JoinGame(joinedUser = jugador.user, jugadorType = jugador.jugadorType))
               repository.gameOperations.upsert(withBot)
           }
           afterInvites <-
@@ -348,9 +349,10 @@ object GameService {
               )
           // Update game_players table for all players
           _ <- repository.gameOperations.updatePlayers(afterInvites)
-          // If all players are now in the game, transition to requiereSopa and start
+          // If all non-invited players are in the game (bots joined, not counting invited humans), start immediately
           gameStarted <-
-            if (afterInvites.jugadores.size >= afterInvites.numPlayers) {
+            if (afterInvites.jugadores.count(!_.invited) >= afterInvites.numPlayers) {
+              // All bots have joined, start the game (human invitations still pending)
               val (started, sopaEvent) = afterInvites
                 .copy(gameStatus = GameStatus.requiereSopa)
                 .applyEvent(user, Sopa(firstSopa = true))
@@ -893,10 +895,10 @@ object GameService {
               game.gameStatus == GameStatus.cantando ||
               game.gameStatus == GameStatus.jugando
           )
-          _ <- ZIO.log(s"Found ${activeGames.size} active games, resuming bots...")
+          _ <- ZIO.logInfo(s"Found ${activeGames.size} active games, resuming bots...")
           // For each active game, trigger bot auto-play (sequentially to avoid race conditions)
           resumed <- ZIO.foreach(activeGames) { game =>
-            ZIO.log(s"Resuming game ${game.id}...") *>
+            ZIO.logInfo(s"Resuming game ${game.id}...") *>
               doBotsAutoPlay(game)
                 .provideSomeLayer[GameEnvironment](godLayer)
                 .catchAll { error =>

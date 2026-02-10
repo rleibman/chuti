@@ -18,7 +18,10 @@ package api
 
 import chuti.GameError
 
+import java.nio.file.Path
+
 class NotFoundError(
+  val path:    Path,
   msg:         String,
   cause:       Option[Throwable] = None,
   isTransient: Boolean = false
@@ -26,12 +29,16 @@ class NotFoundError(
 
 object NotFoundError {
 
-  def apply(message: String): NotFoundError = new NotFoundError(message)
+  def apply(
+    path:    Path,
+    message: String
+  ): NotFoundError = new NotFoundError(path, message)
 
   def apply(
+    path:        Path,
     msg:         String,
     cause:       Option[Throwable] = None,
     isTransient: Boolean = false
-  ): NotFoundError = new NotFoundError(msg, cause, isTransient)
+  ): NotFoundError = new NotFoundError(path, msg, cause, isTransient)
 
 }

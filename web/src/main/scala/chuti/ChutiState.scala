@@ -44,7 +44,8 @@ case class CelebrationData(
   celebrationType: CelebrationType,
   winner:          Option[String],
   scores:          Map[String, Int],
-  bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None // (cantante, bid, madeIt)
+  bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None, // (cantante, bid, madeIt)
+  statusString:    Option[String] = None // For RoundEnd, display game.statusString
 )
 
 case class ChutiState(

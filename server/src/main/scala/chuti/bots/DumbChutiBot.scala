@@ -251,13 +251,13 @@ case object DumbChutiBot extends ChutiBot {
               Canta(
                 Buenas,
                 reasoning = Option(
-                  s"Canto Buenas - solo tengo $cuantas de caída, no es suficiente para mejorar la cantada de ${prev.toString} ${formatHand(jugador)}"
+                  s"Buenas - solo tengo $cuantas de caída, no es suficiente para mejorar la cantada de ${prev.toString} ${formatHand(jugador)}"
                 )
               )
           }
 
         result
-      }.tap(result => ZIO.log(s"Bot ${jugador.user.name} bidding: ${result.cuantasCantas}"))
+      }.tap(result => ZIO.logDebug(s"Bot ${jugador.user.name} bidding: ${result.cuantasCantas}"))
 
   override def decideTurn(
     user: User,

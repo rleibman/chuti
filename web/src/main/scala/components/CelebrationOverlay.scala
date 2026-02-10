@@ -37,6 +37,7 @@ object CelebrationOverlay {
     winner:          Option[String],
     scores:          Map[String, Int],
     bidResult:       Option[(cantante: String, bid: String, madeIt: Boolean)] = None, // (cantante, bid, madeIt)
+    statusString:    Option[String] = None, // For RoundEnd, display game.statusString
     onDismiss:       Callback
   )
 
@@ -79,52 +80,10 @@ object CelebrationOverlay {
           ^.className := "celebration-content score-popup",
           p.celebrationType match {
             case RoundEnd =>
-              VdomArray(
-                <.div(
-                  ^.className := "celebration-winner",
-                  p.winner.fold("Ronda terminada")(w => s"¡$w gana la ronda!")
-                ),
-                // Show bid result
-                p.bidResult match {
-                  case Some((cantante, bid, madeIt)) =>
-                    <.div(
-                      ^.fontSize        := "1.1em",
-                      ^.margin          := "15px 0",
-                      ^.padding         := "10px",
-                      ^.borderRadius    := "5px",
-                      ^.backgroundColor := (if (madeIt) "rgba(0, 170, 0, 0.1)" else "rgba(204, 0, 0, 0.1)"),
-                      <.span(
-                        ^.fontWeight := "bold",
-                        cantante,
-                        " cantó ",
-                        bid,
-                        ": "
-                      ),
-                      <.span(
-                        ^.color      := (if (madeIt) "#00AA00" else "#CC0000"),
-                        ^.fontWeight := "bold",
-                        if (madeIt) "✓ Se hizo" else "✗ Hoyo"
-                      )
-                    )
-                  case None => EmptyVdom
-                },
-                if (p.scores.nonEmpty) {
-                  <.div(
-                    <.h3("Puntos:"),
-                    p.scores.toVdomArray { case (player, points) =>
-                      <.div(
-                        ^.key      := s"score-$player",
-                        ^.fontSize := "1.2em",
-                        ^.margin   := "10px 0",
-                        <.span(^.fontWeight.bold, player, ": "),
-                        <.span(
-                          ^.color := (if (points >= 0) "#00AA00" else "#CC0000"),
-                          if (points >= 0) s"+$points" else points.toString
-                        )
-                      )
-                    }
-                  )
-                } else EmptyVdom
+              // Just display the game's statusString (same as center display)
+              <.div(
+                ^.className := "celebration-winner",
+                p.statusString.getOrElse("Ronda terminada")
               )
 
             case Hoyo(jugador) =>
@@ -176,7 +135,8 @@ object CelebrationOverlay {
   given Reusability[CelebrationType] = Reusability.by(_.toString)
   given Reusability[(cantante: String, bid: String, madeIt: Boolean)] =
     Reusability.by(t => (t.cantante, t.bid, t.madeIt))
-  given Reusability[Props] = Reusability.by(p => (p.celebrationType.toString, p.winner, p.scores.hashCode, p.bidResult))
+  given Reusability[Props] =
+    Reusability.by(p => (p.celebrationType.toString, p.winner, p.scores.hashCode, p.bidResult, p.statusString))
   given Reusability[State] = Reusability.by(_.confettiPieces.size) // Ignore timerHandle changes
 
   private val component = ScalaComponent
@@ -193,8 +153,10 @@ object CelebrationOverlay {
     winner:          Option[String] = None,
     scores:          Map[String, Int] = Map.empty,
     bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None,
+    statusString:    Option[String] = None,
     onDismiss:       Callback,
     autoDismiss:     Boolean = true // Kept for API compatibility, but auto-dismiss is now handled externally
-  ): Unmounted[Props, State, Backend] = component(Props(celebrationType, winner, scores, bidResult, onDismiss))
+  ): Unmounted[Props, State, Backend] =
+    component(Props(celebrationType, winner, scores, bidResult, statusString, onDismiss))
 
 }
