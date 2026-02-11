@@ -73,7 +73,17 @@ object Content extends ChutiComponent with TimerSupport {
             gameEvent.reapplyMode match {
               case ReapplyMode.none        => Callback.empty
               case ReapplyMode.fullRefresh => refresh(initial = false)()
-              case ReapplyMode.reapply     => reapplyEvent(gameEvent)
+              case ReapplyMode.reapply =>
+                // Catch state inconsistencies (e.g. bot event arrives before JoinGame fullRefresh completes)
+                // and fall back to a full refresh to recover.
+                reapplyEvent(gameEvent).attempt.flatMap(
+                  _.fold(
+                    err =>
+                      Callback.log(s"reapplyEvent failed (${err.getMessage}), forcing full refresh") >>
+                        refresh(initial = false)(),
+                    _ => Callback.empty
+                  )
+                )
             }
         }
       } yield updated

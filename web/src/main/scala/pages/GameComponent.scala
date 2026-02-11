@@ -457,7 +457,6 @@ object GameComponent {
                       case JugadorState.partidoTerminado        => EmptyVdom
                       case JugadorState.invitedNotAnswered      => EmptyVdom
                       case JugadorState.waitingOthersAcceptance => EmptyVdom
-                      case s => throw RuntimeException(s"Should never, ever get here, invalid state: $s")
                     },
                     if (puedeRendirse) {
                       Button

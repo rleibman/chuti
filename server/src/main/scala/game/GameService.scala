@@ -19,7 +19,6 @@ package game
 import api.token.TokenHolder
 import api.{*, given}
 import chat.*
-import chuti.Borlote.TodoConDos
 import chuti.Numero.{Numero0, Numero1}
 import chuti.Triunfo.TriunfoNumero
 import chuti.bots.{AIBot, ChutiBot, DumbChutiBot}
@@ -27,6 +26,7 @@ import chuti.{*, given}
 import dao.{RepositoryError, ZIORepository}
 import mail.Postman
 import zio.*
+import zio.cache.Lookup
 import zio.json.*
 import zio.stream.ZStream
 
@@ -84,11 +84,24 @@ object GameService {
     }
   }
 
-  def make(): ZLayer[Option[AIBot], Nothing, GameService] =
+  def make(): ZLayer[Option[AIBot] & ZIORepository, Nothing, GameService] =
     ZLayer.fromZIO(for {
       userEventQueues <- Ref.make(List.empty[EventQueue[UserEvent]])
       gameEventQueues <- Ref.make(List.empty[EventQueue[GameEvent]])
       aiBotOpt        <- ZIO.service[Option[AIBot]]
+//      gamesWithInfo <- zio.cache.Cache.make[GameId, ZIORepository, RepositoryError, GameWithInfo](
+//        capacity = 10,
+//        timeToLive = 1.hour,
+//        lookup = Lookup { gameId =>
+//          for {
+//            // The game itself is cached, so it shouldn't be a big hassle to get it
+//            game <- ZIO
+//              .serviceWithZIO[ZIORepository](_.gameOperations.get(gameId).map(_.get))
+//              .provideSomeLayer[ZIORepository](GameService.godLayer)
+//          } yield GameWithInfo(game)
+//        }
+//      )
+
     } yield new GameService {
 
       val userQueue: Ref[List[EventQueue[UserEvent]]] = userEventQueues
@@ -189,8 +202,8 @@ object GameService {
             }
           _ <- ZIO.logInfo(s"Game started: $gameStarted")
           _ <- doBotsAutoPlay(gameStarted)
-                 .catchAll(error => ZIO.logError(s"Bot auto-play failed after startGame: ${error.msg}"))
-                 .forkDaemon
+            .catchAll(error => ZIO.logError(s"Bot auto-play failed after startGame: ${error.msg}"))
+            .forkDaemon
         } yield true).mapError(GameError.apply)
 
       private val botsByJugadorType: Map[JugadorType, ChutiBot] = {
@@ -270,8 +283,8 @@ object GameService {
               _ <- ZIO.logDebug(
                 s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
               )
-              playEvent <- bot.decideTurn(nextPlayer.user, game)
-              _         <- ZIO.logDebug(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
+              playEvent    <- bot.decideTurn(nextPlayer.user, game)
+              _            <- ZIO.logDebug(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
               // Play the event using playInternal with the in-memory game and recursion disabled
               updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
                 .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
@@ -362,9 +375,11 @@ object GameService {
                 saved <- repository.gameOperations.upsert(started)
                 _     <- repository.gameOperations.updatePlayers(saved)
                 _     <- broadcast(gameEventQueues, sopaEvent)
-                _     <- doBotsAutoPlay(saved)
-                           .catchAll(error => ZIO.logError(s"Bot auto-play failed after newGameWithExistingPlayers: ${error.msg}"))
-                           .forkDaemon
+                _ <- doBotsAutoPlay(saved)
+                  .catchAll(error =>
+                    ZIO.logError(s"Bot auto-play failed after newGameWithExistingPlayers: ${error.msg}")
+                  )
+                  .forkDaemon
               } yield saved
             } else {
               ZIO.succeed(afterInvites)
@@ -954,6 +969,6 @@ object GameService {
     } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
   // Convenience layer for tests that don't need AIBot
-  def makeWithoutAIBot(): ULayer[GameService] = ZLayer.succeed(None: Option[AIBot]) >>> make()
+  def makeWithoutAIBot(): ZLayer[ZIORepository, Nothing, GameService] = ZLayer.succeed(None: Option[AIBot]) >>> make()
 
 }

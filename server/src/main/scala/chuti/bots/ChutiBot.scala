@@ -29,29 +29,15 @@ trait ChutiBot {
     game: Game
   ): IO[GameError, PlayEvent]
 
+  //TODO, this is not used by the game, but only by testing, it's probably wrong
   def takeTurn(
-    gameId:          GameId,
-    delayMultiplier: Int = 1
+    gameId:          GameId
   ): ZIO[GameEnvironment & ChutiSession & GameService, GameError, Game] = {
     for {
       userOpt <- ZIO.serviceWith[ChutiSession](_.user)
       user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
       game    <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId).map(_.get))
       turn    <- decideTurn(user, game)
-
-      delayInSeconds = turn match {
-        case chuti.NoOpPlay(_, _, _, _, _, _, _) | chuti.HoyoTecnico(_, _, _, _, _, _, _, _) |
-            chuti.TerminaJuego(_, _, _, _, _, _, _, _) | chuti.TerminaPartido(_, _, _, _, _, _, _) |
-            chuti.Sopa(_, _, _, _, _, _, _, _) =>
-          0
-        case chuti.Da(_, _, _, _, _, _, _, _, _, _) | chuti.Pide(_, _, _, _, _, _, _, _, _, _, _) |
-            chuti.Canta(_, _, _, _, _, _, _, _) | chuti.Caete(_, _, _, _, _, _, _, _, _, _, _) |
-            chuti.MeRindo(_, _, _, _, _, _, _) =>
-          10
-      }
-
-      jitter <- Random.nextIntBetween(2, 101)
-      _      <- ZIO.sleep(Duration.fromMillis((1000 * delayInSeconds * delayMultiplier * jitter) / 100))
       played <- ZIO.serviceWithZIO[GameService](_.play(gameId, turn))
     } yield played
   }

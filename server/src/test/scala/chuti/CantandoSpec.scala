@@ -43,7 +43,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa sin salve should get it done")(
       for {
-        gameService <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameStream = gameService
           .gameStream(GameId(1), connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
             ChutiSession(user1).toLayer
@@ -95,7 +95,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando cinco sin salve should get it done")(
       for {
-        gameService    <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
         game1          <- readGame(GAME_STARTED)
         freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)
@@ -147,7 +147,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando todas should get it done")(
       for {
-        gameService    <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
         game1          <- readGame(GAME_STARTED)
         freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)
@@ -185,7 +185,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa con salve should get it done")(
       for {
-        gameService    <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
         game1          <- readGame(GAME_STARTED)
         freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)
@@ -241,7 +241,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa con salve de chuti should get it done")(
       for {
-        gameService    <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
         game1          <- readGame(GAME_STARTED)
         freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)
@@ -287,7 +287,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa con salve de 5,6,7 should get it done")(
       for {
-        gameService    <- ZIO.service[GameService].provide(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
         gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
         game1          <- readGame(GAME_STARTED)
         freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)

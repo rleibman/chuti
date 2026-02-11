@@ -19,6 +19,7 @@ package chuti
 import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.TokenHolder
 import chat.ChatService
+import chuti.CantandoSpec.GAME_STARTED
 import dao.InMemoryRepository.*
 import dao.ZIORepository
 import game.GameService
@@ -27,7 +28,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
 import zio.test.{TestClock, ZIOSpec, ZIOSpecDefault, assertTrue}
 
-object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractSpec {
+object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 
   val spec = suite("Jugando")(
     test("primera mano") {
@@ -134,10 +135,6 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
     }
   )
 
-  override def bootstrap: ZLayer[Any, Any, GameService & ChatService] =
-    ZLayer.make[GameService & ChatService](
-      GameService.makeWithoutAIBot(),
-      ChatService.make()
-    )
+  override def bootstrap = EnvironmentBuilder.testLayer(GAME_STARTED)
 
 }

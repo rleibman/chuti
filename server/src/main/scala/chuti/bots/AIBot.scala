@@ -807,7 +807,7 @@ case class AIBot(
           triunfo = Some(bestTrump),
           gameId = game.id,
           userId = jugador.user.id,
-          reasoning = Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)")
+          reasoning = Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)  ${formatHand(jugador)}")
         )
       )
     }
