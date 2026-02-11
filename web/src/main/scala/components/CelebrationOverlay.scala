@@ -80,10 +80,11 @@ object CelebrationOverlay {
           ^.className := "celebration-content score-popup",
           p.celebrationType match {
             case RoundEnd =>
-              // Just display the game's statusString (same as center display)
               <.div(
                 ^.className := "celebration-winner",
-                p.statusString.getOrElse("Ronda terminada")
+                ^.dangerouslySetInnerHtml := p.statusString
+                  .getOrElse("Ronda terminada")
+                  .replace("\n", "<br>")
               )
 
             case Hoyo(jugador) =>

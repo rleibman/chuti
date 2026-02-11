@@ -41,7 +41,8 @@ trait ChutiBot {
 
       delayInSeconds = turn match {
         case chuti.NoOpPlay(_, _, _, _, _, _, _) | chuti.HoyoTecnico(_, _, _, _, _, _, _, _) |
-            chuti.TerminaJuego(_, _, _, _, _, _, _, _) | chuti.Sopa(_, _, _, _, _, _, _, _) =>
+            chuti.TerminaJuego(_, _, _, _, _, _, _, _) | chuti.TerminaPartido(_, _, _, _, _, _, _) |
+            chuti.Sopa(_, _, _, _, _, _, _, _) =>
           0
         case chuti.Da(_, _, _, _, _, _, _, _, _, _) | chuti.Pide(_, _, _, _, _, _, _, _, _, _, _) |
             chuti.Canta(_, _, _, _, _, _, _, _) | chuti.Caete(_, _, _, _, _, _, _, _, _, _, _) |

@@ -83,49 +83,40 @@ object Content extends ChutiComponent with TimerSupport {
         updateGame >> {
           gameEvent match {
             case e: TerminaJuego =>
-              import components.CelebrationOverlay.CelebrationType
               import scala.scalajs.js.timers
 
-              val celebrationType = CelebrationType.RoundEnd
-
-              // First refresh to get the updated game state, THEN show celebration with updated statusString
-              val showCelebration = refresh(initial = false)() >> $.modState(s =>
-                s.chutiState.gameInProgress.fold(s) { updatedGame =>
-                  // Now we have the updated game with the correct statusString
-                  val celebrationData = CelebrationData(
-                    celebrationType = celebrationType,
-                    winner = None,
-                    scores = Map.empty,
-                    bidResult = None,
-                    statusString = Some(updatedGame.statusString)
+              val celebrationData = CelebrationData(
+                celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
+                winner = None,
+                scores = Map.empty,
+                bidResult = None,
+                statusString = e.gameStatusString
+              )
+              val showCelebration = $.modState(s =>
+                s.copy(chutiState =
+                  s.chutiState.copy(
+                    celebration = Some(celebrationData),
+                    currentDialog = GlobalDialog.celebration
                   )
-
-                  s.copy(chutiState =
-                    s.chutiState.copy(
-                      celebration = Some(celebrationData),
-                      currentDialog = GlobalDialog.celebration
-                    )
-                  )
-                }
+                )
               )
 
-              // Auto-dismiss for RoundEnd only (GameEnd requires manual click)
-              if (celebrationType == CelebrationType.RoundEnd) {
-                showCelebration >> Callback {
-                  timers.setTimeout(3000) {
-                    $.modState(s =>
-                      s.copy(chutiState =
-                        s.chutiState.copy(
-                          celebration = None,
-                          currentDialog = GlobalDialog.none
-                        )
+              showCelebration >> Callback {
+                timers.setTimeout(3000) {
+                  $.modState(s =>
+                    s.copy(chutiState =
+                      s.chutiState.copy(
+                        celebration = None,
+                        currentDialog = GlobalDialog.none
                       )
-                    ).runNow()
-                  }
+                    )
+                  ).runNow()
                 }
-              } else {
-                showCelebration
               }
+            case _: TerminaPartido =>
+              $.modState(s =>
+                s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
+              )
             case b: BorloteEvent =>
               import scala.scalajs.js.timers
               // Show celebrations for special borlote events

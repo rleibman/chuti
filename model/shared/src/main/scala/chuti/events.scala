@@ -1309,15 +1309,15 @@ final case class TerminaJuego(
       if (j.yaSeHizo) {
         (
           false,
-          s"${j.user.name} se hizo con ${j.filas.size} filas. ${
-              if (regalados.nonEmpty) s"Regalos para $regalados."
+          s"${j.user.name} se hizo con ${j.filas.size} filas.\n${
+              if (regalados.nonEmpty) s"Regalos para $regalados.\n"
               else ""
             }"
         )
       } else {
         (
           true,
-          s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}. ${
+          s"Fue hoyo de ${j.cuantasCantas.get} para ${j.user.name}.\n${
               if (regalados.nonEmpty) s"Ayudaron $regalados."
               else ""
             }"
@@ -1333,13 +1333,12 @@ final case class TerminaJuego(
         // a) el que se fue
         // b) el que obtuvo el primer regalo que hizo que se fuera.
         conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
-        copy(
+        TerminaPartido(
           index = Option(game.currentEventIndex),
           soundUrl = Option("sounds/partidoTerminado.mp3"),
           gameId = game.id,
           userId = jugador.id,
-          gameStatusString = Option(s"$statusStr Se termino el partido!"),
-          partidoTerminado = true
+          gameStatusString = Option(s"$statusStr Se termino el partido!\n")
         )
       )
     } else {
@@ -1351,7 +1350,7 @@ final case class TerminaJuego(
           gameId = game.id,
           userId = jugador.id,
           gameStatusString = leTocaLaSopa.map(_ =>
-            s"$statusStr Se termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa"
+            s"$statusStr\nSe termino el juego, esperando a que ${game.turno.fold("")(_.user.name)} haga la sopa"
           )
         )
       )
@@ -1362,5 +1361,30 @@ final case class TerminaJuego(
     jugador: Jugador,
     game:    Game
   ): Game = processStatusMessages(doEvent(jugador, game)._1)
+
+}
+
+final case class TerminaPartido(
+  override val gameId:              GameId = GameId.empty,
+  override val userId:              UserId = UserId.empty,
+  override val index:               Option[Int] = None,
+  override val gameStatusString:    Option[String] = None,
+  override val soundUrl:            Option[String] = None,
+  override val jugadorStatusString: Seq[(UserId, String)] = Seq.empty,
+  override val reasoning:           Option[String] = None
+) extends PlayEvent {
+
+  override val reapplyMode: ReapplyMode = fullRefresh
+
+  override def doEvent(
+    jugador: Jugador,
+    game:    Game
+  ): (Game, GameEvent) =
+    (game, this)
+
+  override def redoEvent(
+    jugador: Jugador,
+    game:    Game
+  ): Game = game
 
 }

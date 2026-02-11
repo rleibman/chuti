@@ -794,16 +794,33 @@ case class AIBot(
     jugador: Jugador,
     game:    Game
   ): IO[GameError, PlayEvent] = {
+    val bid = jugador.cuantasCantas.fold(4)(_.numFilas)
+
+    val allMoves = possibleMoves(jugador, game)
+
+    // Check if any trump option makes us de caida (can guarantee bid tricks or more)
+    val deCaidaOpt = allMoves.find(_.cuantasDeCaida >= bid)
+    if (deCaidaOpt.isDefined) {
+      val bestTrump = deCaidaOpt.get.triunfo
+      return ZIO.succeed(
+        Caete(
+          triunfo = Some(bestTrump),
+          gameId = game.id,
+          userId = jugador.user.id,
+          reasoning = Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)")
+        )
+      )
+    }
 
     val moves: Seq[(triunfo: Triunfo, pide: Ficha, cuantasDeCaida: Int, cuantosTriunfosYMulas: Int)] =
-      possibleMoves(jugador, game).zipWithIndex
+      allMoves.zipWithIndex
         .filter(
           (
             t,
             i
           ) =>
             // We have to at least take one option
-            i == 0 || t.cuantasDeCaida >= jugador.cuantasCantas.fold(4)(_.numFilas)
+            i == 0 || t.cuantasDeCaida >= bid
         )
         .map(_._1)
         .take(3)
@@ -818,15 +835,18 @@ case class AIBot(
         s"Triunfan $triunfo, pide $ficha (calculo $cuantasDeCaida de caida y $cuantosTriunfosYMulas triunfos y mulas)\n"
       }.mkString
 
-    def formatValidOptions: String =
-      Json
-        .Arr(moves.map { move =>
-          Pide(
-            ficha = move.pide,
-            triunfo = Option(move.triunfo),
-            estrictaDerecha = false
-          ).toSimplifiedJson.getOrElse(Json.Null)
-        }*).toString
+    def formatValidOptions: String = {
+      val pideOptions = moves.map { move =>
+        Pide(
+          ficha = move.pide,
+          triunfo = Option(move.triunfo),
+          estrictaDerecha = false
+        ).toSimplifiedJson.getOrElse(Json.Null)
+      }
+      val surrenderOption =
+        MeRindo(gameId = game.id, userId = jugador.user.id).toSimplifiedJson.getOrElse(Json.Null)
+      Json.Arr((pideOptions :+ surrenderOption)*).toString
+    }
 
     // Preguntale a AI, calcula las mejores opciones de triunfo, no le des todas las opciones
     val memory = calculateMemorySummary(game, jugador)
@@ -849,9 +869,10 @@ case class AIBot(
          | - You won the bid and bid ${jugador.cuantasCantas.fold(4)(_.numFilas)} tricks
          | - Trump is not yet set - you must choose now (cannot change later)
          | - Choose the trump that maximizes your "de caída" (guaranteed wins)
-         | - Lead with your strongest tile in that suit to take control
+         | - Lead with your strongest tile in that suit  to take control
          | - Don't elect SinTriunfos unless you have a very strong hand of mulas and high tiles, particularly if you're trying to just make Casa (4)
          | - Remember, if you elect SinTriunfos, and you lose the hand, it's very hard to recover it, so you should choose this sparingly.
+         | - If you have at least four trumps, but none of the large ones, you might want to choose that as a trump but ask for something else, usually a number for which trump you don't have, hoping somebody answers with that trump and thus having one less to worry about it, you'll likely get the hand back later.
          |
          | CRITICAL RULES:
          | 1. You MUST choose a play from the valid options list above. NO other plays are valid.
@@ -973,9 +994,15 @@ case class AIBot(
               )
             ) // If you can caerte, do it instead of pide
           } else {
-            jugador.fichas.map { ficha =>
-              Pide(ficha = ficha, triunfo = Some(currentTriunfo), estrictaDerecha = false) // Use game's triunfo, estrictaDerecha defaults to false
+            val pides = jugador.fichas.map { ficha =>
+              Pide(ficha = ficha, triunfo = Some(currentTriunfo), estrictaDerecha = false)
             }
+            // MeRindo is valid before the second trick (filas.size <= 1)
+            val surrender =
+              if (jugador.filas.size <= 1)
+                Seq(MeRindo(gameId = game.id, userId = jugador.user.id))
+              else Seq.empty
+            pides ++ surrender
           }
           res
         } else Seq.empty // No legal moves
@@ -1011,6 +1038,8 @@ case class AIBot(
            | - Consider which numbers opponents might be void in (from memory)
            | - If you have $tricksNeeded de caída, you can play more conservatively
            | - If $tricksNeeded > $deCaida, you need to take risks to win extra tricks
+           | - If all the trumps have been played and you're not likely to win this ask, then play a small tile and hope the hand comes back to you.
+           | - If there's still trumps out there that are larger than yours, don't waste your trumps, keep them and try to ask for the number with the trump they have, that way forcing them to use it.
            |
            | CRITICAL:
            | 1. Choose from valid tiles above
@@ -1098,7 +1127,12 @@ case class AIBot(
         case Some(TriunfoNumero(triunfo)) =>
           val validFichas = jugador.fichas.filter(_.es(pedido))
           if (validFichas.nonEmpty) validFichas
-          else jugador.fichas // Can play any ficha if can't follow
+          else {
+            // Must play trump if you have it; only free choice if you have neither
+            val trumpFichas = jugador.fichas.filter(_.es(triunfo))
+            if (trumpFichas.nonEmpty) trumpFichas
+            else jugador.fichas
+          }
         case None => throw GameError("No trump set!")
       }
     }

@@ -189,6 +189,8 @@ object GameService {
             }
           _ <- ZIO.logInfo(s"Game started: $gameStarted")
           _ <- doBotsAutoPlay(gameStarted)
+                 .catchAll(error => ZIO.logError(s"Bot auto-play failed after startGame: ${error.msg}"))
+                 .forkDaemon
         } yield true).mapError(GameError.apply)
 
       private val botsByJugadorType: Map[JugadorType, ChutiBot] = {
@@ -361,6 +363,8 @@ object GameService {
                 _     <- repository.gameOperations.updatePlayers(saved)
                 _     <- broadcast(gameEventQueues, sopaEvent)
                 _     <- doBotsAutoPlay(saved)
+                           .catchAll(error => ZIO.logError(s"Bot auto-play failed after newGameWithExistingPlayers: ${error.msg}"))
+                           .forkDaemon
               } yield saved
             } else {
               ZIO.succeed(afterInvites)
@@ -780,7 +784,7 @@ object GameService {
             updateAccounting(played._1)
           }
           _ <- ZIO.foreachDiscard(played._2)(broadcast(gameEventQueues, _))
-          // Send system chat messages for key game events
+          // Send system chat messages for key game events (fire-and-forget)
           chatService <- ZIO.service[ChatService]
           _ <- ZIO.foreachDiscard(played._2) { event =>
             getSystemMessageForEvent(event, played._1, user) match {
@@ -788,19 +792,22 @@ object GameService {
                 chatService
                   .sayAsSystem(msg, played._1.channelId)
                   .catchAll(error => ZIO.logError(s"Failed to send system message to chat: ${error.msg}"))
+                  .forkDaemon
               case None => ZIO.unit
             }
           }
-          // After broadcasting, let bots play if it's their turn (only if triggered by human play)
-          finalGame <-
+          // After broadcasting, fork bot auto-play as a daemon so the human's play returns immediately.
+          // Bot moves are broadcast to clients via the event queue, so clients don't need to wait for them.
+          _ <-
             if (triggerBotAutoPlay) {
               doBotsAutoPlay(played._1)
                 .catchAll(error =>
                   ZIO.logError(s"Bot auto-play failed: ${error.msg}") *>
-                    ZIO.succeed(played._1) // Return game state before bot auto-play on error
+                    ZIO.succeed(played._1)
                 )
-            } else ZIO.succeed(played._1)
-        } yield finalGame).mapError(GameError.apply)
+                .forkDaemon
+            } else ZIO.unit
+        } yield played._1).mapError(GameError.apply)
       }
 
       def updateAccounting(

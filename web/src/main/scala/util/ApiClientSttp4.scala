@@ -27,6 +27,7 @@ import sttp.model.*
 import zio.json.*
 
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 
 object ApiClientSttp4 {
 
@@ -67,7 +68,9 @@ object ApiClientSttp4 {
       AsyncCallback.fromFuture {
         val reqWithConnectionId = request.header("X-Connection-Id", encodeConnectionId(connectionId))
         val finalReq = tokOpt.fold(reqWithConnectionId)(tok => reqWithConnectionId.auth.bearer(tok))
-        finalReq.send(backend)
+        finalReq
+          .readTimeout(2.minutes)
+          .send(backend)
       }
     }
 
@@ -91,6 +94,7 @@ object ApiClientSttp4 {
           .header("X-Connection-Id", encodeConnectionId(connectionId))
           .auth
           .bearer(tok)
+          .readTimeout(2.minutes)
           .send(backend)
       }
     }
@@ -111,6 +115,7 @@ object ApiClientSttp4 {
                   basicRequest
                     .get(uri"/refresh")
                     .response(asString)
+                    .readTimeout(2.minutes)
                     .send(backend)
                 )
               retried <- refreshResponse.code match {
