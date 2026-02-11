@@ -181,6 +181,59 @@ object Ficha {
       )
     }
 
+  val emojis: Map[Ficha, String] = Map(
+    Ficha.fromString("0:0") -> "🁣",
+    Ficha.fromString("0:1") -> "🁤",
+    Ficha.fromString("0:2") -> "🁥",
+    Ficha.fromString("0:3") -> "🁦",
+    Ficha.fromString("0:4") -> "🁧",
+    Ficha.fromString("0:5") -> "🁨",
+    Ficha.fromString("0:6") -> "🁩",
+    Ficha.fromString("1:0") -> "🁪",
+    Ficha.fromString("1:1") -> "🁫",
+    Ficha.fromString("1:2") -> "🁬",
+    Ficha.fromString("1:3") -> "🁭",
+    Ficha.fromString("1:4") -> "🁮",
+    Ficha.fromString("1:5") -> "🁯",
+    Ficha.fromString("1:6") -> "🁰",
+    Ficha.fromString("2:0") -> "🁱",
+    Ficha.fromString("2:1") -> "🁲",
+    Ficha.fromString("2:2") -> "🁳",
+    Ficha.fromString("2:3") -> "🁴",
+    Ficha.fromString("2:4") -> "🁵",
+    Ficha.fromString("2:5") -> "🁶",
+    Ficha.fromString("2:6") -> "🁷",
+    Ficha.fromString("3:0") -> "🁸",
+    Ficha.fromString("3:1") -> "🁹",
+    Ficha.fromString("3:2") -> "🁺",
+    Ficha.fromString("3:3") -> "🁻",
+    Ficha.fromString("3:4") -> "🁼",
+    Ficha.fromString("3:5") -> "🁽",
+    Ficha.fromString("3:6") -> "🁾",
+    Ficha.fromString("4:0") -> "🁿",
+    Ficha.fromString("4:1") -> "🂀",
+    Ficha.fromString("4:2") -> "🂁",
+    Ficha.fromString("4:3") -> "🂂",
+    Ficha.fromString("4:4") -> "🂃",
+    Ficha.fromString("4:5") -> "🂄",
+    Ficha.fromString("4:6") -> "🂅",
+    Ficha.fromString("5:0") -> "🂆",
+    Ficha.fromString("5:1") -> "🂇",
+    Ficha.fromString("5:2") -> "🂈",
+    Ficha.fromString("5:3") -> "🂉",
+    Ficha.fromString("5:4") -> "🂊",
+    Ficha.fromString("5:5") -> "🂋",
+    Ficha.fromString("5:6") -> "🂌",
+    Ficha.fromString("6:0") -> "🂍",
+    Ficha.fromString("6:1") -> "🂎",
+    Ficha.fromString("6:2") -> "🂏",
+    Ficha.fromString("6:3") -> "🂐",
+    Ficha.fromString("6:4") -> "🂑",
+    Ficha.fromString("6:5") -> "🂒",
+    Ficha.fromString("6:6") -> "🂓",
+    FichaTapada             -> "🁢"
+  )
+
 }
 
 sealed trait Ficha extends Product with Serializable {
@@ -203,7 +256,7 @@ case object FichaTapada extends Ficha {
   override def value:              Int = throw GameError("No puedes hacer esto con una ficha tapada")
   override def es(num:    Numero): Boolean = throw GameError("No puedes hacer esto con una ficha tapada")
   override def other(num: Numero): Numero = throw GameError("No puedes hacer esto con una ficha tapada")
-  override def toString:           String = "?:?"
+  lazy override val toString:      String = Ficha.emojis(this)
 
 }
 
@@ -212,11 +265,12 @@ case class FichaConocida private[chuti] (
   abajo:  Numero
 ) extends Ficha {
 
-  lazy override val esMula:        Boolean = arriba == abajo
-  lazy override val value:         Int = arriba.value + abajo.value
+  lazy override val esMula:   Boolean = arriba == abajo
+  lazy override val value:    Int = arriba.value + abajo.value
+  lazy override val toString: String = Ficha.emojis(this)
+
   override def es(num:    Numero): Boolean = arriba == num || abajo == num
   override def other(num: Numero): Numero = { if (arriba == num) abajo else arriba }
-  override def toString:           String = s"${arriba.value}:${abajo.value}"
 
 }
 
