@@ -807,7 +807,8 @@ case class AIBot(
           triunfo = Some(bestTrump),
           gameId = game.id,
           userId = jugador.user.id,
-          reasoning = Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)  ${formatHand(jugador)}")
+          reasoning =
+            Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)  ${formatHand(jugador)}")
         )
       )
     }
@@ -1138,7 +1139,16 @@ case class AIBot(
     }
 
     // Auto-play if only one legal option
-    if (legalMoves.size == 1) {
+    if (jugador.fichas.size == 1) {
+      ZIO.succeed(
+        Da(
+          ficha = jugador.fichas.head,
+          gameId = game.id,
+          userId = jugador.user.id,
+          reasoning = Option("No thinking needed, only one tile left to play")
+        )
+      )
+    } else if (legalMoves.size == 1) {
       ZIO.sleep(2.seconds) *> ZIO.succeed(
         Da(
           ficha = legalMoves.head,
@@ -1251,7 +1261,8 @@ case class AIBot(
       } else if (askingForTrump) {
         // They're asking for trump
         val currentWinningTile = game.enJuego.map(_._2).maxBy(f => fichaValue(f, game.triunfo))
-        val canWin = legalMoves.exists(f => fichaValue(f, game.triunfo) > fichaValue(currentWinningTile, game.triunfo))
+        val canWin =
+          legalMoves.exists(f => fichaValue(f, game.triunfo) > fichaValue(currentWinningTile, game.triunfo))
 
         if (!canWin) {
           // Can't win - play smallest trump

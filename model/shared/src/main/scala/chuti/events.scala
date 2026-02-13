@@ -1272,30 +1272,59 @@ final case class TerminaJuego(
     jugador: Jugador,
     game:    Game
   ): (Game, GameEvent) = {
-    val conCuentas = game.copy(
-      gameStatus = if (game.partidoTerminado) GameStatus.partidoTerminado else GameStatus.requiereSopa,
-      jugadores = game.modifiedJugadores(
-        _.cantante,
-        { victima =>
-          if (game.quienCanta.fold(false)(_.yaSeHizo)) {
-            victima.copy(cuenta =
-              victima.cuenta ++ victima.filas.headOption.map(_ =>
-                Cuenta(Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)))
+    // Step 1: Compute new cuenta entries for all players
+    val jugadoresConCuentas = game.modifiedJugadores(
+      _.cantante,
+      { victima =>
+        if (game.quienCanta.fold(false)(_.yaSeHizo)) {
+          victima.copy(cuenta =
+            victima.cuenta ++ victima.filas.headOption.map(_ =>
+              Cuenta(Math.max(victima.filas.size, victima.cuantasCantas.fold(0)(_.score)))
+            )
+          )
+        } else {
+          // Ya fue hoyo!
+          victima
+            .copy(cuenta =
+              victima.cuenta :+ Cuenta(
+                -victima.cuantasCantas.fold(0)(_.score),
+                esHoyo = true
               )
             )
-          } else {
-            // Ya fue hoyo!
-            victima
-              .copy(cuenta =
-                victima.cuenta :+ Cuenta(
-                  -victima.cuantasCantas.fold(0)(_.score),
-                  esHoyo = true
-                )
-              )
-          }
-        },
-        otro => otro.copy(cuenta = otro.cuenta ++ otro.filas.headOption.map(_ => Cuenta(otro.filas.size)))
-      )
+        }
+      },
+      otro => otro.copy(cuenta = otro.cuenta ++ otro.filas.headOption.map(_ => Cuenta(otro.filas.size)))
+    )
+
+    // Step 2: The game ends only when someone is >= 21 AFTER all scores are applied this round.
+    // If multiple players reach >= 21, the highest score wins.
+    // Tiebreak: the player already marked fueGanadorDelPartido (set earlier this round, e.g. by Caete).
+    val totalScores: List[(Jugador, Int)] = jugadoresConCuentas.map(j => j -> j.cuenta.map(_.puntos).sum)
+    val over21 = totalScores.filter(_._2 >= 21)
+
+    val winnerIdOpt: Option[UserId] = over21 match {
+      case Nil         => None
+      case List((j, _)) => Some(j.id)
+      case multiple =>
+        val maxScore = multiple.maxBy(_._2)._2
+        val atMax    = multiple.filter(_._2 == maxScore)
+        if (atMax.size == 1) Some(atMax.head._1.id)
+        else
+          // Tie: first to reach 21 wins (previously marked by Caete)
+          atMax.find(_._1.fueGanadorDelPartido).map(_._1.id)
+            .orElse(atMax.headOption.map(_._1.id))
+    }
+
+    // Step 3: Set fueGanadorDelPartido on the winner; clear it from everyone else
+    val jugadoresConGanador = jugadoresConCuentas.map(j =>
+      j.copy(fueGanadorDelPartido = winnerIdOpt.contains(j.id))
+    )
+
+    val isPartidoTerminado = winnerIdOpt.isDefined
+
+    val conCuentas = game.copy(
+      gameStatus = if (isPartidoTerminado) GameStatus.partidoTerminado else GameStatus.requiereSopa,
+      jugadores  = jugadoresConGanador
     )
 
     val (fueHoyo, statusStr) = game.quienCanta.fold((false, "")) { j =>
@@ -1327,12 +1356,9 @@ final case class TerminaJuego(
 
     val leTocaLaSopa = game.jugadores.find(_.turno).map(j => game.nextPlayer(j))
 
-    if (conCuentas.partidoTerminado) {
+    if (isPartidoTerminado) {
       (
-        // el ganador de el partido no es necesariamente el que haya llegado a 21 (si hay mas que uno), sino
-        // a) el que se fue
-        // b) el que obtuvo el primer regalo que hizo que se fuera.
-        conCuentas.copy(gameStatus = GameStatus.partidoTerminado, enJuego = List.empty),
+        conCuentas.copy(enJuego = List.empty),
         TerminaPartido(
           index = Option(game.currentEventIndex),
           soundUrl = Option("sounds/partidoTerminado.mp3"),
