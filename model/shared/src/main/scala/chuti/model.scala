@@ -495,7 +495,7 @@ case class Game(
   jugadores:          List[Jugador] = List.empty,
   statusString:       String = "",
   satoshiPerPoint:    Long = 100L,
-  botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.intermediate,
+  botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.advanced,
   explainReasoning:   Boolean = true, // Show bot reasoning to users
   triggeredBorlotes:  Set[Borlote] = Set.empty // Track borlotes triggered in current juego
 ) derives JsonCodec {

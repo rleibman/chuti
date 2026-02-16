@@ -1217,9 +1217,10 @@ b {
 }
 
 .celebration-winner {
-    font-size: 2em;
+    font-size: 1.6em;
     font-weight: bold;
     color: #59228C;
+    line-height: 1.6;
     margin-bottom: 20px;
 }
 

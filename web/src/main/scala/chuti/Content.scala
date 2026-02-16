@@ -73,7 +73,7 @@ object Content extends ChutiComponent with TimerSupport {
             gameEvent.reapplyMode match {
               case ReapplyMode.none        => Callback.empty
               case ReapplyMode.fullRefresh => refresh(initial = false)()
-              case ReapplyMode.reapply =>
+              case ReapplyMode.reapply     =>
                 // Catch state inconsistencies (e.g. bot event arrives before JoinGame fullRefresh completes)
                 // and fall back to a full refresh to recover.
                 reapplyEvent(gameEvent).attempt.flatMap(
@@ -124,39 +124,50 @@ object Content extends ChutiComponent with TimerSupport {
                 }
               }
             case _: TerminaPartido =>
-              $.modState(s =>
-                s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas))
-              )
+              $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas)))
             case b: BorloteEvent =>
               import scala.scalajs.js.timers
-              // Show celebrations for special borlote events
-              val celebrationData = CelebrationData(
-                components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
-                None,
-                Map.empty
-              )
-              val showCelebration = $.modState(s =>
-                s.copy(chutiState =
-                  s.chutiState.copy(
-                    celebration = Some(celebrationData),
-                    currentDialog = GlobalDialog.celebration
-                  )
-                )
-              )
+              import chuti.CuantasCantas.*
 
-              // Auto-dismiss special events after 3 seconds
-              showCelebration >> Callback {
-                timers.setTimeout(3000) {
-                  $.modState(s =>
-                    s.copy(chutiState =
-                      s.chutiState.copy(
-                        celebration = None,
-                        currentDialog = GlobalDialog.none
-                      )
+              // Campanita is only worth celebrating when the cantante bid 6 or 7
+              val shouldCelebrate: Callback = $.state
+                .map { s =>
+                  val cantanteBid = s.chutiState.gameInProgress
+                    .flatMap(_.jugadores.find(_.cantante))
+                    .flatMap(_.cuantasCantas)
+                  val isCampanita = b.borlote == Borlote.Campanita
+                  val highBid = cantanteBid.exists(c => c == Canto6 || c == CantoTodas)
+                  !isCampanita || highBid
+                }.flatMap { show =>
+                  if (!show) Callback.empty
+                  else {
+                    val celebrationData = CelebrationData(
+                      components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
+                      None,
+                      Map.empty
                     )
-                  ).runNow()
+                    $.modState(s =>
+                      s.copy(chutiState =
+                        s.chutiState.copy(
+                          celebration = Some(celebrationData),
+                          currentDialog = GlobalDialog.celebration
+                        )
+                      )
+                    ) >> Callback {
+                      timers.setTimeout(3000) {
+                        $.modState(s =>
+                          s.copy(chutiState =
+                            s.chutiState.copy(
+                              celebration = None,
+                              currentDialog = GlobalDialog.none
+                            )
+                          )
+                        ).runNow()
+                      }
+                    }
+                  }
                 }
-              }
+              shouldCelebrate
             case _ => Callback.empty
           }
         }

@@ -22,7 +22,7 @@ import auth.*
 import auth.oauth.{OAuthService, OAuthStateStore}
 import chat.ChatService
 import chuti.*
-import chuti.bots.AIBot
+import chuti.bots.{AIBot, LLMStats}
 import dao.*
 import dao.quill.QuillRepository
 import game.GameService
@@ -105,7 +105,8 @@ object EnvironmentBuilder {
       for {
         config     <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.ai)
         llmService <- ZIO.service[ai.LLMService]
-      } yield config.map(c => AIBot(config = c.ollama, llmService = llmService))
+        statsRef   <- Ref.make(LLMStats())
+      } yield config.map(c => AIBot(config = c.ollama, llmService = llmService, stats = statsRef))
     }
 
   val live: ULayer[ChutiEnvironment] = ZLayer

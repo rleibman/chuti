@@ -29,16 +29,16 @@ trait ChutiBot {
     game: Game
   ): IO[GameError, PlayEvent]
 
-  //TODO, this is not used by the game, but only by testing, it's probably wrong
+  // TODO, this is not used by the game, but only by testing, it's probably wrong
   def takeTurn(
-    gameId:          GameId
+    gameId: GameId
   ): ZIO[GameEnvironment & ChutiSession & GameService, GameError, Game] = {
     for {
       userOpt <- ZIO.serviceWith[ChutiSession](_.user)
       user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
       game    <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId).map(_.get))
       turn    <- decideTurn(user, game)
-      played <- ZIO.serviceWithZIO[GameService](_.play(gameId, turn))
+      played  <- ZIO.serviceWithZIO[GameService](_.play(gameId, turn))
     } yield played
   }
 

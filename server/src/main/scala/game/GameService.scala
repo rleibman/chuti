@@ -283,8 +283,8 @@ object GameService {
               _ <- ZIO.logDebug(
                 s"Auto-play: Bot ${nextPlayer.user.name} (${nextPlayer.jugadorType}) is taking turn in state ${game.gameStatus}"
               )
-              playEvent    <- bot.decideTurn(nextPlayer.user, game)
-              _            <- ZIO.logDebug(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
+              playEvent <- bot.decideTurn(nextPlayer.user, game)
+              _         <- ZIO.logDebug(s"Auto-play: Bot decided to play: ${playEvent.getClass.getSimpleName}")
               // Play the event using playInternal with the in-memory game and recursion disabled
               updatedGame <- playInternal(game.id, playEvent, triggerBotAutoPlay = false, gameOpt = Some(game))
                 .provideSomeLayer[GameEnvironment](ChutiSession.botSession(nextPlayer.user).toLayer)
@@ -713,12 +713,16 @@ object GameService {
             Option(s"🎲 Nueva ronda! ${user.name} reparte las fichas")
           case c: Canta if c.cuantasCantas != CuantasCantas.Buenas =>
             Option(s"🃏 ${user.name} canta ${c.cuantasCantas}")
-          case p: Pide if p.triunfo.nonEmpty =>
+          case p: Pide if p.triunfo.nonEmpty && game.triunfo.isEmpty =>
+            // Only announce trump on the very first Pide, when it is being declared for the first time
             val triunfoStr = p.triunfo.get match {
               case SinTriunfos        => "Sin Triunfos"
               case TriunfoNumero(num) => s"${num.value}"
             }
             Option(s"♠️ Triunfan: $triunfoStr")
+          case _: MeRindo =>
+            val cantante = game.jugadores.find(_.cantante)
+            cantante.map(c => s"🏳️ ${c.user.name} se rinde antes del segundo turno")
           case t: TerminaJuego =>
             if (t.partidoTerminado) {
               val ganador = game.jugadores.find(_.fueGanadorDelPartido)
@@ -743,7 +747,7 @@ object GameService {
               case Borlote.TodoConDos =>
                 Option(s"2️⃣ ¡Borlote Todo con Dos!")
               case Borlote.HoyoTecnico =>
-                None // Don't announce technical fouls in chat
+                Option(s"🚨 ¡Hoyo técnico para ${user.name}!")
               case Borlote.Hoyo =>
                 val cantante = game.jugadores.find(_.cantante)
                 cantante.map(c => s"⚠️ ¡${c.user.name} tiene un hoyo!")

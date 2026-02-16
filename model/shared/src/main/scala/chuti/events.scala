@@ -1303,28 +1303,27 @@ final case class TerminaJuego(
     val over21 = totalScores.filter(_._2 >= 21)
 
     val winnerIdOpt: Option[UserId] = over21 match {
-      case Nil         => None
+      case Nil          => None
       case List((j, _)) => Some(j.id)
       case multiple =>
         val maxScore = multiple.maxBy(_._2)._2
-        val atMax    = multiple.filter(_._2 == maxScore)
+        val atMax = multiple.filter(_._2 == maxScore)
         if (atMax.size == 1) Some(atMax.head._1.id)
         else
           // Tie: first to reach 21 wins (previously marked by Caete)
-          atMax.find(_._1.fueGanadorDelPartido).map(_._1.id)
+          atMax
+            .find(_._1.fueGanadorDelPartido).map(_._1.id)
             .orElse(atMax.headOption.map(_._1.id))
     }
 
     // Step 3: Set fueGanadorDelPartido on the winner; clear it from everyone else
-    val jugadoresConGanador = jugadoresConCuentas.map(j =>
-      j.copy(fueGanadorDelPartido = winnerIdOpt.contains(j.id))
-    )
+    val jugadoresConGanador = jugadoresConCuentas.map(j => j.copy(fueGanadorDelPartido = winnerIdOpt.contains(j.id)))
 
     val isPartidoTerminado = winnerIdOpt.isDefined
 
     val conCuentas = game.copy(
       gameStatus = if (isPartidoTerminado) GameStatus.partidoTerminado else GameStatus.requiereSopa,
-      jugadores  = jugadoresConGanador
+      jugadores = jugadoresConGanador
     )
 
     val (fueHoyo, statusStr) = game.quienCanta.fold((false, "")) { j =>
@@ -1405,8 +1404,7 @@ final case class TerminaPartido(
   override def doEvent(
     jugador: Jugador,
     game:    Game
-  ): (Game, GameEvent) =
-    (game, this)
+  ): (Game, GameEvent) = (game, this)
 
   override def redoEvent(
     jugador: Jugador,
