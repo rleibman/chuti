@@ -58,13 +58,13 @@ case class AIBot(
   // We don't want to give bots perfect memory, but this is the information that we expect most humans would likely know,
   // it's based only on what's been played and contains no information from other player's hand.
   case class MemorySummary(
-    triunfo:                        Triunfo,
-    pidieron:                       Numero,
-    triunfosVistos:                 Seq[Ficha],
-    mulasVistas:                    Seq[Ficha],
-    numerosQueYaNoHay:              Option[Seq[Numero]],
-    numerosQueHayPocos:             Option[Seq[Numero]],
-    numerosQueLosJugadoresNoTienen: Option[Map[Jugador, Seq[Numero]]]
+    trump:            Triunfo,
+    leadingNumber:        Numero,
+    trumpsSeen:       Seq[Ficha],
+    doublesSeen:      Seq[Ficha],
+    exhaustedNumbers: Option[Seq[Numero]],
+    scarceNumbers:    Option[Seq[Numero]],
+    playerVoids:      Option[Map[Jugador, Seq[Numero]]]
   ) derives JsonEncoder
 
   /** Calculates an imperfect memory summary for the bot, based only on the tiles that have been played so far, and the
@@ -118,13 +118,13 @@ case class AIBot(
         }
 
         MemorySummary(
-          triunfo = triunfo,
-          pidieron = pidieron,
-          triunfosVistos = triunfosVistos,
-          mulasVistas = mulasVistas,
-          numerosQueYaNoHay = None, // Doesn't track exhausted numbers
-          numerosQueHayPocos = None, // Doesn't track scarcity
-          numerosQueLosJugadoresNoTienen = None // No void inference
+          trump = triunfo,
+          leadingNumber = pidieron,
+          trumpsSeen = triunfosVistos,
+          doublesSeen = mulasVistas,
+          exhaustedNumbers = None, // Doesn't track exhausted numbers
+          scarceNumbers = None,    // Doesn't track scarcity
+          playerVoids = None       // No void inference
         )
 
       case BotDifficultyLevel.intermediate =>
@@ -139,13 +139,13 @@ case class AIBot(
         val voids = inferVoids(game, jugador)
 
         MemorySummary(
-          triunfo = triunfo,
-          pidieron = pidieron,
-          triunfosVistos = triunfosVistos,
-          mulasVistas = mulasVistas,
-          numerosQueYaNoHay = None, // Doesn't track yet
-          numerosQueHayPocos = None, // Doesn't track yet
-          numerosQueLosJugadoresNoTienen = Some(voids)
+          trump = triunfo,
+          leadingNumber = pidieron,
+          trumpsSeen = triunfosVistos,
+          doublesSeen = mulasVistas,
+          exhaustedNumbers = None, // Doesn't track yet
+          scarceNumbers = None,    // Doesn't track yet
+          playerVoids = Some(voids)
         )
 
       case BotDifficultyLevel.advanced =>
@@ -178,13 +178,13 @@ case class AIBot(
         val voids = inferVoids(game, jugador)
 
         MemorySummary(
-          triunfo = triunfo,
-          pidieron = pidieron,
-          triunfosVistos = triunfosVistos,
-          mulasVistas = mulasVistas,
-          numerosQueYaNoHay = Some(numerosQueYaNoHay),
-          numerosQueHayPocos = Some(numerosQueHayPocos),
-          numerosQueLosJugadoresNoTienen = Some(voids)
+          trump = triunfo,
+          leadingNumber = pidieron,
+          trumpsSeen = triunfosVistos,
+          doublesSeen = mulasVistas,
+          exhaustedNumbers = Some(numerosQueYaNoHay),
+          scarceNumbers = Some(numerosQueHayPocos),
+          playerVoids = Some(voids)
         )
     }
   }
@@ -241,7 +241,7 @@ case class AIBot(
 
   private def triunfoName(t: Triunfo): String =
     t match {
-      case SinTriunfos        => "SinTriunfos (no trump)"
+      case SinTriunfos        => "no trump"
       case TriunfoNumero(num) => s"trump=${num.value}"
     }
 
@@ -262,7 +262,7 @@ case class AIBot(
               "type"           : "pide",
               "ficha"          : "${pide.ficha.toString}",
               "estrictaDerecha": ${pide.estrictaDerecha},
-              "triunfo"        : "${pide.triunfo.getOrElse(SinTriunfos).toString}",
+              "trump"          : "${pide.triunfo.getOrElse(SinTriunfos).toString}",
               "reasoning"      : "[Why you led this tile]"
             }""".fromJson[Json]
         case da: Da =>
@@ -317,7 +317,7 @@ case class AIBot(
       case Some("pide") =>
         case class Details(
           ficha:           String,
-          triunfo:         Option[String],
+          trump:           Option[String],
           estrictaDerecha: Boolean,
           reasoning:       Option[String]
         ) derives JsonDecoder
@@ -327,12 +327,12 @@ case class AIBot(
               ficha <- ZIO
                 .attempt(Ficha.fromString(d.ficha))
                 .mapError(e => GameError(s"Invalid ficha format: ${d.ficha}", Some(e)))
-              triunfo <- d.triunfo match {
+              triunfo <- d.trump match {
                 case Some("SinTriunfos") => ZIO.succeed(Option(SinTriunfos))
                 case Some(numStr) =>
                   ZIO
                     .fromOption(numStr.toIntOption).mapBoth(
-                      _ => GameError(s"Invalid triunfo: $numStr"),
+                      _ => GameError(s"Invalid trump value: $numStr"),
                       n => Option(TriunfoNumero(Numero(n)))
                     )
                 case None => ZIO.succeed(game.triunfo) // Keep existing trump
@@ -455,7 +455,7 @@ case class AIBot(
     case1.orElse(case2).orElse(case3)
   }
 
-  // Calcula todas las posibles jugadas que puede hacer el bot, regresando el triunfo, cuantas serian de caida
+  // Computes all possible trump options ranked by guaranteed trick count
   private def possibleMoves(
     jugador: Jugador,
     game:    Game
@@ -526,30 +526,34 @@ case class AIBot(
     |CHUTI GAME RULES (Quick Reference):
     |
     |COMPONENTS: 28 domino tiles (0:0 to 6:6), 4 players, first to 21 points wins.
-    |  - Mula = double tile (e.g., 6:6). La Mulota (6:6) = first dealer. Campanita (0:1) = special event.
+    |  - A "double" tile has the same number on both sides (e.g., 6:6). These are the strongest tiles.
+    |  - "Trump" = the chosen suit for a round. Trump tiles beat all non-trump tiles.
+    |  - "Cantante" = the player who made the bid and must meet it.
+    |  - "Hoyo" = failed bid — the cantante LOSES their bid amount from their score (can go negative).
     |
-    |PHASES PER ROUND (Juego):
-    |  1. SOPA (Deal): Turno player deals 7 tiles to each player
-    |  2. CANTANDO (Bid): Players bid tricks they'll win:
-    |     - Casa(4), Canto5(5), Canto6(6), Chuti(7=all tricks, instant win)
-    |     - Buenas = pass. Turno MUST bid at least Casa.
-    |     - Cantante = player who bid (or was "saved" by higher bid)
-    |  3. JUGANDO (Play): Cantante leads first, declaring trump (0-6 or SinTriunfos)
-    |     - Must follow suit if able, else must play trump if able
-    |     - Highest matching number wins (or highest trump if trump played)
-    |     - Mulas: If mula led, only that exact mula wins
+    |PHASES PER ROUND:
+    |  1. Deal: One player deals 7 tiles to each player.
+    |  2. Bidding: Players bid how many tricks they will win.
+    |     - Bid 4 (minimum), 5, 6, or 7 (all tricks = instant win).
+    |     - "Buenas" = pass. The dealer MUST bid at least 4 — passing is not allowed for the dealer.
+    |     - The cantante is whoever ends up with the highest bid.
+    |  3. Play: Cantante leads first, declaring trump with their first tile.
+    |     - You MUST follow the led suit if you have it.
+    |     - If you cannot follow suit, you MUST play trump if you have it.
+    |     - Only if you have neither may you play any tile.
+    |     - Highest tile of the led suit wins, unless a trump was played (trump wins).
+    |     - If a double is led, ONLY that exact double can win the trick.
     |
     |CRITICAL RULES:
-    |  - MUST follow suit/trump when able (or HOYO TÉCNICO = automatic penalty)
-    |  - MUST "caerse" (fall) when you can prove winning all remaining tricks
-    |  - Hoyo = failed bid, cantante LOSES bid points (can go negative)
-    |  - Only play tiles in YOUR hand, choose from LEGAL moves provided
+    |  - MUST follow suit/trump when able — breaking this rule = immediate penalty (you lose the round).
+    |  - MUST declare you can win all remaining tricks when you can prove it (you cannot hold back).
+    |  - Only play tiles in YOUR hand. Choose from the LEGAL MOVES provided.
     |
     |STRATEGY:
-    |  - Conservative when leading near 21 (protect your lead)
-    |  - Aggressive when behind (take risks to catch up)
-    |  - Cantante risks most (hoyo penalty), bid carefully
-    |  - Track tiles played to calculate "de caída" (guaranteed wins)
+    |  - Play conservatively when close to 21 points (protect your lead).
+    |  - Play aggressively when far behind (take risks to catch up).
+    |  - The cantante risks the most — a failed bid loses points. Bid carefully.
+    |  - Strong tiles: high doubles (6:6, 5:5) and high trumps. Weak tiles: low non-trump tiles.
     |
     """.stripMargin
   }
@@ -594,17 +598,17 @@ case class AIBot(
            |even when you're far behind.""".stripMargin
       case 1 =>
         """|Playing style: CONSERVATIVE.
-           |You prefer safe plays over high reward. Bid only what you can make de caída.
+           |You prefer safe plays over high reward. Bid only what you can guarantee.
            |Protect your strong tiles and fold on uncertain tricks. Only take risks when
            |the math clearly favors you.""".stripMargin
       case 2 =>
         """|Playing style: MODERATE.
-           |You balance risk and reward. Bid what you can make de caída and adapt your play
+           |You balance risk and reward. Bid what you can guarantee and adapt your play
            |to the current score — more aggressive when behind, more cautious when ahead.
            |Take tricks when it makes strategic sense.""".stripMargin
       case 3 =>
         """|Playing style: AGGRESSIVE.
-           |You prefer bold moves that maximize your score. Bid one level higher than de caída
+           |You prefer bold moves that maximize your score. Bid one level higher than guaranteed
            |when you have strong trumps. Take tricks assertively, pressure opponents with strong
            |leads, and don't hesitate to spend trumps early to control the game.""".stripMargin
       case _ =>
@@ -709,7 +713,7 @@ case class AIBot(
         // Pre-compute hand analysis as clear text for the LLM
         val handAnalysis = moves
           .take(5).map { case (triunfo, cuantasDeCaida, cuantosTriunfosYMulas) =>
-            s"  ${triunfoName(triunfo)}: $cuantasDeCaida tricks GUARANTEED (de caída), $cuantosTriunfosYMulas trump+mula tiles"
+            s"  ${triunfoName(triunfo)}: $cuantasDeCaida tricks GUARANTEED, $cuantosTriunfosYMulas trump+double tiles"
           }.mkString("\n")
         val bestTriunfo = moves.headOption.map(m => triunfoName(m.triunfo)).getOrElse("unknown")
         val bestGuaranteed = moves.headOption.map(_.cuantasDeCaida).getOrElse(0)
@@ -720,19 +724,19 @@ case class AIBot(
               MeRindo(
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"No tengo nada de nada! me rindo ${formatHand(jugador)}")
+                reasoning = Option(s"Nothing playable — surrendering. Hand: ${formatHand(jugador)}")
               ): PlayEvent
             )
           } { max =>
             if (max.cuantasDeCaida <= 3) {
-              // Si te toca cantar, y tu mano es pinche, canta casa automaticamente.
+              // Turno player must bid at least Casa, even with a weak hand
               ZIO.succeed(
                 Canta(
                   Casa,
                   gameId = game.id,
                   userId = jugador.user.id,
                   reasoning =
-                    Option(s"Canto Casa porque tengo ${max.cuantasDeCaida} de caida, no me queda de otra, a lo mejor alguien me salva ${formatHand(jugador)}")
+                    Option(s"Forced to bid Casa (4) — only ${max.cuantasDeCaida} guaranteed tricks. Hoping someone saves me. Hand: ${formatHand(jugador)}")
                 )
               )
             } else {
@@ -746,13 +750,12 @@ case class AIBot(
                 | YOUR HAND ANALYSIS (pre-computed guaranteed tricks per trump choice):
                 |$handAnalysis
                 |
-                | RECOMMENDED: bid $bestGuaranteed with $bestTriunfo ($bestGuaranteed tricks guaranteed de caída)
+                | RECOMMENDED: bid $bestGuaranteed with $bestTriunfo ($bestGuaranteed tricks guaranteed)
                 |
-                | IMPORTANT — What "de caída" means:
-                | "De caída" = tricks you are mathematically CERTAIN to win no matter what opponents play.
-                | A higher de caída count = stronger hand. DO NOT bid higher than your de caída count unless you accept hoyo risk.
+                | "Guaranteed tricks" = tricks you are mathematically CERTAIN to win no matter what opponents play.
+                | A higher guaranteed count = stronger hand. DO NOT bid higher than your guaranteed count unless you accept the risk of losing points.
                 |
-                | RISK: If you fail to win the number of tricks you bid, you LOSE that many points (hoyo!).
+                | RISK: If you fail to win the number of tricks you bid, you LOSE that many points.
                 |
                 | Valid bids (you MUST choose one of these bid numbers — no other values are valid):
                 | ${formatValidOptions(4)}
@@ -769,7 +772,7 @@ case class AIBot(
             }
           }
         } else {
-          // Si no te toca cantar, y tienes una mano decente, preguntale a AI, parte de la informacion debe de incluir las cuentas actuales
+          // Not the turno player — may optionally outbid to take cantante role
           val maxPlayer: Option[Jugador] = game.jugadores
             .filter(_.user.id != jugador.user.id)
             .maxByOption(_.cuantasCantas.map(_.numFilas).getOrElse(4))
@@ -779,11 +782,11 @@ case class AIBot(
 
           /*
       maxBidByOthers | topMove | Interpretation
-       5 y 5 => 0 //No
-       5 y 4 => 1 //No
-       5 y 3 => 2 //No
-       5 y 6 => -1 //Good
-       4 y 6 => -2 //Very Good
+       5 vs 5 => 0  // Can't outbid
+       5 vs 4 => 1  // Can't outbid
+       5 vs 3 => 2  // Can't outbid
+       5 vs 6 => -1 // Can outbid
+       4 vs 6 => -2 // Can outbid (good hand)
            */
           val diff = maxBidByOthers - topMove
 
@@ -794,7 +797,7 @@ case class AIBot(
                 gameId = game.id,
                 userId = jugador.user.id,
                 reasoning =
-                  Option(s"Siempre que es de caida, canta chuti, asi es mas emocionante ${formatHand(jugador)}")
+                  Option(s"7 tricks guaranteed — bidding Chuti. Hand: ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers == 7) {
@@ -803,28 +806,28 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"No puedes salvar a alguien que ya canto chuti ${formatHand(jugador)}")
+                reasoning = Option(s"Cannot outbid Chuti — passing. Hand: ${formatHand(jugador)}")
               )
             )
           } else if (diff >= 0) {
-            // Si no te toca cantar, y tienes una mano mas pinche que el maximo, automaticamente di buenas
+            // My guaranteed tricks don't beat the current bid — pass
             ZIO.succeed(
               Canta(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Buenas, porque no tengo mejor juego que el mejor. ${formatHand(jugador)}")
+                reasoning = Option(s"Passing — my guaranteed tricks ($topMove) don't beat current bid ($maxBidByOthers). Hand: ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers > 4 && diff < 0) {
-            // Alguien ya lo salvo, te conviene salvarlo.
+            // Already saved beyond Casa — outbid to take the points
             ZIO.succeed(
               Canta(
                 CuantasCantas.byNum(topMove),
                 gameId = game.id,
                 userId = jugador.user.id,
                 reasoning =
-                  Option(s"La cantada ya es mas de cuatro, mejor yo me quedo con los puntos. ${formatHand(jugador)}")
+                  Option(s"Bid is already above 4 — outbidding to $topMove and taking the points. Hand: ${formatHand(jugador)}")
               )
             )
           } else {
@@ -840,13 +843,13 @@ case class AIBot(
              | YOUR HAND ANALYSIS (pre-computed guaranteed tricks per trump choice):
              |$handAnalysis
              |
-             | RECOMMENDED: bid $bestGuaranteed with $bestTriunfo ($bestGuaranteed tricks guaranteed de caída)
+             | RECOMMENDED: bid $bestGuaranteed with $bestTriunfo ($bestGuaranteed tricks guaranteed)
              |
              | Should you outbid?
-             | - YES if your de caída count beats $maxBidByOthers AND it helps your score position
+             | - YES if your guaranteed tricks beat $maxBidByOthers AND it helps your score position
              | - YES if you're far behind and need the points
-             | - NO if your de caída count does not exceed $maxBidByOthers (you can't safely outbid)
-             | - NO if you're comfortably ahead and don't want hoyo risk
+             | - NO if your guaranteed tricks do not exceed $maxBidByOthers (you can't safely outbid)
+             | - NO if you're comfortably ahead and don't want to risk losing points
              |
              | Valid bids (you MUST choose one — "Buenas" = pass, shown as 0 in the options):
              | ${formatValidOptions(maxBidByOthers)}
@@ -882,7 +885,7 @@ case class AIBot(
           gameId = game.id,
           userId = jugador.user.id,
           reasoning =
-            Option(s"Auto-caete: de caida with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks guaranteed)  ${formatHand(jugador)}")
+            Option(s"Auto-fall: guaranteed all tricks with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks). Hand: ${formatHand(jugador)}")
         )
       )
     }
@@ -924,7 +927,7 @@ case class AIBot(
             userId = jugador.user.id,
             reasoning = Option(
               s"PideInicial: playing trump ${best.triunfo} with ${best.pide} " +
-                s"(${best.cuantasDeCaida} de caída, ${best.cuantosTriunfosYMulas} trumps+mulas) ${formatHand(jugador)}"
+                s"(${best.cuantasDeCaida} guaranteed tricks, ${best.cuantosTriunfosYMulas} trump+double tiles) Hand: ${formatHand(jugador)}"
             )
           )
         )
@@ -1107,7 +1110,7 @@ case class AIBot(
            | - You are the cantante (bidder)
            | - You bid $bidAmount tricks and have won $tricksWonSoFar so far
            | - You need $tricksNeeded more tricks from $tricksRemaining remaining
-           | - Calculated de caída: $deCaida guaranteed wins
+           | - Calculated guaranteed wins: $deCaida
            | - Trump: ${game.triunfo.getOrElse("not set")}
            |${trumpWarning.fold("")(w => s"\n | ⚠️  $w\n")}
            | Valid tiles you can lead:
@@ -1118,7 +1121,7 @@ case class AIBot(
            | - Lead with strong tiles when you need to win this trick
            | - Lead with weak tiles when you want to preserve strength for later
            | - Consider which numbers opponents might be void in (from memory)
-           | - If you have $tricksNeeded de caída, you can play more conservatively
+           | - If you have $tricksNeeded guaranteed wins, you can play more conservatively
            | - If $tricksNeeded > $deCaida, you need to take risks to win extra tricks
            | - If all the trumps have been played and you're not likely to win this ask, then play a small tile and hope the hand comes back to you.
            | - Only lead trump when YOUR trump is the HIGHEST remaining — then it wins guaranteed.
@@ -1599,10 +1602,7 @@ case class AIBot(
     jugador: Jugador,
     game:    Game
   ): IO[GameError, PlayEvent] = {
-    // /no_think disables Qwen3's chain-of-thought thinking mode, which would otherwise
-    // burn most of the timeout budget before producing the actual JSON response.
-    // This directive is a no-op on other models (llama, mistral, etc.).
-    val finalPrompt = "/no_think\n" + prompt
+    val finalPrompt = prompt
     ZIO.logDebug(s"🎮 Bot ${jugador.user.name} starting decision (Game ${game.id}, Status: ${game.gameStatus})") *>
       (for {
         _ <- ZIO.logDebug(s"⏰ LLM timeout set to ${config.timeout.toSeconds} seconds")

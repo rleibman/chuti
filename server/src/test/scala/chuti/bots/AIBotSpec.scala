@@ -55,8 +55,18 @@ object AIBotSpec extends ZIOSpecDefault {
     customModel = true
   )
 
-  val testBot = AIBot(testConfig, mockLLMService)
-  val failingBot = AIBot(testConfig, failingLLMService)
+  // Create bots with Ref[LLMStats] via Unsafe for use in pure/mixed test contexts
+  private val (testBot, failingBot) = Unsafe.unsafe { implicit u =>
+    Runtime.default.unsafe.run {
+      for {
+        statsRef1 <- Ref.make(LLMStats())
+        statsRef2 <- Ref.make(LLMStats())
+      } yield (
+        AIBot(testConfig, mockLLMService, statsRef1),
+        AIBot(testConfig, failingLLMService, statsRef2)
+      )
+    }.getOrThrowFiberFailure()
+  }
 
   // Helper to create a test game
   def createTestGame(
@@ -78,9 +88,9 @@ object AIBotSpec extends ZIOSpecDefault {
         ),
         jugadorType = JugadorType.human,
         fichas = List(
-          Ficha(Numero6, Numero6), // 6:6 mula
+          Ficha(Numero6, Numero6), // 6:6 double
           Ficha(Numero6, Numero5), // 6:5
-          Ficha(Numero5, Numero5), // 5:5 mula
+          Ficha(Numero5, Numero5), // 5:5 double
           Ficha(Numero4, Numero3), // 4:3
           Ficha(Numero2, Numero1), // 2:1
           Ficha(Numero1, Numero0), // 1:0
@@ -187,23 +197,23 @@ object AIBotSpec extends ZIOSpecDefault {
           val memory = testBot.calculateMemorySummary(game, jugador)
 
           assertTrue(
-            memory.triunfo == TriunfoNumero(Numero6),
-            memory.numerosQueYaNoHay.isEmpty,
-            memory.numerosQueHayPocos.isEmpty,
-            memory.numerosQueLosJugadoresNoTienen.isEmpty
+            memory.trump == TriunfoNumero(Numero6),
+            memory.exhaustedNumbers.isEmpty,
+            memory.scarceNumbers.isEmpty,
+            memory.playerVoids.isEmpty
           )
         },
-        test("Intermediate difficulty tracks mulas, trumps, and voids") {
+        test("Intermediate difficulty tracks doubles, trumps, and voids") {
           val game = createTestGame(botDifficultyLevel = BotDifficultyLevel.intermediate)
           val jugador = game.jugadores.head
 
           val memory = testBot.calculateMemorySummary(game, jugador)
 
           assertTrue(
-            memory.triunfo == TriunfoNumero(Numero6),
-            memory.numerosQueYaNoHay.isEmpty, // Intermediate doesn't track exhausted
-            memory.numerosQueHayPocos.isEmpty, // Intermediate doesn't track scarcity
-            memory.numerosQueLosJugadoresNoTienen.isDefined // But does track voids
+            memory.trump == TriunfoNumero(Numero6),
+            memory.exhaustedNumbers.isEmpty, // Intermediate doesn't track exhausted
+            memory.scarceNumbers.isEmpty,    // Intermediate doesn't track scarcity
+            memory.playerVoids.isDefined     // But does track voids
           )
         },
         test("Advanced difficulty tracks everything") {
@@ -230,12 +240,12 @@ object AIBotSpec extends ZIOSpecDefault {
           val memory = testBot.calculateMemorySummary(gameWithPlayedTiles, jugador)
 
           assertTrue(
-            memory.triunfo == TriunfoNumero(Numero6),
-            memory.numerosQueYaNoHay.isDefined,
-            memory.numerosQueHayPocos.isDefined,
-            memory.numerosQueLosJugadoresNoTienen.isDefined,
-            memory.triunfosVistos.nonEmpty,
-            memory.mulasVistas.nonEmpty
+            memory.trump == TriunfoNumero(Numero6),
+            memory.exhaustedNumbers.isDefined,
+            memory.scarceNumbers.isDefined,
+            memory.playerVoids.isDefined,
+            memory.trumpsSeen.nonEmpty,
+            memory.doublesSeen.nonEmpty
           )
         },
         test("Void inference detects when player didn't follow suit") {
@@ -252,7 +262,7 @@ object AIBotSpec extends ZIOSpecDefault {
           val memory = testBot.calculateMemorySummary(gameWithTrick, jugador)
 
           assertTrue(
-            memory.numerosQueLosJugadoresNoTienen.exists { voids =>
+            memory.playerVoids.exists { voids =>
               voids.exists { case (j, nums) =>
                 j.user.id == UserId(2) && nums.contains(Numero6)
               }
@@ -261,18 +271,17 @@ object AIBotSpec extends ZIOSpecDefault {
         }
       ),
       suite("Special Chuti Detection")(
-        test("Detects consecutive sixes + mulas") {
+        test("Detects consecutive sixes + doubles") {
           val specialHand = List(
             Ficha(Numero6, Numero6), // 6:6
             Ficha(Numero6, Numero5), // 6:5
             Ficha(Numero6, Numero4), // 6:4
-            Ficha(Numero5, Numero5), // 5:5 mula
-            Ficha(Numero4, Numero4), // 4:4 mula
-            Ficha(Numero3, Numero3), // 3:3 mula
-            Ficha(Numero2, Numero2) // 2:2 mula
+            Ficha(Numero5, Numero5), // 5:5 double
+            Ficha(Numero4, Numero4), // 4:4 double
+            Ficha(Numero3, Numero3), // 3:3 double
+            Ficha(Numero2, Numero2) // 2:2 double
           )
 
-          // Use reflection or create a test game with this hand
           val game = createTestGame(gameStatus = GameStatus.cantando)
           val gameWithSpecialHand = game.copy(
             jugadores = game.jugadores.updated(
@@ -289,7 +298,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision.asInstanceOf[Canta].cuantasCantas == CantoTodas
           )
         },
-        test("Detects all 6 top mulas + 1:0") {
+        test("Detects all 6 top doubles + 1:0") {
           val specialHand = List(
             Ficha(Numero6, Numero6),
             Ficha(Numero5, Numero5),
@@ -359,7 +368,7 @@ object AIBotSpec extends ZIOSpecDefault {
             jsonResult.exists(_.toString.contains("\"cuantasCantas\""))
           )
         },
-        test("toSimplifiedJson for Pide includes ficha and triunfo") {
+        test("toSimplifiedJson for Pide includes ficha and trump") {
           val pide = Pide(
             ficha = Ficha(Numero6, Numero5),
             triunfo = Some(TriunfoNumero(Numero6)),
@@ -374,7 +383,7 @@ object AIBotSpec extends ZIOSpecDefault {
             jsonResult.isRight,
             jsonResult.exists(json =>
               json.toString.contains("\"ficha\"") &&
-                json.toString.contains("\"triunfo\"")
+                json.toString.contains("\"trump\"")
             )
           )
         },
@@ -405,7 +414,7 @@ object AIBotSpec extends ZIOSpecDefault {
           )
         },
         test("fromSimplifiedJson parses Pide correctly") {
-          val json = """{"type":"pide","ficha":"6:5","triunfo":"6","estrictaDerecha":false,"reasoning":"Test"}"""
+          val json = """{"type":"pide","ficha":"6:5","trump":"6","estrictaDerecha":false,"reasoning":"Test"}"""
             .fromJson[Json].toOption.get
           val game = createTestGame()
           val jugador = game.jugadores.head
@@ -541,7 +550,9 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertTrue(
             decision.isInstanceOf[Da],
             decision.asInstanceOf[Da].ficha == Ficha(Numero6, Numero6),
-            decision.asInstanceOf[Da].reasoning.exists(_.contains("Only one legal"))
+            decision.asInstanceOf[Da].reasoning.exists(r =>
+              r.contains("No thinking needed") || r.contains("Only one legal")
+            )
           )
         },
         test("Auto-plays lowest tile when can't follow or trump") {
@@ -675,7 +686,7 @@ object AIBotSpec extends ZIOSpecDefault {
         }
       ),
       suite("Tile Value Calculation")(
-        test("Correctly values trump mulas highest") {
+        test("Correctly values trump doubles highest") {
           val game = createTestGame(triunfo = Some(TriunfoNumero(Numero6)))
           val jugador = game.jugadores.head
 
@@ -683,19 +694,19 @@ object AIBotSpec extends ZIOSpecDefault {
           // For now, test indirectly through da method behavior
           val gameForValue = game.copy(
             enJuego = List(
-              (UserId(2), Ficha(Numero6, Numero6)), // Trump mula
-              (UserId(3), Ficha(Numero6, Numero5)) // Trump non-mula
+              (UserId(2), Ficha(Numero6, Numero6)), // Trump double
+              (UserId(3), Ficha(Numero6, Numero5)) // Trump non-double
             ),
             jugadores = game.jugadores.updated(
               0,
               game.jugadores.head.copy(
-                fichas = List(Ficha(Numero5, Numero5)), // Non-trump mula
+                fichas = List(Ficha(Numero5, Numero5)), // Non-trump double
                 mano = false
               )
             )
           )
 
-          // The bot should recognize it can't beat the trump mula
+          // The bot should recognize it can't beat the trump double
           for {
             decision <- testBot.da(jugador, gameForValue)
           } yield assertTrue(
@@ -733,6 +744,6 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertCompletes
         }
       )
-    )
+    ).@@(TestAspect.withLiveClock)
 
 }

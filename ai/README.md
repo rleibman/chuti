@@ -130,7 +130,7 @@ ai {
     maxTokens = 500
 
     # Request timeout
-    timeout = "1 minute"
+    timeout = "2 minute"
 
     # Send rules via SystemMessage (fallback mode)
     useSystemMessage = false
