@@ -71,7 +71,7 @@ class ManoGanadoraSpec extends AnyFlatSpec with GameAbstractSpec {
   manosTests.map { s =>
     s"cuando juegan ${s._1._1}, triunfando ${s._1._3}, pidiendo ${s._1._2}" should s" ganar ${s._2}" in {
       val fichas = s._1._1.split(",").nn.toSeq.map(s => Ficha.fromString(s))
-      val game = Game(None, triunfo = Option(s._1._3), created = Instant.now.nn)
+      val game = Game(GameId.empty, triunfo = Option(s._1._3), created = Instant.now.nn)
       val ganadora = game.fichaGanadora(Ficha.fromString(s._1._2), fichas)
       val esperada = Ficha.fromString(s._2)
       assert(ganadora == esperada)
@@ -81,7 +81,7 @@ class ManoGanadoraSpec extends AnyFlatSpec with GameAbstractSpec {
   cuantasDeCaidaTests.map { s =>
     s"calculando cuantas de caida con ${s._1._1} de mano y triunfando ${s._1._2}" should s"hacer ${s._2} filas " in {
       val fichas: Seq[Ficha] = s._1._1.split(",").nn.toSeq.map(s => Ficha.fromString(s))
-      val game = Game(None, created = Instant.now.nn, triunfo = Option(s._1._2))
+      val game = Game(GameId.empty, created = Instant.now.nn, triunfo = Option(s._1._2))
       val remainder = Game.todaLaFicha.diff(fichas)
       val cuantasDeCaida = game.cuantasDeCaida(fichas, remainder)
       val esperada = s._2

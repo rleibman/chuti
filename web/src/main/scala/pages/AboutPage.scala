@@ -197,7 +197,8 @@ object AboutPage extends ChutiPage {
   private val component = ScalaComponent
     .builder[Unit]
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .render(_.backend.render())
     .build
 
   def apply(): Unmounted[Unit, State, Backend] = component()

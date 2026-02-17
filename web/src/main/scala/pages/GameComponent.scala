@@ -17,17 +17,15 @@
 package pages
 
 import _root_.util.LocalizedMessages
-import app.{ChutiState, GameViewMode}
+import chuti.*
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import chuti.{*, given}
-import components.{Confirm, Toast}
-import caliban.client.scalajs.given
-import caliban.client.scalajs.GameClient.Mutations
+import components.Confirm
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{^, *}
+import japgolly.scalajs.react.vdom.html_<^.*
+import net.leibman.chuti.react.mod.CSSProperties
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsElementsImageImageMod.ImageProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
@@ -37,8 +35,9 @@ import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
   SemanticShorthandItem
 }
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
-import pages.LobbyComponent.calibanCall
-import zio.json.*
+import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.*
+import org.scalajs.dom
+
 import scala.scalajs.js.JSConverters.*
 
 object GameComponent {
@@ -52,7 +51,6 @@ object GameComponent {
       )
 
   }
-  import GameComponentMessages.*
 
   case class Props(
     gameInProgress: Option[Game],
@@ -63,7 +61,9 @@ object GameComponent {
     cuantasCantas:     Option[CuantasCantas] = None,
     estrictaDerecha:   Boolean = false,
     fichaSeleccionada: Option[Ficha] = None,
-    triunfo:           Option[Triunfo] = None
+    triunfo:           Option[Triunfo] = None,
+    justDealt:         Set[Int] = Set.empty, // Track which player positions just got dealt
+    collectingTo:      Option[Int] = None // Track which player position is collecting tricks
   )
 
   class Backend($ : BackendScope[Props, State]) {
@@ -81,10 +81,9 @@ object GameComponent {
       gameId: GameId,
       event:  PlayEvent
     ): Callback = {
-      calibanCall[Mutations, Option[Boolean]](
-        Mutations.play(gameId.gameId, event.toJsonAST.toOption.get),
-        _ => clearPlayState() >> Toast.success(localized("GameComponent.listo"))
-      )
+      (for {
+        _ <- GameClient.game.playSilently(gameId, event)
+      } yield clearPlayState()).completeWith(_.get)
     }
 
     def moveFichaRight(
@@ -116,6 +115,76 @@ object GameComponent {
         },
         chutiState.playSound("sounds/moveLeft.mp3")
       )
+
+    def checkForDeals(
+      prevGame: Option[Game],
+      currGame: Option[Game]
+    ): Callback = {
+      import scala.scalajs.js.timers
+
+      (prevGame, currGame) match {
+        case (Some(prev), Some(curr)) =>
+          // Detect which player positions got new deals (went from <7 to 7 tiles)
+          val newDeals = (0 until 4).filter { playerIdx =>
+            val prevCount = if (playerIdx < prev.jugadores.size) prev.jugadores(playerIdx).fichas.size else 0
+            val currCount = if (playerIdx < curr.jugadores.size) curr.jugadores(playerIdx).fichas.size else 0
+            prevCount < 7 && currCount == 7
+          }.toSet
+
+          if (newDeals.nonEmpty) {
+            $.modState(_.copy(justDealt = newDeals)) >> Callback {
+              // Clear the justDealt flag after animation completes (1.5 seconds for staggered animation)
+              timers.setTimeout(1500) {
+                $.modState(_.copy(justDealt = Set.empty)).runNow()
+              }
+            }
+          } else {
+            Callback.empty
+          }
+        case _ => Callback.empty
+      }
+    }
+
+    def checkForTrickCollection(
+      prevGame: Option[Game],
+      currGame: Option[Game]
+    ): Callback = {
+      import scala.scalajs.js.timers
+
+      (prevGame, currGame) match {
+        case (Some(prev), Some(curr)) =>
+          // Detect when tricks are collected (enJuego goes from 4 to 0)
+          val prevInPlay = prev.enJuego.size
+          val currInPlay = curr.enJuego.size
+
+          if (prevInPlay == 4 && currInPlay == 0) {
+            // Find who won the last trick by checking who got a new fila
+            val winnerIdOpt = curr.jugadores
+              .find { j =>
+                val prevFilas = prev.jugadores.find(_.id == j.id).fold(0)(_.filas.size)
+                val currFilas = j.filas.size
+                currFilas > prevFilas
+              }.map(_.id)
+
+            winnerIdOpt.fold(Callback.empty) { winnerId =>
+              // Wait 10 seconds to let players see the tiles before collecting
+              Callback {
+                timers.setTimeout(10000) {
+                  // Now start the collection animation
+                  $.modState(_.copy(collectingTo = Some(winnerId.value.toInt))).runNow()
+                  // Clear the collectingTo flag after animation completes (1200ms more)
+                  timers.setTimeout(1200) {
+                    $.modState(_.copy(collectingTo = None)).runNow()
+                  }
+                }
+              }
+            }
+          } else {
+            Callback.empty
+          }
+        case _ => Callback.empty
+      }
+    }
 
     def render(
       p: Props,
@@ -159,8 +228,32 @@ object GameComponent {
                     ^.className := s"playerName ${
                         if (canPlay) "canPlay"
                         else ""
+                      } ${
+                        if (jugador.jugadorType != JugadorType.human) "bot-player"
+                        else ""
+                      } ${
+                        if (canPlay && jugador.jugadorType != JugadorType.human) "active-turn"
+                        else ""
                       }",
-                    jugador.user.name
+                    jugador.user.name,
+                    // Add bot badge and rationale icon
+                    if (jugador.jugadorType != JugadorType.human) {
+                      TagMod(
+                        <.span(^.className := "bot-badge", " 🤖"), {
+                          dom.console.log(s"Bot ${jugador.user.name}: lastBotRationale = ${jugador.lastBotRationale}")
+                          jugador.lastBotRationale match {
+                            case Some(rationale) =>
+                              <.span(
+                                ^.className := "bot-rationale-icon",
+                                ^.title     := rationale,
+                                Icon().name(SemanticICONS.`question circle`)()
+                              )
+                            case None =>
+                              EmptyVdom
+                          }
+                        }
+                      )
+                    } else EmptyVdom
                   ),
                   <.div(
                     ^.className := "userStatus",
@@ -185,14 +278,14 @@ object GameComponent {
                         val cantanteActual =
                           game.jugadores.find(_.cantante).getOrElse(jugador)
                         val min = cantanteActual.cuantasCantas
-                          .map(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
+                          .flatMap(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
                             Canto5
                           )
                         val cantasOptions = (defaultCuantas +: CuantasCantas.posibilidades(min)).map { cuantas =>
                           DropdownItemProps()
                             .setText(cuantas.toString)
                             .set("key", cuantas.prioridad.toString)
-                            .setValue(cuantas.prioridad.toString)
+                            .setValue(cuantas.prioridad)
                         }.toJSArray
 
                         <.div(
@@ -202,16 +295,16 @@ object GameComponent {
                             .fluid(false)
                             .placeholder("Cuantas Cantas?") // TODO i8n
                             .selection(true)
-                            .value(s.cuantasCantas.getOrElse(defaultCuantas).prioridad.toDouble)
+                            .value(s.cuantasCantas.getOrElse(defaultCuantas).prioridad)
                             .options(cantasOptions)
                             .onChange {
                               (
                                 _,
                                 dropDownProps
                               ) =>
-                                val value = dropDownProps.value.asInstanceOf[Double].toInt
+                                val value = dropDownProps.value.asInstanceOf[Int]
                                 $.modState(
-                                  _.copy(cuantasCantas = Option(CuantasCantas.byPriority(value)))
+                                  _.copy(cuantasCantas = CuantasCantas.byPriority(value))
                                 )
                             }(),
                           Button
@@ -223,7 +316,7 @@ object GameComponent {
                                 _
                               ) =>
                                 play(
-                                  game.id.get,
+                                  game.id,
                                   Canta(s.cuantasCantas.getOrElse(defaultCuantas))
                                 )
                             }("Canta") // TODO i8n
@@ -238,7 +331,7 @@ object GameComponent {
                               _,
                               _
                             ) =>
-                              play(game.id.get, Da(ficha = s.fichaSeleccionada.get))
+                              play(game.id, Da(ficha = s.fichaSeleccionada.get))
                           }("Dá") // TODO i8n
                       case jugadorState @ (JugadorState.pidiendo | JugadorState.pidiendoInicial) =>
                         <.span(
@@ -321,7 +414,7 @@ object GameComponent {
                                   _
                                 ) =>
                                   play(
-                                    game.id.get,
+                                    game.id,
                                     Pide(
                                       ficha = s.fichaSeleccionada.get,
                                       triunfo = s.triunfo,
@@ -342,7 +435,7 @@ object GameComponent {
                                     _,
                                     _
                                   ) =>
-                                    play(game.id.get, Caete(triunfo = s.triunfo))
+                                    play(game.id, Caete(triunfo = s.triunfo))
                                 }("Cáete") // TODO i8n
                             } else
                               EmptyVdom
@@ -357,12 +450,13 @@ object GameComponent {
                               _,
                               _
                             ) =>
-                              play(game.id.get, Sopa())
+                              play(game.id, Sopa())
                           }("Sopa") // TODO i8n
-                      case JugadorState.esperandoCanto   => EmptyVdom
-                      case JugadorState.esperando        => EmptyVdom
-                      case JugadorState.partidoTerminado => EmptyVdom
-                      case _                             => throw new RuntimeException("Should never, ever get here")
+                      case JugadorState.esperandoCanto          => EmptyVdom
+                      case JugadorState.esperando               => EmptyVdom
+                      case JugadorState.partidoTerminado        => EmptyVdom
+                      case JugadorState.invitedNotAnswered      => EmptyVdom
+                      case JugadorState.waitingOthersAcceptance => EmptyVdom
                     },
                     if (puedeRendirse) {
                       Button
@@ -375,7 +469,7 @@ object GameComponent {
                           ) =>
                             Confirm.confirm(
                               question = "Estas seguro que te quieres rendir?", // TODO i8n
-                              onConfirm = play(game.id.get, MeRindo())
+                              onConfirm = play(game.id, MeRindo())
                             )
                         }("Me Rindo") // TODO i8n
                     } else
@@ -384,7 +478,9 @@ object GameComponent {
                 } else
                   EmptyVdom,
                 <.div(
-                  ^.className := s"fichas$playerPosition",
+                  ^.className := s"fichas$playerPosition ${
+                      if (s.justDealt.contains(playerPosition)) "just-dealt" else ""
+                    }",
                   jugador.fichas.zipWithIndex.toVdomArray {
                     case (FichaTapada, fichaIndex) =>
                       <.div(
@@ -556,38 +652,141 @@ object GameComponent {
                       )
                     case None => <.div()
                   },
-                  <.div(^.className := "juegoStatusString", game.statusString)
-                ),
-                game.enJuego.toVdomArray { case (user, ficha) =>
-                  VdomArray(
-                    <.div(
-                      ^.key       := "fichasEnJuegoName",
-                      ^.className := "fichasEnJuegoName",
-                      game.jugador(Option(user)).user.name
-                    ),
-                    <.img(
-                      ^.key := "dominoEnJuego",
-                      ^.transform := (
-                        if (
-                          game.triunfo match {
-                            case Some(TriunfoNumero(num)) =>
-                              ficha.es(
-                                num
-                              ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
-                            case _ => false
-                          }
+                  <.div(
+                    ^.className := "juegoStatusString",
+                    Popup()
+                      .style(CSSProperties().set("cursor", "pointer"))
+                      .trigger(
+                        Icon()
+                          .name(SemanticICONS.calculator)
+                          .size(SemanticSIZES.large)
+                      )
+                      .hoverable(true)
+                      .position(`bottom center`)(
+                        <.div(
+                          Table()
+                            .compact(true)
+                            .size(SemanticSIZES.small)(
+                              TableHeader()(
+                                TableRow()(
+                                  TableHeaderCell()("Jugador"),
+                                  TableHeaderCell()("Cuentas"),
+                                  TableHeaderCell()("Total")
+                                )
+                              ),
+                              TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
+                                case ((jugador, puntos, satoshi), jugadorIndex) =>
+                                  TableRow()
+                                    .withKey(s"cuentaPopup$jugadorIndex")
+                                    .className(
+                                      if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else ""
+                                    )(
+                                      TableCell()(jugador.user.name),
+                                      TableCell()(
+                                        jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
+                                          <.span(
+                                            ^.key         := s"cuenta_popup${jugadorIndex}_$cuentaIndex",
+                                            ^.className   := (if (cuenta.esHoyo) "hoyo" else ""),
+                                            ^.marginRight := 5.px,
+                                            s"${if (cuenta.puntos >= 0) "+" else ""}${cuenta.puntos}"
+                                          )
+                                        },
+                                        <.span(
+                                          ^.fontSize := "large",
+                                          ^.color    := "blue",
+                                          if (jugador.fueGanadorDelPartido) "➠" else ""
+                                        )
+                                      ),
+                                      TableCell()(
+                                        <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                                      )
+                                    )
+                              })
+                            )
                         )
-                          "rotate(180deg)"
-                        else
-                          "none"
                       ),
-                      ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
-                      ^.className := "dominoEnJuego"
-                    )
+                    game.statusString
                   )
+                ),
+                // Show "Start Next Round" button when requiereSopa, otherwise show tiles in play
+                if (game.gameStatus == GameStatus.requiereSopa) {
+                  <.div(
+                    ^.className := "dominoEnJuego",
+                    ^.display.flex,
+                    ^.alignItems.center,
+                    ^.justifyContent.center,
+                    Button
+                      .color(SemanticCOLORS.green)
+                      .size(SemanticSIZES.huge)
+                      .onClick {
+                        (
+                          _,
+                          _
+                        ) =>
+                          // Any human player can trigger sopa on behalf of the bot who has turno
+                          play(game.id, Sopa(firstSopa = game.currentEventIndex == 0))
+                      }("Listo para la sopa") // TODO i18n "Start Next Round"
+                  )
+                } else {
+                  game.enJuego.toVdomArray { case (user, ficha) =>
+                    val playingJugador = game.jugador(user)
+                    val playingPosition =
+                      if (chutiState.user.fold(false)(_.id == playingJugador.id))
+                        0
+                      else if (chutiState.user.fold(false)(game.nextPlayer(_).id == playingJugador.id))
+                        1
+                      else if (chutiState.user.fold(false)(game.prevPlayer(_).id == playingJugador.id))
+                        3
+                      else
+                        2
+
+                    // Calculate winner position if collecting
+                    val collectClass = s.collectingTo
+                      .flatMap { winnerIdValue =>
+                        game.jugadores.find(_.id.value.toInt == winnerIdValue).map { winner =>
+                          val winnerPosition =
+                            if (chutiState.user.fold(false)(_.id == winner.id))
+                              0
+                            else if (chutiState.user.fold(false)(game.nextPlayer(_).id == winner.id))
+                              1
+                            else if (chutiState.user.fold(false)(game.prevPlayer(_).id == winner.id))
+                              3
+                            else
+                              2
+                          s" collectToPlayer$winnerPosition"
+                        }
+                      }.getOrElse("")
+
+                    VdomArray(
+                      <.div(
+                        ^.key       := "fichasEnJuegoName",
+                        ^.className := "fichasEnJuegoName",
+                        playingJugador.user.name
+                      ),
+                      <.img(
+                        ^.key := "dominoEnJuego",
+                        ^.transform := (
+                          if (
+                            game.triunfo match {
+                              case Some(TriunfoNumero(num)) =>
+                                ficha.es(
+                                  num
+                                ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
+                              case _ => false
+                            }
+                          )
+                            "rotate(180deg)"
+                          else
+                            "none"
+                        ),
+                        ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
+                        ^.className := s"dominoEnJuego slideFromPlayer$playingPosition$collectClass"
+                      )
+                    )
+                  }
                 }
               )
-            }
+            } // end else (game is in progress)
           )
         )
       }
@@ -597,7 +796,7 @@ object GameComponent {
 
   import scala.language.unsafeNulls
   given Reusability[Triunfo] = Reusability.by(_.toString)
-  given Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
+  given Reusability[Game] = Reusability.by(game => (game.id.value, game.currentEventIndex))
   given Reusability[CuantasCantas] = Reusability.by(_.toString)
   given Reusability[Ficha] = Reusability.by(_.toString)
   given Reusability[State] = Reusability.derive[State]
@@ -611,7 +810,12 @@ object GameComponent {
         estrictaDerecha = p.gameInProgress.fold(false)(_.estrictaDerecha)
       )
     )
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderPS(_.backend.render(_, _))
+    .componentDidUpdate($ =>
+      $.backend.checkForDeals($.prevProps.gameInProgress, $.currentProps.gameInProgress) >>
+        $.backend.checkForTrickCollection($.prevProps.gameInProgress, $.currentProps.gameInProgress)
+    )
     .configure(Reusability.shouldComponentUpdate)
     .build
 

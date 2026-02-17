@@ -16,9 +16,9 @@
 
 package chuti
 
-import api.{ChutiEnvironment, ChutiSession}
+import api.{ChutiEnvironment, ChutiSession, toLayer}
 import chat.ChatService
-import dao.{InMemoryRepository, Repository}
+import db.{InMemoryRepository, ZIORepository}
 import game.GameService
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
@@ -26,9 +26,14 @@ import zio.test.{Spec, TestEnvironment, ZIOSpec}
 
 object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatService] {
 
-  override def spec: Spec[ChutiEnvironment & GameService & ChatService & TestEnvironment & Scope, Any] = ???
+  override def spec: Spec[ChutiEnvironment & GameService & ChatService & TestEnvironment & Scope, Any] =
+    zio.test.suite("PreGameServiceSpec")(
+      // Tests are currently commented out - see commented code below
+      zio.test.test("placeholder")(zio.test.assertCompletes)
+    )
 
-  override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] = ???
+  override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
+    api.EnvironmentBuilder.testLayer()
 
 }
 
@@ -59,7 +64,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //
 //    assert(game.gameStatus == GameStatus.esperandoJugadoresInvitados)
 //    assert(game.currentEventIndex == 1)
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 1)
 //    assert(game.jugadores.head.user.id == user1.id)
 //    //    verify(gameOperations).upsert(*[Game])
@@ -108,7 +113,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //
 //    assert(game.gameStatus == GameStatus.esperandoJugadoresInvitados)
 //    assert(game.currentEventIndex == 3)
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 2)
 //    assert(game.jugadores.head.user.id == user1.id)
 //    assert(game.jugadores.drop(1).head.user.id == user2.id)
@@ -173,7 +178,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //          }.getOrThrow()
 //      }
 //
-//    assert(game.id == Option(GameId(1)))
+//    assert(game.id == GameId(1))
 //    assert(game.jugadores.length == 4)
 //    assert(game.gameStatus == GameStatus.cantando)
 //    assert(game.currentEventIndex == 7)
@@ -241,7 +246,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 ////    val updatedUser2 = userCaptor.value
 ////
 ////    assert(abandonedGame)
-////    assert(game.id == Option(GameId(1)))
+////    assert(game.id == GameId(1))
 ////    assert(game.jugadores.length == 1)
 ////    assert(
 ////      game.gameStatus == GameStatus.esperandoJugadoresInvitados || game.gameStatus == GameStatus.esperandoJugadoresAzar
@@ -306,7 +311,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 ////    val updatedUser2 = userCaptor.value
 ////
 ////    assert(abandonedGame)
-////    assert(game.id == Option(GameId(1)))
+////    assert(game.id == GameId(1))
 ////    assert(game.jugadores.length == 3)
 ////    assert(game.gameStatus == GameStatus.abandonado)
 ////    assert(game.currentEventIndex == 8)
@@ -352,7 +357,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //              game            <- readGame(GAME_NEW)
 //              invited <-
 //                gameService
-//                  .inviteToGame(user2.id.get, game.id.get).provide(
+//                  .inviteToGame(user2.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
@@ -369,7 +374,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 ////    assert(invited)
 ////    assert(game.gameStatus == GameStatus.esperandoJugadoresInvitados)
 ////    assert(game.currentEventIndex == 2)
-////    assert(game.id == Option(GameId(1)))
+////    assert(game.id == GameId(1))
 ////    assert(game.jugadores.length == 2)
 ////    assert(game.jugadores.head.user.id == user1.id)
 ////    assert(game.jugadores.drop(1).head.user.id == user2.id)
@@ -410,37 +415,37 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //              game            <- readGame(GAME_NEW)
 //              _ <-
 //                gameService
-//                  .inviteToGame(user2.id.get, game.id.get).provide(
+//                  .inviteToGame(user2.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              _ <-
 //                gameService
-//                  .inviteToGame(user3.id.get, game.id.get).provide(
+//                  .inviteToGame(user3.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              _ <-
 //                gameService
-//                  .inviteToGame(user4.id.get, game.id.get).provide(
+//                  .inviteToGame(user4.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              accepted2 <-
 //                gameService
-//                  .acceptGameInvitation(game.id.get).provide(
+//                  .acceptGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user2).toLayer
 //                  )
 //              accepted3 <-
 //                gameService
-//                  .acceptGameInvitation(game.id.get).provide(
+//                  .acceptGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user3).toLayer
 //                  )
 //              accepted4 <-
 //                gameService
-//                  .acceptGameInvitation(game.id.get).provide(
+//                  .acceptGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user4).toLayer
 //                  )
@@ -457,7 +462,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 ////
 ////    assert(game.gameStatus == GameStatus.cantando)
 ////    assert(game.currentEventIndex == 10)
-////    assert(game.id == Option(GameId(1)))
+////    assert(game.id == GameId(1))
 ////    assert(game.jugadores.length == 4)
 ////    assert(game.jugadores.forall(!_.invited))
 ////    assert(gameEvents.size == 9)
@@ -496,37 +501,37 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 //              game            <- readGame(GAME_NEW)
 //              _ <-
 //                gameService
-//                  .inviteToGame(user2.id.get, game.id.get).provide(
+//                  .inviteToGame(user2.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              _ <-
 //                gameService
-//                  .inviteToGame(user3.id.get, game.id.get).provide(
+//                  .inviteToGame(user3.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              _ <-
 //                gameService
-//                  .inviteToGame(user4.id.get, game.id.get).provide(
+//                  .inviteToGame(user4.id, game.id).provide(
 //                    layer,
 //                    ChutiSession(user1).toLayer
 //                  )
 //              accepted2 <-
 //                gameService
-//                  .acceptGameInvitation(game.id.get).provide(
+//                  .acceptGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user2).toLayer
 //                  )
 //              _ <-
 //                gameService
-//                  .declineGameInvitation(game.id.get).provide(
+//                  .declineGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user3).toLayer
 //                  )
 //              accepted4 <-
 //                gameService
-//                  .acceptGameInvitation(game.id.get).provide(
+//                  .acceptGameInvitation(game.id).provide(
 //                    layer,
 //                    ChutiSession(user4).toLayer
 //                  )
@@ -543,7 +548,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
 ////
 ////    assert(game.gameStatus == GameStatus.esperandoJugadoresInvitados)
 ////    assert(game.currentEventIndex == 9)
-////    assert(game.id == Option(GameId(1)))
+////    assert(game.id == GameId(1))
 ////    assert(game.jugadores.length == 3)
 ////    assert(game.jugadores.forall(!_.invited))
 ////    assert(gameEvents.size == 8)

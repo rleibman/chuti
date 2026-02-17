@@ -26,10 +26,9 @@ import zio.json.*
 import java.time.LocalDateTime
 import scala.util.Try
 
-given ScalarDecoder[Json] = {
-  case input: __ObjectValue =>
-    writeToString(input).fromJson[Json].left.map(DecodingError(_))
-  case _ => Left(DecodingError("Expected an object"))
+given ScalarDecoder[Json] = { value =>
+  // JSON scalar can be any JSON value: object, array, string, number, boolean, null
+  writeToString(value).fromJson[Json].left.map(DecodingError(_))
 }
 
 given ScalarDecoder[LocalDateTime] = {

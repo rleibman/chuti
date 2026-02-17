@@ -16,18 +16,19 @@
 
 package chuti
 
-import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder}
+import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.TokenHolder
 import chat.ChatService
-import dao.InMemoryRepository.*
-import dao.Repository
+import chuti.CantandoSpec.GAME_STARTED
+import db.InMemoryRepository.*
+import db.ZIORepository
 import game.GameService
 import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.*
-import zio.test.{ZIOSpec, ZIOSpecDefault, assertTrue}
+import zio.test.{TestClock, ZIOSpec, ZIOSpecDefault, assertTrue}
 
-object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractSpec {
+object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 
   val spec = suite("Jugando")(
     test("primera mano") {
@@ -41,14 +42,14 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         gameEventsFiber <-
           gameStream
             .takeUntil {
-              case PoisonPill(Some(id), _) if id == gameId => true
-              case _                                       => false
+              case PoisonPill(id, _) if id == gameId => true
+              case _                                 => false
             }.runCollect.fork
-        _     <- Clock.sleep(1.second)
+        _     <- ZIO.yieldNow *> TestClock.adjust(1.second)
         mano1 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+            .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
               ChutiEnvironment & GameService & ChatService
             ](
               ChutiSession(chuti.god).toLayer
@@ -58,7 +59,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         val ganador = mano1.jugadores.maxBy(_.filas.size)
         println(s"Gano ${ganador.user.name} con ${ganador.filas.last}!")
         assertTrue(
-          mano1.id == Option(gameId),
+          mano1.id == gameId,
           mano1.jugadores.count(_.fichas.size == 6) == 4, // Todos dieron una ficha.
           gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size == 5
         ) // Including the poison pill
@@ -76,17 +77,17 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         gameEventsFiber <-
           gameStream
             .takeUntil {
-              case PoisonPill(Some(id), _) if id == gameId => true
-              case _                                       => false
+              case PoisonPill(id, _) if id == gameId => true
+              case _                                 => false
             }.runCollect.fork
-        _     <- Clock.sleep(1.second)
+        _     <- ZIO.yieldNow *> TestClock.adjust(1.second)
         _     <- juegaMano(gameId)
         _     <- juegaMano(gameId)
         _     <- juegaMano(gameId)
         mano4 <- juegaMano(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+            .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
               ChutiEnvironment & GameService & ChatService
             ](
               ChutiSession(chuti.god).toLayer
@@ -98,7 +99,7 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
           println(s"${mano4.quienCanta.get.user.name} se hizo con ${mano4.quienCanta.get.filas.size}!")
         else
           println(s"Fue hoyo para ${mano4.quienCanta.get.user.name}!")
-        assertTrue(mano4.id == Option(gameId), mano4.quienCanta.get.fichas.size + numFilas == 7, gameEvents.nonEmpty)
+        assertTrue(mano4.id == gameId, mano4.quienCanta.get.fichas.size + numFilas == 7, gameEvents.nonEmpty)
 
       }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     },
@@ -113,14 +114,14 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
         gameEventsFiber <-
           gameStream
             .takeWhile {
-              case PoisonPill(Some(id), _) if id == gameId => false
-              case _                                       => true
+              case PoisonPill(id, _) if id == gameId => false
+              case _                                 => true
             }.runCollect.fork
-        _   <- Clock.sleep(1.second)
+        _   <- ZIO.yieldNow *> TestClock.adjust(1.second)
         end <- juegaHastaElFinal(gameId)
         _ <-
           gameService
-            .broadcastGameEvent(PoisonPill(Option(gameId))).provideSomeLayer[
+            .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
               ChutiEnvironment & GameService & ChatService
             ](
               ChutiSession(chuti.god).toLayer
@@ -129,15 +130,11 @@ object JugandoSpec extends ZIOSpec[GameService & ChatService] with GameAbstractS
       } yield {
         val ganador = end.jugadores.maxBy(_.filas.size)
         println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
-        assertTrue(end.id == Option(gameId), end.gameStatus == GameStatus.requiereSopa, gameEvents.nonEmpty)
+        assertTrue(end.id == gameId, end.gameStatus == GameStatus.requiereSopa, gameEvents.nonEmpty)
       }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     }
   )
 
-  override def bootstrap: ZLayer[Any, Any, GameService & ChatService] =
-    ZLayer.make[GameService & ChatService](
-      GameService.make(),
-      ChatService.make()
-    )
+  override def bootstrap = EnvironmentBuilder.testLayer(GAME_STARTED)
 
 }

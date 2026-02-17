@@ -16,31 +16,29 @@
 
 package pages
 
-import app.ChutiState
-import caliban.client.scalajs.ScalaJSClientAdapter
-import chuti.{*, given}
+import chuti.*
 import components.{Confirm, Toast}
-import caliban.client.scalajs.GameClient.{Mutations, Queries}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
-import japgolly.scalajs.react.vdom.html_<^.{<, *}
-import org.scalajs.dom.HTMLInputElement
+import japgolly.scalajs.react.vdom.html_<^.*
 import net.leibman.chuti.react.reactStrings.center
 import net.leibman.chuti.semanticUiReact.components.{ModalActions, *}
+import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
   SemanticCOLORS,
   SemanticICONS,
   SemanticSIZES,
   SemanticWIDTHS
 }
-import net.leibman.chuti.semanticUiReact.distCommonjsElementsInputInputMod.InputOnChangeData
-import zio.json.*
-import zio.json.ast.Json
-//NOTE: things that change the state indirectly need to ask the snapshot to regen
-object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
+import org.scalajs.dom.HTMLInputElement
 
-  import app.GameViewMode
+import scala.concurrent.duration.*
+import scala.util.{Failure, Success}
+//NOTE: things that change the state indirectly need to ask the snapshot to regen
+object LobbyComponent extends ChutiPage {
+
+  import chuti.GameViewMode
 
   case class ExtUser(
     user:       User,
@@ -53,9 +51,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
     case none, newGame, inviteExternal, startWithBots
 
   }
-  import Dialog.*
 
-  case class NewGameDialogState(satoshiPerPoint: Int = 100)
+  case class NewGameDialogState(satoshiPerPoint: Long = 100)
 
   case class InviteExternalDialogState(
     name:  String = "",
@@ -72,19 +69,12 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   class Backend($ : BackendScope[Props, State]) {
 
     def refresh(): Callback = {
-      calibanCall[Queries, Option[List[Json]]](
-        Queries.getGameInvites,
-        jsonInvites => {
-          $.modState(
-            _.copy(invites = jsonInvites.toList.flatten.map {
-              _.as[Game] match {
-                case Right(game) => game
-                case Left(error) => throw GameError(error)
-              }
-            })
-          )
+      GameClient.gameRepo.gameInvites
+        .flatMap(invites => $.modState(_.copy(invites = invites.toList)).asAsyncCallback)
+        .completeWith {
+          case Success(_)         => Callback.empty
+          case Failure(exception) => Callback.throwException(exception)
         }
-      )
     }
 
     def init(): Callback = {
@@ -119,10 +109,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   _,
                   _
                 ) =>
-                  Callback.log("Starting game") >> calibanCall(
-                    Mutations.startGame(p.gameInProgress.value.flatMap(_.id).fold(-1)(_.gameId)),
-                    callback = (_: Option[Boolean]) => Toast.success("Juego creado!") // TODO i8n
-                  )
+                  Callback.log("Starting game") >>
+                    p.gameInProgress.value.map(_.id).fold(Callback.empty) { gameId =>
+                      GameClient.game.startGame(gameId).completeWith {
+                        case Success(_) =>
+                          $.modState(_.copy(dlg = Dialog.none)) >>
+                            Toast.success("Juego creado! Esperando actualizacion...") // TODO i8n
+                        case Failure(_) => Toast.error("Error creando juego!")
+                      }
+                    }
               }("Crear") // TODO i8n
           )
         )
@@ -149,7 +144,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     $.modState(s =>
                       s.copy(newGameDialogState =
                         s.newGameDialogState
-                          .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toInt))
+                          .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toLong))
                       )
                     )
                 }()
@@ -174,21 +169,19 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                   _,
                   _
                 ) =>
-                  Callback.log("Calling new Game") >> calibanCallThroughJsonOpt[Mutations, Game](
-                    Mutations.newGame(s.newGameDialogState.fold(100)(_.satoshiPerPoint)),
-                    callback = { gameOpt =>
-                      p.gameInProgress.setState(
-                        gameOpt,
-                        $.modState(
-                          _.copy(
-                            dlg = Dialog.none,
-                            newGameDialogState = None
-                          )
-                        )
-                      ) >>
-                        Toast.success("Juego empezado!") // TODO i8n
-                    }
-                  )
+                  Callback.log("Calling new Game") >>
+                    GameClient.game
+                      .newGame(s.newGameDialogState.fold(100L)(_.satoshiPerPoint))
+                      .flatMap { game =>
+                        (p.gameInProgress.setState(
+                          Some(game),
+                          $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
+                        ) >> Toast.success("Juego creado!")).asAsyncCallback // TODO i8n
+                      }
+                      .completeWith {
+                        case Success(_)         => Callback.empty
+                        case Failure(exception) => Callback.throwException(exception)
+                      }
               }("Crear") // TODO i8n
           )
         )
@@ -302,17 +295,18 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     _
                   ) =>
                     Callback.log(s"Inviting user by email") >>
-                      calibanCall[Mutations, Option[Boolean]](
-                        Mutations.inviteByEmail(
+                      GameClient.game
+                        .inviteByEmail(
                           s.inviteExternalDialogState.fold("")(_.name),
                           s.inviteExternalDialogState.fold("")(_.email),
-                          game.id.fold(0)(_.gameId)
-                        ),
-                        _ =>
-                          Toast.success("Invitación mandada!") >> $.modState( // TODO i8n
-                            _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
-                          )
-                      )
+                          game.id
+                        ).completeWith {
+                          case Success(_) =>
+                            Toast.success("Invitación mandada!") >> $.modState( // TODO i8n
+                              _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                            )
+                          case Failure(exception) => Callback.throwException(exception)
+                        }
                 }("Invitar") // TODO i8n
             }
           )
@@ -345,13 +339,16 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                           _
                         ) =>
                           Callback.log(s"Calling joinRandomGame") >>
-                            calibanCallThroughJsonOpt[Mutations, Game](
-                              Mutations.joinRandomGame,
-                              callback = gameOpt =>
-                                Toast.success("Sentado a la mesa!") >> p.gameInProgress.setState( // TODO i8n
-                                  gameOpt
-                                )
-                            )
+                            GameClient.game
+                              .joinRandomGame()
+                              .flatMap { game =>
+                                (Toast.success("Sentado a la mesa!") >>
+                                  p.gameInProgress.setState(Some(game))).asAsyncCallback // TODO i8n
+                              }
+                              .completeWith {
+                                case Success(_)         => Callback.empty
+                                case Failure(exception) => Callback.throwException(exception)
+                              }
                       )("Juega Con Quien sea"), // TODO i8n
                     Button()
 //                      .key("empezarJuegoNuevo")
@@ -394,10 +391,12 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                     _,
                                     _
                                   ) =>
-                                    calibanCall[Mutations, Option[Boolean]](
-                                      Mutations.cancelUnacceptedInvitations(game.id.get.gameId),
-                                      _ => chutiState.onRequestGameRefresh() >> refresh()
-                                    )
+                                    GameClient.game
+                                      .cancelUnacceptedInvitations(game.id)
+                                      .completeWith {
+                                        case Success(_)         => chutiState.onRequestGameRefresh() >> refresh()
+                                        case Failure(exception) => Callback.throwException(exception)
+                                      }
                                 }("Cancelar invitaciones a aquellos que todavía no aceptan") // TODO i8n
                             } else
                               EmptyVdom,
@@ -441,15 +440,16 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                         case _ => EmptyVdom
                       },
                       if (!game.gameStatus.acabado) {
-                        val costo: Option[Double] =
+                        val costo: Option[Long] =
                           if (game.gameStatus.enJuego)
                             game.cuentasCalculadas
-                              .find(_._1.id == user.id).map(n => (n._2 + game.abandonedPenalty) * game.satoshiPerPoint)
+                              .find(_.jugador.id == user.id).map(n =>
+                                game.satoshiPerPoint * (n.puntos + game.abandonedPenalty)
+                              )
                           else
                             None
 
                         Button()
-//                          .key("abandonarJuego")
                           .compact(true)
                           .basic(true)
                           .onClick(
@@ -463,15 +463,17 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   s"Estas seguro que quieres abandonar el juego en el que te encuentras? ${costo // TODO i8n
                                       .fold("")(n => s"Te va a costar $n satoshi")}", // TODO i8n
                                 onConfirm = Callback.log(s"Abandoning game") >> // TODO i8n
-                                  calibanCall[Mutations, Option[Boolean]](
-                                    Mutations.abandonGame(game.id.get.gameId),
-                                    res =>
-                                      if (res.getOrElse(false)) Toast.success("Juego abandonado!") // TODO i8n
-                                      else
-                                        Toast.error(
-                                          "Error abandonando juego!" // TODO i8n
-                                        )
-                                  )
+                                  GameClient.game
+                                    .abandonGame(game.id)
+                                    .completeWith {
+                                      case Success(true) =>
+                                        p.gameInProgress.setState(None) >>
+                                          Toast.success("Juego abandonado!") // TODO i8n
+                                      case Success(false) =>
+                                        Toast.error("Error abandonando juego!") // TODO i8n
+                                      case Failure(_) =>
+                                        Toast.error("Error abandonando juego!") // TODO i8n
+                                    }
                               )
                           )("Abandona Juego") // TODO i8n
                       } else if (s.invites.isEmpty) {
@@ -484,14 +486,18 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                               _,
                               _
                             ) =>
-                              calibanCallThroughJsonOpt[Mutations, Game](
-                                Mutations.newGameSameUsers(game.id.get.gameId),
-                                gameOpt =>
-                                  Toast.success("Juego empezado!") >> p.gameInProgress // TODO i8n
-                                    .setState(gameOpt) >> $.modState(
+                              GameClient.game
+                                .newGameSameUsers(game.id)
+                                .flatMap { game =>
+                                  (Toast.success("Juego creado!") >> p.gameInProgress // TODO i8n
+                                    .setState(Some(game)) >> $.modState(
                                     _.copy(dlg = Dialog.none)
-                                  ) >> refresh()
-                              )
+                                  ) >> refresh()).asAsyncCallback
+                                }
+                                .completeWith {
+                                  case Success(_)         => Callback.empty
+                                  case Failure(exception) => Callback.throwException(exception)
+                                }
                           )("Nuevo partido con los mismos jugadores") // TODO i8n
                       } else
                         EmptyVdom
@@ -504,7 +510,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                     ^.className := "gameInProgress",
                     <.h1("Juego en Curso"), // TODO i8n
                     <.div(
-                      <.h2(s"Juego #${game.id.fold(0)(_.gameId)}"), // TODO i8n
+                      <.h2(s"Juego #${game.id.value}"), // TODO i8n
                       <.div(game.gameStatus match {
                         case GameStatus.jugando  => <.p("Estamos a medio juego") // TODO i8n
                         case GameStatus.cantando => <.p("Estamos a medio juego (cantando)") // TODO i8n
@@ -553,7 +559,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                       <.tbody(
                         s.invites.toVdomArray { game =>
                           <.tr(
-                            ^.key := game.id.fold("")(_.toString),
+                            ^.key := game.id.toString,
                             <.td(
                               s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" // TODO i8n
                             ),
@@ -566,14 +572,14 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   (
                                     _,
                                     _
-                                  ) => {
-                                    calibanCallThroughJsonOpt[Mutations, Game](
-                                      Mutations.acceptGameInvitation(
-                                        game.id.fold(0)(_.gameId)
-                                      ),
-                                      gameOpt => p.gameInProgress.setState(gameOpt)
-                                    )
-                                  }
+                                  ) =>
+                                    GameClient.game
+                                      .acceptGameInvitation(game.id)
+                                      .flatMap(game => p.gameInProgress.setState(Some(game)).asAsyncCallback)
+                                      .completeWith {
+                                        case Success(_)         => Callback.empty
+                                        case Failure(exception) => Callback.throwException(exception)
+                                      }
                                 )("Aceptar"), // TODO i8n
                               Button()
                                 .compact(true)
@@ -582,16 +588,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   (
                                     _,
                                     _
-                                  ) => {
-                                    calibanCall[Mutations, Option[Boolean]](
-                                      Mutations.declineGameInvitation(
-                                        game.id.fold(0)(_.gameId)
-                                      ),
-                                      _ =>
-                                        Toast.success("Invitación rechazada") >> // TODO i8n
-                                          p.gameInProgress.setState(None) >> refresh()
-                                    )
-                                  }
+                                  ) =>
+                                    GameClient.game
+                                      .declineGameInvitation(game.id)
+                                      .completeWith {
+                                        case Success(_) =>
+                                          Toast.success("Invitación rechazada") >> // TODO i8n
+                                            p.gameInProgress.setState(None) >> refresh()
+                                        case Failure(exception) => Callback.throwException(exception)
+                                      }
                                 )("Rechazar") // TODO i8n
                             )
                           )
@@ -660,10 +665,7 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                   )(
                                     DropdownMenu()(
                                       (for {
-                                        game     <- p.gameInProgress.value
-                                        _        <- user.id
-                                        playerId <- player.user.id
-                                        gameId   <- game.id
+                                        game <- p.gameInProgress.value
                                       } yield
                                         if (
                                           game.gameStatus == GameStatus.esperandoJugadoresInvitados &&
@@ -676,14 +678,13 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                                 _,
                                                 _
                                               ) =>
-                                                calibanCall[Mutations, Option[Boolean]](
-                                                  Mutations
-                                                    .inviteToGame(playerId.userId, gameId.gameId),
-                                                  res =>
-                                                    if (res.getOrElse(false))
-                                                      Toast.success("Jugador Invitado!") // TODO i8n
-                                                    else Toast.error("Error invitando jugador!") // TODO i8n
-                                                )
+                                                GameClient.game
+                                                  .inviteToGame(player.user.id, game.id)
+                                                  .completeWith {
+                                                    case Success(true) => Toast.success("Jugador Invitado!") // TODO i8n
+                                                    case Success(false) => Toast.error("Error invitando jugador!") // TODO i8n
+                                                    case Failure(_) => Toast.error("Error invitando jugador!") // TODO i8n
+                                                  }
                                             }("Invitar a jugar"): VdomNode // TODO i8n
                                         else
                                           EmptyVdom).getOrElse(EmptyVdom),
@@ -694,16 +695,16 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                               _,
                                               _
                                             ) =>
-                                              calibanCall[Mutations, Option[Boolean]](
-                                                Mutations.unfriend(player.user.id.get.userId),
-                                                res =>
-                                                  if (res.getOrElse(false))
+                                              GameClient.user
+                                                .unfriend(player.user.id)
+                                                .completeWith {
+                                                  case Success(true) =>
                                                     refresh() >> Toast.success(
                                                       s"Cortalas, ${player.user.name} ya no es tu amigo!" // TODO i8n
                                                     )
-                                                  else
-                                                    Toast.error("Error haciendo amigos!") // TODO i8n
-                                              )
+                                                  case Success(false) => Toast.error("Error haciendo amigos!") // TODO i8n
+                                                  case Failure(_) => Toast.error("Error haciendo amigos!") // TODO i8n
+                                                }
                                           }("Ya no quiero ser tu amigo") // TODO i8n
                                       else
                                         DropdownItem()
@@ -712,16 +713,15 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
                                               _,
                                               _
                                             ) =>
-                                              calibanCall[Mutations, Option[Boolean]](
-                                                Mutations.friend(player.user.id.get.userId),
-                                                res =>
-                                                  if (res.getOrElse(false))
-                                                    chutiState
-                                                      .onRequestGameRefresh() >> refresh() >> Toast
+                                              GameClient.user
+                                                .friend(player.user.id)
+                                                .completeWith {
+                                                  case Success(true) =>
+                                                    chutiState.onRequestGameRefresh() >> refresh() >> Toast
                                                       .success("Un nuevo amiguito!") // TODO i8n
-                                                  else
-                                                    Toast.error("Error haciendo amigos!") // TODO i8n
-                                              )
+                                                  case Success(false) => Toast.error("Error haciendo amigos!") // TODO i8n
+                                                  case Failure(_) => Toast.error("Error haciendo amigos!") // TODO i8n
+                                                }
                                           }("Agregar como amigo") // TODO i8n
                                     )
                                   )
@@ -750,7 +750,8 @@ object LobbyComponent extends ChutiPage with ScalaJSClientAdapter {
   private val component = ScalaComponent
     .builder[Props]
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderPS(_.backend.render(_, _))
     .componentDidMount(_.backend.init())
     .build
 

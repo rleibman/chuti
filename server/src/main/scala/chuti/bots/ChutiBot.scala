@@ -16,11 +16,11 @@
 
 package chuti.bots
 
-import api.ChutiSession
 import chuti.*
-import dao.Repository
-import game.GameService
-import zio.{IO, ZIO}
+import chuti.api.ChutiSession
+import db.ZIORepository
+import game.{GameEnvironment, GameService}
+import zio.{Duration, IO, Random, ZIO}
 
 trait ChutiBot {
 
@@ -29,14 +29,16 @@ trait ChutiBot {
     game: Game
   ): IO[GameError, PlayEvent]
 
-  def takeTurn(gameId: GameId): ZIO[ChutiSession & GameService & Repository, GameError, Game] = {
+  // TODO, this is not used by the game, but only by testing, it's probably wrong
+  def takeTurn(
+    gameId: GameId
+  ): ZIO[GameEnvironment & ChutiSession & GameService, GameError, Game] = {
     for {
-      gameOperations <- ZIO.service[Repository].map(_.gameOperations)
-      gameService    <- ZIO.service[GameService]
-      user           <- ZIO.serviceWith[ChutiSession](_.user)
-      game           <- gameOperations.get(gameId).map(_.get)
-      turn           <- decideTurn(user, game)
-      played         <- gameService.play(gameId, turn)
+      userOpt <- ZIO.serviceWith[ChutiSession](_.user)
+      user    <- ZIO.fromOption(userOpt).orElseFail(GameError("Usuario no autenticado"))
+      game    <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId).map(_.get))
+      turn    <- decideTurn(user, game)
+      played  <- ZIO.serviceWithZIO[GameService](_.play(gameId, turn))
     } yield played
   }
 

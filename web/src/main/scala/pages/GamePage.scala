@@ -17,19 +17,19 @@
 package pages
 
 import java.time.ZoneOffset
-
-import app.{ChutiState, GameViewMode}
-import caliban.client.scalajs.ScalaJSClientAdapter
+import chuti.{ChutiState, GameViewMode}
+import caliban.ScalaJSClientAdapter
 import chuti.*
+import chuti.chat.ChatMessage
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}
 import japgolly.scalajs.react.vdom.html_<^.*
 import org.scalajs.dom.window
 
-object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
+object GamePage extends ChutiPage with TimerSupport {
 
-  import app.GameViewMode.*
+  import chuti.GameViewMode.*
 
   case class State()
 
@@ -87,11 +87,10 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   }
   case class Props(chutiState: ChutiState)
   import scala.language.unsafeNulls
-  given messageReuse: Reusability[ChatMessage] =
-    Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.map(_.userId)))
-  given gameReuse:         Reusability[Game] = Reusability.by(game => (game.id.map(_.gameId), game.currentEventIndex))
-  given userIdReuse:       Reusability[UserId] = Reusability.by(_.userId)
-  given userReuse:         Reusability[User] = Reusability.by(_.id)
+  given messageReuse: Reusability[ChatMessage] = Reusability.by(msg => (msg.date.getEpochSecond, msg.fromUser.id.value))
+  given gameReuse:    Reusability[Game] = Reusability.by(game => (game.id.value, game.currentEventIndex))
+  given userIdReuse:  Reusability[UserId] = Reusability.by(_.value)
+  given userReuse:    Reusability[User] = Reusability.by(_.id)
   given bigDecimalReuse:   Reusability[BigDecimal] = Reusability.by(_.toLong)
   given walletReuse:       Reusability[UserWallet] = Reusability.derive[UserWallet]
   given gameViewModeReuse: Reusability[GameViewMode] = Reusability.by(_.toString)
@@ -101,7 +100,8 @@ object GamePage extends ChutiPage with ScalaJSClientAdapter with TimerSupport {
   private val component = ScalaComponent
     .builder[Props]("GamePageInner")
     .initialState(State())
-    .renderBackend[Backend]
+    .backend[Backend](Backend(_))
+    .renderP(_.backend.render(_))
     .configure(Reusability.shouldComponentUpdate)
     .build
 

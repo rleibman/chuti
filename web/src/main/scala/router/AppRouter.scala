@@ -16,22 +16,24 @@
 
 package router
 
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import app.{ChutiState, GameViewMode, GlobalDialog}
-import chat.ChatComponent
-import chuti.{ChannelId, GameStatus}
+import auth.AuthClient
+import chat.*
+import chuti.GlobalDialog.none
+import chuti.chat.ChannelId
+import chuti.{ChutiState, GameStatus, GameViewMode, GlobalDialog}
 import components.*
+import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.router.*
 import japgolly.scalajs.react.vdom.html_<^.*
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.scalajs.dom.*
-import pages.{RulesPage, *}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsCollectionsMenuMenuMod.MenuProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticICONS
+import pages.*
 
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import scala.annotation.unused
 
 object AppRouter extends ChutiComponent {
@@ -68,7 +70,7 @@ object AppRouter extends ChutiComponent {
                 //                key = "cuentasDialog",
                 .open(chutiState.currentDialog == GlobalDialog.cuentas)(
                   ModalHeader()(
-                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi per punto" // TODO I8n
+                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto" // TODO I8n
                   ),
                   ModalContent()(
                     Table()(
@@ -86,7 +88,7 @@ object AppRouter extends ChutiComponent {
                         case ((jugador, puntos, satoshi), jugadorIndex) =>
                           TableRow()
 //                          key(s"cuenta$jugadorIndex",
-                            .className(if (jugador.id == chutiState.user.flatMap(_.id)) "cuentasSelf" else "")(
+                            .className(if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else "")(
                               TableCell()(jugador.user.name),
                               TableCell()(
                                 jugador.cuenta.zipWithIndex.toVdomArray { case (cuenta, cuentaIndex) =>
@@ -99,7 +101,7 @@ object AppRouter extends ChutiComponent {
                                 <.span(
                                   ^.fontSize := "large",
                                   ^.color    := "blue",
-                                  if (jugador.ganadorDePartido) "➠" else ""
+                                  if (jugador.fueGanadorDelPartido) "➠" else ""
                                 )
                               ),
                               TableCell()(
@@ -158,17 +160,32 @@ object AppRouter extends ChutiComponent {
             }
           }
 
-          VdomArray(renderCuentasDialog)
+          def renderCelebrationOverlay: VdomArray =
+            chutiState.celebration.toVdomArray { celebrationData =>
+              import components.CelebrationOverlay
+
+              CelebrationOverlay(
+                celebrationType = celebrationData.celebrationType,
+                winner = celebrationData.winner,
+                scores = celebrationData.scores,
+                bidResult = celebrationData.bidResult,
+                statusString = celebrationData.statusString,
+                onDismiss = chutiState.showDialog(none)
+              )
+            }
+
+          VdomArray(renderCuentasDialog, renderCelebrationOverlay)
         }
 
     }
 
     private val component = ScalaComponent
       .builder[Unit]("content")
-      .renderBackend[Backend]
+      .backend[Backend](Backend(_))
+      .render(_.backend.render())
       .build
 
-    def apply() = component()
+    def apply(): Unmounted[Unit, Unit, Backend] = component()
 
   }
 
@@ -204,17 +221,20 @@ object AppRouter extends ChutiComponent {
                   chutiState.gameInProgress
                     .filter(g => g.gameStatus.enJuego || g.gameStatus == GameStatus.partidoTerminado).map { _ =>
                       VdomArray(
-                        MenuItem()
+                        // Only show "Entrar al juego" if not already in game mode
+                        if (chutiState.gameViewMode != GameViewMode.game)
+                          MenuItem()
 //                          key("menuEntrarAlJuego",
-                          .onClick {
-                            (
-                              e,
-                              _
-                            ) =>
-                              chutiState
-                                .onGameViewModeChanged(GameViewMode.game) >> page
-                                .setEH(GameAppPage)(e)
-                          }(localized("Chuti.entrarAlJuego")),
+                            .onClick {
+                              (
+                                e,
+                                _
+                              ) =>
+                                chutiState
+                                  .onGameViewModeChanged(GameViewMode.game) >> page
+                                  .setEH(GameAppPage)(e)
+                            }(localized("Chuti.entrarAlJuego"))
+                        else EmptyVdom,
                         MenuItem()
 //                          key("menuCuentas",
                           .onClick {
@@ -256,10 +276,7 @@ object AppRouter extends ChutiComponent {
                     (
                       _,
                       _
-                    ) =>
-                      Callback {
-                        document.location.href = "/api/auth/doLogout"
-                      }
+                    ) => AuthClient.logout().completeWith(_ => Callback.empty)
                   }("Cerrar sesión"), // TODO I8n`
                   MenuItem().onClick(
                     (
@@ -315,9 +332,9 @@ object AppRouter extends ChutiComponent {
         chutiState.user.fold(EmptyVdom) { user =>
           val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
             chutiState.gameViewMode match {
-              case app.GameViewMode.lobby => ChannelId.lobbyChannel
-              case GameViewMode.game      => game.channelId.getOrElse(ChannelId.lobbyChannel)
-              case app.GameViewMode.none  => ChannelId.lobbyChannel
+              case GameViewMode.lobby => ChannelId.lobbyChannel
+              case GameViewMode.game  => game.channelId.orElse(ChannelId.lobbyChannel)
+              case GameViewMode.none  => ChannelId.lobbyChannel
             }
           )
           ChatComponent(

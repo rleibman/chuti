@@ -11,14 +11,31 @@
         <appender-ref ref="STDOUT"/>
     </appender>
 
+    <!-- Root logger - DEBUG for development, INFO for production -->
     <root level="DEBUG">
         <appender-ref ref="CONSOLE"/>
     </root>
 
-    <!--    <logger name="chuti" level="DEBUG"/>-->
+    <!-- Application loggers -->
+    <logger name="game" level="DEBUG"/>
+    <logger name="dao" level="DEBUG"/>
+    <logger name="chat" level="DEBUG"/>
+    <logger name="chuti" level="DEBUG"/>
+    <logger name="api" level="DEBUG"/>
+    <logger name="auth" level="DEBUG"/>
+
+    <!-- Third-party library loggers -->
+    <logger name="io.grpc.netty.shaded.io.grpc.netty" level="ERROR"/>
+    <logger name="io.grpc.netty.shaded.io.netty" level="INFO"/>
+    <logger name="io.netty" level="INFO"/>
+    <logger name="ai.djl.huggingface" level="INFO"/>
+    <logger name="dev.langchain4j.store.embedding" level="ERROR"/>
     <logger name="com.github.dockerjava" level="OFF"/>
     <logger name="org.testcontainers" level="OFF"/>
+    <logger name="org.mariadb.jdbc.message.server.OkPacket" level="OFF"/>
+    <logger name="org.mariadb.jdbc.client.impl.StandardClient" level="OFF"/>
     <!--    <logger name="org.mariadb.jdbc" level="DEBUG"/>-->
     <logger name="com.zaxxer.hikari" level="OFF"/>
+    <logger name="org.flywaydb" level="INFO"/>
 
 </configuration>

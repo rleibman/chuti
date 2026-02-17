@@ -1,0 +1,54 @@
+schema {
+  query: Queries
+  mutation: Mutations
+  subscription: Subscriptions
+}
+
+"An instantaneous point on the time-line represented by a standard date time string"
+scalar Instant
+
+scalar Long
+
+input UserInput {
+  id: Long!
+  email: String!
+  name: String!
+  created: Instant!
+  lastUpdated: Instant!
+  active: Boolean!
+  deleted: Boolean!
+  isAdmin: Boolean!
+  locale: String!
+}
+
+type ChatMessage {
+  fromUser: User!
+  msg: String!
+  channelId: Long!
+  date: Instant!
+  toUser: User
+}
+
+type Mutations {
+  say(msg: String!, channelId: Long!, toUser: UserInput): Boolean
+}
+
+type Queries {
+  getRecentMessages(value: Long!): [ChatMessage!]
+}
+
+type Subscriptions {
+  chatStream(channelId: Long!, connectionId: String!, token: String!): ChatMessage
+}
+
+type User {
+  id: Long!
+  email: String!
+  name: String!
+  created: Instant!
+  lastUpdated: Instant!
+  active: Boolean!
+  deleted: Boolean!
+  isAdmin: Boolean!
+  locale: String!
+}

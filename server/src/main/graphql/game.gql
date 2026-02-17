@@ -1,0 +1,78 @@
+schema {
+  query: Queries
+  mutation: Mutations
+  subscription: Subscriptions
+}
+
+scalar BigDecimal
+
+"An instantaneous point on the time-line represented by a standard date time string"
+scalar Instant
+
+scalar Json
+
+scalar Long
+
+enum UserEventType {
+  AbandonedGame
+  Connected
+  Disconnected
+  JoinedGame
+  Modified
+}
+
+type Mutations {
+  newGame(satoshiPerPoint: Long!): Json
+  newGameSameUsers(value: Long!): Json
+  joinRandomGame: Json
+  abandonGame(value: Long!): Boolean
+  inviteByEmail(name: String!, email: String!, gameId: Long!): Boolean
+  startGame(value: Long!): Boolean
+  inviteToGame(userId: Long!, gameId: Long!): Boolean
+  acceptGameInvitation(value: Long!): Json
+  declineGameInvitation(value: Long!): Boolean
+  cancelUnacceptedInvitations(value: Long!): Boolean
+  friend(value: Long!): Boolean
+  unfriend(value: Long!): Boolean
+  play(gameId: Long!, gameEvent: Json!): Boolean
+  changePassword(value: String!): Boolean
+}
+
+type Queries {
+  getGame(value: Long!): Json
+  getGameForUser: Json
+  getFriends: [User!]
+  getGameInvites: Json
+  getLoggedInUsers: [User!]
+  getHistoricalUserGames: Json
+  getWallet: UserWallet
+  isFirstLoginToday: Boolean
+}
+
+type Subscriptions {
+  gameStream(gameId: Long!, connectionId: String!, token: String!): Json
+  userStream(connectionId: String!, token: String!): UserEvent
+}
+
+type User {
+  id: Long!
+  email: String!
+  name: String!
+  created: Instant!
+  lastUpdated: Instant!
+  active: Boolean!
+  deleted: Boolean!
+  isAdmin: Boolean!
+  locale: String!
+}
+
+type UserEvent {
+  user: User!
+  userEventType: UserEventType!
+  gameId: Long
+}
+
+type UserWallet {
+  userId: Long!
+  amount: BigDecimal!
+}

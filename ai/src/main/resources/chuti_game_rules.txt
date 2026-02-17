@@ -1,0 +1,99 @@
+CHUTI GAME RULES - Expert Reference
+
+GAME COMPONENTS:
+- 28 domino tiles (fichas) numbered 0:0 to 6:6. Each tile has two numbers (arriba/abajo), normalized so arriba >= abajo.
+- 4 players compete. First player to reach 21 points wins the partido (match).
+- A "mula" is a double tile (same number both sides, like 6:6).
+- Special tiles: La Mulota (6:6) determines first dealer; Campanita (0:1) triggers special event.
+
+MATCH FLOW - Three Phases Per Round (Juego):
+
+PHASE 1: SOPA (Dealing)
+- The turno player shuffles and deals 7 tiles to each player.
+- In first juego, whoever has La Mulota (6:6) deals and becomes first cantante.
+- In subsequent juegos, the player after the previous turno makes sopa.
+
+PHASE 2: CANTANDO (Bidding)
+- The cantante (bidder) starts. Each player bids or passes, going clockwise.
+- Valid bids (CuantasCantas):
+  * Casa (4): Must win 4+ tricks, scores 4 points if successful
+  * Canto5 (5): Must win 5+ tricks, scores 5 points if successful
+  * Canto6 (6): Must win 6+ tricks, scores 6 points if successful
+  * CantoTodas/Chuti (7): Must win ALL 7 tricks, scores 21 points (instant match win)
+  * Buenas: Pass (accept current bid)
+- If turno player: You MUST bid at least Casa (cannot say Buenas).
+- If not turno: You can bid higher than the previous bid OR say Buenas.
+- A player can "salvar" (save) by bidding higher, becoming the new cantante.
+- Bidding continues until it returns to turno player or someone bids Chuti.
+
+PHASE 3: JUGANDO (Playing Tricks)
+- The cantante leads first, declaring triunfo (trump) with their first tile.
+- Trump can be any number 0-6 (TriunfoNumero) or SinTriunfos (no trump).
+- Play proceeds clockwise. Each trick has 4 tiles (one per player).
+- The player who led the trick "pide" (requests). Others "dan" (give/follow).
+
+CRITICAL PLAYING RULES:
+1. MUST follow the led number if you have it in your hand.
+2. If you cannot follow, you MUST play trump if you have it.
+3. Only if you have neither the led number nor trump can you play anything else.
+4. FAILING TO FOLLOW THESE RULES = HOYO TÉCNICO (automatic penalty).
+
+WINNING TRICKS:
+- No trump declared: Highest tile matching the led number wins.
+- If a mula (double) is led: ONLY that exact mula can win the trick.
+- With trump: Trump beats non-trump. Among trumps, highest trump wins.
+- Highest = greater arriba value, or if tied, greater abajo value.
+
+CAERSE (Falling):
+- When you can PROVE you'll win all remaining tricks (based on tiles in play and tiles remaining), you MUST "caerse" (fall).
+- Falling ends the round early. Your remaining tiles become automatic wins.
+- Remaining tiles from other players become "regalos" (gifts) distributed by strength.
+- CRITICAL: You MUST fall if able. Failing to fall when required = HOYO TÉCNICO.
+
+SCORING:
+- Cantante who makes their bid: Scores the number of tricks won (or 21 for Chuti).
+- Cantante who fails their bid (hoyo): LOSES the bid amount (negative points).
+- Other players: Score the number of tricks they won.
+- First player to reach 21 points wins the partido.
+
+HOYO (Failed Bid):
+- If the cantante does not win enough tricks to meet their bid, they suffer a "hoyo."
+- The cantante LOSES the bid amount from their score (can go negative).
+- Other players still score their tricks won normally.
+
+HOYO TÉCNICO (Rule Violation):
+- Automatic penalty for breaking the rules:
+  * Not following suit when able
+  * Not playing trump when required
+  * Not falling when able to prove remaining wins
+  * Other rule violations
+- Results in immediate loss of the round for the offending player.
+
+KEY STRATEGIES:
+- Conservative when leading (18+ points): Protect your lead, avoid risky bids.
+- Aggressive when behind: Take risks to catch up, bid higher with marginal hands.
+- The cantante has the most to lose (hoyo penalty), so bid carefully.
+- Save strong tiles (high mulas, high trumps) for critical moments.
+- Track what tiles have been played to calculate "de caida" (guaranteed wins).
+- When close to 21, play defensively to deny opponents tricks.
+- When far behind, try to "salvar" (save) by bidding higher to become cantante.
+
+GAME STATES:
+- cantando: Bidding phase (make your bid or say Buenas)
+- jugando: Playing phase (pide to lead, da to follow)
+- requiereSopa: Round ended, need new deal
+- partidoTerminado: Match complete (someone reached 21)
+
+VALID MOVES:
+- Canta: Make a bid (Casa, Canto5, Canto6, Chuti) or pass (Buenas)
+- Pide: Lead a tile from your hand and declare trump
+- Da: Play a tile from your hand following the rules above
+- Caete: Fall (prove you'll win remaining tricks)
+- MeRindo: Surrender (only before second trick)
+
+REMEMBER:
+- You can ONLY play tiles that are in YOUR HAND.
+- You must choose from the LEGAL MOVES provided.
+- Always follow suit/trump when able (avoid hoyo técnico).
+- Consider your match position (conservative if leading, aggressive if behind).
+- The cantante risks the most (hoyo penalty), so bid with care.
