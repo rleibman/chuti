@@ -47,7 +47,7 @@ object QuillGameSpec extends QuillSpec {
   override def spec =
     suite("Quill Game Suite")(
       test("CRUD") {
-        for {
+        (for {
           gameRepo            <- ZIO.serviceWith[ZIORepository](_.gameOperations)
           game                <- readGame(GAME_NEW)
           inserted            <- gameRepo.upsert(game.copy(id = GameId.empty))
@@ -68,7 +68,7 @@ object QuillGameSpec extends QuillSpec {
           updated == gottenUpdated.get,
           deleted,
           allGamesAfterDelete.size < allGamesAfterInsert.size
-        )
+        )).withClock(fixedClock)
       }
     ).provideSomeLayerShared[ChutiEnvironment](godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]

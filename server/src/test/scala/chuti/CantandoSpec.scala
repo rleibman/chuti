@@ -16,18 +16,17 @@
 
 package chuti
 
-import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
-import api.token.TokenHolder
 import chuti.CuantasCantas.Buenas
-import db.{InMemoryRepository, ZIORepository}
-import db.InMemoryRepository.*
-import game.GameService
-import mail.Postman
+import chuti.api.token.TokenHolder
+import chuti.api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
+import chuti.db.InMemoryRepository.*
+import chuti.db.{InMemoryRepository, ZIORepository}
+import chuti.game.GameService
+import chuti.mail.Postman
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*
 import org.scalatest.flatspec.AnyFlatSpec
 import zio.test.*
-import zio.test.TestClock
 import zio.{Clock, Console, *}
 
 object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
@@ -341,6 +340,6 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         assertSoloUnoCanta(game5)
       }
     )
-  )
+  ) @@ TestAspect.sequential
 
 }

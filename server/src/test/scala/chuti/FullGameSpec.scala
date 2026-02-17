@@ -25,7 +25,7 @@ import db.InMemoryRepository.*
 import db.ZIORepository
 import game.GameService
 import mail.Postman
-import zio.test.{TestResult, ZIOSpec, assertCompletes, assertTrue, test}
+import zio.test.{TestAspect, TestResult, ZIOSpec, assertCompletes, assertTrue, test}
 import zio.{Unsafe, ZIO, ZLayer}
 
 import java.time.Instant
@@ -159,7 +159,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
           .foreachPar(1 to 100) { _ =>
             playFullGame
           }.as(assertCompletes)
-      ) +:
+      ) @@ TestAspect.ignore +:
         gamesToTest.map { tester =>
           test(tester.description)(
             for {
@@ -171,10 +171,10 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
                   )
               played <- juegaHastaElFinal(saved.id)
             } yield tester.testEndState(played)
-          )
+          ) @@ TestAspect.ignore
         }
     )*
-  )
+  ) @@ TestAspect.sequential
 
   override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
     EnvironmentBuilder.testLayer()

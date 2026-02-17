@@ -46,12 +46,12 @@ object QuillUserSpec extends QuillSpec {
           inserted             <- repo.upsert(testUser)
           allUsersAfterInsert  <- repo.search()
           count                <- repo.count()
-          deleted              <- repo.delete(inserted.id)
+          deleted              <- repo.delete(inserted.id, softDelete = false)
           allUsersAfterDelete  <- repo.search()
         } yield assertTrue(allUsersBeforeInsert.isEmpty) &&
           assertTrue(inserted.id.nonEmpty) &&
           assertTrue(allUsersAfterInsert.nonEmpty) &&
-          assertTrue(count > 1L) && // Because tests are run in parallel, we don't really know how many there are, but there should at least be one
+          assertTrue(count >= 1L) &&
           assertTrue(allUsersAfterInsert.exists(_.id == inserted.id)) &&
           assertTrue(allUsersAfterInsert.exists(_.email == inserted.email)) &&
           assertTrue(deleted) &&
@@ -194,6 +194,6 @@ object QuillUserSpec extends QuillSpec {
       // friends
       // getWallet
       // updateWallet
-    ).provideSomeLayerShared[ChutiEnvironment](godSession)
+    ).provideSomeLayerShared[ChutiEnvironment](godSession) @@ TestAspect.sequential
 
 }
