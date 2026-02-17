@@ -33,7 +33,7 @@ object PreGameServiceSpec extends ZIOSpec[ChutiEnvironment & GameService & ChatS
     )
 
   override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
-    api.EnvironmentBuilder.testLayer()
+    api.EnvironmentBuilder.testLayer().fresh
 
 }
 

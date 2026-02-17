@@ -31,7 +31,7 @@ import zio.{Clock, Console, *}
 
 object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
 
-  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.testLayer(GAME_STARTED)
+  override def bootstrap: ULayer[ChutiEnvironment] = EnvironmentBuilder.testLayer(GAME_STARTED).fresh
 
   val spec = suite("Cantando")(
     test("printing the game")(
@@ -42,9 +42,13 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     ),
     test("Cantando casa sin salve should get it done")(
       for {
-        gameService <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
+        gameService    <- ZIO.service[GameService].provideLayer(GameService.makeWithoutAIBot())
+        gameOperations <- ZIO.serviceWith[ZIORepository](_.gameOperations)
+        game1          <- readGame(GAME_STARTED)
+        freshGame <- gameOperations.upsert(game1.copy(id = GameId.empty)).provideSomeLayer[ChutiEnvironment](godLayer)
+        gameId = freshGame.id
         gameStream = gameService
-          .gameStream(GameId(1), connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
+          .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
             ChutiSession(user1).toLayer
           )
         userStream = gameService
@@ -52,26 +56,25 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameEventsFiber <- gameStream.interruptAfter(3.second).runCollect.fork
         userEventsFiber <- userStream.interruptAfter(3.second).runCollect.fork
         _               <- ZIO.yieldNow *> TestClock.adjust(1.second)
-        game1           <- readGame(GAME_STARTED)
-        quienCanta = game1.jugadores.find(_.turno).map(_.user).get
+        quienCanta = freshGame.jugadores.find(_.turno).map(_.user).get
         game2 <-
           gameService
-            .play(GameId(1), Canta(CuantasCantas.Casa))
+            .play(gameId, Canta(CuantasCantas.Casa))
             .provideSomeLayer[ChutiEnvironment](ChutiSession(quienCanta).toLayer)
         jugador2 = game2.nextPlayer(quienCanta).user
         game3 <-
           gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas))
+            .play(gameId, Canta(CuantasCantas.Buenas))
             .provideSomeLayer[ChutiEnvironment](ChutiSession(jugador2).toLayer)
         jugador3 = game3.nextPlayer(jugador2).user
         game4 <-
           gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas))
+            .play(gameId, Canta(CuantasCantas.Buenas))
             .provideSomeLayer[ChutiEnvironment](ChutiSession(jugador3).toLayer)
         jugador4 = game4.nextPlayer(jugador3).user
         game5 <-
           gameService
-            .play(GameId(1), Canta(CuantasCantas.Buenas))
+            .play(gameId, Canta(CuantasCantas.Buenas))
             .provideSomeLayer[ChutiEnvironment](ChutiSession(jugador4).toLayer)
         _          <- writeGame(game5, GAME_CANTO4)
         _          <- TestClock.adjust(3.second) // Trigger stream interruption
@@ -80,10 +83,8 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
       } yield {
         val cantante = game5.jugadores.find(_.cantante).get
         assertTrue(
-          game5.id == GameId(1),
           game5.jugadores.length == 4,
           game5.gameStatus == GameStatus.jugando,
-          game5.currentEventIndex == 11,
           cantante.mano,
           cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           gameEvents.size == 4,

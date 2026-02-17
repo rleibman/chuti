@@ -135,6 +135,6 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
     }
   )
 
-  override def bootstrap = EnvironmentBuilder.testLayer(GAME_STARTED)
+  override def bootstrap = EnvironmentBuilder.testLayer(GAME_STARTED).fresh
 
 }

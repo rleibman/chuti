@@ -259,7 +259,19 @@ lazy val server = project
       "dev.zio"       %% "zio-test"     % zioVersion % "test" withSources (),
       "dev.zio"       %% "zio-test-sbt" % zioVersion % "test" withSources (),
       "org.scalatest" %% "scalatest"    % "3.2.19"   % "test" withSources ()
-    )
+    ),
+    Test / fork := true,
+    Test / testGrouping := {
+      val tests = (Test / definedTests).value
+      val quillTests = tests.filter(_.name.startsWith("db.quill"))
+      val mailTests = tests.filter(_.name.startsWith("mail."))
+      val otherTests = tests.filterNot(t => t.name.startsWith("db.quill") || t.name.startsWith("mail."))
+      Seq(
+        Tests.Group("quill", quillTests, Tests.SubProcess(ForkOptions())),
+        Tests.Group("mail", mailTests, Tests.SubProcess(ForkOptions())),
+        Tests.Group("other", otherTests, Tests.SubProcess(ForkOptions()))
+      )
+    }
   )
 
 lazy val debianSettings =

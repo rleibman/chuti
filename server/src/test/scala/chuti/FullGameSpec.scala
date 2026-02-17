@@ -177,6 +177,6 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
   ) @@ TestAspect.sequential
 
   override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =
-    EnvironmentBuilder.testLayer()
+    EnvironmentBuilder.testLayer().fresh
 
 }
