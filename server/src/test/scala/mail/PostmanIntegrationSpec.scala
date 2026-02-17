@@ -20,14 +20,18 @@ import chuti.api.{*, given}
 import chuti.mail.Postman
 import chuti.{User, UserId}
 import courier.{Envelope, Text}
+import db.quill.QuillUserSpec.fixedClock
 import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.test.Assertion.*
 import zio.test.*
 
+import java.time.{Instant, ZoneId, ZoneOffset}
 import javax.mail.internet.InternetAddress
 
 object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
+  protected val now:        Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z").nn
+  protected val fixedClock: Clock = Clock.ClockJava(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC)))
 
   override def spec =
     suite("PostmanIntegrationSpec")(
@@ -44,7 +48,7 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
             ).fork
         } yield delivered
 
-        zio.as(assert(true)(equalTo(true)))
+        zio.as(assert(true)(equalTo(true))).withClock(fixedClock)
       },
       test("sending a specific email") {
         //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
@@ -58,7 +62,7 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
           delivered <- postman.deliver(envelope).fork
         } yield delivered
 
-        zio.as(assert(true)(equalTo(true)))
+        zio.as(assert(true)(equalTo(true))).withClock(fixedClock)
       }
     )
 
