@@ -55,7 +55,7 @@ abstract class QuillSpec extends ZIOSpec[ChutiEnvironment] {
       uuid <- zio.Random.nextUUID.withRandom(zio.Random.RandomLive)
     } yield User(
       UserId.empty,
-      email = s"${uuid}@example.com",
+      email = s"$uuid@example.com",
       name = "Frank Lloyd Wright",
       created = now,
       lastUpdated = now
