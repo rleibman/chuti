@@ -27,7 +27,7 @@ import scala.jdk.CollectionConverters.*
   * Run this when you get validation errors about migration description mismatches. This updates the
   * flyway_schema_history table to match the current migration files.
   *
-  * Usage: sbt "project server" "runMain dmscreen.FlywayRepair"
+  * Usage: sbt "project server" "runMain chuti.FlywayRepair"
   */
 object FlywayRepair extends ZIOAppDefault {
 

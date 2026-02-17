@@ -75,7 +75,7 @@ object ChutiApp {
         if (isPlayerView) {
           Callback.log("player view, no auth expected")
         } else {
-          Callback.log("DMScreenApp mounting, checking authentication...") >>
+          Callback.log("ChutiApp mounting, checking authentication...") >>
             AuthClient
               .whoami[User, ConnectionId](Some(GameClient.connectionId))
               .flatTap {
@@ -103,7 +103,7 @@ object ChutiApp {
   @JSExport
   def main(args: Array[String]): Unit = {
     js.Dynamic.global.document.title =
-      if (org.scalajs.dom.window.location.protocol == "https:") "DMScreen" else "DMScreen (Local)"
+      if (org.scalajs.dom.window.location.protocol == "https:") "Chuti" else "Chuti (Local)"
     val container = dom.document.getElementById("content")
     val root = ReactDOMClient.createRoot(container)
     root.render(component())

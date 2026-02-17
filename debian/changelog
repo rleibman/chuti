@@ -1,4 +1,4 @@
-dmscreen-server (1.0.4ubuntu1~1.gbpc01d09) UNRELEASED; urgency=medium
+chuti-server (1.0.4ubuntu1~1.gbpc01d09) UNRELEASED; urgency=medium
 
   ** SNAPSHOT build @c01d09e1037fe42c7e8468b4a04f04171d61dc99 **
 
@@ -154,7 +154,7 @@ dmscreen-server (1.0.4ubuntu1~1.gbpc01d09) UNRELEASED; urgency=medium
 
  -- Roberto Leibman <roberto@leibman.net>  Tue, 29 Apr 2025 12:09:13 -0700
 
-dmscreen-server (1.0.4) oracular; urgency=medium
+chuti-server (1.0.4) oracular; urgency=medium
 
   * Initial release
 
