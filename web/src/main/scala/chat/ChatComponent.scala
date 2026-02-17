@@ -18,7 +18,14 @@ package chat
 
 import caliban.WebSocketHandler
 import caliban.client.SelectionBuilder
-import caliban.client.scalajs.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage as CalibanChatMessage, Instant as CalibanInstant, User as CalibanUser}
+import caliban.client.scalajs.ChatClient.{
+  ChatMessage as CalibanChatMessage,
+  Instant as CalibanInstant,
+  Mutations,
+  Queries,
+  Subscriptions,
+  User as CalibanUser
+}
 import chat.*
 import chuti.chat.ChannelId.*
 import chuti.*

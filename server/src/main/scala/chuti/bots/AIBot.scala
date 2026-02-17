@@ -59,7 +59,7 @@ case class AIBot(
   // it's based only on what's been played and contains no information from other player's hand.
   case class MemorySummary(
     trump:            Triunfo,
-    leadingNumber:        Numero,
+    leadingNumber:    Numero,
     trumpsSeen:       Seq[Ficha],
     doublesSeen:      Seq[Ficha],
     exhaustedNumbers: Option[Seq[Numero]],
@@ -123,8 +123,8 @@ case class AIBot(
           trumpsSeen = triunfosVistos,
           doublesSeen = mulasVistas,
           exhaustedNumbers = None, // Doesn't track exhausted numbers
-          scarceNumbers = None,    // Doesn't track scarcity
-          playerVoids = None       // No void inference
+          scarceNumbers = None, // Doesn't track scarcity
+          playerVoids = None // No void inference
         )
 
       case BotDifficultyLevel.intermediate =>
@@ -144,7 +144,7 @@ case class AIBot(
           trumpsSeen = triunfosVistos,
           doublesSeen = mulasVistas,
           exhaustedNumbers = None, // Doesn't track yet
-          scarceNumbers = None,    // Doesn't track yet
+          scarceNumbers = None, // Doesn't track yet
           playerVoids = Some(voids)
         )
 
@@ -796,8 +796,7 @@ case class AIBot(
                 CuantasCantas.CantoTodas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning =
-                  Option(s"7 tricks guaranteed — bidding Chuti. Hand: ${formatHand(jugador)}")
+                reasoning = Option(s"7 tricks guaranteed — bidding Chuti. Hand: ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers == 7) {
@@ -816,7 +815,8 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Passing — my guaranteed tricks ($topMove) don't beat current bid ($maxBidByOthers). Hand: ${formatHand(jugador)}")
+                reasoning =
+                  Option(s"Passing — my guaranteed tricks ($topMove) don't beat current bid ($maxBidByOthers). Hand: ${formatHand(jugador)}")
               )
             )
           } else if (maxBidByOthers > 4 && diff < 0) {
@@ -826,8 +826,9 @@ case class AIBot(
                 CuantasCantas.byNum(topMove),
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning =
-                  Option(s"Bid is already above 4 — outbidding to $topMove and taking the points. Hand: ${formatHand(jugador)}")
+                reasoning = Option(
+                  s"Bid is already above 4 — outbidding to $topMove and taking the points. Hand: ${formatHand(jugador)}"
+                )
               )
             )
           } else {
@@ -879,7 +880,7 @@ case class AIBot(
     val deCaidaOpt = allMoves.find(_.cuantasDeCaida >= bid)
     if (deCaidaOpt.isDefined) {
       val bestTrump = deCaidaOpt.get.triunfo
-      return ZIO.succeed(
+      ZIO.succeed(
         Caete(
           triunfo = Some(bestTrump),
           gameId = game.id,
@@ -888,49 +889,50 @@ case class AIBot(
             Option(s"Auto-fall: guaranteed all tricks with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks). Hand: ${formatHand(jugador)}")
         )
       )
-    }
+    } else {
 
-    val moves: Seq[(triunfo: Triunfo, pide: Ficha, cuantasDeCaida: Int, cuantosTriunfosYMulas: Int)] =
-      allMoves.zipWithIndex
-        .filter(
-          (
-            t,
-            i
-          ) =>
-            // We have to at least take one option
-            i == 0 || t.cuantasDeCaida >= bid
-        )
-        .map(_._1)
-        .take(3)
-        .map { case (triunfo, cuantasDeCaida, cuantosTriunfosYMulas) =>
-          val hypotheticalGame = game.copy(triunfo = Option(triunfo))
-          val pide = hypotheticalGame.highestValueByTriunfo(jugador.fichas).get
-          (triunfo, pide, cuantasDeCaida, cuantosTriunfosYMulas)
-        }
+      val moves: Seq[(triunfo: Triunfo, pide: Ficha, cuantasDeCaida: Int, cuantosTriunfosYMulas: Int)] =
+        allMoves.zipWithIndex
+          .filter(
+            (
+              t,
+              i
+            ) =>
+              // We have to at least take one option
+              i == 0 || t.cuantasDeCaida >= bid
+          )
+          .map(_._1)
+          .take(3)
+          .map { case (triunfo, cuantasDeCaida, cuantosTriunfosYMulas) =>
+            val hypotheticalGame = game.copy(triunfo = Option(triunfo))
+            val pide = hypotheticalGame.highestValueByTriunfo(jugador.fichas).get
+            (triunfo, pide, cuantasDeCaida, cuantosTriunfosYMulas)
+          }
 
-    // The trump and opening tile were already chosen during canta via possibleMoves().
-    // allMoves is already sorted best-first, and moves is filtered to legal options.
-    // Just execute the best option deterministically — no LLM needed.
-    moves.headOption match {
-      case None =>
-        // No moves at all (shouldn't happen — possibleMoves always has at least SinTriunfos)
-        ZIO.succeed(
-          MeRindo(gameId = game.id, userId = jugador.user.id, reasoning = Option("No valid moves in pideInicial"))
-        )
-      case Some(best) =>
-        ZIO.succeed(
-          Pide(
-            ficha = best.pide,
-            triunfo = Option(best.triunfo),
-            estrictaDerecha = false,
-            gameId = game.id,
-            userId = jugador.user.id,
-            reasoning = Option(
-              s"PideInicial: playing trump ${best.triunfo} with ${best.pide} " +
-                s"(${best.cuantasDeCaida} guaranteed tricks, ${best.cuantosTriunfosYMulas} trump+double tiles) Hand: ${formatHand(jugador)}"
+      // The trump and opening tile were already chosen during canta via possibleMoves().
+      // allMoves is already sorted best-first, and moves is filtered to legal options.
+      // Just execute the best option deterministically — no LLM needed.
+      moves.headOption match {
+        case None =>
+          // No moves at all (shouldn't happen — possibleMoves always has at least SinTriunfos)
+          ZIO.succeed(
+            MeRindo(gameId = game.id, userId = jugador.user.id, reasoning = Option("No valid moves in pideInicial"))
+          )
+        case Some(best) =>
+          ZIO.succeed(
+            Pide(
+              ficha = best.pide,
+              triunfo = Option(best.triunfo),
+              estrictaDerecha = false,
+              gameId = game.id,
+              userId = jugador.user.id,
+              reasoning = Option(
+                s"PideInicial: playing trump ${best.triunfo} with ${best.pide} " +
+                  s"(${best.cuantasDeCaida} guaranteed tricks, ${best.cuantosTriunfosYMulas} trump+double tiles) Hand: ${formatHand(jugador)}"
+              )
             )
           )
-        )
+      }
     }
   }
 

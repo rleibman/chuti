@@ -32,68 +32,68 @@ import java.net.MalformedURLException
 import java.util.Locale
 import scala.jdk.CollectionConverters.*
 
-  extension (request: Request) {
+extension (request: Request) {
 
-    def formData: ZIO[Any, Throwable, Map[String, String]] = {
-      import scala.language.unsafeNulls
+  def formData: ZIO[Any, Throwable, Map[String, String]] = {
+    import scala.language.unsafeNulls
 
-      val contentTypeStr = request.header(Header.ContentType).map(_.renderedValue).getOrElse("text/plain")
+    val contentTypeStr = request.header(Header.ContentType).map(_.renderedValue).getOrElse("text/plain")
 
-      for {
-        str <- request.body.asString
-        _ <- ZIO
-          .fail(
-            GameError(s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})")
+    for {
+      str <- request.body.asString
+      _ <- ZIO
+        .fail(
+          GameError(
+            s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"
           )
-          .when(!contentTypeStr.contains(MediaType.application.`x-www-form-urlencoded`.subType))
-      } yield str
-        .split("&").map(_.split("="))
-        .collect { case Array(k: String, v: String) =>
-          QueryStringDecoder.decodeComponent(k) -> QueryStringDecoder.decodeComponent(v)
+        )
+        .when(!contentTypeStr.contains(MediaType.application.`x-www-form-urlencoded`.subType))
+    } yield str
+      .split("&").map(_.split("="))
+      .collect { case Array(k: String, v: String) =>
+        QueryStringDecoder.decodeComponent(k) -> QueryStringDecoder.decodeComponent(v)
+      }
+      .toMap
+  }
+
+  /** Uses https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.5
+    */
+  def preferredLocale(
+    availableLocales: NonEmptyList[Locale],
+    forceLanguage:    Option[String]
+  ): Locale = {
+    val range = Locale.LanguageRange.parse(
+      forceLanguage
+        .orElse(request.header(Header.AcceptLanguage).map(_.renderedValue)).getOrElse(
+          availableLocales.head.toLanguageTag
+        )
+    )
+
+    Locale.lookup(range, availableLocales.toList.asJava).nn
+  }
+
+  def bodyAs[E: JsonDecoder]: ZIO[Any, Throwable, E] =
+    for {
+      body <- request.body.asString
+      obj <- ZIO
+        .fromEither(body.fromJson[E])
+        .tapError { e =>
+          ZIO.logError(s"Error parsing body.\n$e\n$body")
         }
-        .toMap
-    }
+        .mapError(GameError.apply)
+    } yield obj
 
-    /** Uses https://datatracker.ietf.org/doc/html/rfc7231#section-5.3.5
-      */
-    def preferredLocale(
-      availableLocales: NonEmptyList[Locale],
-      forceLanguage:    Option[String]
-    ): Locale = {
-      val range = Locale.LanguageRange.parse(
-        forceLanguage
-          .orElse(request.header(Header.AcceptLanguage).map(_.renderedValue)).getOrElse(
-            availableLocales.head.toLanguageTag
-          )
-      )
+}
 
-      Locale.lookup(range, availableLocales.toList.asJava).nn
-    }
+object ResponseExt {
 
-    def bodyAs[E: JsonDecoder]: ZIO[Any, Throwable, E] =
-      for {
-        body <- request.body.asString
-        obj <- ZIO
-          .fromEither(body.fromJson[E])
-          .tapError { e =>
-            ZIO.logError(s"Error parsing body.\n$e\n$body")
-          }
-          .mapError(GameError.apply)
-      } yield obj
+  def json(value: Json): Response = Response.json(value.toString)
 
-  }
+  def json[A: JsonEncoder](value: A): Response = Response.json(value.toJson)
 
-  object ResponseExt {
+  def seeOther(location: String): ZIO[Any, GameError, Response] =
+    for {
+      url <- ZIO.fromEither(URL.decode(location)).mapError(GameError.apply)
+    } yield Response(Status.SeeOther, Headers(Header.Location(url)))
 
-    def json(value: Json): Response = Response.json(value.toString)
-
-    def json[A: JsonEncoder](value: A): Response = Response.json(value.toJson)
-
-    def seeOther(location: String): ZIO[Any, GameError, Response] =
-      for {
-        url <- ZIO.fromEither(URL.decode(location)).mapError(GameError.apply)
-      } yield Response(Status.SeeOther, Headers(Header.Location(url)))
-
-  }
-
-
+}

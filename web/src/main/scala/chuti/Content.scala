@@ -174,42 +174,49 @@ object Content extends ChutiComponent with TimerSupport {
     }
 
     private def reapplyEvent(gameEvent: GameEvent): Callback =
-      $.modState(s => {
-        val moddedGame = s.chutiState.gameInProgress.flatMap { (currentGame: Game) =>
-          gameEvent.index match {
-            case None =>
-              throw GameError(
-                "Esto es imposible (el evento no tiene indice)"
-              )
-            case Some(index) if index == currentGame.currentEventIndex =>
-              // If the game event is the next one to be applied, apply it to the game
-              val reapplied = currentGame.reapplyEvent(gameEvent)
-              if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty)
-                None
-              else
-                Option(reapplied)
-            case Some(index) if index > currentGame.currentEventIndex =>
-              // If it's a future event, put it in the queue, and add a timer to wait: if we haven't gotten the filling event
-              // In a few seconds, just get the full game.
-              Option(currentGame)
-            case Some(index) =>
-              // If it's a past event, just ignore it (already applied)
-              // This can happen when events are broadcast and the client has already caught up
-              println(s"Ignoring past event: eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}")
-              Option(currentGame)
-          }
-        }
-        s.copy(chutiState =
-          s.chutiState.copy(
-            gameInProgress = moddedGame,
-            ultimoBorlote = gameEvent match {
-              case event: BorloteEvent => Option(event.borlote)
-              case _:     Pide         => None
-              case _ => s.chutiState.ultimoBorlote
+      $.state.flatMap { s =>
+        val result: Either[Throwable, Option[Game]] = s.chutiState.gameInProgress match {
+          case None => Right(None)
+          case Some(currentGame) =>
+            gameEvent.index match {
+              case None =>
+                Left(GameError("Esto es imposible (el evento no tiene indice)"))
+              case Some(index) if index == currentGame.currentEventIndex =>
+                try {
+                  val reapplied = currentGame.reapplyEvent(gameEvent)
+                  if (reapplied.gameStatus.acabado || reapplied.jugadores.isEmpty)
+                    Right(None)
+                  else
+                    Right(Option(reapplied))
+                } catch {
+                  case e: Throwable => Left(e)
+                }
+              case Some(index) if index > currentGame.currentEventIndex =>
+                Right(Option(currentGame))
+              case Some(index) =>
+                println(s"Ignoring past event: eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}")
+                Right(Option(currentGame))
             }
-          )
-        )
-      })
+        }
+        result match {
+          case Left(err) =>
+            Callback.log(s"reapplyEvent error (${err.getMessage}), forcing full refresh") >>
+              refresh(initial = false)()
+          case Right(moddedGame) =>
+            $.modState(s =>
+              s.copy(chutiState =
+                s.chutiState.copy(
+                  gameInProgress = moddedGame,
+                  ultimoBorlote = gameEvent match {
+                    case event: BorloteEvent => Option(event.borlote)
+                    case _:     Pide         => None
+                    case _ => s.chutiState.ultimoBorlote
+                  }
+                )
+              )
+            )
+        }
+      }
 
     def toggleSound: Callback = $.modState(s => s.copy(chutiState = s.chutiState.copy(muted = !s.chutiState.muted)))
 

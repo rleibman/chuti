@@ -57,15 +57,16 @@ object AIBotSpec extends ZIOSpecDefault {
 
   // Create bots with Ref[LLMStats] via Unsafe for use in pure/mixed test contexts
   private val (testBot, failingBot) = Unsafe.unsafe { implicit u =>
-    Runtime.default.unsafe.run {
-      for {
-        statsRef1 <- Ref.make(LLMStats())
-        statsRef2 <- Ref.make(LLMStats())
-      } yield (
-        AIBot(testConfig, mockLLMService, statsRef1),
-        AIBot(testConfig, failingLLMService, statsRef2)
-      )
-    }.getOrThrowFiberFailure()
+    Runtime.default.unsafe
+      .run {
+        for {
+          statsRef1 <- Ref.make(LLMStats())
+          statsRef2 <- Ref.make(LLMStats())
+        } yield (
+          AIBot(testConfig, mockLLMService, statsRef1),
+          AIBot(testConfig, failingLLMService, statsRef2)
+        )
+      }.getOrThrowFiberFailure()
   }
 
   // Helper to create a test game
@@ -212,8 +213,8 @@ object AIBotSpec extends ZIOSpecDefault {
           assertTrue(
             memory.trump == TriunfoNumero(Numero6),
             memory.exhaustedNumbers.isEmpty, // Intermediate doesn't track exhausted
-            memory.scarceNumbers.isEmpty,    // Intermediate doesn't track scarcity
-            memory.playerVoids.isDefined     // But does track voids
+            memory.scarceNumbers.isEmpty, // Intermediate doesn't track scarcity
+            memory.playerVoids.isDefined // But does track voids
           )
         },
         test("Advanced difficulty tracks everything") {
@@ -550,9 +551,8 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertTrue(
             decision.isInstanceOf[Da],
             decision.asInstanceOf[Da].ficha == Ficha(Numero6, Numero6),
-            decision.asInstanceOf[Da].reasoning.exists(r =>
-              r.contains("No thinking needed") || r.contains("Only one legal")
-            )
+            decision
+              .asInstanceOf[Da].reasoning.exists(r => r.contains("No thinking needed") || r.contains("Only one legal"))
           )
         },
         test("Auto-plays lowest tile when can't follow or trump") {

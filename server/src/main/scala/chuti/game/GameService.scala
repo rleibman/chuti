@@ -208,7 +208,7 @@ object GameService {
 
       private val botsByJugadorType: Map[JugadorType, ChutiBot] = {
         val base = Map[JugadorType, ChutiBot](
-          JugadorType.dumbBot   -> DumbChutiBot,
+          JugadorType.dumbBot -> DumbChutiBot
 //          JugadorType.claudeBot -> ClaudeBot
         )
         aiBotOpt match {
@@ -974,6 +974,7 @@ object GameService {
     } yield unfriended.getOrElse(false)).mapError(GameError.apply)
 
   // Convenience layer for tests that don't need AIBot
-  def makeWithoutAIBot(): ZLayer[ZIORepository, Nothing, GameService] = ZLayer.succeed(None: Option[ClaudeBot]) >>> make()
+  def makeWithoutAIBot(): ZLayer[ZIORepository, Nothing, GameService] =
+    ZLayer.succeed(None: Option[ClaudeBot]) >>> make()
 
 }
