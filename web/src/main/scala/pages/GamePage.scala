@@ -19,8 +19,8 @@ package pages
 import java.time.ZoneOffset
 import chuti.{ChutiState, GameViewMode}
 import caliban.ScalaJSClientAdapter
-import chat.ChatMessage
 import chuti.*
+import chuti.chat.ChatMessage
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.{StateSnapshot, TimerSupport}

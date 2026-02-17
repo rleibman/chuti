@@ -16,6 +16,8 @@
 
 package util
 
+import chuti.util
+
 @main def serverSecret(): Unit = {
 //  println(com.softwaremill.session.SessionUtil.randomServerSecret())
 }

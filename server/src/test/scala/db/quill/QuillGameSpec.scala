@@ -16,10 +16,10 @@
 
 package db.quill
 
-import api.ChutiEnvironment
 import better.files.File
+import chuti.api.ChutiEnvironment
 import chuti.{*, given}
-import dao.*
+import db.*
 // import db.quill.QuillUserSpec.fixedClock
 import zio.*
 import zio.logging.*

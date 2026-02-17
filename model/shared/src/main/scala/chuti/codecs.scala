@@ -30,13 +30,14 @@ given JsonCodec[JugadorType] =
   JsonCodec.string.transformOrFail(
     str =>
       str match {
-        case "human"   => Right(JugadorType.human)
-        case "dumbBot" => Right(JugadorType.dumbBot)
-        case "aiBot"   => Right(JugadorType.aiBot)
+        case "human"     => Right(JugadorType.human)
+        case "dumbBot"   => Right(JugadorType.dumbBot)
+        case "aiBot"     => Right(JugadorType.aiBot)
+        case "claudeBot" => Right(JugadorType.claudeBot)
         // Backwards compatibility mappings for old bot types
         case "smartBot" => Right(JugadorType.aiBot) // Old name for AI bot
         case "ai"       => Right(JugadorType.aiBot) // Another possible old name
-        case other      => Left(s"Unknown JugadorType: $other (valid values: human, dumbBot, aiBot)")
+        case other      => Left(s"Unknown JugadorType: $other (valid values: human, dumbBot, aiBot, claudeBot)")
       },
     jugadorType => jugadorType.toString
   )

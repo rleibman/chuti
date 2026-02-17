@@ -26,7 +26,7 @@ import caliban.client.scalajs.GameClient.{
 import caliban.client.scalajs.given
 import caliban.{ScalaJSClientAdapter, WebSocketHandler}
 import chat.*
-import dao.{GameOperations, UserOperations}
+import db.{GameOperations, UserOperations}
 import game.GameEngine
 import japgolly.scalajs.react.Callback
 import japgolly.scalajs.react.callback.AsyncCallback

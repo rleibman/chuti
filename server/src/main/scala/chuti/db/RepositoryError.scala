@@ -1,0 +1,47 @@
+/*
+ * Copyright 2020 Roberto Leibman
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package chuti.db
+
+import chuti.GameError
+
+object RepositoryError {
+
+  def apply(t: Throwable): RepositoryError = {
+    t match {
+      case t: RepositoryError => t
+      case t => new RepositoryError(t.getMessage, Some(t))
+    }
+  }
+  def apply(
+    message: String = "",
+    cause:   Option[Throwable] = None
+  ): RepositoryError = {
+    new RepositoryError(message, cause)
+  }
+
+}
+
+sealed class RepositoryError(
+  override val msg:         String = "",
+  override val cause:       Option[Throwable] = None,
+  override val isTransient: Boolean = false
+) extends GameError(msg, cause, isTransient)
+
+case class RepositoryPermissionError(
+  override val msg:   String = "",
+  override val cause: Option[Throwable] = None
+) extends RepositoryError(msg)

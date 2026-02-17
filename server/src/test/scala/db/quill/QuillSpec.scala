@@ -16,12 +16,12 @@
 
 package db.quill
 
-import api.{*, given}
+import chuti.api.{*, given}
+import chuti.db.ZIORepository
+import chuti.db.quill.QuillRepository
+import chuti.util.ChutiContainer
 import chuti.{User, UserId}
-import dao.ZIORepository
-import dao.quill.QuillRepository
 import db.quill.QuillUserSpec.now
-import util.ChutiContainer
 import zio.*
 import zio.logging.*
 import zio.logging.backend.SLF4J

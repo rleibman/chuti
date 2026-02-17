@@ -322,7 +322,7 @@ object JugadorState {
 
 enum JugadorType {
 
-  case human, dumbBot, aiBot
+  case human, dumbBot, aiBot, claudeBot
 
 }
 

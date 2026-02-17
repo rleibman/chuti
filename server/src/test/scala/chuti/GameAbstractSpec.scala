@@ -21,8 +21,8 @@ import better.files.File
 import chat.ChatService
 import chuti.CuantasCantas.Buenas
 import chuti.bots.DumbChutiBot
-import dao.InMemoryRepository.*
-import dao.ZIORepository
+import db.InMemoryRepository.*
+import db.ZIORepository
 import game.GameService
 import org.scalatest.Assertion
 import org.scalatest.Assertions.*

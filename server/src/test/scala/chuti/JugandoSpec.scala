@@ -20,8 +20,8 @@ import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.TokenHolder
 import chat.ChatService
 import chuti.CantandoSpec.GAME_STARTED
-import dao.InMemoryRepository.*
-import dao.ZIORepository
+import db.InMemoryRepository.*
+import db.ZIORepository
 import game.GameService
 import mail.Postman
 import org.scalatest.flatspec.AnyFlatSpec

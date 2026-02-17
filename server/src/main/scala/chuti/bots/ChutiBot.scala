@@ -16,9 +16,9 @@
 
 package chuti.bots
 
-import api.ChutiSession
 import chuti.*
-import dao.ZIORepository
+import chuti.api.ChutiSession
+import db.ZIORepository
 import game.{GameEnvironment, GameService}
 import zio.{Duration, IO, Random, ZIO}
 

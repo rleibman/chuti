@@ -16,10 +16,9 @@
 
 package db.quill
 
-import api.ChutiEnvironment
 import chuti.*
-import dao.{RepositoryError, RepositoryPermissionError, ZIORepository}
-import db.quill.QuillGameSpec.fixedClock
+import chuti.api.ChutiEnvironment
+import db.{RepositoryError, RepositoryPermissionError, ZIORepository}
 import zio.*
 import zio.logging.*
 import zio.test.*

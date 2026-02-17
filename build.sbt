@@ -20,6 +20,9 @@ Global / scalaVersion         := SCALA
 import scala.concurrent.duration.*
 Global / watchAntiEntropy := 1.second
 
+ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % VersionScheme.Always
+
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shared settings
 
@@ -54,45 +57,45 @@ enablePlugins(
 )
 
 val betterFilesVersion = "3.9.2"
-val calibanVersion = "3.0.0"
 val calibanClientVersion = "3.0.0"
+val calibanVersion = "3.0.0"
 val commonsCodecVersion = "1.21.0"
 val courierVersion = "4.0.0-RC1"
-val stlibVersion = "1.0.0"
 val flywayVersion = "12.0.1"
 val izumiReflectVersion = "3.0.9"
 val jsoniterVersion = "2.38.8"
 val justSemverCoreVersion = "1.1.1"
 val jwtCirceVersion = "11.0.3"
 val jwtZioJsonVersion = "11.0.3"
-val langchain4jOllamaVersion = "1.10.0"
-val langchainCoreVersion = "1.10.0"
-val langchainLibrariesVersion = "1.10.0-beta18"
-val logbackVersion = "1.5.29"
+val langchain4jOllamaVersion = "1.11.0"
+val langchainCoreVersion = "1.11.0"
+val langchainLibrariesVersion = "1.11.0-beta19"
+val logbackVersion = "1.5.32"
 val mariadbVersion = "3.5.7"
 val openPdfVersion = "3.0.0"
 val qdrantVersion = "1.21.4"
 val quillVersion = "4.8.6"
 val scalablytypedRuntimeVersion = "2.4.2"
 val scalacssVersion = "1.0.0"
-val scalaJavaTimeVersion = "2.6.0"
 val scalaJavaLocaleVersion = "1.5.4"
+val scalaJavaTimeVersion = "2.6.0"
 val scalajsDomVersion = "2.8.1"
 val scalajsReactVersion = "3.0.0"
 val scalatagsVersion = "0.13.1"
 val scalaXmlVersion = "2.4.0"
-val sttpClient4Version = "4.0.15"
+val stlibVersion = "1.0.0"
+val sttpClient4Version = "4.0.18"
 val testContainerVersion = "0.44.1"
+val zioAuth = "3.1.2"
 val zioCacheVersion = "0.2.7"
 val zioConfigVersion = "4.0.6"
 val zioHttpVersion = "3.8.1"
-val zioJsonVersion = "0.7.45"
-val zioPreludeVersion = "1.0.0-RC46"
+val zioJsonVersion = "0.9.0"
 val zioLoggingSlf4j2Version = "2.5.3"
 val zioNioVersion = "2.0.2"
-val zioSchemaVersion = "1.5.0"
+val zioPreludeVersion = "1.0.0-RC46"
+val zioSchemaVersion = "1.8.0"
 val zioVersion = "2.1.24"
-val zioAuth = "3.1.0"
 
 lazy val commonSettings = Seq(
   organization       := "net.leibman",
@@ -160,20 +163,18 @@ lazy val analyticsJS = analytics.js
 lazy val analytics = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(
     // AutomateHeaderPlugin,
-    com.github.sbt.git.GitVersioning,
-    BuildInfoPlugin
+    com.github.sbt.git.GitVersioning
   )
   .jvmSettings(scalacOptions ++= scala3Opts :+ "-Werror")
   .jsSettings(scalacOptions ++= scala3Opts)
   .settings(
     name             := "chuti-analytics",
-    buildInfoPackage := "chuti",
     commonSettings,
     libraryDependencies ++= Seq(
       "net.leibman" % "zio-auth_3" % zioAuth withSources () // I don't know why %% isn't working.
     )
   )
-  .jvmEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
+  .jvmEnablePlugins(com.github.sbt.git.GitVersioning)
   .jvmSettings(
     libraryDependencies ++= Seq(
       "dev.zio"     %% "zio"                 % zioVersion withSources (),
@@ -188,7 +189,7 @@ lazy val analytics = crossProject(JSPlatform, JVMPlatform)
     )
   )
   .jvmConfigure(_.dependsOn(modelJVM))
-  .jsEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
+  .jsEnablePlugins(com.github.sbt.git.GitVersioning)
   .jsSettings(
     libraryDependencies ++= Seq(
       "net.leibman"               % "zio-auth_sjs1_3" % zioAuth withSources (), // I don't know why %% isn't working.
@@ -213,14 +214,12 @@ lazy val server = project
     JavaServerAppPackaging,
     SystemloaderPlugin,
     SystemdPlugin,
-    CalibanPlugin,
-    BuildInfoPlugin
+    CalibanPlugin
   )
   .settings(debianSettings, commonSettings)
   .dependsOn(modelJVM, ai, analyticsJVM)
   .settings(
     scalacOptions ++= scala3Opts :+ "-Werror",
-    buildInfoPackage := "chuti.server",
     name             := "chuti-server",
     libraryDependencies ++= Seq(
       // DB

@@ -19,8 +19,8 @@ package chuti
 import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
 import api.token.TokenHolder
 import chuti.CuantasCantas.Buenas
-import dao.{InMemoryRepository, ZIORepository}
-import dao.InMemoryRepository.*
+import db.{InMemoryRepository, ZIORepository}
+import db.InMemoryRepository.*
 import game.GameService
 import mail.Postman
 import org.scalatest.Assertion

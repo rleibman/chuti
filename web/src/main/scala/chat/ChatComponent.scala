@@ -18,18 +18,12 @@ package chat
 
 import caliban.WebSocketHandler
 import caliban.client.SelectionBuilder
-import caliban.client.scalajs.ChatClient.{
-  ChatMessage as CalibanChatMessage,
-  Instant as CalibanInstant,
-  Mutations,
-  Queries,
-  Subscriptions,
-  User as CalibanUser
-}
+import caliban.client.scalajs.ChatClient.{Mutations, Queries, Subscriptions, ChatMessage as CalibanChatMessage, Instant as CalibanInstant, User as CalibanUser}
 import chat.*
-import chat.ChannelId.*
+import chuti.chat.ChannelId.*
 import chuti.*
 import chuti.UserId.*
+import chuti.chat.{ChannelId, ChatMessage, SayRequest}
 import components.Toast
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^.*

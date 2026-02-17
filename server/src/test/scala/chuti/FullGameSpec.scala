@@ -21,8 +21,8 @@ import api.token.TokenHolder
 import chat.ChatService
 import chuti.CuantasCantas.{Canto7, CantoTodas, Casa, CuantasCantas}
 import chuti.Triunfo.TriunfoNumero
-import dao.InMemoryRepository.*
-import dao.ZIORepository
+import db.InMemoryRepository.*
+import db.ZIORepository
 import game.GameService
 import mail.Postman
 import zio.test.{TestResult, ZIOSpec, assertCompletes, assertTrue, test}

@@ -17,7 +17,7 @@
 package chuti.bots
 
 import chuti.*
-import dao.InMemoryRepository.*
+import db.InMemoryRepository.*
 
 import java.time.Instant
 

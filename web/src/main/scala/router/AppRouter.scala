@@ -19,6 +19,7 @@ package router
 import auth.AuthClient
 import chat.*
 import chuti.GlobalDialog.none
+import chuti.chat.ChannelId
 import chuti.{ChutiState, GameStatus, GameViewMode, GlobalDialog}
 import components.*
 import japgolly.scalajs.react.component.Scala.Unmounted

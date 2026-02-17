@@ -16,8 +16,8 @@
 
 package mail
 
-import api.{ChutiEnvironment, ChutiSession, EnvironmentBuilder, toLayer}
-import api.token.*
+import chuti.api.{*, given}
+import chuti.mail.Postman
 import chuti.{User, UserId}
 import courier.{Envelope, Text}
 import zio.*
