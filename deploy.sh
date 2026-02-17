@@ -153,6 +153,14 @@ fi
 
 echo -e "${GREEN}  Current commit tagged: ${CURRENT_TAG}${NC}"
 
+# Source local .env for test configuration (DB credentials, etc.)
+if [ -f "${SCRIPT_DIR}/.env" ]; then
+    echo -e "${BLUE}Loading .env for build/test environment...${NC}"
+    set -a
+    source "${SCRIPT_DIR}/.env"
+    set +a
+fi
+
 # Run tests unless skipped
 if [ "$SKIP_TESTS" = false ]; then
     echo -e "${BLUE}Running tests...${NC}"
