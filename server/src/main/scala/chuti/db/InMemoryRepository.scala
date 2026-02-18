@@ -164,6 +164,11 @@ case class InMemoryRepository(
     override def firstLogin: RepositoryIO[Option[Instant]] = ???
 
     override def isFirstLoginToday: RepositoryIO[Boolean] = ???
+
+    override def userByOAuthProvider(
+      provider:   String,
+      providerId: String
+    ): RepositoryIO[Option[User]] = ???
   }
   override val tokenOperations: TokenOperations[RepositoryIO] = new TokenOperations[RepositoryIO] {
 

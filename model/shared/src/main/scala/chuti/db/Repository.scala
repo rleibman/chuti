@@ -101,6 +101,11 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
 
   def updateWallet(userWallet: UserWallet): F[UserWallet]
 
+  def userByOAuthProvider(
+    provider:   String,
+    providerId: String
+  ): F[Option[User]]
+
 }
 
 trait TokenOperations[F[_]] {

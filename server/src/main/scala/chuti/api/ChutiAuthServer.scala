@@ -154,43 +154,44 @@ object ChutiAuthServer {
       override def userByOAuthProvider(
         provider:   String,
         providerId: String
-      ): IO[AuthError, Option[User]] = ???
-//        repo
-//          .userByOAuthProvider(provider, providerId).provide(ChutiSession.adminSession.toLayer).mapError(
-//            AuthError(_)
-//          )
+      ): IO[AuthError, Option[User]] =
+        repo
+          .userByOAuthProvider(provider, providerId).provide(ChutiSession.godSession.toLayer).mapError(
+            AuthError(_)
+          )
 
       override def createOAuthUser(
         oauthInfo:    OAuthUserInfo,
         provider:     String,
         connectionId: Option[ConnectionId]
-      ): IO[AuthError, User] = ???
-//        (for {
-//          now <- Clock.instant
-//          newUser = User(
-//            id = UserId.empty,
-//            email = oauthInfo.email,
-//            name = oauthInfo.name,
-//            created = now,
-//            active = oauthInfo.emailVerified, // Auto-activate if email is verified by OAuth provider
-//            oauth = Some(OAuthUserData(provider, oauthInfo.providerId, Some(oauthInfo.rawData.toJson)))
-//          )
-//          user <- repo.upsert(newUser)
-//        } yield user).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
+      ): IO[AuthError, User] =
+        (for {
+          now <- Clock.instant
+          newUser = User(
+            id = UserId.empty,
+            email = oauthInfo.email,
+            name = oauthInfo.name,
+            created = now,
+            lastUpdated = now,
+            active = oauthInfo.emailVerified, // Auto-activate if email is verified by OAuth provider
+            oauth = Some(OAuthUserData(provider, oauthInfo.providerId, Some(oauthInfo.rawData.toJson)))
+          )
+          user <- repo.upsert(newUser)
+        } yield user).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
       override def linkOAuthToUser(
         user:         User,
         provider:     String,
         providerId:   String,
         providerData: Json
-      ): IO[AuthError, User] = ???
-//        (for {
-//          updatedUser <- repo.upsert(
-//            user.copy(
-//              oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson)))
-//            )
-//          )
-//        } yield updatedUser).provide(ChutiSession.adminSession.toLayer).mapError(AuthError(_))
+      ): IO[AuthError, User] =
+        (for {
+          updatedUser <- repo.upsert(
+            user.copy(
+              oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson)))
+            )
+          )
+        } yield updatedUser).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
     }
   }
 

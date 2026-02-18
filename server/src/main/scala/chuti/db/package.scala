@@ -59,7 +59,8 @@ package object db {
         email = value.email,
         created = Timestamp.from(value.created).nn,
         lastUpdated = Timestamp.from(value.lastUpdated).nn,
-        active = value.active
+        active = value.active,
+        oauth = value.oauth
       )
 
   }
@@ -72,7 +73,8 @@ package object db {
     lastUpdated: Timestamp,
     active:      Boolean = false,
     deleted:     Boolean = false,
-    deletedDate: Option[Timestamp] = None
+    deletedDate: Option[Timestamp] = None,
+    oauth:       Option[OAuthUserData] = None
   ) {
 
     def toUser: User =
@@ -83,7 +85,8 @@ package object db {
         created = created.toInstant.nn,
         lastUpdated = lastUpdated.toInstant.nn,
         active = active,
-        deleted = deleted
+        deleted = deleted,
+        oauth = oauth
       )
 
   }

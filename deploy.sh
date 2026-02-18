@@ -256,9 +256,10 @@ echo "Ensuring log directory exists..."
 sudo mkdir -p /var/log/chuti-server
 sudo chown chuti:chuti /var/log/chuti-server
 
-# Install new package
+# Install new package (--force-overwrite for shared files like flyway-repair,
+# --force-confold to keep existing server config files)
 echo "Installing chuti package..."
-sudo dpkg -i /tmp/$PACKAGE_BASENAME || {
+sudo dpkg -i --force-overwrite --force-confold /tmp/$PACKAGE_BASENAME || {
     echo "Attempting to fix dependencies..."
     sudo apt-get install -f -y
 }

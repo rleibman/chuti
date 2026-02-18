@@ -16,9 +16,10 @@
 
 package chuti
 
-import java.time.Instant
 import zio.json.*
+import zio.json.ast.Json
 
+import java.time.Instant
 import java.util.Locale
 
 case class User(
@@ -27,6 +28,7 @@ case class User(
   name:        String,
   created:     Instant,
   lastUpdated: Instant,
+  oauth:       Option[OAuthUserData] = None,
   active:      Boolean = false,
   deleted:     Boolean = false,
   isAdmin:     Boolean = false,
@@ -87,5 +89,19 @@ object UserEvent {
 
   given JsonDecoder[UserEvent] = DeriveJsonDecoder.gen[UserEvent]
   given JsonEncoder[UserEvent] = DeriveJsonEncoder.gen[UserEvent]
+
+}
+
+case class OAuthUserData(
+  provider:   String, // OAuth provider name: "google", "github", etc.
+  providerId: String, // Provider's unique user ID (stable identifier)
+  data:       Option[String] = None // Additional data from OAuth provider as JSON string
+) derives JsonCodec {
+
+  // Helper to get Json AST from the string data
+  def dataAsJson: Option[Json] = data.flatMap(_.fromJson[Json].toOption)
+
+  // Helper to create from Json AST
+  def withJsonData(json: Json): OAuthUserData = copy(data = Some(json.toJson))
 
 }

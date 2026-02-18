@@ -30,6 +30,7 @@ import java.time.{Instant, ZoneId, ZoneOffset}
 import javax.mail.internet.InternetAddress
 
 object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
+
   protected val now:        Instant = java.time.Instant.parse("2022-03-11T00:00:00.00Z").nn
   protected val fixedClock: Clock = Clock.ClockJava(java.time.Clock.fixed(now, ZoneId.from(ZoneOffset.UTC)))
 
@@ -54,7 +55,13 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
         (for {
           postman <- ZIO.service[Postman]
           now     <- Clock.instant
-          testUser = User(id = UserId.empty, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
+          testUser = User(
+            id = UserId.empty,
+            email = "roberto@leibman.net",
+            name = "Roberto",
+            created = now,
+            lastUpdated = now
+          )
           // Use mock TokenHolder since the real one tries to insert a token with god's userId (-666)
           // which doesn't exist in the database. This test is about email sending, not token creation.
           envelope  <- postman.registrationEmail(testUser).provide(TokenHolder.mockLayer)

@@ -228,6 +228,11 @@ object GameClient {
     override def getWallet(userId: UserId): AsyncCallback[Option[chuti.UserWallet]] = ??? // Not in Client
 
     override def updateWallet(userWallet: chuti.UserWallet): AsyncCallback[chuti.UserWallet] = ??? // Not in client
+
+    override def userByOAuthProvider(
+      provider:   String,
+      providerId: String
+    ): AsyncCallback[Option[User]] = ??? // Not in client
   }
 
   val chat: ChatOperations[AsyncCallback] = new ChatOperations[AsyncCallback] {
