@@ -341,8 +341,8 @@ object GameService {
           }
           // Separate human and bot players
           otherJugadores = oldGame.jugadores.filter(_.id != user.id)
-          humanPlayers = otherJugadores.filter(!_.user.isBot)
-          botPlayers = otherJugadores.filter(_.user.isBot)
+          humanPlayers = otherJugadores.filter(_.jugadorType == JugadorType.human)
+          botPlayers = otherJugadores.filter(_.jugadorType != JugadorType.human)
           // Invite human players
           _ <- ZIO.foreachDiscard(humanPlayers.map(_.user)) { u =>
             inviteToGame(u.id, withFirstUser.id)
