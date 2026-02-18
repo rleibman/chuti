@@ -347,8 +347,14 @@ object GameService {
           _ <- ZIO.foreachDiscard(humanPlayers.map(_.user)) { u =>
             inviteToGame(u.id, withFirstUser.id)
           }
+          // Re-read game from DB after invitations (inviteToGame updates the game in DB)
+          afterInvites <-
+            repository.gameOperations
+              .get(withFirstUser.id).map(
+                _.getOrElse(throw GameError("No existe juego previo"))
+              )
           // Add bot players directly (no invitations needed)
-          withBots <- ZIO.foldLeft(botPlayers)(withFirstUser) {
+          withBots <- ZIO.foldLeft(botPlayers)(afterInvites) {
             (
               game,
               jugador
@@ -358,18 +364,18 @@ object GameService {
                 game.applyEvent(user, JoinGame(joinedUser = jugador.user, jugadorType = jugador.jugadorType))
               repository.gameOperations.upsert(withBot)
           }
-          afterInvites <-
+          afterAll <-
             repository.gameOperations
               .get(withBots.id).map(
                 _.getOrElse(throw GameError("No existe juego previo"))
               )
           // Update game_players table for all players
-          _ <- repository.gameOperations.updatePlayers(afterInvites)
+          _ <- repository.gameOperations.updatePlayers(afterAll)
           // If all non-invited players are in the game (bots joined, not counting invited humans), start immediately
           gameStarted <-
-            if (afterInvites.jugadores.count(!_.invited) >= afterInvites.numPlayers) {
+            if (afterAll.jugadores.count(!_.invited) >= afterAll.numPlayers) {
               // All bots have joined, start the game (human invitations still pending)
-              val (started, sopaEvent) = afterInvites
+              val (started, sopaEvent) = afterAll
                 .copy(gameStatus = GameStatus.requiereSopa)
                 .applyEvent(user, Sopa(firstSopa = true))
               for {
@@ -383,7 +389,7 @@ object GameService {
                   .forkDaemon
               } yield saved
             } else {
-              ZIO.succeed(afterInvites)
+              ZIO.succeed(afterAll)
             }
         } yield gameStarted).mapError(GameError.apply)
 
