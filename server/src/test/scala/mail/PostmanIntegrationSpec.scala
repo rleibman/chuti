@@ -17,10 +17,10 @@
 package mail
 
 import chuti.api.{*, given}
+import chuti.api.token.TokenHolder
 import chuti.mail.Postman
 import chuti.{User, UserId}
 import courier.{Envelope, Text}
-import db.quill.QuillUserSpec.fixedClock
 import zio.*
 import zio.cache.{Cache, Lookup}
 import zio.test.Assertion.*
@@ -51,18 +51,15 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
         zio.as(assert(true)(equalTo(true))).withClock(fixedClock)
       },
       test("sending a specific email") {
-        //        System.setProperty("mail.smtp.localhost", "magrathea2.leibmanland.com")
-        //        System.setProperty("mail.smtp.localaddress", "magrathea2.leibmanland.com")
-        val zio = for {
+        (for {
           postman <- ZIO.service[Postman]
           now     <- Clock.instant
-          envelope <- postman.registrationEmail(
-            User(id = UserId.empty, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
-          )
+          testUser = User(id = UserId.empty, email = "roberto@leibman.net", name = "Roberto", created = now, lastUpdated = now)
+          // Use mock TokenHolder since the real one tries to insert a token with god's userId (-666)
+          // which doesn't exist in the database. This test is about email sending, not token creation.
+          envelope  <- postman.registrationEmail(testUser).provide(TokenHolder.mockLayer)
           delivered <- postman.deliver(envelope).fork
-        } yield delivered
-
-        zio.as(assert(true)(equalTo(true))).withClock(fixedClock)
+        } yield assert(true)(equalTo(true))).withClock(fixedClock)
       }
     )
 
