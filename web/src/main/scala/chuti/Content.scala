@@ -168,6 +168,37 @@ object Content extends ChutiComponent with TimerSupport {
                   }
                 }
               shouldCelebrate
+            case e: MeRindo =>
+              import scala.scalajs.js.timers
+
+              val celebrationData = CelebrationData(
+                celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
+                winner = None,
+                scores = Map.empty,
+                bidResult = None,
+                statusString = e.gameStatusString
+              )
+              val showCelebration = $.modState(s =>
+                s.copy(chutiState =
+                  s.chutiState.copy(
+                    celebration = Some(celebrationData),
+                    currentDialog = GlobalDialog.celebration
+                  )
+                )
+              )
+
+              showCelebration >> Callback {
+                timers.setTimeout(3000) {
+                  $.modState(s =>
+                    s.copy(chutiState =
+                      s.chutiState.copy(
+                        celebration = None,
+                        currentDialog = GlobalDialog.none
+                      )
+                    )
+                  ).runNow()
+                }
+              }
             case _ => Callback.empty
           }
         }

@@ -552,15 +552,15 @@ case class ClaudeBot() extends ChutiBot {
         )
         val vulnerableMulas = nonTrumpMulas.filterNot(safeMulas.contains)
 
-        // Identify "strong" trumps: only beaten by 0-1 opponent trumps.
-        // These are near-top trumps worth leading early to clear the field.
+        // Identify "strong" trumps: guaranteed winners (no opponent trump can beat them).
+        // Only the trump mula or trumps higher than all remaining opponent trumps qualify.
         val allOpponentTrumps = analysis.trumpsRemaining
         val strongTrumps = analysis.myTrumps.filterNot(_.esMula).filter { t =>
           val myValue = t.other(num).value
           val higherNonMula = allOpponentTrumps.count(o => !o.esMula && o.other(num).value > myValue)
           val opponentHasMula = allOpponentTrumps.exists(_.esMula)
           val totalHigher = higherNonMula + (if (opponentHasMula) 1 else 0)
-          totalHigher <= 1
+          totalHigher == 0
         }
 
         // 1. If I have the highest trump, lead it (guaranteed win)
@@ -575,7 +575,7 @@ case class ClaudeBot() extends ChutiBot {
             jugador.fichas.maxBy(f => if (f.esMula) 100 else f.other(num).value)
           }
         }
-        // 3. Have strong near-top trumps — lead them first to clear opponent trumps.
+        // 3. Have guaranteed-winner trumps — lead them to clear opponent trumps.
         //    This makes subsequent mula leads safer. Lead highest strong trump.
         else if (strongTrumps.nonEmpty) {
           strongTrumps.maxBy(_.other(num).value)
@@ -584,12 +584,9 @@ case class ClaudeBot() extends ChutiBot {
         else if (safeMulas.nonEmpty) {
           safeMulas.maxBy(_.value)
         }
-        // 5. Have multiple trumps AND the highest — spend one to pull out opponents' trumps
-        else if (analysis.myTrumps.size >= 2 && analysis.iHaveHighestTrump) {
-          val sorted = analysis.myTrumps.sortBy(f => if (f.esMula) 100 else f.other(num).value)
-          sorted(sorted.size - 2) // Second from top
-        }
-        // 6. Have non-trump tiles — lead those to preserve trumps
+        // 5. Have non-trump tiles — lead those to preserve trumps.
+        //    Leading a non-trump may draw out opponent trumps naturally
+        //    (e.g. leading a 6 when the 6:trump is still out there).
         //    Avoid vulnerable mulas (the matching N:trump tile can beat them by suit).
         else if (nonTrumps.nonEmpty) {
           val safeNonTrumps = nonTrumps.filterNot(vulnerableMulas.contains)
@@ -599,7 +596,7 @@ case class ClaudeBot() extends ChutiBot {
             nonTrumps.sortBy(f => (probTileGetsBeaten(f, game, analysis), -f.value)).head
           }
         }
-        // 7. Fallback: only trumps left, lead highest
+        // 6. Fallback: only trumps left, lead highest
         else {
           jugador.fichas.maxBy(f => if (f.esMula) 100 else f.other(num).value)
         }

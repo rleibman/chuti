@@ -6,14 +6,25 @@
         </encoder>
     </appender>
 
-    <appender name="ASYNCSTDOUT" class="ch.qos.logback.classic.AsyncAppender">
-        <discardingThreshold>0</discardingThreshold>
-        <appender-ref ref="STDOUT"/>
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/chuti-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/chuti-error.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date [%level] %logger - [%X] %replace(%message){'\n', ''}%n%xException</pattern>
+        </encoder>
     </appender>
 
     <!-- Root logger - DEBUG for development, INFO for production -->
     <root level="DEBUG">
         <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="ERROR_FILE"/>
     </root>
 
     <!-- Application loggers -->
