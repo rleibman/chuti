@@ -10,9 +10,13 @@ CREATE TABLE `user`
     `created`        timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `lastUpdated`    timestamp    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `active`         tinyint(4)   NOT NULL DEFAULT '0',
-    `deleted`        tinyint(4)   NOT NULL DEFAULT '0',
-    `deletedDate`    timestamp    NULL     DEFAULT NULL,
-    PRIMARY KEY (`id`)
+    `deleted`            tinyint(4)   NOT NULL DEFAULT '0',
+    `deletedDate`        timestamp    NULL     DEFAULT NULL,
+    `oauthProvider`      varchar(50)  NULL     DEFAULT NULL,
+    `oauthProviderId`    varchar(255) NULL     DEFAULT NULL,
+    `oauthProviderData`  text         NULL     DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_oauth` (`oauthProvider`, `oauthProviderId`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
