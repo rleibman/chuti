@@ -222,7 +222,7 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
                   )
               ).map(_ > 0)
           } else {
-            ctx.run(qUsers.filter(_.id == lift(pk.value)).delete).map(_ > 0)
+            ctx.run(sql"DELETE FROM `user` WHERE id = ${lift(pk.value)}".as[Delete[UserRow]]).map(_ > 0)
           }
         }
       } yield result
@@ -379,13 +379,8 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
         deleted <- rowOpt.fold(ZIO.succeed(true): ZIO[DataSource, SQLException, Boolean])(row =>
           ctx
             .run(
-              qFriends
-                .filter(r =>
-                  (r.one == lift(row.one) && r.two == lift(row.two)) || (r.one == lift(row.two) && r.two == lift(
-                    row.one
-                  ))
-                )
-                .delete
+              sql"DELETE FROM friends WHERE (`one` = ${lift(row.one)} AND `two` = ${lift(row.two)}) OR (`one` = ${lift(row.two)} AND `two` = ${lift(row.one)})"
+                .as[Delete[FriendsRow]]
             ).map(_ > 0)
         )
       } yield deleted)
@@ -562,7 +557,10 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
           if (game.id.isEmpty)
             ZIO.fail(RepositoryError("can't update players of unsaved game")): ZIO[DataSource, RepositoryError, Long]
           else
-            ctx.run(qGamePlayers.filter(_.gameId == lift(game.id.value)).delete).mapError(RepositoryError.apply)
+            ctx
+              .run(
+                sql"DELETE FROM game_players WHERE game_id = ${lift(game.id.value)}".as[Delete[GamePlayersRow]]
+              ).mapError(RepositoryError.apply)
         _ <- ctx.run(
           insertValues(
             game.jugadores.filter(!_.user.isBot).zipWithIndex.map { case (player, index) =>
@@ -693,7 +691,7 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
               .run(qGames.filter(g => g.id == lift(pk.value) && !g.deleted).update(_.deleted -> true))
               .map(_ > 0)
           } else {
-            ctx.run(qGames.filter(_.id == lift(pk.value)).delete).map(_ > 0)
+            ctx.run(sql"DELETE FROM game WHERE id = ${lift(pk.value)}".as[Delete[GameRow]]).map(_ > 0)
           }
         }
       } yield result
@@ -718,7 +716,7 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
     override def cleanup: RepositoryIO[Boolean] =
       (for {
         now <- Clock.instant.map(a => Timestamp.from(a).nn)
-        b   <- ctx.run(quote(qTokens.filter(_.expireTime >= lift(now))).delete).map(_ > 0)
+        b   <- ctx.run(sql"DELETE FROM token WHERE expireTime >= ${lift(now)}".as[Delete[TokenRow]]).map(_ > 0)
       } yield b)
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
@@ -729,7 +727,10 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
     ): RepositoryIO[Option[User]] =
       (for {
         user <- peek(token, purpose)
-        _ <- ctx.run(qTokens.filter(t => t.tok == lift(token.tok) && t.tokenPurpose == lift(purpose.toString)).delete)
+        _ <- ctx.run(
+          sql"DELETE FROM token WHERE tok = ${lift(token.tok)} AND tokenPurpose = ${lift(purpose.toString)}"
+            .as[Delete[TokenRow]]
+        )
       } yield user)
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)
