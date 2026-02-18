@@ -260,8 +260,11 @@ case class ClaudeBot() extends ChutiBot {
       val trumpVersatility = nonGuaranteedTrumps.toDouble * 0.2
 
       val handStrength = guaranteed.toDouble + adjustedTrumpBonus + mulaBonus + trumpMulaBonus + trumpVersatility
-      // Return mulaBonus separately: it's near-certain value, not truly speculative
-      (triunfo: Triunfo, guaranteed, handStrength, mulaBonus)
+      // Track reliable (near-certain) value separately for risk-adjusted sorting.
+      // Non-trump mulas are ~85% reliable. Trump bonus from high trumps is ~70% reliable
+      // (they usually win but can be beaten by higher trump). Trump mula bonus is certain.
+      val reliableValue = guaranteed.toDouble + mulaBonus + trumpMulaBonus + adjustedTrumpBonus * 0.7
+      (triunfo: Triunfo, guaranteed, handStrength, reliableValue)
     }
 
     val sinTriunfos = {
@@ -272,8 +275,9 @@ case class ClaudeBot() extends ChutiBot {
       // Slight bonus for high non-mula tiles, but they're unreliable.
       val highNonMulas = jugador.fichas.count(f => !f.esMula && f.arriba.value >= Numero.Numero5.value)
       val handStrength = guaranteed.toDouble + highNonMulas.toDouble * 0.1
-      // No mulaBonus for SinTriunfos — mulas are already in guaranteed
-      (SinTriunfos: Triunfo, guaranteed, handStrength, 0.0)
+      // In SinTriunfos, guaranteed tricks are the reliable value
+      val reliableValue = guaranteed.toDouble
+      (SinTriunfos: Triunfo, guaranteed, handStrength, reliableValue)
     }
 
     // Sort by personality-adjusted selection score: conservative players discount
@@ -282,9 +286,8 @@ case class ClaudeBot() extends ChutiBot {
     // have strong mula support.
     val all = withTrumps :+ sinTriunfos
     all
-      .sortBy { case (_, guaranteed, handStrength, reliableMulaBonus) =>
-        val reliable = guaranteed.toDouble + reliableMulaBonus
-        val speculative = handStrength - reliable
+      .sortBy { case (_, guaranteed, handStrength, reliableValue) =>
+        val speculative = math.max(0.0, handStrength - reliableValue)
         val riskPenalty = (1.0 - personality.riskTolerance) * speculative * 0.5
         val selectionScore = handStrength - riskPenalty
         (-selectionScore, -guaranteed.toDouble)

@@ -9,4 +9,3 @@ ALTER TABLE `userWallet`  CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 ALTER TABLE `userLog`     CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ALTER TABLE `token`       CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
-ALTER DATABASE `chuti` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
