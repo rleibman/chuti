@@ -207,7 +207,7 @@ PACKAGE_SIZE=$(du -h "$PACKAGE" | cut -f1)
 echo -e "${GREEN}  Package created: ${PACKAGE_BASENAME} (${PACKAGE_SIZE})${NC}"
 
 # Extract version from package name
-VERSION=$(echo "$PACKAGE_BASENAME" | grep -oP 'chuti_\K[^_]+')
+VERSION=$(echo "$PACKAGE_BASENAME" | grep -oP 'chuti-server_\K[^_]+')
 echo -e "${BLUE}Version: ${VERSION}${NC}"
 
 # Dry run ends here

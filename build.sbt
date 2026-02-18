@@ -276,8 +276,8 @@ lazy val server = project
 
 lazy val debianSettings =
   Seq(
-    Compile / mainClass         := Some("chuti.Chuti"),
-    Debian / name               := "chuti",
+    Compile / mainClass         := Some("chuti.api.Chuti"),
+    Debian / name               := "chuti-server",
     Debian / packageDescription := "El Juego de Chuti",
     Debian / packageSummary     := "El Juego de Chuti",
     Debian / debianChangelog    := Some(file("debian/changelog")),
