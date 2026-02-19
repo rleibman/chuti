@@ -95,45 +95,6 @@ object AboutPage extends ChutiPage {
             <.tr(
               <.td(
                 <.a(
-                  ^.href := "http://akka.io",
-                  <.img(
-                    ^.src   := "https://akka.io/resources/images/akka_full_color.svg",
-                    ^.width := 50.px
-                  )
-                )
-              ),
-              <.td("Akka-http"),
-              <.td(" Modern, fast, asynchronous, streaming-first HTTP server and client.")
-            ),
-            <.tr(
-              <.td(
-                <.a(
-                  ^.href := "http://scala-slick.org",
-                  <.img(
-                    ^.src   := "https://scala-slick.org/resources/images/slick-logo.png",
-                    ^.width := 50.px
-                  )
-                )
-              ),
-              <.td("Scala Slick"),
-              <.td("Slick is a modern database query and access library for Scala.")
-            ),
-            <.tr(
-              <.td(
-                <.a(
-                  ^.href := "http://www.mysql.com",
-                  <.img(
-                    ^.src   := "https://www.mysql.com/common/logos/logo-mysql-170x115.png",
-                    ^.width := 50.px
-                  )
-                )
-              ),
-              <.td("MySql Database"),
-              <.td("MySQL is an open-source relational database management system.")
-            ),
-            <.tr(
-              <.td(
-                <.a(
                   ^.href := "http://www.scala-js.org",
                   <.img(
                     ^.src   := "https://www.scala-js.org/assets/img/scala-js-logo.svg",
@@ -177,6 +138,42 @@ object AboutPage extends ChutiPage {
               <.td(
                 "Showcasing the most amazing ScalablyTyped project, with over 8000 Scala.Js wrappers of javascript projects"
               )
+            ),
+            <.tr(
+              <.td(
+                <.a(
+                  ^.href := "https://mariadb.org",
+                  <.img(
+                    ^.src   := "https://mariadb.com/wp-content/uploads/2019/11/mariadb-logo-vert_blue-transparent.png",
+                    ^.width := 50.px
+                  )
+                )
+              ),
+              <.td("MariaDB"),
+              <.td("Open source relational database, used for game and user data persistence.")
+            ),
+            <.tr(
+              <.td(
+                <.a(
+                  ^.href := "https://getquill.io",
+                  <.img(
+                    ^.src   := "https://getquill.io/img/quill.png",
+                    ^.width := 50.px
+                  )
+                )
+              ),
+              <.td("Quill"),
+              <.td("Compile-time Language Integrated Queries for Scala.")
+            ),
+            <.tr(
+              <.td(
+                <.a(
+                  ^.href := "https://docs.langchain4j.dev",
+                  "LangChain4j"
+                )
+              ),
+              <.td("LangChain4j"),
+              <.td("Java library for integrating large language models, used for AI-powered bots.")
             )
           )
         )
@@ -185,7 +182,7 @@ object AboutPage extends ChutiPage {
     def render(): VdomElement = {
       <.div(
         <.h1("Chuti.fun"),
-        <.p("Copyright ©2020, Roberto Leibman"),
+        <.p("Copyright ©2025, Roberto Leibman"),
         renderBuildInfo,
         renderTechnologiesUsed,
         <.div(^.dangerouslySetInnerHtml := agradecimientos)
