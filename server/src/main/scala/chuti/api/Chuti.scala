@@ -101,6 +101,7 @@ object Chuti extends ZIOApp {
 
     val status = squashed match {
       case _: NotFoundError                    => Status.NotFound
+      case _: auth.InvalidToken                => Status.Unauthorized
       case e: RepositoryError if e.isTransient => Status.BadGateway
       case _: GameError                        => Status.InternalServerError
       case _ => Status.InternalServerError
@@ -110,6 +111,9 @@ object Chuti extends ZIOApp {
       case e: NotFoundError if e.path.endsWith("com.chrome.devtools.json") =>
         // Don't log this error, it's just a browser trying to access its devtools protocol
         ZIO.unit
+      case _: auth.InvalidToken =>
+        // Normal situation — user visiting without a valid session cookie
+        ZIO.logDebug("Unauthenticated request (no valid refresh cookie)")
       case _ =>
         ZIO
           .logErrorCause("Error in Chuti", original)

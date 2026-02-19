@@ -55,6 +55,8 @@ object AppRouter extends ChutiComponent {
 
   case object ChangeLogAppPage extends AppPage
 
+  case object LegalAppPage extends AppPage
+
   object DialogRenderer {
 
     class Backend(@unused $ : BackendScope[Unit, Unit]) {
@@ -313,6 +315,14 @@ object AppRouter extends ChutiComponent {
                     ) => page.setEH(AboutAppPage)(e)
                   )(
                     "Acerca de chuti.fun" // TODO I8n
+                  ),
+                  MenuItem().onClick(
+                    (
+                      e,
+                      _
+                    ) => page.setEH(LegalAppPage)(e)
+                  )(
+                    "Aviso Legal" // TODO I8n
                   )
                 )
               )
@@ -361,7 +371,8 @@ object AppRouter extends ChutiComponent {
       | staticRoute("#rules", RulesAppPage) ~> renderR(_ => RulesPage())
       | staticRoute("#userSettings", UserSettingsAppPage) ~> renderR(_ => UserSettingsPage())
       | staticRoute("#about", AboutAppPage) ~> renderR(_ => AboutPage())
-      | staticRoute("#changeLog", ChangeLogAppPage) ~> renderR(_ => ChangeLogPage()))
+      | staticRoute("#changeLog", ChangeLogAppPage) ~> renderR(_ => ChangeLogPage())
+      | staticRoute("#legal", LegalAppPage) ~> renderR(_ => LegalPage()))
       .notFound(redirectToPage(GameAppPage)(SetRouteVia.HistoryReplace))
       .renderWith(layout)
   }
