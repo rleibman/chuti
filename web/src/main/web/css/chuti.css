@@ -1365,3 +1365,254 @@ button:active {
         transform: none;
     }
 }
+
+/* ========================================
+   Mobile Responsiveness
+   ======================================== */
+
+/* Chat toggle button - hidden on desktop */
+.chatToggle {
+    display: none;
+}
+
+/* Tablet breakpoint */
+@media (max-width: 768px) {
+    .chatToggle {
+        display: inline-block;
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .header {
+        position: relative;
+    }
+
+    .innerContent.mobile {
+        grid-template-columns: 1fr;
+    }
+
+    .innerContent.mobile .header {
+        grid-column-end: span 1;
+    }
+
+    /* Chat in sidebar: fill entire height, no border/radius */
+    .ui.sidebar .chat {
+        border: none;
+        border-radius: 0;
+        height: 100%;
+        margin: 0;
+    }
+
+    .ui.sidebar .chat .messages {
+        max-height: calc(100vh - 200px);
+    }
+
+    /* Lobby: single column */
+    .lobby {
+        grid-template-columns: 1fr;
+    }
+
+    .lobbyCol1 {
+        border-right: none;
+        border-bottom: 2px solid var(--lobby-border);
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+    }
+
+    .lobbyCol2 {
+        grid-column-start: 1;
+    }
+
+    /* Scale dominos down */
+    :root {
+        --domino-height: 90px;
+        --domino-width: 45px;
+        --domino-jugado-height: 45px;
+        --domino-jugado-width: 23px;
+    }
+
+    /* Smaller text */
+    .playerName {
+        padding: 5px;
+        font-size: 0.85em;
+    }
+
+    .statusBar0, .statusBar1, .statusBar2, .statusBar3 {
+        font-size: 0.85em;
+    }
+
+    .header .user {
+        font-size: 0.85em;
+        margin-right: 50px;
+    }
+
+    /* Celebration overlay responsive */
+    .celebration-content {
+        max-width: 90vw;
+        padding: 20px;
+    }
+}
+
+/* Phone breakpoint */
+@media (max-width: 480px) {
+    :root {
+        --domino-height: 70px;
+        --domino-width: 35px;
+        --domino-jugado-height: 35px;
+        --domino-jugado-width: 18px;
+    }
+
+    /* Stack game table vertically */
+    .gameTable {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto auto;
+    }
+
+    /* Jugador 2 (opponent/top) */
+    .jugador2 {
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 1;
+    }
+
+    /* Jugador 3 (left, now horizontal row) */
+    .jugador3 {
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 2;
+        grid-row-end: span 1;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
+    .jugador3 .statusBar3 {
+        writing-mode: horizontal-tb;
+        width: auto;
+        height: auto;
+        margin-left: 0;
+        margin-right: 5px;
+    }
+
+    /* Remove rotation on jugador3 tiles */
+    .domino3 {
+        transform: none;
+        height: var(--domino-height);
+        width: var(--domino-width);
+    }
+
+    .domino3Container {
+        height: var(--domino-height);
+        width: var(--domino-width);
+    }
+
+    .dominoJugado3 {
+        transform: none;
+        height: var(--domino-jugado-height);
+        width: var(--domino-jugado-width);
+    }
+
+    .dominoJugado3Container {
+        height: var(--domino-jugado-height);
+        width: var(--domino-jugado-width);
+    }
+
+    /* fichasEnJuego (center) */
+    .fichasEnJuego {
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 3;
+        min-width: auto;
+        min-height: auto;
+        margin: 5px;
+    }
+
+    /* Jugador 1 (right, now horizontal row) */
+    .jugador1 {
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 4;
+        grid-row-end: span 1;
+    }
+
+    .jugador1 .statusBar1 {
+        writing-mode: horizontal-tb;
+        transform: none;
+        width: auto;
+        height: auto;
+        margin-right: 5px;
+    }
+
+    /* Remove rotation on jugador1 tiles */
+    .domino1 {
+        transform: none;
+        height: var(--domino-height);
+        width: var(--domino-width);
+    }
+
+    .domino1Container {
+        height: var(--domino-height);
+        width: var(--domino-width);
+    }
+
+    .dominoJugado1 {
+        transform: none;
+        height: var(--domino-jugado-height);
+        width: var(--domino-jugado-width);
+    }
+
+    .dominoJugado1Container {
+        height: var(--domino-jugado-height);
+        width: var(--domino-jugado-width);
+    }
+
+    /* Jugador 0 (self) */
+    .jugador0 {
+        grid-column-start: 1;
+        grid-column-end: span 1;
+        grid-row-start: 5;
+    }
+
+    /* Player 0 hand wraps */
+    .fichas0 {
+        flex-wrap: wrap;
+    }
+
+    /* Smaller action buttons */
+    .jugadorActionBar button {
+        font-size: 0.85em;
+        padding: 5px 8px;
+    }
+
+    .lobbyActions button {
+        height: 5em;
+        width: 7em;
+        font-size: 0.85em;
+    }
+
+    /* Disable hover-based tile lift on touch screens */
+    .domino0:hover {
+        transform: none;
+    }
+
+    .domino0.selected {
+        transform: translateY(-8px) scale(1.05);
+    }
+
+    /* Celebration responsive */
+    .celebration-content {
+        max-width: 95vw;
+        padding: 15px;
+    }
+
+    .celebration-trophy {
+        font-size: 2.5em;
+    }
+
+    .celebration-winner {
+        font-size: 1.2em;
+    }
+}

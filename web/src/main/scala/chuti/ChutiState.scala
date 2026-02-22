@@ -84,7 +84,10 @@ case class ChutiState(
   currentDialog:         GlobalDialog = GlobalDialog.none,
   muted:                 Boolean = false,
   toggleSound:           Callback = Callback.empty,
-  playSound:             String => Callback = _ => Callback.empty
+  playSound:             String => Callback = _ => Callback.empty,
+  isMobile:              Boolean = false,
+  chatSidebarOpen:       Boolean = true,
+  toggleChatSidebar:     Callback = Callback.empty
 ) {
 
   lazy val locale: Locale =

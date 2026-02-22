@@ -36,6 +36,8 @@ import scala.collection.mutable
   */
 object Content extends ChutiComponent with TimerSupport {
 
+  private val MobileBreakpoint = 768
+
   case class State(chutiState: ChutiState)
 
   class Backend($ : BackendScope[Unit, State]) {
@@ -250,6 +252,23 @@ object Content extends ChutiComponent with TimerSupport {
       }
 
     def toggleSound: Callback = $.modState(s => s.copy(chutiState = s.chutiState.copy(muted = !s.chutiState.muted)))
+
+    def toggleChatSidebar: Callback =
+      $.modState(s => s.copy(chutiState = s.chutiState.copy(chatSidebarOpen = !s.chutiState.chatSidebarOpen)))
+
+    var resizeListener: Option[scala.scalajs.js.Function1[Event, Unit]] = None
+
+    def handleResize(): Callback = {
+      val nowMobile = window.innerWidth <= MobileBreakpoint
+      $.modState { s =>
+        val wasMobile = s.chutiState.isMobile
+        val newChatOpen =
+          if (nowMobile && !wasMobile) false       // switching to mobile: close chat
+          else if (!nowMobile && wasMobile) true    // switching to desktop: open chat
+          else s.chutiState.chatSidebarOpen
+        s.copy(chutiState = s.chutiState.copy(isMobile = nowMobile, chatSidebarOpen = newChatOpen))
+      }
+    }
 
     def modGameInProgress(
       fn:       Game => Game,
@@ -482,6 +501,7 @@ object Content extends ChutiComponent with TimerSupport {
               onGameViewModeChanged = onGameViewModeChanged,
               onSessionChanged = onSessionChanged,
               toggleSound = toggleSound,
+              toggleChatSidebar = toggleChatSidebar,
               showDialog = showDialog,
               playSound = playSound,
               user = whoami,
@@ -559,15 +579,30 @@ object Content extends ChutiComponent with TimerSupport {
         } else ret
       }
 
-      State(chutiState = ChutiState(gameViewMode = gameViewMode))
+      val initialMobile = window.innerWidth <= MobileBreakpoint
+      State(chutiState = ChutiState(
+        gameViewMode = gameViewMode,
+        isMobile = initialMobile,
+        chatSidebarOpen = !initialMobile
+      ))
     }
     .backend[Backend](Backend(_))
     .renderS(_.backend.render(_))
-    .componentDidMount(_.backend.refresh(initial = true)())
+    .componentDidMount { $ =>
+      $.backend.refresh(initial = true)() >> Callback {
+        val listener: scala.scalajs.js.Function1[Event, Unit] = (_: Event) => $.backend.handleResize().runNow()
+        $.backend.resizeListener = Some(listener)
+        window.addEventListener("resize", listener)
+      }
+    }
     .componentWillUnmount($ =>
       Callback.log("Closing down gameStream and userStream") >>
         $.state.chutiState.gameStream.fold(Callback.empty)(_.close()) >>
-        $.state.chutiState.userStream.fold(Callback.empty)(_.close())
+        $.state.chutiState.userStream.fold(Callback.empty)(_.close()) >>
+        Callback {
+          $.backend.resizeListener.foreach(l => window.removeEventListener("resize", l))
+          $.backend.resizeListener = None
+        }
     )
     .build
 

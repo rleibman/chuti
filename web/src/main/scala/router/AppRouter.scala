@@ -29,6 +29,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import net.leibman.chuti.semanticUiReact.components.*
 import net.leibman.chuti.semanticUiReact.distCommonjsCollectionsMenuMenuMod.MenuProps
 import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.SemanticICONS
+import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.{overlay, right, wide}
 import pages.*
 
 import java.time.ZoneId
@@ -335,18 +336,16 @@ object AppRouter extends ChutiComponent {
         )
       }
 
-      <.div(
-        ^.className := "innerContent",
-        <.div(^.className := "header", renderMenu, DialogRenderer()),
-        resolution.render(),
-        chutiState.user.fold(EmptyVdom) { user =>
-          val channelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
-            chutiState.gameViewMode match {
-              case GameViewMode.lobby => ChannelId.lobbyChannel
-              case GameViewMode.game  => game.channelId.orElse(ChannelId.lobbyChannel)
-              case GameViewMode.none  => ChannelId.lobbyChannel
-            }
-          )
+      {
+        def channelId: ChannelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
+          chutiState.gameViewMode match {
+            case GameViewMode.lobby => ChannelId.lobbyChannel
+            case GameViewMode.game  => game.channelId.orElse(ChannelId.lobbyChannel)
+            case GameViewMode.none  => ChannelId.lobbyChannel
+          }
+        )
+
+        def chatComponent(user: chuti.User): VdomElement =
           ChatComponent(
             user,
             channelId,
@@ -357,8 +356,52 @@ object AppRouter extends ChutiComponent {
             },
             onMessage = _ => chutiState.playSound("sounds/message.mp3")
           )
+
+        if (!chutiState.isMobile) {
+          // Desktop: exact same layout as before
+          <.div(
+            ^.className := "innerContent",
+            <.div(^.className := "header", renderMenu, DialogRenderer()),
+            resolution.render(),
+            chutiState.user.fold(EmptyVdom)(chatComponent)
+          )
+        } else {
+          // Mobile: single-column with Sidebar overlay for chat
+          <.div(
+            ^.className := "innerContent mobile",
+            <.div(
+              ^.className := "header",
+              renderMenu,
+              <.div(
+                ^.className := "chatToggle",
+                Button()
+                  .compact(true)
+                  .basic(true)
+                  .onClick((_, _) => chutiState.toggleChatSidebar)(
+                    Icon().name(SemanticICONS.`comment alternate`)()
+                  )
+              ),
+              DialogRenderer()
+            ),
+            Sidebar.Pushable()(
+              Sidebar()
+                .animation(overlay)
+                .direction(right)
+                .width(wide)
+                .visible(chutiState.chatSidebarOpen)
+                .onHide((_, _) =>
+                  if (chutiState.chatSidebarOpen) chutiState.toggleChatSidebar
+                  else Callback.empty
+                )(
+                  chutiState.user.fold(EmptyVdom)(chatComponent)
+                ),
+              Sidebar.Pusher()(
+                resolution.render()
+              )
+            )
+          )
         }
-      )
+      }
     }
   }
 
