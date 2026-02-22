@@ -54,6 +54,27 @@ object Content extends ChutiComponent with TimerSupport {
         }))
       })
 
+    private def showTimedCelebration(data: CelebrationData): Callback =
+      $.modState(s =>
+        s.copy(chutiState =
+          s.chutiState.copy(
+            celebration = Some(data),
+            currentDialog = GlobalDialog.celebration
+          )
+        )
+      ) >> Callback {
+        scala.scalajs.js.timers.setTimeout(3000) {
+          $.modState(s =>
+            s.copy(chutiState =
+              s.chutiState.copy(
+                celebration = None,
+                currentDialog = GlobalDialog.none
+              )
+            )
+          ).runNow()
+        }
+      }
+
     def onGameEvent(gameEvent: GameEvent): Callback = {
       val updateGame: Callback = for {
         currentgameOpt <- $.state.map(_.chutiState.gameInProgress)
@@ -95,44 +116,22 @@ object Content extends ChutiComponent with TimerSupport {
         updateGame >> {
           gameEvent match {
             case e: TerminaJuego =>
-              import scala.scalajs.js.timers
-
-              val celebrationData = CelebrationData(
-                celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
-                winner = None,
-                scores = Map.empty,
-                bidResult = None,
-                statusString = e.gameStatusString
-              )
-              val showCelebration = $.modState(s =>
-                s.copy(chutiState =
-                  s.chutiState.copy(
-                    celebration = Some(celebrationData),
-                    currentDialog = GlobalDialog.celebration
-                  )
+              showTimedCelebration(
+                CelebrationData(
+                  celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
+                  winner = None,
+                  scores = Map.empty,
+                  bidResult = None,
+                  statusString = e.gameStatusString
                 )
               )
-
-              showCelebration >> Callback {
-                timers.setTimeout(3000) {
-                  $.modState(s =>
-                    s.copy(chutiState =
-                      s.chutiState.copy(
-                        celebration = None,
-                        currentDialog = GlobalDialog.none
-                      )
-                    )
-                  ).runNow()
-                }
-              }
             case _: TerminaPartido =>
               $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas)))
             case b: BorloteEvent =>
-              import scala.scalajs.js.timers
               import chuti.CuantasCantas.*
 
               // Campanita is only worth celebrating when the cantante bid 6 or 7
-              val shouldCelebrate: Callback = $.state
+              $.state
                 .map { s =>
                   val cantanteBid = s.chutiState.gameInProgress
                     .flatMap(_.jugadores.find(_.cantante))
@@ -142,65 +141,25 @@ object Content extends ChutiComponent with TimerSupport {
                   !isCampanita || highBid
                 }.flatMap { show =>
                   if (!show) Callback.empty
-                  else {
-                    val celebrationData = CelebrationData(
-                      components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
-                      None,
-                      Map.empty
-                    )
-                    $.modState(s =>
-                      s.copy(chutiState =
-                        s.chutiState.copy(
-                          celebration = Some(celebrationData),
-                          currentDialog = GlobalDialog.celebration
-                        )
+                  else
+                    showTimedCelebration(
+                      CelebrationData(
+                        components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
+                        None,
+                        Map.empty
                       )
-                    ) >> Callback {
-                      timers.setTimeout(3000) {
-                        $.modState(s =>
-                          s.copy(chutiState =
-                            s.chutiState.copy(
-                              celebration = None,
-                              currentDialog = GlobalDialog.none
-                            )
-                          )
-                        ).runNow()
-                      }
-                    }
-                  }
+                    )
                 }
-              shouldCelebrate
             case e: MeRindo =>
-              import scala.scalajs.js.timers
-
-              val celebrationData = CelebrationData(
-                celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
-                winner = None,
-                scores = Map.empty,
-                bidResult = None,
-                statusString = e.gameStatusString
-              )
-              val showCelebration = $.modState(s =>
-                s.copy(chutiState =
-                  s.chutiState.copy(
-                    celebration = Some(celebrationData),
-                    currentDialog = GlobalDialog.celebration
-                  )
+              showTimedCelebration(
+                CelebrationData(
+                  celebrationType = components.CelebrationOverlay.CelebrationType.RoundEnd,
+                  winner = None,
+                  scores = Map.empty,
+                  bidResult = None,
+                  statusString = e.gameStatusString
                 )
               )
-
-              showCelebration >> Callback {
-                timers.setTimeout(3000) {
-                  $.modState(s =>
-                    s.copy(chutiState =
-                      s.chutiState.copy(
-                        celebration = None,
-                        currentDialog = GlobalDialog.none
-                      )
-                    )
-                  ).runNow()
-                }
-              }
             case _ => Callback.empty
           }
         }
@@ -256,19 +215,27 @@ object Content extends ChutiComponent with TimerSupport {
     def toggleChatSidebar: Callback =
       $.modState(s => s.copy(chutiState = s.chutiState.copy(chatSidebarOpen = !s.chutiState.chatSidebarOpen)))
 
-    var resizeListener: Option[scala.scalajs.js.Function1[Event, Unit]] = None
+    var resizeListener:               Option[scala.scalajs.js.Function1[Event, Unit]] = None
+    private var resizeDebounceHandle: Option[scala.scalajs.js.timers.SetTimeoutHandle] = None
 
-    def handleResize(): Callback = {
-      val nowMobile = window.innerWidth <= MobileBreakpoint
-      $.modState { s =>
-        val wasMobile = s.chutiState.isMobile
-        val newChatOpen =
-          if (nowMobile && !wasMobile) false       // switching to mobile: close chat
-          else if (!nowMobile && wasMobile) true    // switching to desktop: open chat
-          else s.chutiState.chatSidebarOpen
-        s.copy(chutiState = s.chutiState.copy(isMobile = nowMobile, chatSidebarOpen = newChatOpen))
+    def handleResize(): Callback =
+      Callback {
+        resizeDebounceHandle.foreach(scala.scalajs.js.timers.clearTimeout)
+        resizeDebounceHandle = Some(
+          scala.scalajs.js.timers.setTimeout(150) {
+            val nowMobile = window.innerWidth <= MobileBreakpoint
+            $.modState { s =>
+              val wasMobile = s.chutiState.isMobile
+              val newChatOpen = (nowMobile, wasMobile) match {
+                case (true, false) => false // switched to mobile: close chat
+                case (false, true) => true // switched to desktop: open chat
+                case _             => s.chutiState.chatSidebarOpen
+              }
+              s.copy(chutiState = s.chutiState.copy(isMobile = nowMobile, chatSidebarOpen = newChatOpen))
+            }.runNow()
+          }
+        )
       }
-    }
 
     def modGameInProgress(
       fn:       Game => Game,
@@ -396,14 +363,6 @@ object Content extends ChutiComponent with TimerSupport {
         <.div(
           ^.key    := "contentDiv",
           ^.height := 100.pct,
-//          <.button(
-//            ^.onClick --> {
-//              playSound("filedoesntexist.mp3") >> playSound("sounds/santaclaus.mp3") >> playSound(
-//                "sounds/caete3.mp3"
-//              )
-//            },
-//            "Play"
-//          ),
           Confirm.render(),
           Toast.render(),
           AppRouter.router()
@@ -565,26 +524,22 @@ object Content extends ChutiComponent with TimerSupport {
     .builder[Unit]("content")
     .initialState {
       val modeStr = window.sessionStorage.getItem("gamePageMode")
-      val gameViewMode = {
-        val ret =
-          try GameViewMode.valueOf(modeStr)
-          catch {
-            case _: Throwable =>
-              GameViewMode.lobby
-          }
-        if (ret == GameViewMode.none) {
-          // Should not happen, but let's be sure it doesn't happen again
-          window.sessionStorage.setItem("gamePageMode", GameViewMode.lobby.toString)
-          GameViewMode.lobby
-        } else ret
-      }
+      val gameViewMode =
+        scala.util.Try(GameViewMode.valueOf(modeStr)).getOrElse(GameViewMode.lobby) match {
+          case GameViewMode.none =>
+            window.sessionStorage.setItem("gamePageMode", GameViewMode.lobby.toString)
+            GameViewMode.lobby
+          case mode => mode
+        }
 
       val initialMobile = window.innerWidth <= MobileBreakpoint
-      State(chutiState = ChutiState(
-        gameViewMode = gameViewMode,
-        isMobile = initialMobile,
-        chatSidebarOpen = !initialMobile
-      ))
+      State(chutiState =
+        ChutiState(
+          gameViewMode = gameViewMode,
+          isMobile = initialMobile,
+          chatSidebarOpen = !initialMobile
+        )
+      )
     }
     .backend[Backend](Backend(_))
     .renderS(_.backend.render(_))

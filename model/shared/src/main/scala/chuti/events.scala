@@ -345,8 +345,6 @@ final case class InviteToGame(
     user: User,
     game: Game
   ): (Game, GameEvent) = {
-    if (game.jugadores.exists(j => j.id == invited.id))
-      throw GameError("Un jugador no puede estar dos veces en el mismo juego")
     if (game.jugadores.exists(_.id == invited.id))
       throw GameError(s"Usuario ${invited.id} ya esta en el juego")
     if (game.jugadores.length == game.numPlayers)
@@ -420,17 +418,7 @@ final case class JoinGame(
   override def redoEvent(
     user: User,
     game: Game
-  ): Game =
-    processStatusMessages {
-      val done = doEvent(user, game)._1
-      if (done.canTransitionTo(GameStatus.requiereSopa)) {
-        done.copy(
-          jugadores = done.jugadores.map(_.copy(invited = false)),
-          gameStatus = GameStatus.requiereSopa
-        )
-      } else
-        done
-    }
+  ): Game = processStatusMessages(doEvent(user, game)._1)
 
 }
 
@@ -594,19 +582,14 @@ final case class Canta(
     val cantanteActual = game.jugadores.find(_.cantante).getOrElse(jugador)
     val nuevoCantante = cantanteActual.cuantasCantas.fold {
       // primer jugador cantando
-      println(s"Canta (first bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
       jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas), lastBotRationale = reasoning)
     } { cuantasCanto =>
       if (cuantasCantas.prioridad <= cuantasCanto.prioridad || cuantasCanto == CuantasCantas.CantoTodas)
         // No es suficiente para salvarlo, dejalo como esta
         cantanteActual
-      else {
+      else
         // Lo salvaste, ahora eres el cantante
-        println(
-          s"Canta (saving bid): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}"
-        )
         jugador.copy(cantante = true, mano = false, cuantasCantas = Option(cuantasCantas), lastBotRationale = reasoning)
-      }
     }
 
     val nextJugador = game.nextPlayer(jugador)
@@ -619,7 +602,6 @@ final case class Canta(
           other.copy(cantante = false, mano = false)
       if (a.id == jugador.id && cuantasCantas == CuantasCantas.Buenas) {
         // Si canto buenas márcalo asi, and preserve reasoning
-        println(s"Canta (Buenas): Setting lastBotRationale for ${jugador.user.name} = ${reasoning.map(_.take(100))}")
         a.copy(cuantasCantas = Option(CuantasCantas.Buenas), lastBotRationale = reasoning)
       } else if (a.id == nextJugador.id && !(nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas))
         // Pásale la mano al siguiente jugador, a menos que sea el ultimo jugador
@@ -628,15 +610,12 @@ final case class Canta(
         a
     }
 
-    val salvoString = if (nuevoCantante.user.id != cantanteActual.user.id) {
-      Option(
-        s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas"
-      )
-    } else
-      Option(s"${cantanteActual.user.name} canto ${
-          if (cuantasCantas == CuantasCantas.Buenas) CuantasCantas.Casa
-          else cuantasCantas
-        } ")
+    val displayedBid = if (cuantasCantas == CuantasCantas.Buenas) CuantasCantas.Casa else cuantasCantas
+    val salvoString =
+      if (nuevoCantante.user.id != cantanteActual.user.id)
+        Option(s"${nuevoCantante.user.name} salvo a ${cantanteActual.user.name}, cantando $cuantasCantas")
+      else
+        Option(s"${cantanteActual.user.name} canto $displayedBid")
 
     val newGameStatus =
       if (nextPlayer.turno || cuantasCantas == CuantasCantas.CantoTodas)
@@ -705,14 +684,11 @@ final case class Pide(
         jugadores = game.modifiedJugadores(
           _.id == jugador.id,
           { j =>
-            {
-              println(s"Pide: Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}")
-              j.copy(
-                fichas = j.dropFicha(ficha),
-                cuantasCantas = if (j.cantante) j.cuantasCantas else None,
-                lastBotRationale = reasoning
-              )
-            }
+            j.copy(
+              fichas = j.dropFicha(ficha),
+              cuantasCantas = if (j.cantante) j.cuantasCantas else None,
+              lastBotRationale = reasoning
+            )
           },
           j => j.copy(cuantasCantas = if (j.cantante) j.cuantasCantas else None)
         ) // Ya no importa quien canto que
@@ -888,12 +864,7 @@ final case class Da(
           a.copy(
             jugadores = a.modifiedJugadores(
               _.id == jugador.id,
-              j => {
-                println(
-                  s"Da (trick complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}"
-                )
-                j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
-              }
+              j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
             )
           ),
           Option(ganadorId),
@@ -907,12 +878,7 @@ final case class Da(
               enJuego = enJuego,
               jugadores = game.modifiedJugadores(
                 _.id == jugador.id,
-                j => {
-                  println(
-                    s"Da (not complete): Setting lastBotRationale for ${j.user.name} = ${reasoning.map(_.take(100))}"
-                  )
-                  j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
-                }
+                j => j.copy(fichas = j.dropFicha(ficha), lastBotRationale = reasoning)
               )
             ),
           None,
@@ -1330,10 +1296,6 @@ final case class TerminaJuego(
     val (fueHoyo, statusStr) = game.quienCanta.fold((false, "")) { j =>
       val regalados =
         game.jugadores.filter(j => !j.cantante && j.filas.nonEmpty).map(_.user.name).mkString(",")
-
-      println(
-        s"TerminaJuego: ${j.user.name} bid ${j.cuantasCantas.map(c => s"$c (numFilas=${c.numFilas})").getOrElse("nothing")}, won ${j.filas.size} filas, yaSeHizo=${j.yaSeHizo}"
-      )
 
       if (j.yaSeHizo) {
         (

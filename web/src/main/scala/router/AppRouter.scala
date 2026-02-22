@@ -336,71 +336,78 @@ object AppRouter extends ChutiComponent {
         )
       }
 
-      {
-        def channelId: ChannelId = chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
+      def channelId: ChannelId =
+        chutiState.gameInProgress.fold(ChannelId.lobbyChannel)(game =>
           chutiState.gameViewMode match {
-            case GameViewMode.lobby => ChannelId.lobbyChannel
-            case GameViewMode.game  => game.channelId.orElse(ChannelId.lobbyChannel)
-            case GameViewMode.none  => ChannelId.lobbyChannel
+            case GameViewMode.lobby | GameViewMode.none => ChannelId.lobbyChannel
+            case GameViewMode.game                      => game.channelId.orElse(ChannelId.lobbyChannel)
           }
         )
 
-        def chatComponent(user: chuti.User): VdomElement =
-          ChatComponent(
-            user,
-            channelId,
-            onPrivateMessage = { msg =>
-              Toast.info(
-                <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) // TODO I8n
-              ) >> chutiState.onRequestGameRefresh()
-            },
-            onMessage = _ => chutiState.playSound("sounds/message.mp3")
-          )
+      def chatComponent(user: chuti.User): VdomElement =
+        ChatComponent(
+          user,
+          channelId,
+          onPrivateMessage = { msg =>
+            Toast.info(
+              <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) // TODO I8n
+            ) >> chutiState.onRequestGameRefresh()
+          },
+          onMessage = _ => chutiState.playSound("sounds/message.mp3")
+        )
 
-        if (!chutiState.isMobile) {
-          // Desktop: exact same layout as before
+      if (!chutiState.isMobile) {
+        // Desktop: exact same layout as before
+        <.div(
+          ^.className := "innerContent",
+          <.div(^.className := "header", renderMenu, DialogRenderer()),
+          resolution.render(),
+          chutiState.user.fold(EmptyVdom)(chatComponent)
+        )
+      } else {
+        // Mobile: single-column with Sidebar overlay for chat
+        <.div(
+          ^.className := "innerContent mobile",
           <.div(
-            ^.className := "innerContent",
-            <.div(^.className := "header", renderMenu, DialogRenderer()),
-            resolution.render(),
-            chutiState.user.fold(EmptyVdom)(chatComponent)
-          )
-        } else {
-          // Mobile: single-column with Sidebar overlay for chat
-          <.div(
-            ^.className := "innerContent mobile",
+            ^.className := "header",
+            renderMenu,
             <.div(
-              ^.className := "header",
-              renderMenu,
-              <.div(
-                ^.className := "chatToggle",
-                Button()
-                  .compact(true)
-                  .basic(true)
-                  .onClick((_, _) => chutiState.toggleChatSidebar)(
-                    Icon().name(SemanticICONS.`comment alternate`)()
-                  )
-              ),
-              DialogRenderer()
+              ^.className := "chatToggle",
+              Button()
+                .compact(true)
+                .basic(true)
+                .onClick(
+                  (
+                    _,
+                    _
+                  ) => chutiState.toggleChatSidebar
+                )(
+                  Icon().name(SemanticICONS.`comment alternate`)()
+                )
             ),
-            Sidebar.Pushable()(
-              Sidebar()
-                .animation(overlay)
-                .direction(right)
-                .width(wide)
-                .visible(chutiState.chatSidebarOpen)
-                .onHide((_, _) =>
+            DialogRenderer()
+          ),
+          Sidebar.Pushable()(
+            Sidebar()
+              .animation(overlay)
+              .direction(right)
+              .width(wide)
+              .visible(chutiState.chatSidebarOpen)
+              .onHide(
+                (
+                  _,
+                  _
+                ) =>
                   if (chutiState.chatSidebarOpen) chutiState.toggleChatSidebar
                   else Callback.empty
-                )(
-                  chutiState.user.fold(EmptyVdom)(chatComponent)
-                ),
-              Sidebar.Pusher()(
-                resolution.render()
-              )
+              )(
+                chutiState.user.fold(EmptyVdom)(chatComponent)
+              ),
+            Sidebar.Pusher()(
+              resolution.render()
             )
           )
-        }
+        )
       }
     }
   }

@@ -113,14 +113,13 @@ object ChutiAuthServer {
 
       override def activateUser(userPK: UserId): IO[AuthError, Unit] =
         (for {
-          _    <- ZIO.logInfo(s"Activating user with PK: ${userPK.value}")
-          user <- repo.get(userPK)
-          _ <- ZIO.logInfo(s"Found user: ${user.map(u => s"${u.email} (active=${u.active})").getOrElse("NOT FOUND")}")
-          _ <- ZIO.fail(AuthBadRequest(s"user ${userPK.value} not found")).when(user.isEmpty)
-          result <- user.fold(ZIO.unit)(u =>
-            ZIO.logInfo(s"Updating user ${u.email} to active=true") *>
-              repo.upsert(u.copy(active = true)).unit
-          )
+          _ <- ZIO.logInfo(s"Activating user with PK: ${userPK.value}")
+          user <- repo
+            .get(userPK).flatMap(
+              ZIO.fromOption(_).orElseFail(AuthBadRequest(s"user ${userPK.value} not found"))
+            )
+          _ <- ZIO.logInfo(s"Updating user ${user.email} (active=${user.active}) to active=true")
+          _ <- repo.upsert(user.copy(active = true))
           _ <- ZIO.logInfo(s"User ${userPK.value} activated successfully")
         } yield ())
           .provide(ChutiSession.godSession.toLayer)
@@ -185,13 +184,10 @@ object ChutiAuthServer {
         providerId:   String,
         providerData: Json
       ): IO[AuthError, User] =
-        (for {
-          updatedUser <- repo.upsert(
-            user.copy(
-              oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson)))
-            )
-          )
-        } yield updatedUser).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
+        repo
+          .upsert(
+            user.copy(oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson))))
+          ).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
     }
   }
 

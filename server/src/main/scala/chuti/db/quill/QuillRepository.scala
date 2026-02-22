@@ -485,16 +485,19 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
       provider:   String,
       providerId: String
     ): RepositoryIO[Option[User]] =
-      assertAuth(_.user.contains(chuti.god), session => s"get ${session.user} Not authorized") *> ctx
-        .run(
-          qUsers.filter(v =>
-            !v.deleted &&
-              v.oauth.map(_.provider).contains(lift(provider)) &&
-              v.oauth.map(_.providerId).contains(lift(providerId))
+      (for {
+        _ <- assertAuth(_.user.contains(chuti.god), session => s"get ${session.user} Not authorized")
+        res <- ctx
+          .run(
+            qUsers.filter(v =>
+              !v.deleted &&
+                v.oauth.map(_.provider).contains(lift(provider)) &&
+                v.oauth.map(_.providerId).contains(lift(providerId))
+            )
           )
-        )
-        .map(_.headOption.map(_.toUser))
-        .provideLayer(dataSourceLayer)
+          .map(_.headOption.map(_.toUser))
+      } yield res)
+        .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError(_))
         .tapError(e => ZIO.logErrorCause(Cause.fail(e)))
   }
@@ -716,7 +719,7 @@ case class QuillRepository(config: AppConfig) extends ZIORepository {
     override def cleanup: RepositoryIO[Boolean] =
       (for {
         now <- Clock.instant.map(a => Timestamp.from(a).nn)
-        b   <- ctx.run(sql"DELETE FROM token WHERE expireTime >= ${lift(now)}".as[Delete[TokenRow]]).map(_ > 0)
+        b   <- ctx.run(sql"DELETE FROM token WHERE expireTime <= ${lift(now)}".as[Delete[TokenRow]]).map(_ > 0)
       } yield b)
         .provideSomeLayer[ChutiSession](dataSourceLayer)
         .mapError(RepositoryError.apply)

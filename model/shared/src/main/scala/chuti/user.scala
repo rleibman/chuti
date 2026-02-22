@@ -44,12 +44,7 @@ object User {
   given JsonCodec[Locale] =
     JsonCodec(
       JsonEncoder.string.contramap(_.toString),
-      JsonDecoder.string.mapOrFail(s =>
-        Locale.forLanguageTag(s) match {
-          case l: Locale => Right(l)
-          case null => Left(s"invalid locale $s")
-        }
-      )
+      JsonDecoder.string.mapOrFail(s => Option(Locale.forLanguageTag(s)).toRight(s"invalid locale $s"))
     )
 
   given JsonCodec[User] = JsonCodec.derived[User]
@@ -61,7 +56,7 @@ case class UserWallet(
   amount: BigDecimal = 0.0
 ) derives JsonCodec
 
-enum UserEventType derives JsonCodec {
+enum UserEventType {
 
   case Disconnected, Connected, Modified, JoinedGame, AbandonedGame
 
@@ -72,7 +67,7 @@ object UserEventType {
   given JsonDecoder[UserEventType] =
     JsonDecoder.string.mapOrFail(s =>
       values
-        .find(_.toString == s).toRight(s"No se pudo decodificar $s como CuantasCantas"): Either[String, UserEventType]
+        .find(_.toString == s).toRight(s"No se pudo decodificar $s como UserEventType"): Either[String, UserEventType]
     )
 
   given JsonEncoder[UserEventType] = JsonEncoder.string.contramap(_.toString)
