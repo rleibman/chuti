@@ -1375,8 +1375,12 @@ button:active {
     display: none;
 }
 
-/* Tablet breakpoint */
+/* =========================================
+   Tablet + Phone (max-width: 768px)
+   ========================================= */
 @media (max-width: 768px) {
+
+    /* Show the chat toggle button */
     .chatToggle {
         display: inline-block;
         position: absolute;
@@ -1389,15 +1393,34 @@ button:active {
         position: relative;
     }
 
+    /* Switch from CSS grid to flex column so Sidebar.Pushable
+       can fill remaining height and overlay correctly */
     .innerContent.mobile {
-        grid-template-columns: 1fr;
+        display: flex;
+        flex-direction: column;
     }
 
-    .innerContent.mobile .header {
-        grid-column-end: span 1;
+    /* Header takes its natural height */
+    .innerContent.mobile > .header {
+        flex: 0 0 auto;
     }
 
-    /* Chat in sidebar: fill entire height, no border/radius */
+    /* Sidebar.Pushable fills all remaining height */
+    .innerContent.mobile > .ui.pushable {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* Sidebar.Pusher scrolls independently */
+    .innerContent.mobile .ui.pusher {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Chat in sidebar: fill sidebar height */
     .ui.sidebar .chat {
         border: none;
         border-radius: 0;
@@ -1406,7 +1429,7 @@ button:active {
     }
 
     .ui.sidebar .chat .messages {
-        max-height: calc(100vh - 200px);
+        max-height: calc(100vh - 150px);
     }
 
     /* Lobby: single column */
@@ -1425,72 +1448,58 @@ button:active {
         grid-column-start: 1;
     }
 
-    /* Scale dominos down */
+    .lobbyActions button {
+        height: 5em;
+        width: 7em;
+        font-size: 0.85em;
+    }
+
+    /* Scale dominos for tablet */
     :root {
-        --domino-height: 90px;
-        --domino-width: 45px;
-        --domino-jugado-height: 45px;
-        --domino-jugado-width: 23px;
+        --domino-height: 80px;
+        --domino-width: 40px;
+        --domino-jugado-height: 40px;
+        --domino-jugado-width: 20px;
     }
 
-    /* Smaller text */
-    .playerName {
-        padding: 5px;
-        font-size: 0.85em;
-    }
-
-    .statusBar0, .statusBar1, .statusBar2, .statusBar3 {
-        font-size: 0.85em;
-    }
-
-    .header .user {
-        font-size: 0.85em;
-        margin-right: 50px;
-    }
-
-    /* Celebration overlay responsive */
-    .celebration-content {
-        max-width: 90vw;
-        padding: 20px;
-    }
-}
-
-/* Phone breakpoint */
-@media (max-width: 480px) {
-    :root {
-        --domino-height: 70px;
-        --domino-width: 35px;
-        --domino-jugado-height: 35px;
-        --domino-jugado-width: 18px;
-    }
-
-    /* Stack game table vertically */
+    /* === Game table: stack vertically === */
     .gameTable {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto auto auto;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        overflow-x: hidden;
     }
 
-    /* Jugador 2 (opponent/top) */
+    /* Visual order: top-opponent, left, center, right, self */
+    .jugador2     { order: 1; }
+    .jugador3     { order: 2; }
+    .fichasEnJuego { order: 3; }
+    .jugador1     { order: 4; }
+    .jugador0     { order: 5; }
+
+    /* Jugador 2 (top/opponent): override internal grid to flex */
     .jugador2 {
-        grid-column-start: 1;
-        grid-column-end: span 1;
-        grid-row-start: 1;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
     }
 
-    /* Jugador 3 (left, now horizontal row) */
+    .jugador2 .fichas2 {
+        justify-self: unset;
+    }
+
+    /* Jugador 3 (left → horizontal row) */
     .jugador3 {
-        grid-column-start: 1;
-        grid-column-end: span 1;
-        grid-row-start: 2;
-        grid-row-end: span 1;
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: center;
+        width: 100%;
     }
 
     .jugador3 .statusBar3 {
         writing-mode: horizontal-tb;
+        transform: none;
         width: auto;
         height: auto;
         margin-left: 0;
@@ -1520,22 +1529,24 @@ button:active {
         width: var(--domino-jugado-width);
     }
 
-    /* fichasEnJuego (center) */
+    /* fichasEnJuego (center): full width, no overflow */
     .fichasEnJuego {
-        grid-column-start: 1;
-        grid-column-end: span 1;
-        grid-row-start: 3;
-        min-width: auto;
+        width: auto;
+        max-width: 100%;
+        min-width: 0;
         min-height: auto;
-        margin: 5px;
+        margin: 5px 0;
+        align-self: unset;
+        justify-self: unset;
     }
 
-    /* Jugador 1 (right, now horizontal row) */
+    /* Jugador 1 (right → horizontal row) */
     .jugador1 {
-        grid-column-start: 1;
-        grid-column-end: span 1;
-        grid-row-start: 4;
-        grid-row-end: span 1;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        width: 100%;
     }
 
     .jugador1 .statusBar1 {
@@ -1569,11 +1580,15 @@ button:active {
         width: var(--domino-jugado-width);
     }
 
-    /* Jugador 0 (self) */
+    /* Jugador 0 (self/bottom): flex column */
     .jugador0 {
-        grid-column-start: 1;
-        grid-column-end: span 1;
-        grid-row-start: 5;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .statusBar0 {
+        width: 100%;
     }
 
     /* Player 0 hand wraps */
@@ -1587,10 +1602,19 @@ button:active {
         padding: 5px 8px;
     }
 
-    .lobbyActions button {
-        height: 5em;
-        width: 7em;
+    /* Smaller text */
+    .playerName {
+        padding: 5px;
         font-size: 0.85em;
+    }
+
+    .statusBar0, .statusBar1, .statusBar2, .statusBar3 {
+        font-size: 0.85em;
+    }
+
+    .header .user {
+        font-size: 0.85em;
+        margin-right: 50px;
     }
 
     /* Disable hover-based tile lift on touch screens */
@@ -1602,10 +1626,10 @@ button:active {
         transform: translateY(-8px) scale(1.05);
     }
 
-    /* Celebration responsive */
+    /* Celebration overlay responsive */
     .celebration-content {
-        max-width: 95vw;
-        padding: 15px;
+        max-width: 90vw;
+        padding: 20px;
     }
 
     .celebration-trophy {
@@ -1614,5 +1638,22 @@ button:active {
 
     .celebration-winner {
         font-size: 1.2em;
+    }
+}
+
+/* =========================================
+   Phone only (max-width: 480px)
+   ========================================= */
+@media (max-width: 480px) {
+    :root {
+        --domino-height: 65px;
+        --domino-width: 33px;
+        --domino-jugado-height: 33px;
+        --domino-jugado-width: 17px;
+    }
+
+    .celebration-content {
+        max-width: 95vw;
+        padding: 15px;
     }
 }
