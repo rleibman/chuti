@@ -52,7 +52,7 @@ object AIBotSpec extends ZIOSpecDefault {
     maxTokens = 500,
     timeout = Duration(30, java.util.concurrent.TimeUnit.SECONDS),
     useSystemMessage = false,
-    customModel = true
+    customModel = true,
   )
 
   // Create bots with Ref[LLMStats] via Unsafe for use in pure/mixed test contexts
@@ -64,7 +64,7 @@ object AIBotSpec extends ZIOSpecDefault {
           statsRef2 <- Ref.make(LLMStats())
         } yield (
           AIBot(testConfig, mockLLMService, statsRef1),
-          AIBot(testConfig, failingLLMService, statsRef2)
+          AIBot(testConfig, failingLLMService, statsRef2),
         )
       }.getOrThrowFiberFailure()
   }
@@ -73,7 +73,7 @@ object AIBotSpec extends ZIOSpecDefault {
   def createTestGame(
     triunfo:            Option[Triunfo] = Some(TriunfoNumero(Numero6)),
     gameStatus:         GameStatus = GameStatus.jugando,
-    botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.intermediate
+    botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.intermediate,
   ): Game = {
     val jugadores = List(
       Jugador(
@@ -85,7 +85,7 @@ object AIBotSpec extends ZIOSpecDefault {
           lastUpdated = testInstant,
           active = true,
           deleted = false,
-          isAdmin = false
+          isAdmin = false,
         ),
         jugadorType = JugadorType.human,
         fichas = List(
@@ -95,13 +95,13 @@ object AIBotSpec extends ZIOSpecDefault {
           Ficha(Numero4, Numero3), // 4:3
           Ficha(Numero2, Numero1), // 2:1
           Ficha(Numero1, Numero0), // 1:0
-          Ficha(Numero3, Numero2) // 3:2
+          Ficha(Numero3, Numero2), // 3:2
         ),
         filas = List.empty,
         mano = true,
         turno = false,
         cantante = false,
-        cuantasCantas = None
+        cuantasCantas = None,
       ),
       Jugador(
         user = User(
@@ -112,7 +112,7 @@ object AIBotSpec extends ZIOSpecDefault {
           lastUpdated = testInstant,
           active = true,
           deleted = false,
-          isAdmin = false
+          isAdmin = false,
         ),
         jugadorType = JugadorType.human,
         fichas = List(
@@ -122,13 +122,13 @@ object AIBotSpec extends ZIOSpecDefault {
           Ficha(Numero3, Numero3),
           Ficha(Numero2, Numero2),
           Ficha(Numero1, Numero1),
-          Ficha(Numero0, Numero0)
+          Ficha(Numero0, Numero0),
         ),
         filas = List.empty,
         mano = false,
         turno = false,
         cantante = true,
-        cuantasCantas = Some(Casa)
+        cuantasCantas = Some(Casa),
       ),
       Jugador(
         user = User(
@@ -139,7 +139,7 @@ object AIBotSpec extends ZIOSpecDefault {
           lastUpdated = testInstant,
           active = true,
           deleted = false,
-          isAdmin = false
+          isAdmin = false,
         ),
         jugadorType = JugadorType.human,
         fichas = List(
@@ -149,9 +149,9 @@ object AIBotSpec extends ZIOSpecDefault {
           Ficha(Numero5, Numero2),
           Ficha(Numero4, Numero2),
           Ficha(Numero4, Numero1),
-          Ficha(Numero3, Numero1)
+          Ficha(Numero3, Numero1),
         ),
-        filas = List.empty
+        filas = List.empty,
       ),
       Jugador(
         user = User(
@@ -162,7 +162,7 @@ object AIBotSpec extends ZIOSpecDefault {
           lastUpdated = testInstant,
           active = true,
           deleted = false,
-          isAdmin = false
+          isAdmin = false,
         ),
         jugadorType = JugadorType.human,
         fichas = List(
@@ -172,10 +172,10 @@ object AIBotSpec extends ZIOSpecDefault {
           Ficha(Numero5, Numero0),
           Ficha(Numero4, Numero0),
           Ficha(Numero3, Numero0),
-          Ficha(Numero2, Numero0)
+          Ficha(Numero2, Numero0),
         ),
-        filas = List.empty
-      )
+        filas = List.empty,
+      ),
     )
 
     Game(
@@ -184,7 +184,7 @@ object AIBotSpec extends ZIOSpecDefault {
       gameStatus = gameStatus,
       triunfo = triunfo,
       jugadores = jugadores,
-      botDifficultyLevel = botDifficultyLevel
+      botDifficultyLevel = botDifficultyLevel,
     )
   }
 
@@ -201,7 +201,7 @@ object AIBotSpec extends ZIOSpecDefault {
             memory.trump == TriunfoNumero(Numero6),
             memory.exhaustedNumbers.isEmpty,
             memory.scarceNumbers.isEmpty,
-            memory.playerVoids.isEmpty
+            memory.playerVoids.isEmpty,
           )
         },
         test("Intermediate difficulty tracks doubles, trumps, and voids") {
@@ -214,7 +214,7 @@ object AIBotSpec extends ZIOSpecDefault {
             memory.trump == TriunfoNumero(Numero6),
             memory.exhaustedNumbers.isEmpty, // Intermediate doesn't track exhausted
             memory.scarceNumbers.isEmpty, // Intermediate doesn't track scarcity
-            memory.playerVoids.isDefined // But does track voids
+            memory.playerVoids.isDefined, // But does track voids
           )
         },
         test("Advanced difficulty tracks everything") {
@@ -229,12 +229,12 @@ object AIBotSpec extends ZIOSpecDefault {
                       Ficha(Numero6, Numero6),
                       Ficha(Numero6, Numero5),
                       Ficha(Numero6, Numero4),
-                      Ficha(Numero6, Numero3)
-                    )
-                  )
-                )
-              )
-            )
+                      Ficha(Numero6, Numero3),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           )
           val jugador = gameWithPlayedTiles.jugadores.head
 
@@ -246,7 +246,7 @@ object AIBotSpec extends ZIOSpecDefault {
             memory.scarceNumbers.isDefined,
             memory.playerVoids.isDefined,
             memory.trumpsSeen.nonEmpty,
-            memory.doublesSeen.nonEmpty
+            memory.doublesSeen.nonEmpty,
           )
         },
         test("Void inference detects when player didn't follow suit") {
@@ -255,8 +255,8 @@ object AIBotSpec extends ZIOSpecDefault {
           val gameWithTrick = game.copy(
             enJuego = List(
               (UserId(1), Ficha(Numero6, Numero5)), // Player 1 leads with 6
-              (UserId(2), Ficha(Numero4, Numero3)) // Player 2 plays non-6 (has void)
-            )
+              (UserId(2), Ficha(Numero4, Numero3)), // Player 2 plays non-6 (has void)
+            ),
           )
           val jugador = gameWithTrick.jugadores.head
 
@@ -267,9 +267,9 @@ object AIBotSpec extends ZIOSpecDefault {
               voids.exists { case (j, nums) =>
                 j.user.id == UserId(2) && nums.contains(Numero6)
               }
-            }
+            },
           )
-        }
+        },
       ),
       suite("Special Chuti Detection")(
         test("Detects consecutive sixes + doubles") {
@@ -280,15 +280,15 @@ object AIBotSpec extends ZIOSpecDefault {
             Ficha(Numero5, Numero5), // 5:5 double
             Ficha(Numero4, Numero4), // 4:4 double
             Ficha(Numero3, Numero3), // 3:3 double
-            Ficha(Numero2, Numero2) // 2:2 double
+            Ficha(Numero2, Numero2), // 2:2 double
           )
 
           val game = createTestGame(gameStatus = GameStatus.cantando)
           val gameWithSpecialHand = game.copy(
             jugadores = game.jugadores.updated(
               0,
-              game.jugadores.head.copy(fichas = specialHand, turno = true)
-            )
+              game.jugadores.head.copy(fichas = specialHand, turno = true),
+            ),
           )
           val jugador = gameWithSpecialHand.jugadores.head
 
@@ -296,7 +296,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.canta(jugador, gameWithSpecialHand)
           } yield assertTrue(
             decision.isInstanceOf[Canta],
-            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas
+            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas,
           )
         },
         test("Detects all 6 top doubles + 1:0") {
@@ -307,15 +307,15 @@ object AIBotSpec extends ZIOSpecDefault {
             Ficha(Numero3, Numero3),
             Ficha(Numero2, Numero2),
             Ficha(Numero1, Numero1),
-            Ficha(Numero1, Numero0)
+            Ficha(Numero1, Numero0),
           )
 
           val game = createTestGame(gameStatus = GameStatus.cantando)
           val gameWithSpecialHand = game.copy(
             jugadores = game.jugadores.updated(
               0,
-              game.jugadores.head.copy(fichas = specialHand, turno = true)
-            )
+              game.jugadores.head.copy(fichas = specialHand, turno = true),
+            ),
           )
           val jugador = gameWithSpecialHand.jugadores.head
 
@@ -323,7 +323,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.canta(jugador, gameWithSpecialHand)
           } yield assertTrue(
             decision.isInstanceOf[Canta],
-            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas
+            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas,
           )
         },
         test("Detects 5 trumps + 1:1 + 1:0 (campanita base)") {
@@ -334,15 +334,15 @@ object AIBotSpec extends ZIOSpecDefault {
             Ficha(Numero6, Numero3),
             Ficha(Numero6, Numero2),
             Ficha(Numero1, Numero1),
-            Ficha(Numero1, Numero0)
+            Ficha(Numero1, Numero0),
           )
 
           val game = createTestGame(gameStatus = GameStatus.cantando)
           val gameWithSpecialHand = game.copy(
             jugadores = game.jugadores.updated(
               0,
-              game.jugadores.head.copy(fichas = specialHand, turno = true)
-            )
+              game.jugadores.head.copy(fichas = specialHand, turno = true),
+            ),
           )
           val jugador = gameWithSpecialHand.jugadores.head
 
@@ -350,23 +350,23 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.canta(jugador, gameWithSpecialHand)
           } yield assertTrue(
             decision.isInstanceOf[Canta],
-            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas
+            decision.asInstanceOf[Canta].cuantasCantas == CantoTodas,
           )
-        }
+        },
       ),
       suite("JSON Serialization")(
         test("toSimplifiedJson for Canta includes cuantasCantas") {
           val canta = Canta(
             cuantasCantas = Casa,
             gameId = GameId(1),
-            userId = UserId(1)
+            userId = UserId(1),
           )
 
           val jsonResult = testBot.toSimplifiedJson(canta)
 
           assertTrue(
             jsonResult.isRight,
-            jsonResult.exists(_.toString.contains("\"cuantasCantas\""))
+            jsonResult.exists(_.toString.contains("\"cuantasCantas\"")),
           )
         },
         test("toSimplifiedJson for Pide includes ficha and trump") {
@@ -375,7 +375,7 @@ object AIBotSpec extends ZIOSpecDefault {
             triunfo = Some(TriunfoNumero(Numero6)),
             estrictaDerecha = false,
             gameId = GameId(1),
-            userId = UserId(1)
+            userId = UserId(1),
           )
 
           val jsonResult = testBot.toSimplifiedJson(pide)
@@ -384,22 +384,22 @@ object AIBotSpec extends ZIOSpecDefault {
             jsonResult.isRight,
             jsonResult.exists(json =>
               json.toString.contains("\"ficha\"") &&
-                json.toString.contains("\"trump\"")
-            )
+                json.toString.contains("\"trump\""),
+            ),
           )
         },
         test("toSimplifiedJson for Da includes ficha") {
           val da = Da(
             ficha = Ficha(Numero6, Numero5),
             gameId = GameId(1),
-            userId = UserId(1)
+            userId = UserId(1),
           )
 
           val jsonResult = testBot.toSimplifiedJson(da)
 
           assertTrue(
             jsonResult.isRight,
-            jsonResult.exists(_.toString.contains("\"ficha\""))
+            jsonResult.exists(_.toString.contains("\"ficha\"")),
           )
         },
         test("fromSimplifiedJson parses Canta correctly") {
@@ -411,7 +411,7 @@ object AIBotSpec extends ZIOSpecDefault {
             playEvent <- testBot.fromSimplifiedJson(json, game, jugador)
           } yield assertTrue(
             playEvent.isInstanceOf[Canta],
-            playEvent.asInstanceOf[Canta].cuantasCantas == Casa
+            playEvent.asInstanceOf[Canta].cuantasCantas == Casa,
           )
         },
         test("fromSimplifiedJson parses Pide correctly") {
@@ -424,7 +424,7 @@ object AIBotSpec extends ZIOSpecDefault {
             playEvent <- testBot.fromSimplifiedJson(json, game, jugador)
           } yield assertTrue(
             playEvent.isInstanceOf[Pide],
-            playEvent.asInstanceOf[Pide].ficha == Ficha(Numero6, Numero5)
+            playEvent.asInstanceOf[Pide].ficha == Ficha(Numero6, Numero5),
           )
         },
         test("fromSimplifiedJson parses Da correctly") {
@@ -436,9 +436,9 @@ object AIBotSpec extends ZIOSpecDefault {
             playEvent <- testBot.fromSimplifiedJson(json, game, jugador)
           } yield assertTrue(
             playEvent.isInstanceOf[Da],
-            playEvent.asInstanceOf[Da].ficha == Ficha(Numero6, Numero5)
+            playEvent.asInstanceOf[Da].ficha == Ficha(Numero6, Numero5),
           )
-        }
+        },
       ),
       suite("Bidding Logic")(
         test("Auto-bids Casa for weak hands when turno") {
@@ -449,15 +449,15 @@ object AIBotSpec extends ZIOSpecDefault {
             Ficha(Numero4, Numero0),
             Ficha(Numero5, Numero0),
             Ficha(Numero6, Numero0),
-            Ficha(Numero2, Numero1)
+            Ficha(Numero2, Numero1),
           )
 
           val game = createTestGame(gameStatus = GameStatus.cantando)
           val gameWithWeakHand = game.copy(
             jugadores = game.jugadores.updated(
               0,
-              game.jugadores.head.copy(fichas = weakHand, turno = true)
-            )
+              game.jugadores.head.copy(fichas = weakHand, turno = true),
+            ),
           )
           val jugador = gameWithWeakHand.jugadores.head
 
@@ -465,7 +465,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.canta(jugador, gameWithWeakHand)
           } yield assertTrue(
             decision.isInstanceOf[Canta],
-            decision.asInstanceOf[Canta].cuantasCantas == Casa
+            decision.asInstanceOf[Canta].cuantasCantas == Casa,
           )
         },
         test("Auto-bids Buenas when hand is weaker than current bid") {
@@ -474,7 +474,7 @@ object AIBotSpec extends ZIOSpecDefault {
             jugadores = game.jugadores
               .updated(
                 0,
-                game.jugadores.head.copy(cuantasCantas = Some(Canto6), turno = false)
+                game.jugadores.head.copy(cuantasCantas = Some(Canto6), turno = false),
               ).updated(
                 1,
                 game
@@ -486,11 +486,11 @@ object AIBotSpec extends ZIOSpecDefault {
                       Ficha(Numero4, Numero0),
                       Ficha(Numero5, Numero0),
                       Ficha(Numero6, Numero0),
-                      Ficha(Numero2, Numero1)
+                      Ficha(Numero2, Numero1),
                     ),
-                    turno = false
-                  )
-              )
+                    turno = false,
+                  ),
+              ),
           )
           val jugador = gameWithBid.jugadores(1)
 
@@ -498,7 +498,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.canta(jugador, gameWithBid)
           } yield assertTrue(
             decision.isInstanceOf[Canta],
-            decision.asInstanceOf[Canta].cuantasCantas == Buenas
+            decision.asInstanceOf[Canta].cuantasCantas == Buenas,
           )
         },
         test("Uses LLM for ambiguous bidding decisions") {
@@ -515,10 +515,10 @@ object AIBotSpec extends ZIOSpecDefault {
                   Ficha(Numero4, Numero4),
                   Ficha(Numero3, Numero3),
                   Ficha(Numero2, Numero2),
-                  Ficha(Numero1, Numero1)
-                )
-              )
-            )
+                  Ficha(Numero1, Numero1),
+                ),
+              ),
+            ),
           )
           val jugador = gameForLLM.jugadores.head
 
@@ -527,9 +527,9 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertTrue(
             decision.isInstanceOf[Canta],
             // LLM should return valid bid
-            decision.asInstanceOf[Canta].cuantasCantas.numFilas >= 4
+            decision.asInstanceOf[Canta].cuantasCantas.numFilas >= 4,
           )
-        }
+        },
       ),
       suite("Auto-Decision Logic")(
         test("Auto-plays when only one legal tile in Da") {
@@ -540,9 +540,9 @@ object AIBotSpec extends ZIOSpecDefault {
               0,
               game.jugadores.head.copy(
                 fichas = List(Ficha(Numero6, Numero6)), // Only one tile with 6
-                mano = false
-              )
-            )
+                mano = false,
+              ),
+            ),
           )
           val jugador = gameWithSingleOption.jugadores.head
 
@@ -552,7 +552,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision.isInstanceOf[Da],
             decision.asInstanceOf[Da].ficha == Ficha(Numero6, Numero6),
             decision
-              .asInstanceOf[Da].reasoning.exists(r => r.contains("No thinking needed") || r.contains("Only one legal"))
+              .asInstanceOf[Da].reasoning.exists(r => r.contains("No thinking needed") || r.contains("Only one legal")),
           )
         },
         test("Auto-plays lowest tile when can't follow or trump") {
@@ -565,12 +565,12 @@ object AIBotSpec extends ZIOSpecDefault {
                 fichas = List(
                   Ficha(Numero1, Numero0), // Lowest
                   Ficha(Numero2, Numero1),
-                  Ficha(Numero3, Numero2)
+                  Ficha(Numero3, Numero2),
                 ), // No 6s, no trumps
                 mano = false,
-                cantante = false
-              )
-            )
+                cantante = false,
+              ),
+            ),
           )
           val jugador = gameNoFollow.jugadores.head
 
@@ -578,9 +578,9 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.da(jugador, gameNoFollow)
           } yield assertTrue(
             decision.isInstanceOf[Da],
-            decision.asInstanceOf[Da].ficha == Ficha(Numero1, Numero0) // Should play lowest
+            decision.asInstanceOf[Da].ficha == Ficha(Numero1, Numero0), // Should play lowest
           )
-        }
+        },
       ),
       suite("Surrender Logic")(
         test("Surrenders when mathematically impossible to make bid") {
@@ -595,14 +595,14 @@ object AIBotSpec extends ZIOSpecDefault {
                   Ficha(Numero3, Numero0),
                   Ficha(Numero4, Numero0),
                   Ficha(Numero5, Numero0),
-                  Ficha(Numero2, Numero1) // 6 tiles = after first trick
+                  Ficha(Numero2, Numero1), // 6 tiles = after first trick
                 ),
                 filas = List.empty, // Won 0 tricks
                 cantante = true,
                 cuantasCantas = Some(Canto6), // Need 6 tricks, only 6 tiles left, no way to win
-                mano = true
-              )
-            )
+                mano = true,
+              ),
+            ),
           )
           val jugador = impossibleGame.jugadores.head
 
@@ -610,7 +610,7 @@ object AIBotSpec extends ZIOSpecDefault {
             decision <- testBot.pide(jugador, impossibleGame)
           } yield assertTrue(
             decision.isInstanceOf[MeRindo],
-            decision.asInstanceOf[MeRindo].reasoning.exists(_.contains("Surrender"))
+            decision.asInstanceOf[MeRindo].reasoning.exists(_.contains("Surrender")),
           )
         },
         test("Doesn't surrender when bid is still achievable") {
@@ -624,23 +624,23 @@ object AIBotSpec extends ZIOSpecDefault {
                   Ficha(Numero6, Numero5),
                   Ficha(Numero6, Numero4),
                   Ficha(Numero6, Numero3),
-                  Ficha(Numero6, Numero2)
+                  Ficha(Numero6, Numero2),
                 ),
                 filas = List.empty,
                 cantante = true,
                 cuantasCantas = Some(Casa), // Need 4 tricks, have strong hand
-                mano = true
-              )
-            )
+                mano = true,
+              ),
+            ),
           )
           val jugador = achievableGame.jugadores.head
 
           for {
             decision <- testBot.pide(jugador, achievableGame)
           } yield assertTrue(
-            !decision.isInstanceOf[MeRindo]
+            !decision.isInstanceOf[MeRindo],
           )
-        }
+        },
       ),
       suite("Error Handling")(
         test("Falls back to DumbBot on LLM failure") {
@@ -657,10 +657,10 @@ object AIBotSpec extends ZIOSpecDefault {
                   Ficha(Numero4, Numero4),
                   Ficha(Numero3, Numero3),
                   Ficha(Numero2, Numero2),
-                  Ficha(Numero1, Numero1)
-                )
-              )
-            )
+                  Ficha(Numero1, Numero1),
+                ),
+              ),
+            ),
           )
           val jugador = gameWithGoodHand.jugadores.head
 
@@ -669,7 +669,7 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertTrue(
             decision.isInstanceOf[Canta],
             // Should still get a valid decision from DumbBot fallback
-            decision.asInstanceOf[Canta].cuantasCantas.numFilas >= 4
+            decision.asInstanceOf[Canta].cuantasCantas.numFilas >= 4,
           )
         },
         test("Handles invalid JSON gracefully") {
@@ -681,9 +681,9 @@ object AIBotSpec extends ZIOSpecDefault {
             result <- testBot.fromSimplifiedJson(invalidJson, game, jugador).either
           } yield assertTrue(
             result.isLeft,
-            result.left.exists(_.msg.contains("Unsupported"))
+            result.left.exists(_.msg.contains("Unsupported")),
           )
-        }
+        },
       ),
       suite("Tile Value Calculation")(
         test("Correctly values trump doubles highest") {
@@ -695,25 +695,25 @@ object AIBotSpec extends ZIOSpecDefault {
           val gameForValue = game.copy(
             enJuego = List(
               (UserId(2), Ficha(Numero6, Numero6)), // Trump double
-              (UserId(3), Ficha(Numero6, Numero5)) // Trump non-double
+              (UserId(3), Ficha(Numero6, Numero5)), // Trump non-double
             ),
             jugadores = game.jugadores.updated(
               0,
               game.jugadores.head.copy(
                 fichas = List(Ficha(Numero5, Numero5)), // Non-trump double
-                mano = false
-              )
-            )
+                mano = false,
+              ),
+            ),
           )
 
           // The bot should recognize it can't beat the trump double
           for {
             decision <- testBot.da(jugador, gameForValue)
           } yield assertTrue(
-            decision.isInstanceOf[Da]
+            decision.isInstanceOf[Da],
             // Bot should play its tile (can't win anyway)
           )
-        }
+        },
       ),
       suite("Integration")(
         test("Completes full bidding round") {
@@ -725,7 +725,7 @@ object AIBotSpec extends ZIOSpecDefault {
           } yield assertTrue(
             bid1.isInstanceOf[Canta],
             bid1.asInstanceOf[Canta].cuantasCantas.numFilas >= 4,
-            bid1.asInstanceOf[Canta].cuantasCantas.numFilas <= 7
+            bid1.asInstanceOf[Canta].cuantasCantas.numFilas <= 7,
           )
         },
         test("Handles complete trick sequence") {
@@ -738,12 +738,12 @@ object AIBotSpec extends ZIOSpecDefault {
             // Should be a valid Pide or Caete
             _ <- ZIO.succeed(
               assertTrue(
-                pideDecision.isInstanceOf[Pide] || pideDecision.isInstanceOf[Caete]
-              )
+                pideDecision.isInstanceOf[Pide] || pideDecision.isInstanceOf[Caete],
+              ),
             )
           } yield assertCompletes
-        }
-      )
+        },
+      ),
     ).@@(TestAspect.withLiveClock)
 
 }

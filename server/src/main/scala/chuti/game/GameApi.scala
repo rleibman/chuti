@@ -45,22 +45,22 @@ object GameApi {
 
   case class PlayArgs(
     gameId:    GameId,
-    gameEvent: Json
+    gameEvent: Json,
   ) derives ArgBuilder
   case class GameInviteArgs(
     userId: UserId,
-    gameId: GameId
+    gameId: GameId,
   ) derives ArgBuilder
 
   case class GameStreamArgs(
     gameId:       GameId,
     connectionId: ConnectionId,
-    token:        String
+    token:        String,
   ) derives ArgBuilder
 
   case class UserStreamArgs(
     connectionId: ConnectionId,
-    token:        String
+    token:        String,
   ) derives ArgBuilder
 
   case class NewGameArgs(satoshiPerPoint: Long) derives ArgBuilder
@@ -68,7 +68,7 @@ object GameApi {
   case class InviteByEmailArgs(
     name:   String,
     email:  String,
-    gameId: GameId
+    gameId: GameId,
   ) derives ArgBuilder
 
   case class Queries(
@@ -79,7 +79,7 @@ object GameApi {
     getLoggedInUsers:       ZIO[GameService & GameEnvironment & ChutiSession, GameError, Seq[User]],
     getHistoricalUserGames: ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
     getWallet:              ZIO[GameService & GameEnvironment & ChutiSession, GameError, Option[UserWallet]],
-    isFirstLoginToday:      ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean]
+    isFirstLoginToday:      ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
   )
   case class Mutations(
     newGame:               NewGameArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
@@ -95,19 +95,19 @@ object GameApi {
     friend:                      UserId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
     unfriend:                    UserId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
     play:                        PlayArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
-    changePassword:              String => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean]
+    changePassword:              String => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
   )
   case class Subscriptions(
     gameStream: GameStreamArgs => ZStream[
       GameService & ZIORepository & AuthConfig & AuthServer[User, UserId, ConnectionId],
       GameError,
-      Json
+      Json,
     ],
     userStream: UserStreamArgs => ZStream[
       GameService & ZIORepository & AuthConfig & AuthServer[User, UserId, ConnectionId],
       GameError,
-      UserEvent
-    ]
+      UserEvent,
+    ],
   )
 
   private given Schema[Any, GameId] = Schema.longSchema.contramap(_.value)
@@ -128,12 +128,12 @@ object GameApi {
       Locale.forLanguageTag(s) match {
         case l: Locale => Right(l)
         case null => Left(CalibanError.ExecutionError(s"invalid locale $s"))
-      }
+      },
     )
 
   def sanitizeGame(
     game: Game,
-    user: User
+    user: User,
   ): Game =
     game.copy(
       jugadores = game.modifiedJugadores(
@@ -141,18 +141,18 @@ object GameApi {
         identity,
         j =>
           j.copy(
-            fichas = j.fichas.map(_ => FichaTapada)
+            fichas = j.fichas.map(_ => FichaTapada),
             //            , // No tapa probablemente tengamos que taparlas
             //            filas = j.filas.map(f => f.copy(fichas = f.fichas.map(_ => FichaTapada)))
-          )
-      )
+          ),
+      ),
     )
 
   def sanitizeGame(game: Game): ZIO[ChutiSession, GameError, Game] =
     for {
       user <- ZIO
         .serviceWith[ChutiSession](_.user).someOrFail(
-          RepositoryError("User is required for this operation")
+          RepositoryError("User is required for this operation"),
         )
     } yield sanitizeGame(game, user)
 
@@ -160,7 +160,7 @@ object GameApi {
   private val gameErrorHandler: ExecutionWrapper[Any] = new ExecutionWrapper[Any] {
 
     def wrap[R1 <: Any](
-      f: ExecutionRequest => ZIO[R1, Nothing, GraphQLResponse[CalibanError]]
+      f: ExecutionRequest => ZIO[R1, Nothing, GraphQLResponse[CalibanError]],
     ): ExecutionRequest => ZIO[R1, Nothing, GraphQLResponse[CalibanError]] =
       request =>
         f(request).map { response =>
@@ -175,7 +175,7 @@ object GameApi {
                   case None => e
                 }
               case other => other
-            }
+            },
           )
         }
 
@@ -186,7 +186,7 @@ object GameApi {
       ChutiEnvironment & ChutiSession & GameService & ChatService,
       Queries,
       Mutations,
-      Subscriptions
+      Subscriptions,
     ](
       RootResolver(
         Queries(
@@ -195,14 +195,14 @@ object GameApi {
               gameOpt   <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.get(gameId))
               sanitized <- ZIO.foreach(gameOpt)(sanitizeGame)
               json <- sanitized.fold(ZIO.succeed(Json.Null))(game =>
-                ZIO.fromEither(game.toJsonAST).mapError(GameError.apply)
+                ZIO.fromEither(game.toJsonAST).mapError(GameError.apply),
               )
             } yield json,
           getGameForUser = for {
             gameOpt   <- ZIO.serviceWithZIO[ZIORepository](_.gameOperations.getGameForUser)
             sanitized <- ZIO.foreach(gameOpt)(sanitizeGame)
             json <- sanitized.fold(ZIO.succeed(Json.Null))(game =>
-              ZIO.fromEither(game.toJsonAST).mapError(GameError.apply)
+              ZIO.fromEither(game.toJsonAST).mapError(GameError.apply),
             )
           } yield json,
           getFriends = ZIO.serviceWithZIO[ZIORepository](_.userOperations.friends),
@@ -218,7 +218,7 @@ object GameApi {
             json    <- ZIO.fromEither(games.toJsonAST).mapError(GameError.apply)
           } yield json,
           getWallet = ZIO.serviceWithZIO[ZIORepository](_.userOperations.getWallet),
-          isFirstLoginToday = ZIO.serviceWithZIO[ZIORepository](_.userOperations.isFirstLoginToday)
+          isFirstLoginToday = ZIO.serviceWithZIO[ZIORepository](_.userOperations.isFirstLoginToday),
         ),
         Mutations(
           newGame = newGameArgs =>
@@ -246,8 +246,8 @@ object GameApi {
               _.inviteByEmail(
                 inviteByEmailArgs.name,
                 inviteByEmailArgs.email,
-                inviteByEmailArgs.gameId
-              )
+                inviteByEmailArgs.gameId,
+              ),
             ),
           startGame = gameId => ZIO.serviceWithZIO[GameService](_.startGame(gameId)),
           acceptGameInvitation = gameId =>
@@ -267,7 +267,7 @@ object GameApi {
               played <- ZIO.serviceWithZIO[GameService](_.playSilently(playArgs.gameId, event))
             } yield played,
           changePassword =
-            newPassword => ZIO.serviceWithZIO[ZIORepository](_.userOperations.changePassword(newPassword))
+            newPassword => ZIO.serviceWithZIO[ZIORepository](_.userOperations.changePassword(newPassword)),
         ),
         Subscriptions(
           gameStream = gameStreamArgs =>
@@ -277,13 +277,13 @@ object GameApi {
                 sessionLayer <- authServer
                   .sessionLayerFromToken(
                     gameStreamArgs.token,
-                    Some(gameStreamArgs.connectionId)
+                    Some(gameStreamArgs.connectionId),
                   ).mapError(e => GameError(e.getMessage))
               } yield ZStream
                 .serviceWithStream[GameService](
                   _.gameStream(gameStreamArgs.gameId, gameStreamArgs.connectionId)
-                    .flatMap(event => ZStream.fromZIOOption(ZIO.fromOption(event.toJsonAST.toOption)))
-                ).provideSomeLayer[GameService & ZIORepository](sessionLayer)
+                    .flatMap(event => ZStream.fromZIOOption(ZIO.fromOption(event.toJsonAST.toOption))),
+                ).provideSomeLayer[GameService & ZIORepository](sessionLayer),
             ),
           userStream = userStreamArgs =>
             ZStream.unwrap(
@@ -292,15 +292,15 @@ object GameApi {
                 sessionLayer <- authServer
                   .sessionLayerFromToken(
                     userStreamArgs.token,
-                    Some(userStreamArgs.connectionId)
+                    Some(userStreamArgs.connectionId),
                   ).mapError(e => GameError(e.getMessage))
               } yield ZStream
                 .serviceWithStream[GameService](
-                  _.userStream(userStreamArgs.connectionId)
-                ).provideSomeLayer[GameService & ZIORepository](sessionLayer)
-            )
-        )
-      )
+                  _.userStream(userStreamArgs.connectionId),
+                ).provideSomeLayer[GameService & ZIORepository](sessionLayer),
+            ),
+        ),
+      ),
     ) @@ maxFields(50)
       @@ maxDepth(30)
       @@ printErrors

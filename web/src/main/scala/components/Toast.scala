@@ -48,7 +48,7 @@ object Toast {
     className: String = "toast",
     message:   VdomNode = "",
     position:  (VerticalPosition, HorizontalPosition) = (top, right),
-    onClose:   () => Callback = { () => Callback.empty }
+    onClose:   () => Callback = { () => Callback.empty },
   )
 
   private[Toast] case class ToastState(toasts: Seq[Toast] = Seq.empty)
@@ -62,7 +62,7 @@ object Toast {
       duration:  Duration = 6 seconds,
       position:  (VerticalPosition, HorizontalPosition) = (top, right),
       autoHide:  Boolean = true,
-      onClose:   () => Callback = { () => Callback.empty }
+      onClose:   () => Callback = { () => Callback.empty },
     ): Callback = {
       val newToast = Toast(icon, className, message, position, onClose)
       val ret = $.modState(s => s.copy(toasts = s.toasts :+ newToast))
@@ -105,8 +105,8 @@ object Toast {
                   <.div(
                     Icon()
                       .className("icon")
-                      .name(toast.icon.getOrElse(SemanticICONS.asterisk))()
-                  )
+                      .name(toast.icon.getOrElse(SemanticICONS.asterisk))(),
+                  ),
                 ),
                 <.div(^.className := "textRegion", toast.message),
                 <.div(
@@ -115,15 +115,15 @@ object Toast {
                   ^.onClick --> {
                     $.modState(
                       s => s.copy(toasts = s.toasts.filter(_ != toast)),
-                      toast.onClose()
+                      toast.onClose(),
                     )
                   },
                   Icon().name(SemanticICONS.close)(),
-                  <.span(^.className := "closeSpan", "Close")
-                )
+                  <.span(^.className := "closeSpan", "Close"),
+                ),
               )
             }
-          }
+          },
         )
       }
 
@@ -146,7 +146,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose:  () => Callback = { () => Callback.empty }
+    onClose:  () => Callback = { () => Callback.empty },
   ): Callback = toast(message, SemanticICONS.`warning sign`, "warning", duration, position, autoHide, onClose)
 
   def info(
@@ -154,7 +154,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose:  () => Callback = { () => Callback.empty }
+    onClose:  () => Callback = { () => Callback.empty },
   ): Callback = toast(message, SemanticICONS.`info circle`, "info", duration, position, autoHide, onClose)
 
   def success(
@@ -162,7 +162,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose:  () => Callback = { () => Callback.empty }
+    onClose:  () => Callback = { () => Callback.empty },
   ): Callback = toast(message, SemanticICONS.check, "success", duration, position, autoHide, onClose)
 
   def error(
@@ -170,7 +170,7 @@ object Toast {
     duration: Duration = 6 seconds,
     position: (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide: Boolean = true,
-    onClose:  () => Callback = { () => Callback.empty }
+    onClose:  () => Callback = { () => Callback.empty },
   ): Callback = toast(message, SemanticICONS.fire, "error", duration, position, autoHide, onClose)
 
   def toast(
@@ -180,11 +180,11 @@ object Toast {
     duration:  Duration = 6 seconds,
     position:  (VerticalPosition, HorizontalPosition) = (top, right),
     autoHide:  Boolean = true,
-    onClose:   () => Callback = { () => Callback.empty }
+    onClose:   () => Callback = { () => Callback.empty },
   ): Callback =
     toastRef.get
       .flatMap(
-        _.fold(Callback.empty)(_.backend.toastMsg(message, icon, className, duration, position, autoHide, onClose))
+        _.fold(Callback.empty)(_.backend.toastMsg(message, icon, className, duration, position, autoHide, onClose)),
       )
 
 }

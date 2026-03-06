@@ -42,7 +42,7 @@ abstract class QuillSpec extends ZIOSpec[ChutiEnvironment] {
       email = "Satan@hell.com",
       name = "Lucifer Morningstar",
       created = Instant.now().nn,
-      lastUpdated = Instant.now().nn
+      lastUpdated = Instant.now().nn,
     )
 
   protected val godSession:   ULayer[ChutiSession] = ChutiSession(chuti.god).toLayer
@@ -58,7 +58,7 @@ abstract class QuillSpec extends ZIOSpec[ChutiEnvironment] {
       email = s"$uuid@example.com",
       name = "Frank Lloyd Wright",
       created = now,
-      lastUpdated = now
+      lastUpdated = now,
     )
   }
 

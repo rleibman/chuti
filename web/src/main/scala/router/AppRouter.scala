@@ -73,7 +73,7 @@ object AppRouter extends ChutiComponent {
                 //                key = "cuentasDialog",
                 .open(chutiState.currentDialog == GlobalDialog.cuentas)(
                   ModalHeader()(
-                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto" // TODO I8n
+                    s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto", // TODO I8n
                   ),
                   ModalContent()(
                     Table()(
@@ -84,8 +84,8 @@ object AppRouter extends ChutiComponent {
                           TableHeaderCell()(localized("Chuti.jugador")),
                           TableHeaderCell()(localized("Chuti.cuentas")),
                           TableHeaderCell()(localized("Chuti.total")),
-                          TableHeaderCell()(localized("Chuti.satoshi"))
-                        )
+                          TableHeaderCell()(localized("Chuti.satoshi")),
+                        ),
                       ),
                       TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                         case ((jugador, puntos, satoshi), jugadorIndex) =>
@@ -98,33 +98,33 @@ object AppRouter extends ChutiComponent {
                                   <.span(
                                     ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
                                     ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                                    s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                                    s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}",
                                   )
                                 },
                                 <.span(
                                   ^.fontSize := "large",
                                   ^.color    := "blue",
-                                  if (jugador.fueGanadorDelPartido) "➠" else ""
-                                )
+                                  if (jugador.fueGanadorDelPartido) "➠" else "",
+                                ),
                               ),
                               TableCell()(
-                                <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                                <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos),
                               ),
                               TableCell()(
                                 <.span(
                                   <.span(
                                     ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                                    satoshi
+                                    satoshi,
                                   )
-                                    .when(game.gameStatus == GameStatus.partidoTerminado)
-                                )
-                              )
+                                    .when(game.gameStatus == GameStatus.partidoTerminado),
+                                ),
+                              ),
                             )
-                      })
+                      }),
                     ),
                     if (game.gameStatus == GameStatus.partidoTerminado) {
                       <.div(
-                        s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido." // TODO I8n
+                        s"Partido terminado, ${game.ganadorDePartido.fold("")(_.user.name)} gano el partido.", // TODO I8n
                       )
                     } else
                       EmptyVdom,
@@ -133,19 +133,19 @@ object AppRouter extends ChutiComponent {
                       <.ul(
                         <.li("Si ganas, cada uno te da 1 punto (o sea, recibes 3 puntos)"),
                         <.li(
-                          "Si ganas con chuti, cada jugador te da 2 puntos (o sea, recibes 6 puntos)"
+                          "Si ganas con chuti, cada jugador te da 2 puntos (o sea, recibes 6 puntos)",
                         ),
                         <.li(
-                          "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador."
+                          "Si alguien quedó en negativos por tener varios hoyos, producto de estar cante y cante, le da dos puntos al ganador.",
                         ),
                         <.li(
-                          "Si alguien quedó en cero, le da un punto al ganador."
+                          "Si alguien quedó en cero, le da un punto al ganador.",
                         ),
                         <.li(
-                          "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)"
-                        )
-                      )
-                    )
+                          "Por cada hoyo que tienes, le das un punto a cada uno de los otros jugadores (o sea, pierdes 3 puntos)",
+                        ),
+                      ),
+                    ),
                   ),
                   ModalActions()(
                     Button()
@@ -154,11 +154,11 @@ object AppRouter extends ChutiComponent {
                       .onClick {
                         (
                           _,
-                          _
+                          _,
                         ) =>
                           chutiState.showDialog(GlobalDialog.none)
-                      }("Ok") // TODO I8n
-                  )
+                      }("Ok"), // TODO I8n
+                  ),
                 )
             }
           }
@@ -173,7 +173,7 @@ object AppRouter extends ChutiComponent {
                 scores = celebrationData.scores,
                 bidResult = celebrationData.bidResult,
                 statusString = celebrationData.statusString,
-                onDismiss = chutiState.showDialog(none)
+                onDismiss = chutiState.showDialog(none),
               )
             }
 
@@ -194,7 +194,7 @@ object AppRouter extends ChutiComponent {
 
   private def layout(
     page:       RouterCtl[AppPage],
-    resolution: Resolution[AppPage]
+    resolution: Resolution[AppPage],
   ): VdomElement = {
     ChutiState.ctx.consume { chutiState =>
       import chutiState.ChutiMessages.*
@@ -210,15 +210,15 @@ object AppRouter extends ChutiComponent {
                 .setAttached(false)
                 .setCompact(true)
                 .setText(true)
-                .setBorderless(true)
-            )
+                .setBorderless(true),
+            ),
           )(
             Dropdown()
               .item(true)
               //                simple(true)
               .compact(true)
               .text(
-                "☰ Menu" // TODO I8n
+                "☰ Menu", // TODO I8n
               )(
                 DropdownMenu()(
                   chutiState.gameInProgress
@@ -231,7 +231,7 @@ object AppRouter extends ChutiComponent {
                             .onClick {
                               (
                                 e,
-                                _
+                                _,
                               ) =>
                                 chutiState
                                   .onGameViewModeChanged(GameViewMode.game) >> page
@@ -243,10 +243,10 @@ object AppRouter extends ChutiComponent {
                           .onClick {
                             (
                               _,
-                              _
+                              _,
                             ) =>
                               chutiState.showDialog(GlobalDialog.cuentas)
-                          }("Cuentas") // TODO I8n
+                          }("Cuentas"), // TODO I8n
                       )
                     },
                   MenuItem()
@@ -254,7 +254,7 @@ object AppRouter extends ChutiComponent {
                     .onClick {
                       (
                         e,
-                        _
+                        _,
                       ) =>
                         chutiState
                           .onGameViewModeChanged(GameViewMode.lobby) >> page.setEH(GameAppPage)(e)
@@ -264,7 +264,7 @@ object AppRouter extends ChutiComponent {
                     .onClick {
                       (
                         e,
-                        _
+                        _,
                       ) =>
                         page.setEH(GameHistoryAppPage)(e)
                     }("Historia de juegos"), // TODO I8n
@@ -272,67 +272,67 @@ object AppRouter extends ChutiComponent {
                   MenuItem().onClick(
                     (
                       e,
-                      _
-                    ) => page.setEH(RulesAppPage)(e)
+                      _,
+                    ) => page.setEH(RulesAppPage)(e),
                   )("Reglas de Chuti"), // TODO I8n
                   MenuItem().onClick {
                     (
                       _,
-                      _
+                      _,
                     ) => AuthClient.logout().completeWith(_ => Callback.empty)
                   }("Cerrar sesión"), // TODO I8n`
                   MenuItem().onClick(
                     (
                       e,
-                      _
-                    ) => page.setEH(UserSettingsAppPage)(e)
+                      _,
+                    ) => page.setEH(UserSettingsAppPage)(e),
                   )(
-                    "Administración de usuario" // TODO I8n
+                    "Administración de usuario", // TODO I8n
                   ),
                   Divider()(),
                   MenuItem().onClick(
                     (
                       _,
-                      _
-                    ) => chutiState.toggleSound
+                      _,
+                    ) => chutiState.toggleSound,
                   )(
                     Icon().name(
                       if (chutiState.muted) SemanticICONS.`volume up`
-                      else SemanticICONS.`volume off`
+                      else SemanticICONS.`volume off`,
                     )(),
-                    if (chutiState.muted) "Con Sonido" else "Sin Sonido" // TODO I8n
+                    if (chutiState.muted) "Con Sonido" else "Sin Sonido", // TODO I8n
                   ),
                   Divider()(),
                   MenuItem().onClick(
                     (
                       e,
-                      _
-                    ) => page.setEH(ChangeLogAppPage)(e)
+                      _,
+                    ) => page.setEH(ChangeLogAppPage)(e),
                   )("ChangeLog"), // TODO I8n
                   MenuItem().onClick(
                     (
                       e,
-                      _
-                    ) => page.setEH(AboutAppPage)(e)
+                      _,
+                    ) => page.setEH(AboutAppPage)(e),
                   )(
-                    "Acerca de chuti.fun" // TODO I8n
+                    "Acerca de chuti.fun", // TODO I8n
                   ),
                   MenuItem().onClick(
                     (
                       e,
-                      _
-                    ) => page.setEH(LegalAppPage)(e)
+                      _,
+                    ) => page.setEH(LegalAppPage)(e),
                   )(
-                    "Aviso Legal" // TODO I8n
-                  )
-                )
-              )
+                    "Aviso Legal", // TODO I8n
+                  ),
+                ),
+              ),
           ),
           <.div(
             ^.key       := "user",
             ^.className := "user",
-            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}" // TODO I8n
-          )
+            s"${chutiState.user.fold("")(u => s"Hola ${u.name}!")}", // TODO I8n
+          ),
         )
       }
 
@@ -341,7 +341,7 @@ object AppRouter extends ChutiComponent {
           chutiState.gameViewMode match {
             case GameViewMode.lobby | GameViewMode.none => ChannelId.lobbyChannel
             case GameViewMode.game                      => game.channelId.orElse(ChannelId.lobbyChannel)
-          }
+          },
         )
 
       def chatComponent(user: chuti.User): VdomElement =
@@ -350,10 +350,10 @@ object AppRouter extends ChutiComponent {
           channelId,
           onPrivateMessage = { msg =>
             Toast.info(
-              <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg) // TODO I8n
+              <.div(s"Tienes un nuevo mensaje!", <.br(), msg.msg), // TODO I8n
             ) >> chutiState.onRequestGameRefresh()
           },
-          onMessage = _ => chutiState.playSound("sounds/message.mp3")
+          onMessage = _ => chutiState.playSound("sounds/message.mp3"),
         )
 
       if (!chutiState.isMobile) {
@@ -362,7 +362,7 @@ object AppRouter extends ChutiComponent {
           ^.className := "innerContent",
           <.div(^.className := "header", renderMenu, DialogRenderer()),
           resolution.render(),
-          chutiState.user.fold(EmptyVdom)(chatComponent)
+          chutiState.user.fold(EmptyVdom)(chatComponent),
         )
       } else {
         // Mobile: single-column with Sidebar overlay for chat
@@ -379,13 +379,13 @@ object AppRouter extends ChutiComponent {
                 .onClick(
                   (
                     _,
-                    _
-                  ) => chutiState.toggleChatSidebar
+                    _,
+                  ) => chutiState.toggleChatSidebar,
                 )(
-                  Icon().name(SemanticICONS.`comment alternate`)()
-                )
+                  Icon().name(SemanticICONS.`comment alternate`)(),
+                ),
             ),
-            DialogRenderer()
+            DialogRenderer(),
           ),
           Sidebar.Pushable()(
             Sidebar()
@@ -396,17 +396,17 @@ object AppRouter extends ChutiComponent {
               .onHide(
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   if (chutiState.chatSidebarOpen) chutiState.toggleChatSidebar
-                  else Callback.empty
+                  else Callback.empty,
               )(
-                chutiState.user.fold(EmptyVdom)(chatComponent)
+                chutiState.user.fold(EmptyVdom)(chatComponent),
               ),
             Sidebar.Pusher()(
-              resolution.render()
-            )
-          )
+              resolution.render(),
+            ),
+          ),
         )
       }
     }

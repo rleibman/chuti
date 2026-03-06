@@ -26,5 +26,5 @@ case class ChatMessage(
   msg:       String,
   channelId: ChannelId,
   date:      Instant,
-  toUser:    Option[User] = None
+  toUser:    Option[User] = None,
 ) derives JsonCodec

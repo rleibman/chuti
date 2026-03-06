@@ -25,12 +25,12 @@ trait GameEngine[F[_]] {
   def newGameSameUsers(oldGameId: GameId): F[Game]
   def play(
     gameId:    GameId,
-    playEvent: PlayEvent
+    playEvent: PlayEvent,
   ): F[Game] // Note, this mutates the game
 
   def playSilently(
     gameId:    GameId,
-    playEvent: PlayEvent
+    playEvent: PlayEvent,
   ): F[Boolean] // In the cases we don't want to return the whole game object after a play
 
   def joinRandomGame(): F[Game]
@@ -44,12 +44,12 @@ trait GameEngine[F[_]] {
   def inviteByEmail(
     name:   String,
     email:  String,
-    gameId: GameId
+    gameId: GameId,
   ): F[Boolean]
 
   def inviteToGame(
     userId: UserId,
-    gameId: GameId
+    gameId: GameId,
   ): F[Boolean]
 
   def acceptGameInvitation(gameId: GameId): F[Game]

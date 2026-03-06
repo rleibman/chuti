@@ -32,7 +32,7 @@ object ChatClient {
       msg:       String,
       channelId: Long,
       date:      Instant,
-      toUser:    scala.Option[ToUserSelection]
+      toUser:    scala.Option[ToUserSelection],
     )
 
     type ViewSelection[FromUserSelection, ToUserSelection] =
@@ -40,7 +40,7 @@ object ChatClient {
 
     def view[FromUserSelection, ToUserSelection](
       fromUserSelection: SelectionBuilder[User, FromUserSelection],
-      toUserSelection:   SelectionBuilder[User, ToUserSelection]
+      toUserSelection:   SelectionBuilder[User, ToUserSelection],
     ): ViewSelection[FromUserSelection, ToUserSelection] =
       (fromUser(fromUserSelection) ~ msg ~ channelId ~ date ~ toUser(toUserSelection)).map {
         case (fromUser, msg, channelId, date, toUser) => ChatMessageView(fromUser, msg, channelId, date, toUser)
@@ -69,7 +69,7 @@ object ChatClient {
       active:      Boolean,
       deleted:     Boolean,
       isAdmin:     Boolean,
-      locale:      String
+      locale:      String,
     )
 
     type ViewSelection = SelectionBuilder[User, UserView]
@@ -102,7 +102,7 @@ object ChatClient {
     active:      Boolean,
     deleted:     Boolean,
     isAdmin:     Boolean,
-    locale:      String
+    locale:      String,
   )
   object UserInput {
 
@@ -118,8 +118,8 @@ object ChatClient {
             "active"      -> implicitly[ArgEncoder[Boolean]].encode(value.active),
             "deleted"     -> implicitly[ArgEncoder[Boolean]].encode(value.deleted),
             "isAdmin"     -> implicitly[ArgEncoder[Boolean]].encode(value.isAdmin),
-            "locale"      -> implicitly[ArgEncoder[String]].encode(value.locale)
-          )
+            "locale"      -> implicitly[ArgEncoder[String]].encode(value.locale),
+          ),
         )
     }
 
@@ -128,15 +128,15 @@ object ChatClient {
   object Queries {
 
     def getRecentMessages[A](
-      value: Long
+      value: Long,
     )(
-      innerSelection:    SelectionBuilder[ChatMessage, A]
-    )(implicit encoder0: ArgEncoder[Long]
+      innerSelection:    SelectionBuilder[ChatMessage, A],
+    )(implicit encoder0: ArgEncoder[Long],
     ): SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[List[A]]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "getRecentMessages",
         OptionOf(ListOf(Obj(innerSelection))),
-        arguments = List(Argument("value", value, "Long!"))
+        arguments = List(Argument("value", value, "Long!")),
       )
 
   }
@@ -147,11 +147,11 @@ object ChatClient {
     def say(
       msg:       String,
       channelId: Long,
-      toUser:    scala.Option[UserInput] = None
+      toUser:    scala.Option[UserInput] = None,
     )(implicit
       encoder0: ArgEncoder[String],
       encoder1: ArgEncoder[Long],
-      encoder2: ArgEncoder[scala.Option[UserInput]]
+      encoder2: ArgEncoder[scala.Option[UserInput]],
     ): SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "say",
@@ -159,8 +159,8 @@ object ChatClient {
         arguments = List(
           Argument("msg", msg, "String!"),
           Argument("channelId", channelId, "Long!"),
-          Argument("toUser", toUser, "UserInput")
-        )
+          Argument("toUser", toUser, "UserInput"),
+        ),
       )
 
   }
@@ -171,12 +171,12 @@ object ChatClient {
     def chatStream[A](
       channelId:    Long,
       connectionId: String,
-      token:        String
+      token:        String,
     )(
-      innerSelection: SelectionBuilder[ChatMessage, A]
+      innerSelection: SelectionBuilder[ChatMessage, A],
     )(implicit
       encoder0: ArgEncoder[Long],
-      encoder1: ArgEncoder[String]
+      encoder1: ArgEncoder[String],
     ): SelectionBuilder[_root_.caliban.client.Operations.RootSubscription, scala.Option[A]] =
       _root_.caliban.client.SelectionBuilder.Field(
         "chatStream",
@@ -184,8 +184,8 @@ object ChatClient {
         arguments = List(
           Argument("channelId", channelId, "Long!"),
           Argument("connectionId", connectionId, "String!"),
-          Argument("token", token, "String!")
-        )
+          Argument("token", token, "String!"),
+        ),
       )
 
   }

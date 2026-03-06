@@ -38,17 +38,17 @@ object CelebrationOverlay {
     scores:          Map[String, Int],
     bidResult:       Option[(cantante: String, bid: String, madeIt: Boolean)] = None, // (cantante, bid, madeIt)
     statusString:    Option[String] = None, // For RoundEnd, display game.statusString
-    onDismiss:       Callback
+    onDismiss:       Callback,
   )
 
   case class State(
-    confettiPieces: List[ConfettiPiece] = Nil
+    confettiPieces: List[ConfettiPiece] = Nil,
   )
 
   case class ConfettiPiece(
     index: Int,
     color: String,
-    left:  Double
+    left:  Double,
   )
 
   class Backend($ : BackendScope[Props, State]) {
@@ -60,7 +60,7 @@ object CelebrationOverlay {
         ConfettiPiece(
           index = i,
           color = confettiColors(scala.util.Random.nextInt(confettiColors.length)),
-          left = scala.util.Random.nextDouble() * 100
+          left = scala.util.Random.nextDouble() * 100,
         )
       }.toList
       $.modState(_.copy(confettiPieces = pieces))
@@ -68,7 +68,7 @@ object CelebrationOverlay {
 
     def render(
       p: Props,
-      s: State
+      s: State,
     ): VdomNode = {
       import CelebrationType.*
 
@@ -84,7 +84,7 @@ object CelebrationOverlay {
                 ^.className := "celebration-winner",
                 ^.dangerouslySetInnerHtml := p.statusString
                   .getOrElse("Ronda terminada")
-                  .replace("\n", "<br>")
+                  .replace("\n", "<br>"),
               )
 
             case Hoyo(jugador) =>
@@ -92,13 +92,13 @@ object CelebrationOverlay {
                 <.div(
                   ^.fontSize     := "3em",
                   ^.marginBottom := 10.px,
-                  "⚠️"
+                  "⚠️",
                 ),
                 <.div(
                   ^.className := "celebration-winner",
                   ^.color     := "#CC0000",
-                  s"¡$jugador tiene un hoyo!"
-                )
+                  s"¡$jugador tiene un hoyo!",
+                ),
               )
 
             case SpecialEvent(borlote) =>
@@ -111,6 +111,8 @@ object CelebrationOverlay {
                   ("🎂", "¡El Niño del Cumpleaños!")
                 case Borlote.Helecho =>
                   ("🌿", "¡Helecho!")
+                case Borlote.HoyoTecnico =>
+                  ("🚨", "¡Hoyo Técnico!")
                 case _ =>
                   ("✨", "Evento especial")
               }
@@ -118,15 +120,15 @@ object CelebrationOverlay {
                 <.div(
                   ^.fontSize     := "4em",
                   ^.marginBottom := 10.px,
-                  emoji
+                  emoji,
                 ),
                 <.div(
                   ^.className := "celebration-winner",
-                  text
-                )
+                  text,
+                ),
               )
-          }
-        )
+          },
+        ),
       )
     }
 
@@ -156,7 +158,7 @@ object CelebrationOverlay {
     bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None,
     statusString:    Option[String] = None,
     onDismiss:       Callback,
-    autoDismiss:     Boolean = true // Kept for API compatibility, but auto-dismiss is now handled externally
+    autoDismiss:     Boolean = true, // Kept for API compatibility, but auto-dismiss is now handled externally
   ): Unmounted[Props, State, Backend] =
     component(Props(celebrationType, winner, scores, bidResult, statusString, onDismiss))
 

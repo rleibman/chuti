@@ -38,7 +38,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
       for {
         game <- readGame(GAME_STARTED)
         _    <- Console.printLine(game.toString)
-      } yield assertCompletes
+      } yield assertCompletes,
     ),
     test("Cantando casa sin salve should get it done")(
       for {
@@ -49,7 +49,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -88,10 +88,10 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           cantante.mano,
           cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           gameEvents.size == 4,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game5) // Though 2 happen (log in and log out, only log in should be registering)
-      }
+      },
     ),
     test("Cantando cinco sin salve should get it done")(
       for {
@@ -102,7 +102,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -140,10 +140,10 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           cantante.mano,
           cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           gameEvents.size == 4,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game5)
-      }
+      },
     ),
     test("Cantando todas should get it done")(
       for {
@@ -154,7 +154,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -178,10 +178,10 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           cantante.mano,
           cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           gameEvents.size == 1,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game2)
-      }
+      },
     ),
     test("Cantando casa con salve should get it done")(
       for {
@@ -192,7 +192,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -234,10 +234,10 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           !cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           salvador.cuantasCantas == Option(CuantasCantas.Canto5),
           gameEvents.size == 4,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game5)
-      }
+      },
     ),
     test("Cantando casa con salve de chuti should get it done")(
       for {
@@ -248,7 +248,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -280,10 +280,10 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           !cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           salvador.cuantasCantas == Option(CuantasCantas.CantoTodas),
           gameEvents.size == 2,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game3)
-      }
+      },
     ),
     test("Cantando casa con salve de 5,6,7 should get it done")(
       for {
@@ -294,7 +294,7 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         gameId = freshGame.id
         gameStream = gameService
           .gameStream(gameId, connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](
-            ChutiSession(user1).toLayer
+            ChutiSession(user1).toLayer,
           )
         userStream = gameService
           .userStream(connectionId).provideSomeLayer[ZIORepository & Postman & TokenHolder](ChutiSession(user1).toLayer)
@@ -336,11 +336,11 @@ object CantandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
           !cantante.fichas.contains(Ficha(Numero(6), Numero(6))),
           salvador.cuantasCantas == Option(CuantasCantas.CantoTodas),
           gameEvents.size == 4,
-          userEvents.size == 0
+          userEvents.size == 0,
         ) &&
         assertSoloUnoCanta(game5)
-      }
-    )
+      },
+    ),
   ) @@ TestAspect.sequential
 
 }

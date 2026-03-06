@@ -177,8 +177,8 @@ object RulesPage extends ChutiPage {
                   |        strategy and thinking… and then there’s hands you cannot possible do anything with, those you just give up.
                   |    </li>
                   |</ul>
-                  |""".stripMargin
-            )
+                  |""".stripMargin,
+            ),
           ),
         "es" ->
           MessageBundle(
@@ -240,9 +240,9 @@ object RulesPage extends ChutiPage {
            |  <p>El objetivo de los demás jugadores, en tanto, es evitar que el jugador que sale, logre ganar las manos
            |      anunciadas, para lo cual llevan en mente cada una de las fichas jugadas y deducen el juego del participante que
            |      salió, para hacer sus mejores jugadas en base a las fichas que tienen.</p>
-           |""".stripMargin
-            )
-          )
+           |""".stripMargin,
+            ),
+          ),
       )
 
   }
@@ -256,7 +256,7 @@ object RulesPage extends ChutiPage {
         given locale: Locale = chutiState.locale
         <.div(
           ^.margin                  := 10.px,
-          ^.dangerouslySetInnerHtml := localized("RulesPage.rules")
+          ^.dangerouslySetInnerHtml := localized("RulesPage.rules"),
         )
       }
 

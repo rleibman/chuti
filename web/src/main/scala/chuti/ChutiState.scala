@@ -45,7 +45,7 @@ case class CelebrationData(
   winner:          Option[String],
   scores:          Map[String, Int],
   bidResult:       Option[((cantante: String, bid: String, madeIt: Boolean))] = None, // (cantante, bid, madeIt)
-  statusString:    Option[String] = None // For RoundEnd, display game.statusString
+  statusString:    Option[String] = None, // For RoundEnd, display game.statusString
 )
 
 case class ChutiState(
@@ -55,7 +55,7 @@ case class ChutiState(
   flippedFichas: Set[Ficha] = Set.empty,
   onSessionChanged: (Option[User], String) => Callback = (
     _,
-    _
+    _,
   ) => Callback.empty,
   languageTag: String = {
     val loc: String | Null = window.sessionStorage.getItem("languageTag")
@@ -71,7 +71,7 @@ case class ChutiState(
   gameInProgress: Option[Game] = None,
   modGameInProgress: (Game => Game, Callback) => Callback = (
     _,
-    c
+    c,
   ) => c,
   onRequestGameRefresh:  () => Callback = { () => Callback.empty },
   gameStream:            Option[WebSocketHandler] = None,
@@ -87,7 +87,7 @@ case class ChutiState(
   playSound:             String => Callback = _ => Callback.empty,
   isMobile:              Boolean = false,
   chatSidebarOpen:       Boolean = true,
-  toggleChatSidebar:     Callback = Callback.empty
+  toggleChatSidebar:     Callback = Callback.empty,
 ) {
 
   lazy val locale: Locale =
@@ -100,7 +100,7 @@ case class ChutiState(
     loggedInUsers.map(user => ExtUser(user, friends.exists(_.id == user.id), isLoggedIn = true)) ++
       friends
         .filterNot(u => loggedInUsers.exists(_.id == u.id)).map(
-          ExtUser(_, isFriend = true, isLoggedIn = false)
+          ExtUser(_, isFriend = true, isLoggedIn = false),
         ).sortBy(_.user.name)
 
   object ChutiMessages extends LocalizedMessages {
@@ -114,8 +114,8 @@ case class ChutiState(
             "Chuti.cuentas"       -> "Cuentas",
             "Chuti.total"         -> "Total",
             "Chuti.satoshi"       -> "Satoshi",
-            "Chuti.entrarAlJuego" -> "Entrar al Juego"
-          )
+            "Chuti.entrarAlJuego" -> "Entrar al Juego",
+          ),
         ),
         "en" -> MessageBundle(
           "en",
@@ -124,9 +124,9 @@ case class ChutiState(
             "Chuti.cuentas"       -> "Accounting",
             "Chuti.total"         -> "Total",
             "Chuti.satoshi"       -> "Satoshi",
-            "Chuti.entrarAlJuego" -> "Enter game"
-          )
-        )
+            "Chuti.entrarAlJuego" -> "Enter game",
+          ),
+        ),
       )
 
   }

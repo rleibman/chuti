@@ -59,7 +59,7 @@ object FlywayRepair extends ZIOAppDefault {
           s"  Removed failed migrations: ${result.migrationsRemoved.size()}\n" +
           s"  Deleted missing migrations: ${result.migrationsDeleted.size()}\n" +
           s"  Aligned applied migrations: ${result.migrationsAligned.size()}\n" +
-          s"\nYou can now start the application normally."
+          s"\nYou can now start the application normally.",
       )
       _ <- ZIO.logInfo("\nRepair Details:")
       _ <- ZIO.foreach(result.repairActions.asScala) { action =>
@@ -68,7 +68,7 @@ object FlywayRepair extends ZIOAppDefault {
     } yield ())
       .tapError(error =>
         ZIO.logError(s"Flyway repair failed: ${error.getMessage}") *>
-          ZIO.logErrorCause("Repair error details:", Cause.fail(error))
+          ZIO.logErrorCause("Repair error details:", Cause.fail(error)),
       )
       .provide(ConfigurationService.live)
 

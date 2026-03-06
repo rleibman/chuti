@@ -24,21 +24,21 @@ class NotFoundError(
   val path:    Path,
   msg:         String,
   cause:       Option[Throwable] = None,
-  isTransient: Boolean = false
+  isTransient: Boolean = false,
 ) extends GameError(msg, cause, isTransient)
 
 object NotFoundError {
 
   def apply(
     path:    Path,
-    message: String
+    message: String,
   ): NotFoundError = new NotFoundError(path, message)
 
   def apply(
     path:        Path,
     msg:         String,
     cause:       Option[Throwable] = None,
-    isTransient: Boolean = false
+    isTransient: Boolean = false,
   ): NotFoundError = new NotFoundError(path, msg, cause, isTransient)
 
 }

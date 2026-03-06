@@ -28,14 +28,14 @@ object UpdateInvitedUserRequest {
 case class UpdateInvitedUserRequest(
   user:     User,
   password: String,
-  token:    String
+  token:    String,
 ) derives JsonCodec
 
 case class UpdateInvitedUserResponse(error: Option[String]) derives JsonCodec
 
 case class UserCreationRequest(
   user:     User,
-  password: String
+  password: String,
 ) derives JsonCodec
 
 case class UserCreationResponse(error: Option[String]) derives JsonCodec
@@ -61,5 +61,5 @@ object PagedStringSearch {
 case class PagedStringSearch(
   text:      String,
   pageIndex: Int = 0,
-  pageSize:  Int = 0
+  pageSize:  Int = 0,
 ) extends Search

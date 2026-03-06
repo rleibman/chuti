@@ -39,8 +39,8 @@ object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
           Method.ANY / "api" / "chat" / "graphiql" ->
             GraphiQLHandler.handler(apiPath = "/api/chat", wsPath = None),
           Method.POST / "api" / "chat" / "upload" -> // TODO, I really don't know what this does.
-            QuickAdapter(interpreter).handlers.upload
-        )
+            QuickAdapter(interpreter).handlers.upload,
+        ),
     )
 
   /** These do not require a session
@@ -51,8 +51,8 @@ object ChatRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
       _ =>
         Routes(
           Method.GET / "unauth" / "chat" / "schema" ->
-            Handler.fromBody(Body.fromCharSequence(ChatApi.api.render))
-        )
+            Handler.fromBody(Body.fromCharSequence(ChatApi.api.render)),
+        ),
     )
 
 }

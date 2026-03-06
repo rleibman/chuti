@@ -50,9 +50,9 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         _ <-
           gameService
             .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
-              ChutiEnvironment & GameService & ChatService
+              ChutiEnvironment & GameService & ChatService,
             ](
-              ChutiSession(chuti.god).toLayer
+              ChutiSession(chuti.god).toLayer,
             )
         gameEvents <- gameEventsFiber.join
       } yield {
@@ -61,7 +61,7 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         assertTrue(
           mano1.id == gameId,
           mano1.jugadores.count(_.fichas.size == 6) == 4, // Todos dieron una ficha.
-          gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size == 5
+          gameEvents.filterNot(_.isInstanceOf[BorloteEvent]).size == 5,
         ) // Including the poison pill
       }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
     },
@@ -88,9 +88,9 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         _ <-
           gameService
             .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
-              ChutiEnvironment & GameService & ChatService
+              ChutiEnvironment & GameService & ChatService,
             ](
-              ChutiSession(chuti.god).toLayer
+              ChutiSession(chuti.god).toLayer,
             )
         gameEvents <- gameEventsFiber.join
       } yield {
@@ -122,9 +122,9 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         _ <-
           gameService
             .broadcastGameEvent(PoisonPill(gameId)).provideSomeLayer[
-              ChutiEnvironment & GameService & ChatService
+              ChutiEnvironment & GameService & ChatService,
             ](
-              ChutiSession(chuti.god).toLayer
+              ChutiSession(chuti.god).toLayer,
             )
         gameEvents <- gameEventsFiber.join
       } yield {
@@ -132,7 +132,7 @@ object JugandoSpec extends ZIOSpec[ChutiEnvironment] with GameAbstractSpec {
         println(s"Gano ${ganador.user.name} con ${ganador.filas.size}!")
         assertTrue(end.id == gameId, end.gameStatus == GameStatus.requiereSopa, gameEvents.nonEmpty)
       }).provideSomeLayer[GameService & ChatService](EnvironmentBuilder.testLayer(GAME_CANTO4))
-    }
+    },
   )
 
   override def bootstrap = EnvironmentBuilder.testLayer(GAME_STARTED).fresh

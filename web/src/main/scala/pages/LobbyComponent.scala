@@ -29,7 +29,7 @@ import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
   SemanticCOLORS,
   SemanticICONS,
   SemanticSIZES,
-  SemanticWIDTHS
+  SemanticWIDTHS,
 }
 import org.scalajs.dom.HTMLInputElement
 
@@ -43,7 +43,7 @@ object LobbyComponent extends ChutiPage {
   case class ExtUser(
     user:       User,
     isFriend:   Boolean,
-    isLoggedIn: Boolean
+    isLoggedIn: Boolean,
   )
 
   enum Dialog {
@@ -56,14 +56,14 @@ object LobbyComponent extends ChutiPage {
 
   case class InviteExternalDialogState(
     name:  String = "",
-    email: String = ""
+    email: String = "",
   )
 
   case class State(
     invites:                   List[Game] = Nil,
     dlg:                       Dialog = Dialog.none,
     newGameDialogState:        Option[NewGameDialogState] = None,
-    inviteExternalDialogState: Option[InviteExternalDialogState] = None
+    inviteExternalDialogState: Option[InviteExternalDialogState] = None,
   ) {}
 
   class Backend($ : BackendScope[Props, State]) {
@@ -84,7 +84,7 @@ object LobbyComponent extends ChutiPage {
 
     def render(
       p: Props,
-      s: State
+      s: State,
     ): VdomElement = {
       def renderStartWithBotsDialog =
         Modal().open(s.dlg == Dialog.startWithBots)(
@@ -97,7 +97,7 @@ object LobbyComponent extends ChutiPage {
               .onClick {
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   $.modState(_.copy(dlg = Dialog.none))
               }("Cancelar"), // TODO i8n
@@ -107,7 +107,7 @@ object LobbyComponent extends ChutiPage {
               .onClick {
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   Callback.log("Starting game") >>
                     p.gameInProgress.value.map(_.id).fold(Callback.empty) { gameId =>
@@ -118,8 +118,8 @@ object LobbyComponent extends ChutiPage {
                         case Failure(_) => Toast.error("Error creando juego!")
                       }
                     }
-              }("Crear") // TODO i8n
-          )
+              }("Crear"), // TODO i8n
+          ),
         )
 
       def renderNewGameDialog =
@@ -139,16 +139,16 @@ object LobbyComponent extends ChutiPage {
                 .onChange {
                   (
                     _:    ReactEventFrom[HTMLInputElement],
-                    data: InputOnChangeData
+                    data: InputOnChangeData,
                   ) =>
                     $.modState(s =>
                       s.copy(newGameDialogState =
                         s.newGameDialogState
-                          .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toLong))
-                      )
+                          .map(_.copy(satoshiPerPoint = data.value.get.asInstanceOf[String].toLong)),
+                      ),
                     )
-                }()
-            )
+                }(),
+            ),
           ),
           ModalActions()(
             Button()
@@ -157,7 +157,7 @@ object LobbyComponent extends ChutiPage {
               .onClick {
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
               }("Cancelar"), // TODO i8n
@@ -167,7 +167,7 @@ object LobbyComponent extends ChutiPage {
               .onClick {
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   Callback.log("Calling new Game") >>
                     GameClient.game
@@ -175,15 +175,15 @@ object LobbyComponent extends ChutiPage {
                       .flatMap { game =>
                         (p.gameInProgress.setState(
                           Some(game),
-                          $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None))
+                          $.modState(_.copy(dlg = Dialog.none, newGameDialogState = None)),
                         ) >> Toast.success("Juego creado!")).asAsyncCallback // TODO i8n
                       }
                       .completeWith {
                         case Success(_)         => Callback.empty
                         case Failure(exception) => Callback.throwException(exception)
                       }
-              }("Crear") // TODO i8n
-          )
+              }("Crear"), // TODO i8n
+          ),
         )
 
       def renderFirstLoginWelcome(chutiState: ChutiState): VdomElement = {
@@ -192,32 +192,32 @@ object LobbyComponent extends ChutiPage {
           <.p(
             ^.marginBottom := 10.px,
             s"Como regalo empiezas con 10,000 satoshi en tu cartera, ahorita tienes ${chutiState.wallet // TODO i8n
-                .fold("")(_.amount.toString())}, disfrutalos!" // TODO i8n
+                .fold("")(_.amount.toString())}, disfrutalos!", // TODO i8n
           ),
           <.p(
             ^.marginBottom := 10.px,
             "Si nunca as jugado chuti, o tiene muchos años que no juegas, familiarizate con las ", // TODO i8n
-            <.a(^.href := "#rules", "reglas de chuti") // TODO i8n
+            <.a(^.href := "#rules", "reglas de chuti"), // TODO i8n
           ),
           <.p(^.marginBottom := 10.px, "Tienes varias opciones para empezar a jugar:"), // TODO i8n
           <.ul(
             <.li(
-              "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)" // TODO i8n
+              "Si aprietas 'Juega con quien sea', entraras a un juego con otros jugadores al azar (o empezaras un juego nuevo si ningun juego esta esperando jugadores)", // TODO i8n
             ),
             <.li(
-              "Si aprietas 'Crear Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico" // TODO i8n
+              "Si aprietas 'Crear Juego Nuevo', entonces puedes invitar amigos, ya sea otras personas que ya estén registradas, o si no están registradas entonces por correo electrónico", // TODO i8n
             ),
-            <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación") // TODO i8n
+            <.li("Si alguien empezó un juego y te invito, solo tienes que aceptar la invitación"), // TODO i8n
           ),
           <.p(
             ^.marginBottom := 10.px,
-            "Una vez que se junten 4 jugadores el juego empieza automáticamente, usa el menu para 'Entrar al Juego'" // TODO i8n
+            "Una vez que se junten 4 jugadores el juego empieza automáticamente, usa el menu para 'Entrar al Juego'", // TODO i8n
           ),
           <.p(^.marginBottom := 10.px, "Nada mas puedes jugar un solo juego a la vez."), // TODO i8n
           <.p(
             ^.marginBottom := 10.px,
-            "Usa el menu para regresar al lobby, ver las cuentas del juego actual, ver la historia de juegos pasados, administrar tu información, etc." // TODO i8n
-          )
+            "Usa el menu para regresar al lobby, ver las cuentas del juego actual, ver la historia de juegos pasados, administrar tu información, etc.", // TODO i8n
+          ),
         )
       }
 
@@ -225,8 +225,8 @@ object LobbyComponent extends ChutiPage {
         <.div(
           <.h1(s"Bienvenido ${chutiState.user.fold("")(_.name)}!"), // TODO i8n
           <.p(
-            s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi" // TODO i8n
-          )
+            s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi", // TODO i8n
+          ),
         )
       }
 
@@ -243,15 +243,15 @@ object LobbyComponent extends ChutiPage {
                 .onChange {
                   (
                     _:    ReactEventFrom[HTMLInputElement],
-                    data: InputOnChangeData
+                    data: InputOnChangeData,
                   ) =>
                     $.modState(s =>
                       s.copy(inviteExternalDialogState =
                         s.inviteExternalDialogState
-                          .map(_.copy(name = data.value.get.asInstanceOf[String]))
-                      )
+                          .map(_.copy(name = data.value.get.asInstanceOf[String])),
+                      ),
                     )
-                }()
+                }(),
             ),
             FormField()(
               Label()("Correo"), // TODO i8n
@@ -263,16 +263,16 @@ object LobbyComponent extends ChutiPage {
                 .onChange {
                   (
                     _:    ReactEventFrom[HTMLInputElement],
-                    data: InputOnChangeData
+                    data: InputOnChangeData,
                   ) =>
                     $.modState(s =>
                       s.copy(inviteExternalDialogState =
                         s.inviteExternalDialogState
-                          .map(_.copy(email = data.value.get.asInstanceOf[String]))
-                      )
+                          .map(_.copy(email = data.value.get.asInstanceOf[String])),
+                      ),
                     )
-                }()
-            )
+                }(),
+            ),
           ),
           ModalActions()(
             Button()
@@ -281,7 +281,7 @@ object LobbyComponent extends ChutiPage {
               .onClick {
                 (
                   _,
-                  _
+                  _,
                 ) =>
                   $.modState(_.copy(dlg = Dialog.none, inviteExternalDialogState = None))
               }("Cancelar"), // TODO i8n
@@ -292,24 +292,24 @@ object LobbyComponent extends ChutiPage {
                 .onClick {
                   (
                     _,
-                    _
+                    _,
                   ) =>
                     Callback.log(s"Inviting user by email") >>
                       GameClient.game
                         .inviteByEmail(
                           s.inviteExternalDialogState.fold("")(_.name),
                           s.inviteExternalDialogState.fold("")(_.email),
-                          game.id
+                          game.id,
                         ).completeWith {
                           case Success(_) =>
                             Toast.success("Invitación mandada!") >> $.modState( // TODO i8n
-                              _.copy(dlg = Dialog.none, inviteExternalDialogState = None)
+                              _.copy(dlg = Dialog.none, inviteExternalDialogState = None),
                             )
                           case Failure(exception) => Callback.throwException(exception)
                         }
                 }("Invitar") // TODO i8n
-            }
-          )
+            },
+          ),
         )
 
       ChutiState.ctx.consume { chutiState =>
@@ -318,8 +318,8 @@ object LobbyComponent extends ChutiPage {
             <.div(
               Loader() // key = "cargando",
                 .active(true)
-                .size(SemanticSIZES.massive)("Cargando") // TODO i8n
-            )
+                .size(SemanticSIZES.massive)("Cargando"), // TODO i8n
+            ),
           ) { user =>
             <.div(
               ^.key       := "lobby",
@@ -336,7 +336,7 @@ object LobbyComponent extends ChutiPage {
                       .onClick(
                         (
                           _,
-                          _
+                          _,
                         ) =>
                           Callback.log(s"Calling joinRandomGame") >>
                             GameClient.game
@@ -348,7 +348,7 @@ object LobbyComponent extends ChutiPage {
                               .completeWith {
                                 case Success(_)         => Callback.empty
                                 case Failure(exception) => Callback.throwException(exception)
-                              }
+                              },
                       )("Juega Con Quien sea"), // TODO i8n
                     Button()
 //                      .key("empezarJuegoNuevo")
@@ -357,19 +357,19 @@ object LobbyComponent extends ChutiPage {
                       .onClick(
                         (
                           _,
-                          _
+                          _,
                         ) =>
                           $.modState(
                             _.copy(
                               dlg = Dialog.newGame,
-                              newGameDialogState = Option(NewGameDialogState())
-                            )
-                          )
+                              newGameDialogState = Option(NewGameDialogState()),
+                            ),
+                          ),
                       )(
-                        "Crear Juego Nuevo" // TODO i8n
-                      )
+                        "Crear Juego Nuevo", // TODO i8n
+                      ),
                   ).when(
-                    p.gameInProgress.value.fold(true)(_.gameStatus == GameStatus.partidoTerminado)
+                    p.gameInProgress.value.fold(true)(_.gameStatus == GameStatus.partidoTerminado),
                   ),
                   p.gameInProgress.value.toVdomArray { game =>
                     VdomArray(
@@ -389,7 +389,7 @@ object LobbyComponent extends ChutiPage {
                                 .onClick {
                                   (
                                     _,
-                                    _
+                                    _,
                                   ) =>
                                     GameClient.game
                                       .cancelUnacceptedInvitations(game.id)
@@ -409,14 +409,14 @@ object LobbyComponent extends ChutiPage {
                                   .onClick(
                                     (
                                       _,
-                                      _
+                                      _,
                                     ) =>
                                       $.modState(
                                         _.copy(
                                           dlg = Dialog.inviteExternal,
-                                          inviteExternalDialogState = Option(InviteExternalDialogState())
-                                        )
-                                      )
+                                          inviteExternalDialogState = Option(InviteExternalDialogState()),
+                                        ),
+                                      ),
                                   )("Invitar por correo electrónico"), // TODO i8n
                                 Button()
                                   //                                .key("invitarPorCorreo")
@@ -425,17 +425,17 @@ object LobbyComponent extends ChutiPage {
                                   .onClick(
                                     (
                                       _,
-                                      _
+                                      _,
                                     ) =>
                                       $.modState(
                                         _.copy(
-                                          dlg = Dialog.startWithBots
-                                        )
-                                      )
-                                  )("Empezar juego (el resto de los jugadores serán bots)") // TODO i8n
+                                          dlg = Dialog.startWithBots,
+                                        ),
+                                      ),
+                                  )("Empezar juego (el resto de los jugadores serán bots)"), // TODO i8n
                               )
                             } else
-                              EmptyVdom
+                              EmptyVdom,
                           )
                         case _ => EmptyVdom
                       },
@@ -444,7 +444,7 @@ object LobbyComponent extends ChutiPage {
                           if (game.gameStatus.enJuego)
                             game.cuentasCalculadas
                               .find(_.jugador.id == user.id).map(n =>
-                                game.satoshiPerPoint * (n.puntos + game.abandonedPenalty)
+                                game.satoshiPerPoint * (n.puntos + game.abandonedPenalty),
                               )
                           else
                             None
@@ -455,7 +455,7 @@ object LobbyComponent extends ChutiPage {
                           .onClick(
                             (
                               _,
-                              _
+                              _,
                             ) =>
                               Confirm.confirm(
                                 header = Option("Abandonar juego"), // TODO i8n
@@ -473,8 +473,8 @@ object LobbyComponent extends ChutiPage {
                                         Toast.error("Error abandonando juego!") // TODO i8n
                                       case Failure(_) =>
                                         Toast.error("Error abandonando juego!") // TODO i8n
-                                    }
-                              )
+                                    },
+                              ),
                           )("Abandona Juego") // TODO i8n
                       } else if (s.invites.isEmpty) {
                         Button()
@@ -484,25 +484,25 @@ object LobbyComponent extends ChutiPage {
                           .onClick(
                             (
                               _,
-                              _
+                              _,
                             ) =>
                               GameClient.game
                                 .newGameSameUsers(game.id)
                                 .flatMap { game =>
                                   (Toast.success("Juego creado!") >> p.gameInProgress // TODO i8n
                                     .setState(Some(game)) >> $.modState(
-                                    _.copy(dlg = Dialog.none)
+                                    _.copy(dlg = Dialog.none),
                                   ) >> refresh()).asAsyncCallback
                                 }
                                 .completeWith {
                                   case Success(_)         => Callback.empty
                                   case Failure(exception) => Callback.throwException(exception)
-                                }
+                                },
                           )("Nuevo partido con los mismos jugadores") // TODO i8n
                       } else
-                        EmptyVdom
+                        EmptyVdom,
                     )
-                  }
+                  },
                 ),
                 p.gameInProgress.value.toVdomArray { game =>
                   <.div(
@@ -521,18 +521,18 @@ object LobbyComponent extends ChutiPage {
                         case GameStatus.partidoTerminado => <.p("Juego terminado") // TODO i8n
                         case GameStatus.esperandoJugadoresAzar =>
                           <.p(
-                            "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" // TODO i8n
+                            "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!", // TODO i8n
                           )
                         case GameStatus.esperandoJugadoresInvitados =>
                           <.span(
                             <.p(
-                              "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!" // TODO i8n
+                              "Esperando Que otros jugadores se junten para poder empezar, en cuanto se junten cuatro empezamos!", // TODO i8n
                             ),
                             <.p(
-                              s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores" // TODO i8n
+                              s"Tienes que invitar otros ${4 - game.jugadores.size} jugadores", // TODO i8n
                             ).when(
-                              game.jugadores.size < 4 && game.jugadores.head.id == user.id
-                            )
+                              game.jugadores.size < 4 && game.jugadores.head.id == user.id,
+                            ),
                           )
                       }),
                       <.table(
@@ -542,12 +542,12 @@ object LobbyComponent extends ChutiPage {
                             <.tr(
                               ^.key := s"jugador${jugador.id}",
                               <.td(jugador.user.name),
-                              <.td(JugadorState.description(game.jugadorState(jugador)))
+                              <.td(JugadorState.description(game.jugadorState(jugador))),
                             )
-                          }
-                        )
-                      )
-                    )
+                          },
+                        ),
+                      ),
+                    ),
                   )
                 },
                 TagMod(
@@ -561,7 +561,7 @@ object LobbyComponent extends ChutiPage {
                           <.tr(
                             ^.key := game.id.toString,
                             <.td(
-                              s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}" // TODO i8n
+                              s"Juego con ${game.jugadores.map(_.user.name).mkString(",")}", // TODO i8n
                             ),
                             <.td(
                               Button()
@@ -571,7 +571,7 @@ object LobbyComponent extends ChutiPage {
                                 .onClick(
                                   (
                                     _,
-                                    _
+                                    _,
                                   ) =>
                                     GameClient.game
                                       .acceptGameInvitation(game.id)
@@ -579,7 +579,7 @@ object LobbyComponent extends ChutiPage {
                                       .completeWith {
                                         case Success(_)         => Callback.empty
                                         case Failure(exception) => Callback.throwException(exception)
-                                      }
+                                      },
                                 )("Aceptar"), // TODO i8n
                               Button()
                                 .compact(true)
@@ -587,7 +587,7 @@ object LobbyComponent extends ChutiPage {
                                 .onClick(
                                   (
                                     _,
-                                    _
+                                    _,
                                   ) =>
                                     GameClient.game
                                       .declineGameInvitation(game.id)
@@ -596,15 +596,15 @@ object LobbyComponent extends ChutiPage {
                                           Toast.success("Invitación rechazada") >> // TODO i8n
                                             p.gameInProgress.setState(None) >> refresh()
                                         case Failure(exception) => Callback.throwException(exception)
-                                      }
-                                )("Rechazar") // TODO i8n
-                            )
+                                      },
+                                )("Rechazar"), // TODO i8n
+                            ),
                           )
-                        }
-                      )
-                    )
-                  )
-                ).when(s.invites.nonEmpty)
+                        },
+                      ),
+                    ),
+                  ),
+                ).when(s.invites.nonEmpty),
               ),
               <.div(
                 ^.className := "lobbyCol2",
@@ -636,7 +636,7 @@ object LobbyComponent extends ChutiPage {
                                         .name(SemanticICONS.star)
                                         .color(SemanticCOLORS.yellow)
                                         .circular(true)
-                                        .fitted(true)()
+                                        .fitted(true)(),
                                     )()
                                 else
                                   EmptyVdom,
@@ -648,10 +648,10 @@ object LobbyComponent extends ChutiPage {
                                         .className("icon")
                                         .name(SemanticICONS.`user outline`)
                                         .circular(true)
-                                        .fitted(true)()
+                                        .fitted(true)(),
                                     )()
                                 else
-                                  EmptyVdom
+                                  EmptyVdom,
                               ),
                             TableCell()
                               .width(SemanticWIDTHS.`1`)
@@ -661,7 +661,7 @@ object LobbyComponent extends ChutiPage {
                                   .trigger(
                                     Icon()
                                       .name(SemanticICONS.`ellipsis vertical`)
-                                      .fitted(true)()
+                                      .fitted(true)(),
                                   )(
                                     DropdownMenu()(
                                       (for {
@@ -676,7 +676,7 @@ object LobbyComponent extends ChutiPage {
                                             .onClick {
                                               (
                                                 _,
-                                                _
+                                                _,
                                               ) =>
                                                 GameClient.game
                                                   .inviteToGame(player.user.id, game.id)
@@ -693,14 +693,14 @@ object LobbyComponent extends ChutiPage {
                                           .onClick {
                                             (
                                               _,
-                                              _
+                                              _,
                                             ) =>
                                               GameClient.user
                                                 .unfriend(player.user.id)
                                                 .completeWith {
                                                   case Success(true) =>
                                                     refresh() >> Toast.success(
-                                                      s"Cortalas, ${player.user.name} ya no es tu amigo!" // TODO i8n
+                                                      s"Cortalas, ${player.user.name} ya no es tu amigo!", // TODO i8n
                                                     )
                                                   case Success(false) => Toast.error("Error haciendo amigos!") // TODO i8n
                                                   case Failure(_) => Toast.error("Error haciendo amigos!") // TODO i8n
@@ -711,7 +711,7 @@ object LobbyComponent extends ChutiPage {
                                           .onClick {
                                             (
                                               _,
-                                              _
+                                              _,
                                             ) =>
                                               GameClient.user
                                                 .friend(player.user.id)
@@ -722,19 +722,19 @@ object LobbyComponent extends ChutiPage {
                                                   case Success(false) => Toast.error("Error haciendo amigos!") // TODO i8n
                                                   case Failure(_) => Toast.error("Error haciendo amigos!") // TODO i8n
                                                 }
-                                          }("Agregar como amigo") // TODO i8n
-                                    )
-                                  )
+                                          }("Agregar como amigo"), // TODO i8n
+                                    ),
+                                  ),
                               ),
                             TableCell()
-                              .width(SemanticWIDTHS.`14`)(player.user.name)
+                              .width(SemanticWIDTHS.`14`)(player.user.name),
                           )
-                        }
-                      )
-                    )
-                  ).when(chutiState.usersAndFriends.exists(_.user.id != user.id))
-                )
-              )
+                        },
+                      ),
+                    ),
+                  ).when(chutiState.usersAndFriends.exists(_.user.id != user.id)),
+                ),
+              ),
             )
           }
       }
@@ -744,7 +744,7 @@ object LobbyComponent extends ChutiPage {
 
   case class Props(
     gameInProgress: StateSnapshot[Option[Game]],
-    gameViewMode:   StateSnapshot[GameViewMode]
+    gameViewMode:   StateSnapshot[GameViewMode],
   )
 
   private val component = ScalaComponent
@@ -757,7 +757,7 @@ object LobbyComponent extends ChutiPage {
 
   def apply(
     gameInProgress: StateSnapshot[Option[Game]],
-    mode:           StateSnapshot[GameViewMode]
+    mode:           StateSnapshot[GameViewMode],
   ): Unmounted[Props, State, Backend] = component(Props(gameInProgress, mode))
 
 }

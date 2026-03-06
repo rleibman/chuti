@@ -43,11 +43,11 @@ object Numero {
 
   def max(
     arriba: Numero,
-    abajo:  Numero
+    abajo:  Numero,
   ): Numero = Numero(Math.max(arriba.value, abajo.value))
   def min(
     arriba: Numero,
-    abajo:  Numero
+    abajo:  Numero,
   ): Numero = Numero(Math.min(arriba.value, abajo.value))
 
   def apply(num: Int): Numero = values(num)
@@ -57,7 +57,7 @@ object Numero {
     JsonCodec
       .derived[Temp].transformOrFail(
         temp => Numero.values.find(_.value == temp.value).toRight(s"Invalid Numero value: ${temp.value}"),
-        numero => Temp(numero.value)
+        numero => Temp(numero.value),
       )
   }
 
@@ -82,7 +82,7 @@ object CuantasCantas {
   sealed abstract class CuantasCantas(
     val numFilas:  Int, // Cuantas filas se tienen que hacer para cantar esto
     val score:     Int, // Cuantos puntos se van a anotar con este canto (chuti son 7 filas, pero valen 21 puntos)
-    val prioridad: Int // Quien gana en prioridad. (buenas siempre pierde)
+    val prioridad: Int, // Quien gana en prioridad. (buenas siempre pierde)
   ) {
 
     override def toString: String = s"CuantasCantas($numFilas, $score, $prioridad)"
@@ -128,7 +128,7 @@ object Ficha {
 
   def apply(
     a: Numero,
-    b: Numero
+    b: Numero,
   ): Ficha = {
     val max = Numero.max(a, b)
     val min = Numero.min(a, b)
@@ -177,7 +177,7 @@ object Ficha {
       Json.Obj(
         "type"   -> Json.Str(if (ficha == FichaTapada) "tapada" else "conocida"),
         "arriba" -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.arriba).value),
-        "abajo"  -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.abajo).value)
+        "abajo"  -> Json.Num((if (ficha == FichaTapada) Numero0 else ficha.abajo).value),
       )
     }
 
@@ -231,7 +231,7 @@ object Ficha {
     Ficha.fromString("6:4") -> "🂑",
     Ficha.fromString("6:5") -> "🂒",
     Ficha.fromString("6:6") -> "🂓",
-    FichaTapada             -> "🁢"
+    FichaTapada             -> "🁢",
   )
 
 }
@@ -262,7 +262,7 @@ case object FichaTapada extends Ficha {
 
 case class FichaConocida private[chuti] (
   arriba: Numero,
-  abajo:  Numero
+  abajo:  Numero,
 ) extends Ficha {
 
   lazy override val esMula:   Boolean = arriba == abajo
@@ -278,14 +278,14 @@ object Fila {
 
   def apply(
     index:  Int,
-    fichas: Ficha*
+    fichas: Ficha*,
   ): Fila = new Fila(fichas.toSeq, index)
 
 }
 
 case class Fila(
   fichas: Seq[Ficha],
-  index:  Int = 0
+  index:  Int = 0,
 ) derives JsonCodec {
 
   override def toString: String = fichas.map(_.toString).mkString("[", ",", "]")
@@ -339,14 +339,14 @@ case class Jugador(
   statusString:         String = "",
   fueGanadorDelPartido: Boolean = false,
   cuenta:               Seq[Cuenta] = Seq.empty,
-  lastBotRationale:     Option[String] = None // Explanation of last bot decision
+  lastBotRationale:     Option[String] = None, // Explanation of last bot decision
 ) derives JsonCodec {
 
   lazy val yaSeHizo: Boolean = {
     if (!cantante)
       throw GameError("Si no canta no se puede hacer!!")
     filas.size >= cuantasCantas.fold(throw GameError("Si no canta no se puede hacer!!"))(
-      _.numFilas
+      _.numFilas,
     )
   }
 
@@ -402,7 +402,7 @@ object Triunfo {
 enum GameStatus(
   val value:   String,
   val enJuego: Boolean = false,
-  val acabado: Boolean = false
+  val acabado: Boolean = false,
 ) derives JsonCodec {
 
   case esperandoJugadoresInvitados extends GameStatus(value = "esperandoJugadoresInvitados")
@@ -449,13 +449,13 @@ object Game {
 
   lazy val todaLaFicha: List[Ficha] = (0 to 6)
     .combinations(2).toList.map(seq => Ficha(Numero(seq(0)), Numero(seq(1)))) ++ (0 to 6).map(i =>
-    Ficha(Numero(i), Numero(i))
+    Ficha(Numero(i), Numero(i)),
   )
 
   def calculaJugadorGanador(
     fichas:   Seq[(UserId, Ficha)],
     pidiendo: Ficha,
-    triunfo:  Triunfo
+    triunfo:  Triunfo,
   ): (UserId, Ficha) = {
     // could use fichaGanadora instead
     triunfo match {
@@ -497,7 +497,7 @@ case class Game(
   satoshiPerPoint:    Long = 100L,
   botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.advanced,
   explainReasoning:   Boolean = true, // Show bot reasoning to users
-  triggeredBorlotes:  Set[Borlote] = Set.empty // Track borlotes triggered in current juego
+  triggeredBorlotes:  Set[Borlote] = Set.empty, // Track borlotes triggered in current juego
 ) derives JsonCodec {
 
   def jugadorState(jugador: Jugador): JugadorState = {
@@ -583,12 +583,12 @@ case class Game(
   // Dado el triunfo, cuantas filas se pueden hacer con la siguiente mano
   def cuantasDeCaida(
     fichas:    Seq[Ficha],
-    remainder: Seq[Ficha]
+    remainder: Seq[Ficha],
   ): Seq[Fila] = {
     @tailrec def loop(
       fichas:    Seq[Ficha],
       remainder: Seq[Ficha],
-      filas:     Seq[Fila]
+      filas:     Seq[Fila],
     ): Seq[Fila] = {
       val pideOpt = highestValueByTriunfo(fichas)
       pideOpt match {
@@ -604,7 +604,7 @@ case class Game(
             loop(
               fichas.filter(_ != pide),
               remainder.filter(f => enJuego.lastOption.fold(true)(_._1 != f)),
-              filas :+ Fila(Seq(pide) ++ enJuego.lastOption.map(_._1).toSeq)
+              filas :+ Fila(Seq(pide) ++ enJuego.lastOption.map(_._1).toSeq),
             )
           }
 
@@ -620,7 +620,7 @@ case class Game(
     */
   def score(
     pide: Ficha,
-    da:   Ficha
+    da:   Ficha,
   ): Int = {
     triunfo match {
       case None => throw GameError("Nuncamente!")
@@ -654,7 +654,7 @@ case class Game(
 
   def fichaGanadora(
     pide:  Ficha,
-    juego: Seq[Ficha]
+    juego: Seq[Ficha],
   ): Ficha =
     juego
       .filter(_ != pide)
@@ -667,7 +667,7 @@ case class Game(
 
   def fichaGanadora(
     pide: Ficha,
-    da:   Ficha
+    da:   Ficha,
   ): Ficha = if (score(pide, da) > 1000) da else pide
 
   def puedesCaerte(jugador: Jugador): Boolean = {
@@ -676,7 +676,7 @@ case class Game(
       // Calcula cuantas puedes hacer de caida, dadas las fichas que tienes y las fichas que ya se jugaron,
       // primero calcula las fichas que quedan
       val resto = Game.todaLaFicha.diff(
-        jugador.fichas ++ jugadores.flatMap(_.filas.flatMap(_.fichas))
+        jugador.fichas ++ jugadores.flatMap(_.filas.flatMap(_.fichas)),
       )
       val cuantas = cuantasDeCaida(jugador.fichas, resto)
 
@@ -684,7 +684,7 @@ case class Game(
         if (
           jugador.cantante && (jugador.filas.size + cuantas.size) >= jugador.cuantasCantas
             .fold(0)(
-              _.numFilas
+              _.numFilas,
             )
         )
           true // Eres el cantante y ya estas hecho, caete!
@@ -712,7 +712,7 @@ case class Game(
             200 + f.other(num).value
           else if (f.esMula) 100
           else
-            f.arriba.value
+            f.arriba.value,
         )
     }
 
@@ -722,7 +722,7 @@ case class Game(
 
   def setStatusStrings(
     gameStatusString:     Option[String],
-    jugadorStatusStrings: Seq[(UserId, String)]
+    jugadorStatusStrings: Seq[(UserId, String)],
   ): Game = {
     val a = jugadorStatusStrings.headOption.fold(this) { _ =>
       val map = jugadorStatusStrings.toMap
@@ -738,13 +738,13 @@ case class Game(
   def jugador(id: UserId): Jugador =
     jugadores
       .find(_.user.id == id).getOrElse(
-        throw GameError("Este usuario no esta jugando en este juego")
+        throw GameError("Este usuario no esta jugando en este juego"),
       )
 
   def modifiedJugadores(
     filter:       Jugador => Boolean,
     ifMatches:    Jugador => Jugador,
-    ifNotMatches: Jugador => Jugador = identity
+    ifNotMatches: Jugador => Jugador = identity,
   ): List[Jugador] =
     jugadores.map { jugador =>
       if (filter(jugador))
@@ -803,7 +803,7 @@ case class Game(
   // Returns the newly modified state, and any changes to the event
   def applyEvent(
     user:  User,
-    event: GameEvent
+    event: GameEvent,
   ): (Game, GameEvent) = {
     // It is the responsibility of each event to make sure the event *can* be applied "legally"
     val processed = event.doEvent(user, game = this)
@@ -818,7 +818,7 @@ case class Game(
     // if you're removing tiles from people's hand and their tiles are hidden, then just drop 1.
     val user = jugadores
       .find(_.user.id == event.userId).map(_.user).getOrElse(
-        throw GameError("Este usuario no esta jugando en este juego")
+        throw GameError("Este usuario no esta jugando en este juego"),
       )
 
     val processed = event.redoEvent(user, game = this)
@@ -852,5 +852,5 @@ case class Game(
 
 case class Cuenta(
   puntos: Int,
-  esHoyo: Boolean = false
+  esHoyo: Boolean = false,
 ) derives JsonCodec

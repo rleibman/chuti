@@ -36,7 +36,7 @@ trait CRUDOperations[F[_], E, PK, SEARCH <: Search] {
   def get(pk:   PK): F[Option[E]]
   def delete(
     pk:         PK,
-    softDelete: Boolean = false
+    softDelete: Boolean = false,
   ):                                         F[Boolean]
   def search(search: Option[SEARCH] = None): F[Seq[E]]
   def count(search:  Option[SEARCH] = None): F[Long]
@@ -77,7 +77,7 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
 
   def login(
     email:    String,
-    password: String
+    password: String,
   ): F[Option[User]]
 
   def userByEmail(email: String): F[Option[User]]
@@ -86,7 +86,7 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
 
   def changePassword(
     user:     User,
-    password: String
+    password: String,
   ): F[Boolean]
 
   def unfriend(enemy: UserId): F[Boolean]
@@ -103,7 +103,7 @@ trait UserOperations[F[_]] extends CRUDOperations[F, User, UserId, PagedStringSe
 
   def userByOAuthProvider(
     provider:   String,
-    providerId: String
+    providerId: String,
   ): F[Option[User]]
 
 }
@@ -114,18 +114,18 @@ trait TokenOperations[F[_]] {
 
   def validateToken(
     token:   Token,
-    purpose: TokenPurpose
+    purpose: TokenPurpose,
   ): F[Option[User]]
 
   def createToken(
     user:    User,
     purpose: TokenPurpose,
-    ttl:     Option[Duration]
+    ttl:     Option[Duration],
   ): F[Token]
 
   def peek(
     token:   Token,
-    purpose: TokenPurpose
+    purpose: TokenPurpose,
   ): F[Option[User]]
 
 }

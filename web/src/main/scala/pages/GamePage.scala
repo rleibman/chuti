@@ -36,25 +36,25 @@ object GamePage extends ChutiPage with TimerSupport {
   class Backend($ : BackendScope[Props, State]) {
 
     def onModeChanged(
-      p: Props
+      p: Props,
     )(
       opt:      Option[GameViewMode],
-      callback: Callback
+      callback: Callback,
     ): Callback = {
       p.chutiState.onGameViewModeChanged(opt.getOrElse(GameViewMode.none)) >> callback
     }
 
     def onGameInProgressChanged(
-      chutiState: ChutiState
+      chutiState: ChutiState,
     )(
       opt:      Option[Option[Game]],
-      callback: Callback
+      callback: Callback,
     ): Callback = {
       opt.flatten.fold(Callback.empty)(g => chutiState.modGameInProgress(_ => g, callback))
     }
 
     def render(
-      p: Props
+      p: Props,
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
         val gameViewMode =
@@ -71,12 +71,12 @@ object GamePage extends ChutiPage with TimerSupport {
           case GameViewMode.lobby =>
             LobbyComponent(
               StateSnapshot(chutiState.gameInProgress)(onGameInProgressChanged(chutiState)),
-              StateSnapshot(gameViewMode)(onModeChanged(p))
+              StateSnapshot(gameViewMode)(onModeChanged(p)),
             )
           case GameViewMode.game =>
             GameComponent(
               chutiState.gameInProgress,
-              StateSnapshot(gameViewMode)(onModeChanged(p))
+              StateSnapshot(gameViewMode)(onModeChanged(p)),
             )
           case _ =>
             <.div(^.hidden := true, "We should never, ever get here, you should not be seeing this")

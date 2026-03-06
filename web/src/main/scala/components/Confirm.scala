@@ -29,7 +29,7 @@ object Confirm {
     onCancel:    Option[Callback] = None,
     cancelText:  String = "Cancel",
     confirmText: String = "Ok",
-    header:      Option[String] = None
+    header:      Option[String] = None,
   )
 
   class Backend($ : BackendScope[Unit, ConfirmState]) {
@@ -45,16 +45,16 @@ object Confirm {
           .onConfirm(
             (
               _,
-              _
-            ) => $.modState(s => s.copy(open = false), state.onConfirm)
+              _,
+            ) => $.modState(s => s.copy(open = false), state.onConfirm),
           )
           .onCancel {
             (
               _,
-              _
+              _,
             ) =>
               $.modState(s => s.copy(open = false), state.onCancel.getOrElse(Callback.empty))
-          }()
+          }(),
       )
 
     def confirm(
@@ -63,10 +63,10 @@ object Confirm {
       onCancel:    Option[Callback] = None,
       cancelText:  String = "Cancel",
       confirmText: String = "Ok",
-      header:      Option[String] = None
+      header:      Option[String] = None,
     ): Callback =
       $.setState(
-        ConfirmState(question, open = true, onConfirm, onCancel, cancelText, confirmText, header)
+        ConfirmState(question, open = true, onConfirm, onCancel, cancelText, confirmText, header),
       )
 
   }
@@ -89,11 +89,11 @@ object Confirm {
     onCancel:    Option[Callback] = None,
     cancelText:  String = "Cancel",
     confirmText: String = "Ok",
-    header:      Option[String] = None
+    header:      Option[String] = None,
   ): Callback =
     ref.get
       .flatMap(
-        _.fold(Callback.empty)(_.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header))
+        _.fold(Callback.empty)(_.backend.confirm(question, onConfirm, onCancel, cancelText, confirmText, header)),
       )
 
 }

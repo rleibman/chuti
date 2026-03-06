@@ -82,7 +82,7 @@ object FlywayMigration {
 
   private case class FlywayMigrationLive(
     flyway: Flyway,
-    config: FlywayConfig
+    config: FlywayConfig,
   ) extends FlywayMigration {
 
     override def migrate: Task[MigrateResult] =
@@ -109,7 +109,7 @@ object FlywayMigration {
 
         migrations.foreach { migration =>
           builder.append(
-            s"    - ${migration.getVersion}: ${migration.getDescription} (${migration.getState})\n"
+            s"    - ${migration.getVersion}: ${migration.getDescription} (${migration.getState})\n",
           )
         }
 
@@ -133,7 +133,7 @@ object FlywayMigration {
             ZIO.logInfo(
               s"Flyway migrations completed successfully. " +
                 s"Migrations executed: ${result.migrationsExecuted}, " +
-                s"Target schema version: ${result.targetSchemaVersion}"
+                s"Target schema version: ${result.targetSchemaVersion}",
             )
           } else {
             ZIO.logInfo("Flyway migrations are disabled")

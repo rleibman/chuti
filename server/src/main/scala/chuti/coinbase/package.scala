@@ -48,7 +48,7 @@ package object coinbase {
       to:          String,
       amount:      BigDecimal,
       currency:    Currency,
-      description: Option[String] = None
+      description: Option[String] = None,
     ): Task[Unit]
 
     def transactionSend(
@@ -59,7 +59,7 @@ package object coinbase {
       skipNotifications:             Boolean = true,
       fee:                           Option[BigDecimal] = None,
       idem:                          Option[String] = None,
-      financial_institution_website: Option[String] = None
+      financial_institution_website: Option[String] = None,
     ): Task[Unit]
 
     def walletCreateAddress(name: String): Task[String]
@@ -81,7 +81,7 @@ package object coinbase {
         to:          String,
         amount:      BigDecimal,
         currency:    Currency,
-        description: Option[String]
+        description: Option[String],
       ): Task[Unit] = ???
 
       override def transactionSend(
@@ -92,7 +92,7 @@ package object coinbase {
         skipNotifications:             Boolean,
         fee:                           Option[BigDecimal],
         idem:                          Option[String],
-        financial_institution_website: Option[String]
+        financial_institution_website: Option[String],
       ): Task[Unit] = ???
 
       override def walletCreateAddress(name: String): Task[String] = ???
@@ -104,7 +104,7 @@ package object coinbase {
     timestamp:   String,
     method:      String,
     requestPath: String,
-    body:        String
+    body:        String,
   ): String = {
     val prehash =
       if (method == "POST" || method == "PUT") timestamp + method.toUpperCase + requestPath

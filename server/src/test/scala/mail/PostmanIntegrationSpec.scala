@@ -45,7 +45,7 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
                 .from(InternetAddress("system@chuti.com"))
                 .to(InternetAddress("roberto@leibman.net"))
                 .subject("hello")
-                .content(Text("body of hello"))
+                .content(Text("body of hello")),
             ).fork
         } yield delivered
 
@@ -60,14 +60,14 @@ object PostmanIntegrationSpec extends ZIOSpec[ChutiEnvironment & ChutiSession] {
             email = "roberto@leibman.net",
             name = "Roberto",
             created = now,
-            lastUpdated = now
+            lastUpdated = now,
           )
           // Use mock TokenHolder since the real one tries to insert a token with god's userId (-666)
           // which doesn't exist in the database. This test is about email sending, not token creation.
           envelope  <- postman.registrationEmail(testUser).provide(TokenHolder.mockLayer)
           delivered <- postman.deliver(envelope).fork
         } yield assert(true)(equalTo(true))).withClock(fixedClock)
-      }
+      },
     )
 
   override def bootstrap: ULayer[ChutiEnvironment & ChutiSession] =

@@ -185,7 +185,7 @@ object QuillUserSpec extends QuillSpec {
           assert(wallet.get.amount)(equalTo(BigDecimal(10000))) &&
           assertTrue(updated == walletUpdated.get) &&
           assert(walletUpdated.get.amount)(equalTo(BigDecimal(12345)))).withClock(fixedClock)
-      }
+      },
 
       // Crud tests
       //

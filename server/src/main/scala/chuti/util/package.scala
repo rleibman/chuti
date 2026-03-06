@@ -44,8 +44,8 @@ extension (request: Request) {
       _ <- ZIO
         .fail(
           GameError(
-            s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})"
-          )
+            s"Trying to retrieve form data from a non-form post (content type = ${request.header(Header.ContentType)})",
+          ),
         )
         .when(!contentTypeStr.contains(MediaType.application.`x-www-form-urlencoded`.subType))
     } yield str
@@ -60,13 +60,13 @@ extension (request: Request) {
     */
   def preferredLocale(
     availableLocales: NonEmptyList[Locale],
-    forceLanguage:    Option[String]
+    forceLanguage:    Option[String],
   ): Locale = {
     val range = Locale.LanguageRange.parse(
       forceLanguage
         .orElse(request.header(Header.AcceptLanguage).map(_.renderedValue)).getOrElse(
-          availableLocales.head.toLanguageTag
-        )
+          availableLocales.head.toLanguageTag,
+        ),
     )
 
     Locale.lookup(range, availableLocales.toList.asJava).nn

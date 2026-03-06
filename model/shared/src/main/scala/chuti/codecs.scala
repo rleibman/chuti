@@ -39,5 +39,5 @@ given JsonCodec[JugadorType] =
         case "ai"       => Right(JugadorType.aiBot) // Another possible old name
         case other      => Left(s"Unknown JugadorType: $other (valid values: human, dumbBot, aiBot, claudeBot)")
       },
-    jugadorType => jugadorType.toString
+    jugadorType => jugadorType.toString,
   )

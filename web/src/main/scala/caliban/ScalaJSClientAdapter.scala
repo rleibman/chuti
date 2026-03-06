@@ -48,7 +48,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       def unsafeEncode(
         value:  client.__Value,
         indent: Option[Int],
-        out:    zio.json.internal.Write
+        out:    zio.json.internal.Write,
       ): Unit = {
         value match {
           case client.__Value.__StringValue(s)  => JsonEncoder.string.unsafeEncode(s, indent, out)
@@ -84,7 +84,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
     new JsonDecoder[client.__Value] {
       def unsafeDecode(
         trace: List[JsonError],
-        in:    zio.json.internal.RetractReader
+        in:    zio.json.internal.RetractReader,
       ): client.__Value = {
         // Parse as zio.json.ast.Json first, then convert
         val json = JsonDecoder[Json].unsafeDecode(trace, in)
@@ -113,7 +113,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       def unsafeEncode(
         value:  client.__Value.__ObjectValue,
         indent: Option[Int],
-        out:    zio.json.internal.Write
+        out:    zio.json.internal.Write,
       ): Unit = {
         summon[JsonEncoder[client.__Value]].unsafeEncode(value, indent, out)
       }
@@ -122,7 +122,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
     new JsonDecoder[client.__Value.__ObjectValue] {
       def unsafeDecode(
         trace: List[JsonError],
-        in:    zio.json.internal.RetractReader
+        in:    zio.json.internal.RetractReader,
       ): client.__Value.__ObjectValue = {
         summon[JsonDecoder[client.__Value]].unsafeDecode(trace, in) match {
           case obj: client.__Value.__ObjectValue => obj
@@ -140,8 +140,8 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
   // Enhancement error management switch this, insteaf of returning AsyncCallback, return an Either[Throwable, A]
   def asyncCalibanCallWithAuth[Origin, A](
-    selectionBuilder: SelectionBuilder[Origin, A]
-  )(using ev:         IsOperation[Origin]
+    selectionBuilder: SelectionBuilder[Origin, A],
+  )(using ev:         IsOperation[Origin],
   ): AsyncCallback[A] = {
     util.ApiClientSttp4
       .withAuth(selectionBuilder.toRequest(serverUri))
@@ -155,8 +155,8 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
   // Enhancement error management switch this, insteaf of returning AsyncCallback, return an Either[Throwable, A]
   def asyncCalibanCallWithAuthOptional[Origin, A](
-    selectionBuilder: SelectionBuilder[Origin, A]
-  )(using ev:         IsOperation[Origin]
+    selectionBuilder: SelectionBuilder[Origin, A],
+  )(using ev:         IsOperation[Origin],
   ): AsyncCallback[A] = {
     util.ApiClientSttp4
       .withAuthOptional(selectionBuilder.toRequest(serverUri))
@@ -173,7 +173,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
   case class GQLOperationMessage(
     `type`:  String,
     id:      Option[String] = None,
-    payload: Option[Json] = None
+    payload: Option[Json] = None,
   )
 
   object GQLOperationMessage {
@@ -210,14 +210,14 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
     onConnected: (String, Option[Json]) => Callback = {
       (
         _,
-        _
+        _,
       ) =>
         Callback.empty
     },
     onReconnected: (String, Option[Json]) => Callback = {
       (
         _,
-        _
+        _,
       ) =>
         Callback.empty
     },
@@ -226,7 +226,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
     onDisconnected: (String, Option[Json]) => Callback = {
       (
         _,
-        _
+        _,
       ) =>
         Callback.empty
     },
@@ -234,11 +234,11 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
     onServerError: (String, Option[Json]) => Callback = {
       (
         _,
-        _
+        _,
       ) =>
         Callback.empty
     },
-    onClientError: Throwable => Callback = { _ => Callback.empty }
+    onClientError: Throwable => Callback = { _ => Callback.empty },
   ): WebSocketHandler =
     new WebSocketHandler {
 
@@ -274,7 +274,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
         reconnectCount:     Int = 0,
         closed:             Boolean = false,
         firstReconnectTime: Option[Instant] = None,
-        reconnectTimeoutId: Option[Int] = None
+        reconnectTimeoutId: Option[Int] = None,
       )
 
       private var connectionState: ConnectionState = ConnectionState()
@@ -306,12 +306,12 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
 
         val delay = calculateBackoffDelay(connectionState.reconnectCount)
         println(
-          s"Attempting reconnection #${connectionState.reconnectCount + 1} in ${delay}ms (total reconnect time: ${totalReconnectTime / 1000}s)"
+          s"Attempting reconnection #${connectionState.reconnectCount + 1} in ${delay}ms (total reconnect time: ${totalReconnectTime / 1000}s)",
         )
 
         connectionState = connectionState.copy(
           firstReconnectTime = Some(firstReconnect),
-          reconnectCount = connectionState.reconnectCount + 1
+          reconnectCount = connectionState.reconnectCount + 1,
         )
 
         val timeoutId = org.scalajs.dom.window.setTimeout(
@@ -328,7 +328,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
             // Setup all handlers on the new socket
             setupSocketHandlers(newSocket)
           },
-          delay
+          delay,
         )
 
         connectionState = connectionState.copy(reconnectTimeoutId = Some(timeoutId))
@@ -384,9 +384,9 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
                           }
                         }
                       },
-                      timeout.toMillis.toDouble
-                    )
-                  )
+                      timeout.toMillis.toDouble,
+                    ),
+                  ),
                 )
               }
               connectionState = connectionState.copy(lastKAOpt = Option(Instant.now()))
@@ -448,7 +448,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
           // Reset reconnect state on successful connection
           connectionState = connectionState.copy(
             reconnectCount = 0,
-            firstReconnectTime = None
+            firstReconnectTime = None,
           )
           doConnect()
         }
@@ -480,7 +480,7 @@ case class ScalaJSClientAdapter(serverUri: Uri) extends TimerSupport {
       override def close(): Callback = {
         if (socket.readyState == WebSocket.CONNECTING) {
           Callback.log(
-            "Socket is currently connecting, waiting a second for it to finish and then we'r trying again"
+            "Socket is currently connecting, waiting a second for it to finish and then we'r trying again",
           ) >>
             setTimeoutMs(close(), 1000)
         } else if (socket.readyState == WebSocket.OPEN) {

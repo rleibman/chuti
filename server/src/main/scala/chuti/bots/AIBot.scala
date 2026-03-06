@@ -27,7 +27,7 @@ import zio.json.ast.Json
 case class LLMStats(
   successes: Long = 0,
   timeouts:  Long = 0,
-  errors:    Long = 0
+  errors:    Long = 0,
 ) {
 
   def total: Long = successes + timeouts + errors
@@ -41,7 +41,7 @@ case class LLMStats(
 case class AIBot(
   config:     OllamaConfig,
   llmService: LLMService,
-  stats:      Ref[LLMStats]
+  stats:      Ref[LLMStats],
 ) extends ChutiBot {
 
   given JsonEncoder[Map[Jugador, Seq[Numero]]] =
@@ -50,9 +50,9 @@ case class AIBot(
         _.map(
           (
             jugador,
-            numeros
-          ) => (jugador.user.id.toString, numeros)
-        )
+            numeros,
+          ) => (jugador.user.id.toString, numeros),
+        ),
       )
 
   // We don't want to give bots perfect memory, but this is the information that we expect most humans would likely know,
@@ -64,7 +64,7 @@ case class AIBot(
     doublesSeen:      Seq[Ficha],
     exhaustedNumbers: Option[Seq[Numero]],
     scarceNumbers:    Option[Seq[Numero]],
-    playerVoids:      Option[Map[Jugador, Seq[Numero]]]
+    playerVoids:      Option[Map[Jugador, Seq[Numero]]],
   ) derives JsonEncoder
 
   /** Calculates an imperfect memory summary for the bot, based only on the tiles that have been played so far, and the
@@ -90,7 +90,7 @@ case class AIBot(
     */
   def calculateMemorySummary(
     game:    Game,
-    jugador: Jugador
+    jugador: Jugador,
   ): MemorySummary = {
     val allPlayedTiles = game.jugadores.flatMap(_.filas.flatMap(_.fichas))
 
@@ -124,7 +124,7 @@ case class AIBot(
           doublesSeen = mulasVistas,
           exhaustedNumbers = None, // Doesn't track exhausted numbers
           scarceNumbers = None, // Doesn't track scarcity
-          playerVoids = None // No void inference
+          playerVoids = None, // No void inference
         )
 
       case BotDifficultyLevel.intermediate =>
@@ -145,7 +145,7 @@ case class AIBot(
           doublesSeen = mulasVistas,
           exhaustedNumbers = None, // Doesn't track yet
           scarceNumbers = None, // Doesn't track yet
-          playerVoids = Some(voids)
+          playerVoids = Some(voids),
         )
 
       case BotDifficultyLevel.advanced =>
@@ -184,7 +184,7 @@ case class AIBot(
           doublesSeen = mulasVistas,
           exhaustedNumbers = Some(numerosQueYaNoHay),
           scarceNumbers = Some(numerosQueHayPocos),
-          playerVoids = Some(voids)
+          playerVoids = Some(voids),
         )
     }
   }
@@ -199,7 +199,7 @@ case class AIBot(
     */
   private def inferVoids(
     game:    Game,
-    jugador: Jugador
+    jugador: Jugador,
   ): Map[Jugador, Seq[Numero]] = {
     // For a more accurate implementation, we'd need either:
     // 1. Access to game events (Pide/Da) which have userId
@@ -291,7 +291,7 @@ case class AIBot(
   def fromSimplifiedJson(
     json:    Json,
     game:    Game,
-    jugador: Jugador
+    jugador: Jugador,
   ): IO[GameError, PlayEvent] = {
 
     (for {
@@ -302,7 +302,7 @@ case class AIBot(
       case Some("canta") =>
         case class Details(
           cuantasCantas: Int,
-          reasoning:     Option[String]
+          reasoning:     Option[String],
         ) derives JsonDecoder
         ZIO
           .fromEither(json.as[Details]).map(d =>
@@ -310,8 +310,8 @@ case class AIBot(
               gameId = game.id,
               userId = jugador.user.id,
               cuantasCantas = CuantasCantas.byNum(d.cuantasCantas),
-              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
-            )
+              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}"),
+            ),
           ).mapError(e => GameError(s"Failed to parse Canta details: $e"))
 
       case Some("pide") =>
@@ -319,7 +319,7 @@ case class AIBot(
           ficha:           String,
           trump:           Option[String],
           estrictaDerecha: Boolean,
-          reasoning:       Option[String]
+          reasoning:       Option[String],
         ) derives JsonDecoder
         ZIO
           .fromEither(json.as[Details]).flatMap { d =>
@@ -333,7 +333,7 @@ case class AIBot(
                   ZIO
                     .fromOption(numStr.toIntOption).mapBoth(
                       _ => GameError(s"Invalid trump value: $numStr"),
-                      n => Option(TriunfoNumero(Numero(n)))
+                      n => Option(TriunfoNumero(Numero(n))),
                     )
                 case None => ZIO.succeed(game.triunfo) // Keep existing trump
               }
@@ -343,14 +343,14 @@ case class AIBot(
               ficha = ficha,
               triunfo = triunfo,
               estrictaDerecha = d.estrictaDerecha,
-              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
+              reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}"),
             )
           }.mapError(e => GameError(s"Failed to parse Pide details: $e"))
 
       case Some("da") =>
         case class Details(
           ficha:     String,
-          reasoning: Option[String]
+          reasoning: Option[String],
         ) derives JsonDecoder
         ZIO
           .fromEither(json.as[Details]).flatMap { d =>
@@ -362,8 +362,8 @@ case class AIBot(
                   gameId = game.id,
                   userId = jugador.user.id,
                   ficha = ficha,
-                  reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}")
-                )
+                  reasoning = d.reasoning.map(_ + s" ${formatHand(jugador)}"),
+                ),
               )
           }.mapError(e => GameError(s"Failed to parse Da details: $e"))
 
@@ -414,7 +414,7 @@ case class AIBot(
         Ficha(Numero.Numero4, Numero.Numero4),
         Ficha(Numero.Numero3, Numero.Numero3),
         Ficha(Numero.Numero2, Numero.Numero2),
-        Ficha(Numero.Numero1, Numero.Numero1)
+        Ficha(Numero.Numero1, Numero.Numero1),
       )
       val has1_0 = fichas.contains(Ficha(Numero.Numero1, Numero.Numero0))
       if (mulas.toSet == topSixMulas && has1_0) {
@@ -434,7 +434,7 @@ case class AIBot(
           Numero.Numero4,
           Numero.Numero3,
           Numero.Numero2,
-          Numero.Numero0
+          Numero.Numero0,
         )
 
         candidates
@@ -444,7 +444,7 @@ case class AIBot(
               // Must have exactly 5 tiles with this number, plus 1:1 and 1:0
               val expected = Set(
                 Ficha(Numero.Numero1, Numero.Numero1),
-                Ficha(Numero.Numero1, Numero.Numero0)
+                Ficha(Numero.Numero1, Numero.Numero0),
               )
               (fichas.toSet -- tilesWithNum.toSet) == expected
             } else false
@@ -458,7 +458,7 @@ case class AIBot(
   // Computes all possible trump options ranked by guaranteed trick count
   private def possibleMoves(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): Seq[(triunfo: Triunfo, cuantasDeCaida: Int, cuantosTriunfosYMulas: Int)] = {
     val numerosQueTengo: Seq[Numero] = jugador.fichas
       .flatMap(f => Seq(f.arriba, f.abajo))
@@ -476,9 +476,9 @@ case class AIBot(
           game
             .copy(triunfo = Option(triunfo)).cuantasDeCaida(
               fichas,
-              fichasDeOtros
+              fichasDeOtros,
             ).size,
-          fichas.count(f => f.es(num)) + fichas.count(f => f.esMula && !f.es(num))
+          fichas.count(f => f.es(num)) + fichas.count(f => f.esMula && !f.es(num)),
         )
       }
 
@@ -490,8 +490,8 @@ case class AIBot(
         (
           SinTriunfos,
           sinTriunfos,
-          sinTriunfos
-        )
+          sinTriunfos,
+        ),
       )
     }
 
@@ -503,7 +503,7 @@ case class AIBot(
     */
   private def fichaValue(
     ficha:   Ficha,
-    triunfo: Option[Triunfo]
+    triunfo: Option[Triunfo],
   ): Int = {
     triunfo match {
       case None => throw GameError("No trump set!")
@@ -586,7 +586,7 @@ case class AIBot(
   // Different players in the same game are likely to have different styles.
   private def playerPersonality(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): String = {
     val index = math.abs((jugador.user.id.value ^ game.id.value) % 5).toInt
     index match {
@@ -621,7 +621,7 @@ case class AIBot(
 
   def promptHeader(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): String = {
     val cuentasCalculadas = game.cuentasCalculadas
 
@@ -683,7 +683,7 @@ case class AIBot(
 
   def canta(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     // Check for special guaranteed Chuti hands first
     detectSpecialChuti(jugador.fichas) match {
@@ -695,9 +695,9 @@ case class AIBot(
             gameId = game.id,
             userId = jugador.user.id,
             reasoning = Option(
-              s"Special Chuti hand detected with trump $specialTriunfo! Guaranteed to win all 7 tricks. Bidding Chuti automatically. ${formatHand(jugador)}"
-            )
-          )
+              s"Special Chuti hand detected with trump $specialTriunfo! Guaranteed to win all 7 tricks. Bidding Chuti automatically. ${formatHand(jugador)}",
+            ),
+          ),
         )
       case None =>
         // Normal bidding logic
@@ -724,8 +724,8 @@ case class AIBot(
               MeRindo(
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Nothing playable — surrendering. Hand: ${formatHand(jugador)}")
-              ): PlayEvent
+                reasoning = Option(s"Nothing playable — surrendering. Hand: ${formatHand(jugador)}"),
+              ): PlayEvent,
             )
           } { max =>
             if (max.cuantasDeCaida <= 3) {
@@ -736,8 +736,8 @@ case class AIBot(
                   gameId = game.id,
                   userId = jugador.user.id,
                   reasoning =
-                    Option(s"Forced to bid Casa (4) — only ${max.cuantasDeCaida} guaranteed tricks. Hoping someone saves me. Hand: ${formatHand(jugador)}")
-                )
+                    Option(s"Forced to bid Casa (4) — only ${max.cuantasDeCaida} guaranteed tricks. Hoping someone saves me. Hand: ${formatHand(jugador)}"),
+                ),
               )
             } else {
 
@@ -796,8 +796,8 @@ case class AIBot(
                 CuantasCantas.CantoTodas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"7 tricks guaranteed — bidding Chuti. Hand: ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"7 tricks guaranteed — bidding Chuti. Hand: ${formatHand(jugador)}"),
+              ),
             )
           } else if (maxBidByOthers == 7) {
             ZIO.succeed(
@@ -805,8 +805,8 @@ case class AIBot(
                 Buenas,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Cannot outbid Chuti — passing. Hand: ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"Cannot outbid Chuti — passing. Hand: ${formatHand(jugador)}"),
+              ),
             )
           } else if (diff >= 0) {
             // My guaranteed tricks don't beat the current bid — pass
@@ -816,8 +816,8 @@ case class AIBot(
                 gameId = game.id,
                 userId = jugador.user.id,
                 reasoning =
-                  Option(s"Passing — my guaranteed tricks ($topMove) don't beat current bid ($maxBidByOthers). Hand: ${formatHand(jugador)}")
-              )
+                  Option(s"Passing — my guaranteed tricks ($topMove) don't beat current bid ($maxBidByOthers). Hand: ${formatHand(jugador)}"),
+              ),
             )
           } else if (maxBidByOthers > 4 && diff < 0) {
             // Already saved beyond Casa — outbid to take the points
@@ -827,9 +827,9 @@ case class AIBot(
                 gameId = game.id,
                 userId = jugador.user.id,
                 reasoning = Option(
-                  s"Bid is already above 4 — outbidding to $topMove and taking the points. Hand: ${formatHand(jugador)}"
-                )
-              )
+                  s"Bid is already above 4 — outbidding to $topMove and taking the points. Hand: ${formatHand(jugador)}",
+                ),
+              ),
             )
           } else {
             val maxBidderName = maxPlayer.map(_.user.name).getOrElse("someone")
@@ -870,7 +870,7 @@ case class AIBot(
 
   def pideInicial(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     val bid = jugador.cuantasCantas.fold(4)(_.numFilas)
 
@@ -886,8 +886,8 @@ case class AIBot(
           gameId = game.id,
           userId = jugador.user.id,
           reasoning =
-            Option(s"Auto-fall: guaranteed all tricks with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks). Hand: ${formatHand(jugador)}")
-        )
+            Option(s"Auto-fall: guaranteed all tricks with trump $bestTrump (${deCaidaOpt.get.cuantasDeCaida} of $bid tricks). Hand: ${formatHand(jugador)}"),
+        ),
       )
     } else {
 
@@ -896,10 +896,10 @@ case class AIBot(
           .filter(
             (
               t,
-              i
+              i,
             ) =>
               // We have to at least take one option
-              i == 0 || t.cuantasDeCaida >= bid
+              i == 0 || t.cuantasDeCaida >= bid,
           )
           .map(_._1)
           .take(3)
@@ -916,7 +916,7 @@ case class AIBot(
         case None =>
           // No moves at all (shouldn't happen — possibleMoves always has at least SinTriunfos)
           ZIO.succeed(
-            MeRindo(gameId = game.id, userId = jugador.user.id, reasoning = Option("No valid moves in pideInicial"))
+            MeRindo(gameId = game.id, userId = jugador.user.id, reasoning = Option("No valid moves in pideInicial")),
           )
         case Some(best) =>
           ZIO.succeed(
@@ -928,9 +928,9 @@ case class AIBot(
               userId = jugador.user.id,
               reasoning = Option(
                 s"PideInicial: playing trump ${best.triunfo} with ${best.pide} " +
-                  s"(${best.cuantasDeCaida} guaranteed tricks, ${best.cuantosTriunfosYMulas} trump+double tiles) Hand: ${formatHand(jugador)}"
-              )
-            )
+                  s"(${best.cuantasDeCaida} guaranteed tricks, ${best.cuantosTriunfosYMulas} trump+double tiles) Hand: ${formatHand(jugador)}",
+              ),
+            ),
           )
       }
     }
@@ -938,7 +938,7 @@ case class AIBot(
 
   def pide(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     // Check if hoyo is imminent and we should surrender (only allowed before second trick)
     val canStillSurrender = jugador.fichas.size >= 6 // Before second trick (6-7 tiles remaining)
@@ -957,7 +957,7 @@ case class AIBot(
         f.esMula || game.triunfo.exists {
           case TriunfoNumero(num) => f.es(num)
           case SinTriunfos        => false
-        }
+        },
       )
 
       // Surrender if:
@@ -975,9 +975,9 @@ case class AIBot(
           gameId = game.id,
           userId = jugador.user.id,
           reasoning = Option(
-            s"Surrender: Need ${jugador.cuantasCantas.fold(4)(_.numFilas) - jugador.filas.size} more tricks with ${jugador.fichas.size} tiles remaining, hoyo is imminent. Better to cut losses now. ${formatHand(jugador)}"
-          )
-        )
+            s"Surrender: Need ${jugador.cuantasCantas.fold(4)(_.numFilas) - jugador.filas.size} more tricks with ${jugador.fichas.size} tiles remaining, hoyo is imminent. Better to cut losses now. ${formatHand(jugador)}",
+          ),
+        ),
       )
     } else if (jugador.fichas.size == 1) {
       // Only one tile left - check if can caerse, otherwise just play it
@@ -990,8 +990,8 @@ case class AIBot(
             triunfo = Some(currentTriunfo),
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option(s"Auto-play: Last tile ($singleFicha) and can caerse")
-          )
+            reasoning = Option(s"Auto-play: Last tile ($singleFicha) and can caerse"),
+          ),
         )
       } else {
         ZIO.succeed(
@@ -1001,8 +1001,8 @@ case class AIBot(
             triunfo = Some(currentTriunfo),
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option(s"Auto-play: Last tile remaining ($singleFicha)")
-          )
+            reasoning = Option(s"Auto-play: Last tile remaining ($singleFicha)"),
+          ),
         )
       }
     } else if (jugador.cantante) {
@@ -1023,7 +1023,7 @@ case class AIBot(
                 Caete(
                   triunfo = Option(triunfo),
                   gameId = game.id,
-                  userId = jugador.user.id
+                  userId = jugador.user.id,
                 )
               } else {
 
@@ -1041,8 +1041,8 @@ case class AIBot(
               Caete(
                 triunfo = Some(currentTriunfo),
                 gameId = game.id,
-                userId = jugador.user.id
-              )
+                userId = jugador.user.id,
+              ),
             ) // If you can caerte, do it instead of pide
           } else {
             val pides = jugador.fichas.map { ficha =>
@@ -1087,13 +1087,13 @@ case class AIBot(
                   s"TRUMP WARNING: There are unplayed trumps in opponents' hands (highest value $highestOpponentTrump) " +
                     s"that outrank your best trump (value $myBestTrumpValue). " +
                     s"Leading trump now guarantees you LOSE it. Trump leads have been removed from your options. " +
-                    s"Lead a non-trump tile instead to preserve your trumps."
-                )
+                    s"Lead a non-trump tile instead to preserve your trumps.",
+                ),
               )
             else
               (
                 legalMoves,
-                Some(s"You only have trumps left — you must lead one, but beware: opponents have higher trumps (value $highestOpponentTrump) vs your best (value $myBestTrumpValue).")
+                Some(s"You only have trumps left — you must lead one, but beware: opponents have higher trumps (value $highestOpponentTrump) vs your best (value $myBestTrumpValue)."),
               )
           } else
             (legalMoves, None)
@@ -1194,7 +1194,7 @@ case class AIBot(
 
   def da(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     val pidePlay = game.enJuego.head
     val pide = pidePlay._2
@@ -1231,8 +1231,8 @@ case class AIBot(
           ficha = jugador.fichas.head,
           gameId = game.id,
           userId = jugador.user.id,
-          reasoning = Option("No thinking needed, only one tile left to play")
-        )
+          reasoning = Option("No thinking needed, only one tile left to play"),
+        ),
       )
     } else if (legalMoves.size == 1) {
       ZIO.sleep(1.second) *> ZIO.succeed(
@@ -1241,9 +1241,9 @@ case class AIBot(
           gameId = game.id,
           userId = jugador.user.id,
           reasoning = Option(
-            s"Only one legal tile to play ${legalMoves.head.toString}, playing it automatically ${formatHand(jugador)}"
-          )
-        )
+            s"Only one legal tile to play ${legalMoves.head.toString}, playing it automatically ${formatHand(jugador)}",
+          ),
+        ),
       )
       ///////////////////////////////////////////////////////////////////////////
       // 4th-to-play optimization: when three tiles are already on the table the
@@ -1267,8 +1267,8 @@ case class AIBot(
                 ficha = tile,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"4th to play: beating cantante with smallest winning tile ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"4th to play: beating cantante with smallest winning tile ${formatHand(jugador)}"),
+              ),
             )
           case None =>
             ZIO.sleep(1.second) *> ZIO.succeed(
@@ -1276,8 +1276,8 @@ case class AIBot(
                 ficha = legalMoves.minBy(_.value),
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"4th to play: can't beat cantante, dumping lowest ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"4th to play: can't beat cantante, dumping lowest ${formatHand(jugador)}"),
+              ),
             )
         }
       } else {
@@ -1286,8 +1286,8 @@ case class AIBot(
             ficha = legalMoves.minBy(_.value),
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option(s"4th to play: cantante not winning, dumping lowest ${formatHand(jugador)}")
-          )
+            reasoning = Option(s"4th to play: cantante not winning, dumping lowest ${formatHand(jugador)}"),
+          ),
         )
       }
       ///////////////////////////////////////////////////////////////////////////
@@ -1308,8 +1308,8 @@ case class AIBot(
             gameId = game.id,
             userId = jugador.user.id,
             reasoning =
-              Option(s"Can't follow suit or trump, playing lowest tile to minimize loss ${formatHand(jugador)}")
-          )
+              Option(s"Can't follow suit or trump, playing lowest tile to minimize loss ${formatHand(jugador)}"),
+          ),
         )
       } else {
         ///////////////////////////////////////////////////////////////////////////
@@ -1326,8 +1326,8 @@ case class AIBot(
               ficha = legalMoves.minBy(_.value),
               gameId = game.id,
               userId = jugador.user.id,
-              reasoning = Option(s"Cantante: no legal tile beats current winner, dumping lowest ${formatHand(jugador)}")
-            )
+              reasoning = Option(s"Cantante: no legal tile beats current winner, dumping lowest ${formatHand(jugador)}"),
+            ),
           )
         } else {
           ///////////////////////////////////////////////////////////////////////////
@@ -1405,8 +1405,8 @@ case class AIBot(
             ficha = lowestTile,
             gameId = game.id,
             userId = jugador.user.id,
-            reasoning = Option(s"Can't follow or trump, dumping lowest tile ${formatHand(jugador)}")
-          )
+            reasoning = Option(s"Can't follow or trump, dumping lowest tile ${formatHand(jugador)}"),
+          ),
         )
       } else if (askingForTrump) {
         // They're asking for trump
@@ -1424,8 +1424,8 @@ case class AIBot(
                   ficha = tile,
                   gameId = game.id,
                   userId = jugador.user.id,
-                  reasoning = Option(s"Asking for trump, can't win, playing smallest trump ${formatHand(jugador)}")
-                )
+                  reasoning = Option(s"Asking for trump, can't win, playing smallest trump ${formatHand(jugador)}"),
+                ),
               )
             case None =>
               // No trumps, play smallest tile
@@ -1435,8 +1435,8 @@ case class AIBot(
                   ficha = smallestTile,
                   gameId = game.id,
                   userId = jugador.user.id,
-                  reasoning = Option(s"Asking for trump, don't have it, playing smallest tile ${formatHand(jugador)}")
-                )
+                  reasoning = Option(s"Asking for trump, don't have it, playing smallest tile ${formatHand(jugador)}"),
+                ),
               )
           }
         } else {
@@ -1445,7 +1445,7 @@ case class AIBot(
             userId != cantante.user.id &&
             fichaValue(ficha, game.triunfo) > fichaValue(
               game.enJuego.find(_._1 == cantante.user.id).map(_._2).getOrElse(pide),
-              game.triunfo
+              game.triunfo,
             )
           }
 
@@ -1458,8 +1458,8 @@ case class AIBot(
                 ficha = smallestTrump,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Cantante already beaten, saving trumps, playing smallest ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"Cantante already beaten, saving trumps, playing smallest ${formatHand(jugador)}"),
+              ),
             )
           } else {
             // Win with smallest winning trump
@@ -1471,8 +1471,8 @@ case class AIBot(
                 ficha = smallestWinning,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Winning with smallest trump to deny cantante ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"Winning with smallest trump to deny cantante ${formatHand(jugador)}"),
+              ),
             )
           }
         }
@@ -1487,9 +1487,9 @@ case class AIBot(
                 gameId = game.id,
                 userId = jugador.user.id,
                 reasoning = Option(
-                  s"Non-trump double or 6:5 with different trumps, playing smallest matching ${formatHand(jugador)}"
-                )
-              )
+                  s"Non-trump double or 6:5 with different trumps, playing smallest matching ${formatHand(jugador)}",
+                ),
+              ),
             )
           case None =>
             // Shouldn't happen if legal moves are correct, but fallback
@@ -1499,8 +1499,8 @@ case class AIBot(
                 ficha = smallestTile,
                 gameId = game.id,
                 userId = jugador.user.id,
-                reasoning = Option(s"Playing smallest tile ${formatHand(jugador)}")
-              )
+                reasoning = Option(s"Playing smallest tile ${formatHand(jugador)}"),
+              ),
             )
         }
       } else {
@@ -1560,7 +1560,7 @@ case class AIBot(
 
   override def decideTurn(
     user: User,
-    game: Game
+    game: Game,
   ): IO[GameError, PlayEvent] = {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
@@ -1572,8 +1572,8 @@ case class AIBot(
             Caete(
               triunfo = game.triunfo,
               gameId = game.id,
-              userId = jugador.user.id
-            )
+              userId = jugador.user.id,
+            ),
           )
         else if (game.triunfo.isEmpty && jugador.cantante && jugador.filas.isEmpty && game.enJuego.isEmpty)
           pideInicial(jugador, game)
@@ -1581,7 +1581,7 @@ case class AIBot(
           pide(jugador, game)
         else if (
           game.enJuego.isEmpty && game.jugadores.exists(
-            _.cuantasCantas == Option(CuantasCantas.CantoTodas)
+            _.cuantasCantas == Option(CuantasCantas.CantoTodas),
           )
         )
           ZIO.succeed(NoOpPlay()) // Skipping this,
@@ -1602,7 +1602,7 @@ case class AIBot(
   private def runPrompt(
     prompt:  String,
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     val finalPrompt = prompt
     ZIO.logDebug(s"🎮 Bot ${jugador.user.name} starting decision (Game ${game.id}, Status: ${game.gameStatus})") *>
@@ -1625,7 +1625,7 @@ case class AIBot(
         _ <- ZIO.logDebug(s"🔍 Parsing LLM response for ${jugador.user.name}")
         decision <- ZIO
           .fromEither(response.fromJson[Json]).mapError(e =>
-            GameError(s"Failed to parse LLM response as JSON: $e, response was: $response")
+            GameError(s"Failed to parse LLM response as JSON: $e, response was: $response"),
           )
         _         <- ZIO.logDebug(s"🎯 Converting JSON to PlayEvent for ${jugador.user.name}")
         playEvent <- fromSimplifiedJson(decision, game, jugador)
@@ -1635,7 +1635,7 @@ case class AIBot(
           for {
             updated <- stats.updateAndGet(s =>
               if (error.msg.contains("timeout")) s // already counted above
-              else s.copy(errors = s.errors + 1)
+              else s.copy(errors = s.errors + 1),
             )
             _      <- ZIO.logError(s"❌ LLM error for bot ${jugador.user.name}: $error. ${updated.summary}")
             _      <- ZIO.logInfo(s"🔄 Falling back to DumbBot for ${jugador.user.name}")

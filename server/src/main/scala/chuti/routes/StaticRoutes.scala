@@ -29,7 +29,7 @@ import java.nio.file.{Files, Paths as JPaths}
 object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
   private def file(
-    fileName: String
+    fileName: String,
   ): IO[GameError, java.io.File] = {
     JPaths.get(fileName) match {
       case path: java.nio.file.Path if !Files.exists(path) =>
@@ -78,19 +78,19 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
       // immutable: tells browser the file will never change at this URL
       Headers(
         Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
-        Header.Custom("Cache-Control", "public, max-age=31536000, immutable")
+        Header.Custom("Cache-Control", "public, max-age=31536000, immutable"),
       )
     } else if (isJs || isCss) {
       // Cache JS and CSS for 1 day (may change with deployments)
       Headers(
         Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
-        Header.Custom("Cache-Control", "public, max-age=86400")
+        Header.Custom("Cache-Control", "public, max-age=86400"),
       )
     } else {
       // HTML and other files: cache for 5 minutes
       Headers(
         Header.ContentType(MediaType.parseCustomMediaType(contentType).get),
-        Header.Custom("Cache-Control", "public, max-age=300, must-revalidate")
+        Header.Custom("Cache-Control", "public, max-age=300, must-revalidate"),
       )
     }
   }
@@ -115,7 +115,7 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
         Method.GET / trailing -> handler {
           (
             path: Path,
-            _:    Request
+            _:    Request,
           ) =>
 
             // You might want to restrict the files that could come back, but then again, you may not
@@ -131,8 +131,8 @@ object StaticRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError]
               }.mapError(GameError(_))
               .map(response => response.updateHeaders(_ => getHeaders(somethingElse)))
               .contramap[(Path, Request)](_._2)
-        }
-      )
+        },
+      ),
     )
 
 }

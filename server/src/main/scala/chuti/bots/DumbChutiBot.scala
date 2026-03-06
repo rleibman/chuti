@@ -28,7 +28,7 @@ case object DumbChutiBot extends ChutiBot {
 
   private def calculaCasa(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): (Int, Triunfo) = {
     // Si el jugador le toca cantar, no le queda de otra, tiene que arriesgarse, asi es que usa otra heuristica... el numero de fichas
     val (deCaidaCount, deCaidaTriunfo) = calculaDeCaida(jugador, game)
@@ -51,7 +51,7 @@ case object DumbChutiBot extends ChutiBot {
 
   private def calculaDeCaida(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): (Int, Triunfo) = {
     // Este jugador es muy conservador, no se fija en el numero de fichas de un numero que tiene, solo en cuantas son de caida
     // En el futuro podemos inventar jugadores que se fijen en ambas partes y que sean mas o menos conservadores
@@ -68,9 +68,9 @@ case object DumbChutiBot extends ChutiBot {
           game
             .copy(triunfo = Option(TriunfoNumero(num))).cuantasDeCaida(
               jugador.fichas,
-              fichasDeOtros
-            ).size
-        )
+              fichasDeOtros,
+            ).size,
+        ),
       )
 
     val conTriunfosCount =
@@ -86,7 +86,7 @@ case object DumbChutiBot extends ChutiBot {
 
   private def calculaCanto(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): (Int, Triunfo) = {
     if (jugador.turno) calculaCasa(jugador, game)
     else calculaDeCaida(jugador, game)
@@ -94,7 +94,7 @@ case object DumbChutiBot extends ChutiBot {
 
   private def pideInicial(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] =
     ZIO.succeed {
       val (_, triunfo) = calculaCanto(jugador, game)
@@ -103,7 +103,7 @@ case object DumbChutiBot extends ChutiBot {
         Caete(
           triunfo = Option(triunfo),
           reasoning =
-            Option(s"Puedo caerme con triunfo $triunfo - ganaré todas las fichas restantes ${formatHand(jugador)}")
+            Option(s"Puedo caerme con triunfo $triunfo - ganaré todas las fichas restantes ${formatHand(jugador)}"),
         )
       else {
         val ficha = hypotheticalGame.highestValueByTriunfo(jugador.fichas).get
@@ -111,14 +111,14 @@ case object DumbChutiBot extends ChutiBot {
           ficha = ficha,
           triunfo = Option(triunfo),
           estrictaDerecha = false,
-          reasoning = Option(s"Juego mi ficha más alta ($ficha) con triunfo $triunfo ${formatHand(jugador)}")
+          reasoning = Option(s"Juego mi ficha más alta ($ficha) con triunfo $triunfo ${formatHand(jugador)}"),
         )
       }
     }
 
   private def pide(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     game.triunfo match {
       case None => ZIO.fail(GameError("Nuncamente!"))
@@ -129,8 +129,8 @@ case object DumbChutiBot extends ChutiBot {
             ficha,
             triunfo = None,
             estrictaDerecha = false,
-            reasoning = Option(s"Sin triunfos - juego mi ficha más alta: $ficha ${formatHand(jugador)}")
-          )
+            reasoning = Option(s"Sin triunfos - juego mi ficha más alta: $ficha ${formatHand(jugador)}"),
+          ),
         )
       case Some(TriunfoNumero(triunfo)) =>
         val ficha = jugador.fichas
@@ -143,16 +143,16 @@ case object DumbChutiBot extends ChutiBot {
             estrictaDerecha = false,
             reasoning = Option(
               if (isTriunfo) s"Pido con mi mejor triunfo: $ficha ${formatHand(jugador)}"
-              else s"Pido con mi mejor ficha: $ficha ${formatHand(jugador)}"
-            )
-          )
+              else s"Pido con mi mejor ficha: $ficha ${formatHand(jugador)}",
+            ),
+          ),
         )
     }
   }
 
   private def da(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     if (game.enJuego.isEmpty) ZIO.fail(GameError("Nuncamente"))
     else {
@@ -170,9 +170,9 @@ case object DumbChutiBot extends ChutiBot {
                 if (matchingFichas.nonEmpty)
                   s"Sigo el $pideNum con mi ficha más baja: $ficha ${formatHand(jugador)}"
                 else
-                  s"No tengo $pideNum - doy mi ficha más baja: $ficha ${formatHand(jugador)}"
-              )
-            )
+                  s"No tengo $pideNum - doy mi ficha más baja: $ficha ${formatHand(jugador)}",
+              ),
+            ),
           )
         case Some(TriunfoNumero(triunfo)) =>
           val pideNum =
@@ -186,8 +186,8 @@ case object DumbChutiBot extends ChutiBot {
               if (f.es(triunfo))
                 triunfo.value - 100 - f.other(triunfo).value
               else if (f.esMula) 100
-              else f.value
-            )
+              else f.value,
+            ),
           )
           ZIO.succeed(
             Da(
@@ -198,9 +198,9 @@ case object DumbChutiBot extends ChutiBot {
                 else if (ficha.es(triunfo))
                   s"No tengo $pideNum - mato con triunfo: $ficha ${formatHand(jugador)}"
                 else
-                  s"No tengo $pideNum ni triunfo - doy mi ficha más baja: $ficha ${formatHand(jugador)}"
-              )
-            )
+                  s"No tengo $pideNum ni triunfo - doy mi ficha más baja: $ficha ${formatHand(jugador)}",
+              ),
+            ),
           )
       }
     }
@@ -208,12 +208,12 @@ case object DumbChutiBot extends ChutiBot {
 
   def caite(jugador: Jugador): IO[GameError, PlayEvent] =
     ZIO.succeed(
-      Caete(reasoning = Option(s"Me caigo - puedo ganar todas las fichas restantes ${formatHand(jugador)}"))
+      Caete(reasoning = Option(s"Me caigo - puedo ganar todas las fichas restantes ${formatHand(jugador)}")),
     )
 
   def canta(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] =
     ZIO
       .succeed {
@@ -235,8 +235,8 @@ case object DumbChutiBot extends ChutiBot {
                 if (cuantasCantas == Casa)
                   s"Es mi turno - canto Casa con $cuantas de caída usando triunfo $triunfo ${formatHand(jugador)}"
                 else
-                  s"Es mi turno - canto ${cuantasCantas.toString} con $cuantas de caída usando triunfo $triunfo ${formatHand(jugador)}"
-              )
+                  s"Es mi turno - canto ${cuantasCantas.toString} con $cuantas de caída usando triunfo $triunfo ${formatHand(jugador)}",
+              ),
             )
           } else {
             val prev = game.prevPlayer(jugador).cuantasCantas.getOrElse(Casa)
@@ -244,15 +244,15 @@ case object DumbChutiBot extends ChutiBot {
               Canta(
                 cuantasCantas,
                 reasoning = Option(
-                  s"Salvo la cantada - tengo $cuantas de caída con triunfo $triunfo, mejor que ${prev.toString} ${formatHand(jugador)}"
-                )
+                  s"Salvo la cantada - tengo $cuantas de caída con triunfo $triunfo, mejor que ${prev.toString} ${formatHand(jugador)}",
+                ),
               )
             else
               Canta(
                 Buenas,
                 reasoning = Option(
-                  s"Buenas - solo tengo $cuantas de caída, no es suficiente para mejorar la cantada de ${prev.toString} ${formatHand(jugador)}"
-                )
+                  s"Buenas - solo tengo $cuantas de caída, no es suficiente para mejorar la cantada de ${prev.toString} ${formatHand(jugador)}",
+                ),
               )
           }
 
@@ -261,7 +261,7 @@ case object DumbChutiBot extends ChutiBot {
 
   override def decideTurn(
     user: User,
-    game: Game
+    game: Game,
   ): IO[GameError, PlayEvent] = {
     val jugador = game.jugador(user.id)
     game.gameStatus match {
@@ -274,7 +274,7 @@ case object DumbChutiBot extends ChutiBot {
           pide(jugador, game)
         else if (
           game.enJuego.isEmpty && game.jugadores.exists(
-            _.cuantasCantas == Option(CuantasCantas.CantoTodas)
+            _.cuantasCantas == Option(CuantasCantas.CantoTodas),
           )
         )
           ZIO.succeed(NoOpPlay()) // Skipping this,

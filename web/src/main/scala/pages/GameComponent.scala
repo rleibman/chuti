@@ -32,7 +32,7 @@ import net.leibman.chuti.semanticUiReact.distCommonjsGenericMod.{
   SemanticCOLORS,
   SemanticICONS,
   SemanticSIZES,
-  SemanticShorthandItem
+  SemanticShorthandItem,
 }
 import net.leibman.chuti.semanticUiReact.distCommonjsModulesDropdownDropdownItemMod.DropdownItemProps
 import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.*
@@ -47,14 +47,14 @@ object GameComponent {
     override def bundles: Map[String, GameComponentMessages.MessageBundle] =
       Map(
         "es" -> MessageBundle("es", Map("GameComponent.listo" -> "Listo!")),
-        "en" -> MessageBundle("en", Map("GameComponent.listo" -> "Ready!"))
+        "en" -> MessageBundle("en", Map("GameComponent.listo" -> "Ready!")),
       )
 
   }
 
   case class Props(
     gameInProgress: Option[Game],
-    gameViewMode:   StateSnapshot[GameViewMode]
+    gameViewMode:   StateSnapshot[GameViewMode],
   )
 
   case class State(
@@ -63,7 +63,7 @@ object GameComponent {
     fichaSeleccionada: Option[Ficha] = None,
     triunfo:           Option[Triunfo] = None,
     justDealt:         Set[Int] = Set.empty, // Track which player positions just got dealt
-    collectingTo:      Option[Int] = None // Track which player position is collecting tricks
+    collectingTo:      Option[Int] = None, // Track which player position is collecting tricks
   )
 
   class Backend($ : BackendScope[Props, State]) {
@@ -73,13 +73,13 @@ object GameComponent {
         _.copy(
           cuantasCantas = None,
           estrictaDerecha = false,
-          fichaSeleccionada = None
-        )
+          fichaSeleccionada = None,
+        ),
       )
 
     def play(
       gameId: GameId,
-      event:  PlayEvent
+      event:  PlayEvent,
     ): Callback = {
       (for {
         _ <- GameClient.game.playSilently(gameId, event)
@@ -89,7 +89,7 @@ object GameComponent {
     def moveFichaRight(
       chutiState: ChutiState,
       jugador:    Jugador,
-      ficha:      FichaConocida
+      ficha:      FichaConocida,
     ): Callback =
       chutiState.modGameInProgress(
         game => {
@@ -98,13 +98,13 @@ object GameComponent {
           val newFichas = fichas.updated(index + 1, fichas(index)).updated(index, fichas(index + 1))
           game.copy(jugadores = game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas)))
         },
-        chutiState.playSound("sounds/moveRight.mp3")
+        chutiState.playSound("sounds/moveRight.mp3"),
       )
 
     def moveFichaLeft(
       chutiState: ChutiState,
       jugador:    Jugador,
-      ficha:      FichaConocida
+      ficha:      FichaConocida,
     ): Callback =
       chutiState.modGameInProgress(
         game => {
@@ -113,12 +113,12 @@ object GameComponent {
           val newFichas = fichas.updated(index - 1, fichas(index)).updated(index, fichas(index - 1))
           game.copy(jugadores = game.modifiedJugadores(_.id == jugador.id, _.copy(fichas = newFichas)))
         },
-        chutiState.playSound("sounds/moveLeft.mp3")
+        chutiState.playSound("sounds/moveLeft.mp3"),
       )
 
     def checkForDeals(
       prevGame: Option[Game],
-      currGame: Option[Game]
+      currGame: Option[Game],
     ): Callback = {
       import scala.scalajs.js.timers
 
@@ -147,7 +147,7 @@ object GameComponent {
 
     def checkForTrickCollection(
       prevGame: Option[Game],
-      currGame: Option[Game]
+      currGame: Option[Game],
     ): Callback = {
       import scala.scalajs.js.timers
 
@@ -188,7 +188,7 @@ object GameComponent {
 
     def render(
       p: Props,
-      s: State
+      s: State,
     ): VdomNode = {
       ChutiState.ctx.consume { chutiState =>
         <.div(
@@ -246,14 +246,14 @@ object GameComponent {
                               <.span(
                                 ^.className := "bot-rationale-icon",
                                 ^.title     := rationale,
-                                Icon().name(SemanticICONS.`question circle`)()
+                                Icon().name(SemanticICONS.`question circle`)(),
                               )
                             case None =>
                               EmptyVdom
                           }
-                        }
+                        },
                       )
-                    } else EmptyVdom
+                    } else EmptyVdom,
                   ),
                   <.div(
                     ^.className := "userStatus",
@@ -263,10 +263,10 @@ object GameComponent {
                         s"Canto ${
                             if (jugador.turno && (c.numFilas == 4 || c.numFilas < 0)) CuantasCantas.Casa // TODO i8n
                             else c
-                          }"
+                          }",
                       ),
-                    jugador.statusString
-                  )
+                    jugador.statusString,
+                  ),
                 ),
                 if (isSelf) {
                   <.div(
@@ -279,7 +279,7 @@ object GameComponent {
                           game.jugadores.find(_.cantante).getOrElse(jugador)
                         val min = cantanteActual.cuantasCantas
                           .flatMap(c => CuantasCantas.byPriority(c.prioridad + 1)).getOrElse(
-                            Canto5
+                            Canto5,
                           )
                         val cantasOptions = (defaultCuantas +: CuantasCantas.posibilidades(min)).map { cuantas =>
                           DropdownItemProps()
@@ -300,11 +300,11 @@ object GameComponent {
                             .onChange {
                               (
                                 _,
-                                dropDownProps
+                                dropDownProps,
                               ) =>
                                 val value = dropDownProps.value.asInstanceOf[Int]
                                 $.modState(
-                                  _.copy(cuantasCantas = CuantasCantas.byPriority(value))
+                                  _.copy(cuantasCantas = CuantasCantas.byPriority(value)),
                                 )
                             }(),
                           Button
@@ -313,13 +313,13 @@ object GameComponent {
                             .onClick {
                               (
                                 _,
-                                _
+                                _,
                               ) =>
                                 play(
                                   game.id,
-                                  Canta(s.cuantasCantas.getOrElse(defaultCuantas))
+                                  Canta(s.cuantasCantas.getOrElse(defaultCuantas)),
                                 )
-                            }("Canta") // TODO i8n
+                            }("Canta"), // TODO i8n
                         )
                       case JugadorState.dando =>
                         Button
@@ -329,7 +329,7 @@ object GameComponent {
                           .onClick {
                             (
                               _,
-                              _
+                              _,
                             ) =>
                               play(game.id, Da(ficha = s.fichaSeleccionada.get))
                           }("Dá") // TODO i8n
@@ -345,11 +345,11 @@ object GameComponent {
                                     <.img(
                                       ^.verticalAlign := "middle",
                                       ^.src           := s"images/${num.value}.svg",
-                                      ^.height        := 28.px
+                                      ^.height        := 28.px,
                                     )
                                   case Some(SinTriunfos) => <.span("Sin Triunfos") // TODO i8n
                                   case _                 => EmptyVdom
-                                }
+                                },
                               ),
                               Dropdown
                                 .className("triunfoDropdown")
@@ -360,7 +360,7 @@ object GameComponent {
                                 .onChange {
                                   (
                                     _,
-                                    dropDownProps
+                                    dropDownProps,
                                   ) =>
                                     val value = dropDownProps.value.asInstanceOf[String]
                                     $.modState(_.copy(triunfo = Option(Triunfo(value))))
@@ -378,12 +378,12 @@ object GameComponent {
                                         props.setImage(
                                           ImageProps()
                                             .setHref(s"images/${num.value}.svg")
-                                            .asInstanceOf[SemanticShorthandItem[ImageProps]]
+                                            .asInstanceOf[SemanticShorthandItem[ImageProps]],
                                         )
                                     }
 
-                                  }.toJSArray
-                                )()
+                                  }.toJSArray,
+                                )(),
                             )
                           } else
                             EmptyVdom,
@@ -395,10 +395,10 @@ object GameComponent {
                               .onChange {
                                 (
                                   _,
-                                  checkBoxProps
+                                  checkBoxProps,
                                 ) =>
                                   $.modState(
-                                    _.copy(estrictaDerecha = checkBoxProps.checked.getOrElse(false))
+                                    _.copy(estrictaDerecha = checkBoxProps.checked.getOrElse(false)),
                                   )
                               }(),
                             Button
@@ -406,20 +406,20 @@ object GameComponent {
                               .basic(true)
                               .disabled(
                                 s.fichaSeleccionada.isEmpty ||
-                                  (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty))
+                                  (s.triunfo.isEmpty && (jugador.cantante && jugador.mano && jugador.filas.isEmpty)),
                               )
                               .onClick {
                                 (
                                   _,
-                                  _
+                                  _,
                                 ) =>
                                   play(
                                     game.id,
                                     Pide(
                                       ficha = s.fichaSeleccionada.get,
                                       triunfo = s.triunfo,
-                                      estrictaDerecha = s.estrictaDerecha
-                                    )
+                                      estrictaDerecha = s.estrictaDerecha,
+                                    ),
                                   )
                               }("Pide"), // TODO i8n
                             if (
@@ -433,13 +433,13 @@ object GameComponent {
                                 .onClick {
                                   (
                                     _,
-                                    _
+                                    _,
                                   ) =>
                                     play(game.id, Caete(triunfo = s.triunfo))
                                 }("Cáete") // TODO i8n
                             } else
-                              EmptyVdom
-                          )
+                              EmptyVdom,
+                          ),
                         )
                       case JugadorState.haciendoSopa =>
                         Button
@@ -448,7 +448,7 @@ object GameComponent {
                           .onClick {
                             (
                               _,
-                              _
+                              _,
                             ) =>
                               play(game.id, Sopa())
                           }("Sopa") // TODO i8n
@@ -465,15 +465,15 @@ object GameComponent {
                         .onClick {
                           (
                             _,
-                            _
+                            _,
                           ) =>
                             Confirm.confirm(
                               question = "Estas seguro que te quieres rendir?", // TODO i8n
-                              onConfirm = play(game.id, MeRindo())
+                              onConfirm = play(game.id, MeRindo()),
                             )
                         }("Me Rindo") // TODO i8n
                     } else
-                      EmptyVdom
+                      EmptyVdom,
                   )
                 } else
                   EmptyVdom,
@@ -488,8 +488,8 @@ object GameComponent {
                         ^.className := s"domino${playerPosition}Container",
                         <.img(
                           ^.src       := s"images/backx150.png",
-                          ^.className := s"domino$playerPosition"
-                        )
+                          ^.className := s"domino$playerPosition",
+                        ),
                       )
                     case (ficha @ FichaConocida(arriba, abajo), fichaIndex) =>
                       val selectable = canPlay
@@ -516,13 +516,13 @@ object GameComponent {
                           ^.className := s"domino$playerPosition ${
                               if (s.fichaSeleccionada.fold(false)(_ == ficha)) "selected"
                               else ""
-                            }"
+                            }",
                         ),
                         <.div(
                           ^.className := "domino0FlipAction",
                           ^.onClick --> {
                             chutiState.flipFicha(ficha) >> chutiState.playSound(
-                              "sounds/flip.mp3"
+                              "sounds/flip.mp3",
                             ) >> Callback.log(s"flip $ficha")
                           },
                           Icon
@@ -531,13 +531,13 @@ object GameComponent {
                             .circular(true)
                             .size(SemanticSIZES.small)
                             .color(SemanticCOLORS.blue)
-                            .inverted(true)()
+                            .inverted(true)(),
                         ),
                         <.div(
                           ^.className := "domino0MoveRightAction",
                           ^.onClick --> {
                             moveFichaRight(chutiState, jugador, ficha) >> Callback.log(
-                              s"moveFichaRight $ficha"
+                              s"moveFichaRight $ficha",
                             )
                           },
                           Icon
@@ -546,13 +546,13 @@ object GameComponent {
                             .circular(true)
                             .size(SemanticSIZES.small)
                             .color(SemanticCOLORS.blue)
-                            .inverted(true)()
+                            .inverted(true)(),
                         ).when(fichaIndex < jugador.fichas.size - 1),
                         <.div(
                           ^.className := "domino0MoveLeftAction",
                           ^.onClick --> {
                             moveFichaLeft(chutiState, jugador, ficha) >> Callback.log(
-                              s"moveFichaLeft $ficha"
+                              s"moveFichaLeft $ficha",
                             )
                           },
                           Icon
@@ -561,10 +561,10 @@ object GameComponent {
                             .circular(true)
                             .size(SemanticSIZES.small)
                             .color(SemanticCOLORS.blue)
-                            .inverted(true)()
-                        ).when(fichaIndex > 0)
+                            .inverted(true)(),
+                        ).when(fichaIndex > 0),
                       )
-                  }
+                  },
                 ),
                 <.div(
                   ^.className := s"filas$playerPosition",
@@ -588,8 +588,8 @@ object GameComponent {
                               ^.className := s"dominoJugado$playerPosition${
                                   if (fichaGanadora.fold(false)(_ == ficha)) " fichaGanadora"
                                   else ""
-                                }"
-                            )
+                                }",
+                            ),
                           )
                         } else {
                           <.div(
@@ -597,14 +597,14 @@ object GameComponent {
                             ^.className := s"dominoJugado${playerPosition}Container",
                             <.img(
                               ^.src       := s"images/backx75.png",
-                              ^.className := s"dominoJugado$playerPosition"
-                            )
+                              ^.className := s"dominoJugado$playerPosition",
+                            ),
                           )
                         }
-                      }
+                      },
                     )
-                  }
-                )
+                  },
+                ),
               )
             }
           },
@@ -619,8 +619,8 @@ object GameComponent {
                   <.div(
                     ^.className := "juegoStatusString",
                     <.p(game.statusString),
-                    <.p(chutiState.ultimoBorlote.fold("")(_.toString))
-                  )
+                    <.p(chutiState.ultimoBorlote.fold("")(_.toString)),
+                  ),
                 ),
                 <.div(^.className := "fichasEnJuegoName"),
                 <.div(
@@ -630,12 +630,12 @@ object GameComponent {
                     .onClick {
                       (
                         _,
-                        _
+                        _,
                       ) =>
                         chutiState
                           .onGameViewModeChanged(GameViewMode.lobby)
-                    }("Regresa al Lobby") // TODO i8n
-                )
+                    }("Regresa al Lobby"), // TODO i8n
+                ),
               )
             } else {
               <.div(
@@ -648,7 +648,7 @@ object GameComponent {
                       <.div(
                         ^.className := "triunfan",
                         "Triunfan", // TODO i8n
-                        <.img(^.src := s"images/${num.value}.svg", ^.height := 28.px)
+                        <.img(^.src := s"images/${num.value}.svg", ^.height := 28.px),
                       )
                     case None => <.div()
                   },
@@ -659,7 +659,7 @@ object GameComponent {
                       .trigger(
                         Icon()
                           .name(SemanticICONS.calculator)
-                          .size(SemanticSIZES.large)
+                          .size(SemanticSIZES.large),
                       )
                       .hoverable(true)
                       .position(`bottom center`)(
@@ -671,15 +671,15 @@ object GameComponent {
                                 TableRow()(
                                   TableHeaderCell()("Jugador"),
                                   TableHeaderCell()("Cuentas"),
-                                  TableHeaderCell()("Total")
-                                )
+                                  TableHeaderCell()("Total"),
+                                ),
                               ),
                               TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                                 case ((jugador, puntos, satoshi), jugadorIndex) =>
                                   TableRow()
                                     .withKey(s"cuentaPopup$jugadorIndex")
                                     .className(
-                                      if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else ""
+                                      if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else "",
                                     )(
                                       TableCell()(jugador.user.name),
                                       TableCell()(
@@ -688,25 +688,25 @@ object GameComponent {
                                             ^.key         := s"cuenta_popup${jugadorIndex}_$cuentaIndex",
                                             ^.className   := (if (cuenta.esHoyo) "hoyo" else ""),
                                             ^.marginRight := 5.px,
-                                            s"${if (cuenta.puntos >= 0) "+" else ""}${cuenta.puntos}"
+                                            s"${if (cuenta.puntos >= 0) "+" else ""}${cuenta.puntos}",
                                           )
                                         },
                                         <.span(
                                           ^.fontSize := "large",
                                           ^.color    := "blue",
-                                          if (jugador.fueGanadorDelPartido) "➠" else ""
-                                        )
+                                          if (jugador.fueGanadorDelPartido) "➠" else "",
+                                        ),
                                       ),
                                       TableCell()(
-                                        <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
-                                      )
+                                        <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos),
+                                      ),
                                     )
-                              })
-                            )
-                        )
+                              }),
+                            ),
+                        ),
                       ),
-                    game.statusString
-                  )
+                    game.statusString,
+                  ),
                 ),
                 // Show "Start Next Round" button when requiereSopa, otherwise show tiles in play
                 if (game.gameStatus == GameStatus.requiereSopa) {
@@ -721,11 +721,11 @@ object GameComponent {
                       .onClick {
                         (
                           _,
-                          _
+                          _,
                         ) =>
                           // Any human player can trigger sopa on behalf of the bot who has turno
                           play(game.id, Sopa(firstSopa = game.currentEventIndex == 0))
-                      }("Listo para la sopa") // TODO i18n "Start Next Round"
+                      }("Listo para la sopa"), // TODO i18n "Start Next Round"
                   )
                 } else {
                   game.enJuego.toVdomArray { case (user, ficha) =>
@@ -761,7 +761,7 @@ object GameComponent {
                       <.div(
                         ^.key       := "fichasEnJuegoName",
                         ^.className := "fichasEnJuegoName",
-                        playingJugador.user.name
+                        playingJugador.user.name,
                       ),
                       <.img(
                         ^.key := "dominoEnJuego",
@@ -770,7 +770,7 @@ object GameComponent {
                             game.triunfo match {
                               case Some(TriunfoNumero(num)) =>
                                 ficha.es(
-                                  num
+                                  num,
                                 ) && ficha.abajo == num && ficha.arriba.value > ficha.abajo.value
                               case _ => false
                             }
@@ -780,14 +780,14 @@ object GameComponent {
                             "none"
                         ),
                         ^.src       := s"images/${ficha.abajo}_${ficha.arriba}x150.png",
-                        ^.className := s"dominoEnJuego slideFromPlayer$playingPosition$collectClass"
-                      )
+                        ^.className := s"dominoEnJuego slideFromPlayer$playingPosition$collectClass",
+                      ),
                     )
                   }
-                }
+                },
               )
-            } // end else (game is in progress)
-          )
+            }, // end else (game is in progress)
+          ),
         )
       }
     }
@@ -807,21 +807,21 @@ object GameComponent {
     .initialStateFromProps(p =>
       State(
         triunfo = p.gameInProgress.flatMap(_.triunfo),
-        estrictaDerecha = p.gameInProgress.fold(false)(_.estrictaDerecha)
-      )
+        estrictaDerecha = p.gameInProgress.fold(false)(_.estrictaDerecha),
+      ),
     )
     .backend[Backend](Backend(_))
     .renderPS(_.backend.render(_, _))
     .componentDidUpdate($ =>
       $.backend.checkForDeals($.prevProps.gameInProgress, $.currentProps.gameInProgress) >>
-        $.backend.checkForTrickCollection($.prevProps.gameInProgress, $.currentProps.gameInProgress)
+        $.backend.checkForTrickCollection($.prevProps.gameInProgress, $.currentProps.gameInProgress),
     )
     .configure(Reusability.shouldComponentUpdate)
     .build
 
   def apply(
     gameInProgress: Option[Game],
-    mode:           StateSnapshot[GameViewMode]
+    mode:           StateSnapshot[GameViewMode],
   ): Unmounted[Props, State, Backend] = component(Props(gameInProgress, mode))
 
 }

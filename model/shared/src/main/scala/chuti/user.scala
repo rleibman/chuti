@@ -32,7 +32,7 @@ case class User(
   active:      Boolean = false,
   deleted:     Boolean = false,
   isAdmin:     Boolean = false,
-  locale:      Locale = Locale.forLanguageTag("es")
+  locale:      Locale = Locale.forLanguageTag("es"),
 ) {
 
   def isBot: Boolean = id.value < -1 && id != UserId.godUserId && id != UserId.godlessUserId
@@ -44,7 +44,7 @@ object User {
   given JsonCodec[Locale] =
     JsonCodec(
       JsonEncoder.string.contramap(_.toString),
-      JsonDecoder.string.mapOrFail(s => Option(Locale.forLanguageTag(s)).toRight(s"invalid locale $s"))
+      JsonDecoder.string.mapOrFail(s => Option(Locale.forLanguageTag(s)).toRight(s"invalid locale $s")),
     )
 
   given JsonCodec[User] = JsonCodec.derived[User]
@@ -53,7 +53,7 @@ object User {
 
 case class UserWallet(
   userId: UserId,
-  amount: BigDecimal = 0.0
+  amount: BigDecimal = 0.0,
 ) derives JsonCodec
 
 enum UserEventType {
@@ -67,7 +67,7 @@ object UserEventType {
   given JsonDecoder[UserEventType] =
     JsonDecoder.string.mapOrFail(s =>
       values
-        .find(_.toString == s).toRight(s"No se pudo decodificar $s como UserEventType"): Either[String, UserEventType]
+        .find(_.toString == s).toRight(s"No se pudo decodificar $s como UserEventType"): Either[String, UserEventType],
     )
 
   given JsonEncoder[UserEventType] = JsonEncoder.string.contramap(_.toString)
@@ -77,7 +77,7 @@ object UserEventType {
 case class UserEvent(
   user:          User,
   userEventType: UserEventType,
-  gameId:        Option[GameId]
+  gameId:        Option[GameId],
 )
 
 object UserEvent {
@@ -90,7 +90,7 @@ object UserEvent {
 case class OAuthUserData(
   provider:   String, // OAuth provider name: "google", "github", etc.
   providerId: String, // Provider's unique user ID (stable identifier)
-  data:       Option[String] = None // Additional data from OAuth provider as JSON string
+  data:       Option[String] = None, // Additional data from OAuth provider as JSON string
 ) derives JsonCodec {
 
   // Helper to get Json AST from the string data

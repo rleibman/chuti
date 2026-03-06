@@ -33,7 +33,7 @@ import scala.util.matching.Regex
 abstract class CRUDRoutes[
   E:                {Tag, JsonEncoder, JsonDecoder},
   PK:               {Tag, JsonDecoder},
-  SEARCH <: Search: {Tag, JsonDecoder}
+  SEARCH <: Search: {Tag, JsonDecoder},
 ] {
   self =>
 
@@ -65,7 +65,7 @@ abstract class CRUDRoutes[
     */
   def authChildrenRoutes(
     pk:  PK,
-    obj: Option[E]
+    obj: Option[E],
   ): Routes[ChutiEnvironment, Nothing] = Routes.empty
 
   /** You need to override this method so that the architecture knows how to get a primary key from an object
@@ -79,7 +79,7 @@ abstract class CRUDRoutes[
   def getOperation(id: PK): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
-    Option[E]
+    Option[E],
   ] =
     for {
       ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
@@ -87,7 +87,7 @@ abstract class CRUDRoutes[
     } yield ret
 
   def deleteOperation(
-    objOpt: Option[E]
+    objOpt: Option[E],
   ): ZIO[ChutiSession & OpsService, Throwable, Boolean] =
     for {
       ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
@@ -97,7 +97,7 @@ abstract class CRUDRoutes[
   def upsertOperation(obj: E): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
-    E
+    E,
   ] = {
     for {
       ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
@@ -108,7 +108,7 @@ abstract class CRUDRoutes[
   def countOperation(search: Option[SEARCH]): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
-    Long
+    Long,
   ] =
     for {
       ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
@@ -118,7 +118,7 @@ abstract class CRUDRoutes[
   def searchOperation(search: Option[SEARCH]): ZIO[
     ChutiSession & OpsService,
     RepositoryError,
-    Seq[E]
+    Seq[E],
   ] =
     for {
       ops <- ZIO.service[CRUDOperations[RepositoryIO, E, PK, SEARCH]]
@@ -149,7 +149,7 @@ abstract class CRUDRoutes[
       Method.GET / "api" / self.url / trailing -> handler {
         (
           path: Path,
-          req:  Request
+          req:  Request,
         ) =>
           for {
             pk  <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
@@ -159,7 +159,7 @@ abstract class CRUDRoutes[
       Method.DELETE / "api" / self.url / trailing -> handler {
         (
           path: Path,
-          req:  Request
+          req:  Request,
         ) =>
           for {
             pk     <- ZIO.fromEither(path.toString.fromJson[PK]).mapError(GameError.apply)
@@ -167,7 +167,7 @@ abstract class CRUDRoutes[
             res    <- deleteOperation(getted)
             _      <- ZIO.logInfo(s"Deleted ${pk.toString}")
           } yield Response.json(res.toJson)
-      }
+      },
     )
 
   lazy val authRoute: Routes[ChutiSession & ChutiEnvironment & OpsService, Throwable] =

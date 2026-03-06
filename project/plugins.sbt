@@ -6,8 +6,8 @@ addSbtPlugin("com.github.sbt"    % "sbt-native-packager"       % "1.11.7")
 addSbtPlugin("com.eed3si9n"      % "sbt-buildinfo"             % "0.13.1")
 addSbtPlugin("org.scalameta"     % "sbt-scalafmt"              % "2.5.6")
 addSbtPlugin("com.github.cb372"  % "sbt-explicit-dependencies" % "0.3.1")
-addSbtPlugin("ch.epfl.scala"     % "sbt-scalafix"              % "0.14.5")
-addSbtPlugin("com.typesafe"      % "sbt-mima-plugin"           % "1.1.4")
+addSbtPlugin("ch.epfl.scala"     % "sbt-scalafix"              % "0.14.6")
+addSbtPlugin("com.typesafe"      % "sbt-mima-plugin"           % "1.1.5")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Server

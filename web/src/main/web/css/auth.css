@@ -78,6 +78,7 @@ body {
     margin-top: 8px;
     color: var(--auth-text);
     opacity: 0.9;
+    padding-bottom: 20px;
 }
 
 .auth form {

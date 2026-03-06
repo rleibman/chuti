@@ -48,21 +48,21 @@ object Chuti extends ZIOApp {
     override def api: ZIO[
       ChutiEnvironment,
       GameError,
-      Routes[ChutiEnvironment & ChutiSession, GameError]
+      Routes[ChutiEnvironment & ChutiSession, GameError],
     ] =
       ZIO.succeed(
         Routes(
-          Method.GET / "api" / "test" -> handler((_: Request) => Handler.html(s"<html>Test API Ok!</html>")).flatten
-        )
+          Method.GET / "api" / "test" -> handler((_: Request) => Handler.html(s"<html>Test API Ok!</html>")).flatten,
+        ),
       )
 
     override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
       ZIO.succeed(
         Routes(
           Method.GET / "unauth" / "unauthtest.html" -> handler((_: Request) =>
-            Handler.html(s"<html>Test Unauth Ok!</html>")
-          ).flatten
-        )
+            Handler.html(s"<html>Test Unauth Ok!</html>"),
+          ).flatten,
+        ),
       )
 
   }
@@ -74,13 +74,13 @@ object Chuti extends ZIOApp {
         ChatRoutes,
         GameRoutes,
         TestRoutes,
-        StaticRoutes
+        StaticRoutes,
       )
 
     override def api: ZIO[
       ChutiEnvironment,
       GameError,
-      Routes[ChutiEnvironment & ChutiSession, GameError]
+      Routes[ChutiEnvironment & ChutiSession, GameError],
     ] = ZIO.foreach(routes)(_.api).map(_.reduce(_ ++ _) @@ Middleware.debug)
 
     override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
@@ -118,7 +118,7 @@ object Chuti extends ZIOApp {
         ZIO
           .logErrorCause("Error in Chuti", original)
     }).as(
-      Response.apply(body = Body.fromString(body), status = status, headers = contentTypeJson)
+      Response.apply(body = Body.fromString(body), status = status, headers = contentTypeJson),
     )
   }
 
@@ -155,7 +155,7 @@ object Chuti extends ZIOApp {
         val serverConfig = ZLayer.succeed(
           Server.Config.default
             .binding(config.chuti.http.hostName, config.chuti.http.port)
-            .copy(requestStreaming = Server.RequestStreaming.Enabled)
+            .copy(requestStreaming = Server.RequestStreaming.Enabled),
         )
 
         Server
@@ -165,7 +165,7 @@ object Chuti extends ZIOApp {
           .provideSome[Environment](serverConfig, Server.live)
           .foldCauseZIO(
             cause => ZIO.logErrorCause("err when booting server", cause),
-            _ => ZIO.logError("app quit unexpectedly...")
+            _ => ZIO.logError("app quit unexpectedly..."),
           )
       }
     } yield server

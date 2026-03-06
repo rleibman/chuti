@@ -29,7 +29,7 @@ import net.leibman.chuti.semanticUiReact.components.{
   TableCell,
   TableHeader,
   TableHeaderCell,
-  TableRow
+  TableRow,
 }
 
 import java.time.ZoneId
@@ -66,8 +66,8 @@ object GameHistoryPage extends ChutiPage {
 //                      key = "cuentasHeader1"
                     )(
                       TableHeaderCell().colSpan(4)(
-                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto" // TODO i8n
-                      )
+                        s"Juego empezo en: ${df.format(game.created)}. ${game.satoshiPerPoint} Satoshi por punto", // TODO i8n
+                      ),
                     ),
                     TableRow(
 //                      key = "cuentasHeader2"
@@ -75,15 +75,15 @@ object GameHistoryPage extends ChutiPage {
                       TableHeaderCell()("Jugador"), // TODO i8n
                       TableHeaderCell()("Cuentas"), // TODO i8n
                       TableHeaderCell()("Total"), // TODO i8n
-                      TableHeaderCell()("Satoshi") // TODO i8n
-                    )
+                      TableHeaderCell()("Satoshi"), // TODO i8n
+                    ),
                   ),
                   TableBody()(game.cuentasCalculadas.zipWithIndex.toVdomArray {
                     case ((jugador, puntos, satoshi), jugadorIndex) =>
                       TableRow()
 //                        key = s"cuenta$jugadorIndex",
                         .className(
-                          if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else ""
+                          if (chutiState.user.map(_.id).contains(jugador.id)) "cuentasSelf" else "",
                         )(
                           TableCell()(jugador.user.name),
                           TableCell()(
@@ -91,33 +91,33 @@ object GameHistoryPage extends ChutiPage {
                               <.span(
                                 ^.key       := s"cuenta_num${jugadorIndex}_$cuentaIndex",
                                 ^.className := (if (cuenta.esHoyo) "hoyo" else ""),
-                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}"
+                                s"${if (cuenta.puntos >= 0) "+" else ""} ${cuenta.puntos}",
                               )
                             },
                             <.span(
                               ^.fontSize := "large",
                               ^.color    := "blue",
-                              if (jugador.fueGanadorDelPartido) "➠" else ""
-                            )
+                              if (jugador.fueGanadorDelPartido) "➠" else "",
+                            ),
                           ),
                           TableCell()(
-                            <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos)
+                            <.span(^.color := (if (puntos < 0) "#CC0000" else "#000000"), puntos),
                           ),
                           TableCell()(
                             <.span(
                               <.span(
                                 ^.color := (if (satoshi < 0) "#CC0000" else "#000000"),
-                                satoshi
+                                satoshi,
                               )
-                                .when(game.gameStatus == GameStatus.partidoTerminado)
-                            )
-                          )
+                                .when(game.gameStatus == GameStatus.partidoTerminado),
+                            ),
+                          ),
                         )
-                  })
-                )
-              )
-            )
-          )
+                  }),
+                ),
+              ),
+            ),
+          ),
         )
       }
 

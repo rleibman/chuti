@@ -44,14 +44,14 @@ object ZIORepository {
               .orElseFail(RepositoryError(s"Could not find game: $gameId"))
               .provideLayer(godLayer)
           } yield game
-        }
+        },
       )
     } yield CachedRepository(cache, repository): ZIORepository
   }
 
   case class CachedRepository(
     gameCache:  Cache[GameId, RepositoryError, Game],
-    repository: ZIORepository
+    repository: ZIORepository,
   ) extends ZIORepository {
 
     override def gameOperations: db.GameOperations[RepositoryIO] =
@@ -79,7 +79,7 @@ object ZIORepository {
 
         override def delete(
           pk:         GameId,
-          softDelete: Boolean
+          softDelete: Boolean,
         ): RepositoryIO[Boolean] =
           gameCache.invalidate(pk) *>
             repository.gameOperations.delete(pk, softDelete)

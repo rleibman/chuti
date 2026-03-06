@@ -48,8 +48,8 @@ given JsonCodec[Locale] =
       Locale.forLanguageTag(s) match {
         case l: Locale => Right(l)
         case null => Left(s"invalid locale $s")
-      }
-    )
+      },
+    ),
   )
 
 object EnvironmentBuilder {
@@ -72,7 +72,7 @@ object EnvironmentBuilder {
         OAuthService.live(
           googleConfig,
           githubConfig,
-          discordConfig
+          discordConfig,
         )
       }
     }.flatten
@@ -122,7 +122,7 @@ object EnvironmentBuilder {
       llmServiceLayer,
       aiBotLayer,
       GameService.make(),
-      ChatService.make()
+      ChatService.make(),
     ).orDie
 
   val withContainer: ULayer[ChutiEnvironment] = ZLayer
@@ -139,7 +139,7 @@ object EnvironmentBuilder {
       llmServiceLayer,
       aiBotLayer,
       GameService.make(),
-      ChatService.make()
+      ChatService.make(),
     ).orDie
 
   final def testLayer(gameFiles: String*): ULayer[ChutiEnvironment] = {
@@ -174,7 +174,7 @@ object EnvironmentBuilder {
         ChatService.make(),
         ChutiAuthServer.live,
         oauthServiceLayer,
-        ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session))
+        ZLayer.fromZIO(ZIO.serviceWithZIO[ConfigurationService](_.appConfig).map(_.chuti.session)),
       ).orDie
   }
 

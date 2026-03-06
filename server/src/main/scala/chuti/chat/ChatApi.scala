@@ -39,23 +39,23 @@ object ChatApi {
   case class ChatStreamArgs(
     channelId:    ChannelId,
     connectionId: ConnectionId,
-    token:        String
+    token:        String,
   ) derives ArgBuilder
 
   case class Queries(
-    getRecentMessages: ChannelId => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Seq[ChatMessage]]
+    getRecentMessages: ChannelId => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Seq[ChatMessage]],
   )
 
   case class Mutations(
-    say: SayRequest => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Boolean]
+    say: SayRequest => ZIO[ChatService & ZIORepository & ChutiSession, GameError, Boolean],
   )
 
   case class Subscriptions(
     chatStream: ChatStreamArgs => ZStream[
       ChatService & ZIORepository & AuthConfig & AuthServer[User, UserId, ConnectionId],
       GameError,
-      ChatMessage
-    ]
+      ChatMessage,
+    ],
   )
 
   private given Schema[Any, UserId] = Schema.longSchema.contramap(_.value)
@@ -73,7 +73,7 @@ object ChatApi {
       Locale.forLanguageTag(s) match {
         case l: Locale => Right(l)
         case null => Left(ExecutionError(s"invalid locale $s"))
-      }
+      },
     )
   private given ArgBuilder[User] = ArgBuilder.derived[User]
   private given ArgBuilder[SayRequest] = ArgBuilder.derived[SayRequest]
@@ -84,7 +84,7 @@ object ChatApi {
       ChatService & ZIORepository & ChutiSession & AuthConfig & AuthServer[User, UserId, ConnectionId],
       Queries,
       Mutations,
-      Subscriptions
+      Subscriptions,
     ](
       RootResolver(
         Queries(getRecentMessages = channelId => ZIO.serviceWithZIO[ChatService](_.getRecentMessages(channelId))),
@@ -97,15 +97,15 @@ object ChatApi {
                 sessionLayer <- authServer
                   .sessionLayerFromToken(
                     chatStreamArgs.token,
-                    Some(chatStreamArgs.connectionId)
+                    Some(chatStreamArgs.connectionId),
                   ).mapError(e => GameError(e.getMessage))
               } yield ZStream
                 .serviceWithStream[ChatService](
-                  _.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId)
-                ).provideSomeLayer[ChatService & ZIORepository](sessionLayer)
-            )
-        )
-      )
+                  _.chatStream(chatStreamArgs.channelId, chatStreamArgs.connectionId),
+                ).provideSomeLayer[ChatService & ZIORepository](sessionLayer),
+            ),
+        ),
+      ),
     ) @@ maxFields(50)
       @@ maxDepth(30)
       @@ printErrors

@@ -22,5 +22,5 @@ import zio.json.JsonCodec
 case class SayRequest(
   msg:       String,
   channelId: ChannelId,
-  toUser:    Option[User] = None
+  toUser:    Option[User] = None,
 ) derives JsonCodec

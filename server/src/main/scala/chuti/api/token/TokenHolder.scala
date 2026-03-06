@@ -29,18 +29,18 @@ trait TokenHolder {
 
   def peek(
     token:   Token,
-    purpose: TokenPurpose
+    purpose: TokenPurpose,
   ): IO[GameError, Option[User]]
 
   def createToken(
     user:    User,
     purpose: TokenPurpose,
-    ttl:     Option[Duration] = Option(5.hours)
+    ttl:     Option[Duration] = Option(5.hours),
   ): IO[GameError, Token]
 
   def validateToken(
     token:   Token,
-    purpose: TokenPurpose
+    purpose: TokenPurpose,
   ): IO[GameError, Option[User]]
 
 }
@@ -52,18 +52,18 @@ object TokenHolder {
 
       override def peek(
         token:   Token,
-        purpose: TokenPurpose
+        purpose: TokenPurpose,
       ): IO[GameError, Option[User]] = ZIO.none
 
       override def createToken(
         user:    User,
         purpose: TokenPurpose,
-        ttl:     Option[Duration]
+        ttl:     Option[Duration],
       ): IO[GameError, Token] = ZIO.succeed(Token(""))
 
       override def validateToken(
         token:   Token,
-        purpose: TokenPurpose
+        purpose: TokenPurpose,
       ): IO[GameError, Option[User]] = ZIO.none
 
     })
@@ -82,19 +82,19 @@ object TokenHolder {
 
         override def peek(
           token:   Token,
-          purpose: TokenPurpose
+          purpose: TokenPurpose,
         ): IO[GameError, Option[User]] = repo.tokenOperations.peek(token, purpose).provide(GameService.godLayer)
 
         override def createToken(
           user:    User,
           purpose: TokenPurpose,
-          ttl:     Option[Duration]
+          ttl:     Option[Duration],
         ): IO[GameError, Token] =
           repo.tokenOperations.createToken(user, purpose, ttl.map(_.asScala)).provide(GameService.godLayer)
 
         override def validateToken(
           token:   Token,
-          purpose: TokenPurpose
+          purpose: TokenPurpose,
         ): IO[GameError, Option[User]] =
           repo.tokenOperations.validateToken(token, purpose).provide(GameService.godLayer)
       }
@@ -108,7 +108,7 @@ object TokenHolder {
       override def createToken(
         user:    User,
         purpose: TokenPurpose,
-        ttl:     Option[Duration] = Option(3.hours)
+        ttl:     Option[Duration] = Option(3.hours),
       ): IO[GameError, Token] = {
         val t = BigInteger(12 * 5, random).toString(32)
         cache.get((t, purpose)).as(Token(t))
@@ -116,7 +116,7 @@ object TokenHolder {
 
       override def validateToken(
         token:   Token,
-        purpose: TokenPurpose
+        purpose: TokenPurpose,
       ): IO[GameError, Option[User]] = {
         for {
           contains <- cache.contains((token.tok, purpose))
@@ -130,7 +130,7 @@ object TokenHolder {
 
       override def peek(
         token:   Token,
-        purpose: TokenPurpose
+        purpose: TokenPurpose,
       ): IO[GameError, Option[User]] = {
         for {
           contains <- cache.contains((token.tok, purpose))

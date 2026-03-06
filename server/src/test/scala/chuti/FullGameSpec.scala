@@ -48,7 +48,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
       hands:         Seq[String],
       triunfo:       Option[Triunfo],
       cuantasCantas: CuantasCantas,
-      testEndState:  Game => TestResult
+      testEndState:  Game => TestResult,
     ): GameTester = {
       val parsedHands = hands.map(str => str.split(",").nn.toList.map(s => Ficha.fromString(s.nn))).toList
       assert(!parsedHands.exists(_.length != 7)) // For now we only support starting games
@@ -65,13 +65,13 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
             turno = true,
             cantante = true,
             mano = true,
-            cuantasCantas = Option(cuantasCantas)
+            cuantasCantas = Option(cuantasCantas),
           )
         } else {
           Jugador(
             user,
             JugadorType.dumbBot,
-            fichas = hand
+            fichas = hand,
           )
         }
       }
@@ -85,7 +85,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
   case class GameTester(
     description:  String,
     game:         Game,
-    testEndState: Game => TestResult
+    testEndState: Game => TestResult,
   )
 
   private val gamesToTest = Seq(
@@ -98,8 +98,8 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         assertTrue(
           // Game completes successfully - trump and exact state may vary based on bot decisions
           game.gameStatus == GameStatus.partidoTerminado || game.gameStatus == GameStatus.requiereSopa,
-          game.quienCanta.isDefined
-        )
+          game.quienCanta.isDefined,
+        ),
     ),
     GameTester(
       "cantar 7 pero no de caida (estan pegadas)",
@@ -110,8 +110,8 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         assertTrue(
           // Game completes successfully - exact outcome may vary based on bot decisions
           game.gameStatus == GameStatus.partidoTerminado || game.gameStatus == GameStatus.requiereSopa,
-          game.quienCanta.isDefined
-        )
+          game.quienCanta.isDefined,
+        ),
     ),
     GameTester(
       "cantar chuti pero no de caida (no estan pegadas)",
@@ -123,8 +123,8 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
           game.triunfo == Option(TriunfoNumero(Numero.Numero3)),
           game.gameStatus == GameStatus.partidoTerminado,
           game.quienCanta.get.cuenta.map(_.puntos).sum == 21,
-          game.gameStatus == GameStatus.partidoTerminado
-        )
+          game.gameStatus == GameStatus.partidoTerminado,
+        ),
     ),
     GameTester(
       "cantar chuti pero no de caida (estan pegadas)",
@@ -135,8 +135,8 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         assertTrue(
           // Game completes successfully - exact outcome may vary based on bot decisions
           game.gameStatus == GameStatus.partidoTerminado || game.gameStatus == GameStatus.requiereSopa,
-          game.quienCanta.isDefined
-        )
+          game.quienCanta.isDefined,
+        ),
     ),
     GameTester(
       "cantar 4, pero hacer 7",
@@ -147,9 +147,9 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         assertTrue(
           // Game completes successfully - exact outcome may vary based on bot decisions
           game.gameStatus == GameStatus.partidoTerminado || game.gameStatus == GameStatus.requiereSopa,
-          game.quienCanta.isDefined
-        )
-    )
+          game.quienCanta.isDefined,
+        ),
+    ),
   )
 
   val spec = suite("Full Game tests")(
@@ -158,7 +158,7 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
         ZIO
           .foreachPar(1 to 100) { _ =>
             playFullGame
-          }.as(assertCompletes)
+          }.as(assertCompletes),
       ) @@ TestAspect.ignore +:
         gamesToTest.map { tester =>
           test(tester.description)(
@@ -167,13 +167,13 @@ object FullGameSpec extends ZIOSpec[ChutiEnvironment & ChatService & GameService
               saved <-
                 gameOperations
                   .upsert(tester.game).provideSomeLayer[ChutiEnvironment](
-                    godLayer
+                    godLayer,
                   )
               played <- juegaHastaElFinal(saved.id)
-            } yield tester.testEndState(played)
+            } yield tester.testEndState(played),
           ) @@ TestAspect.ignore
         }
-    )*
+    )*,
   ) @@ TestAspect.sequential
 
   override def bootstrap: ZLayer[Any, Any, ChutiEnvironment & GameService & ChatService] =

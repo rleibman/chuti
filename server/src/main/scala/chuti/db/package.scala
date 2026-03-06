@@ -47,7 +47,7 @@ package object db {
 
   case class FriendsRow(
     one: Long,
-    two: Long
+    two: Long,
   )
 
   object UserRow {
@@ -60,7 +60,7 @@ package object db {
         created = Timestamp.from(value.created).nn,
         lastUpdated = Timestamp.from(value.lastUpdated).nn,
         active = value.active,
-        oauth = value.oauth
+        oauth = value.oauth,
       )
 
   }
@@ -74,7 +74,7 @@ package object db {
     active:      Boolean = false,
     deleted:     Boolean = false,
     deletedDate: Option[Timestamp] = None,
-    oauth:       Option[OAuthUserData] = None
+    oauth:       Option[OAuthUserData] = None,
   ) {
 
     def toUser: User =
@@ -86,7 +86,7 @@ package object db {
         lastUpdated = lastUpdated.toInstant.nn,
         active = active,
         deleted = deleted,
-        oauth = oauth
+        oauth = oauth,
       )
 
   }
@@ -100,7 +100,7 @@ package object db {
         lastSnapshot = value.toJson,
         status = value.gameStatus,
         created = Timestamp.from(value.created).nn,
-        lastUpdated = Timestamp(System.currentTimeMillis())
+        lastUpdated = Timestamp(System.currentTimeMillis()),
       )
       ret
     }
@@ -114,7 +114,7 @@ package object db {
     created:       Timestamp,
     lastUpdated:   Timestamp,
     current_index: Int = 0,
-    deleted:       Boolean = false
+    deleted:       Boolean = false,
   ) {
 
     def toGame: ZIO[Any, RepositoryError, Game] = {
@@ -123,7 +123,7 @@ package object db {
           _.copy(
             id = GameId(id),
             currentEventIndex = current_index,
-            gameStatus = status
+            gameStatus = status,
           )
         }).mapError(s => RepositoryError(s))
     }
@@ -133,14 +133,14 @@ package object db {
   case class GameEventRow(
     gameId:       Long,
     currentIndex: Int = 0,
-    eventData:    String
+    eventData:    String,
   )
 
   case class GamePlayersRow(
     userId:  Long,
     gameId:  Long,
     order:   Long,
-    invited: Boolean
+    invited: Boolean,
   )
 
   object UserWalletRow {
@@ -151,7 +151,7 @@ package object db {
   }
   case class UserWalletRow(
     userId: Long,
-    amount: BigDecimal
+    amount: BigDecimal,
   ) {
 
     def toUserWallet: UserWallet = UserWallet(userId = UserId(userId), amount = amount)
@@ -160,14 +160,14 @@ package object db {
 
   case class UserLogRow(
     userId: Long,
-    time:   Timestamp
+    time:   Timestamp,
   )
 
   case class TokenRow(
     tok:          String,
     tokenPurpose: String,
     expireTime:   Timestamp,
-    userId:       Long
+    userId:       Long,
   )
 
 }

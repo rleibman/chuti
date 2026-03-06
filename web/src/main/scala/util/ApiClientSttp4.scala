@@ -62,7 +62,7 @@ object ApiClientSttp4 {
     JsonInput.sanitize[B].andThen(_.fromJson[B].left.map(ZioJsonException(_)))
 
   def withAuthOptional[A](
-    request: Request[Either[CalibanClientError, A]]
+    request: Request[Either[CalibanClientError, A]],
   ): AsyncCallback[Either[CalibanClientError, A]] = {
     def doCall(tokOpt: Option[String]): AsyncCallback[Response[Either[CalibanClientError, A]]] = {
       AsyncCallback.fromFuture {
@@ -86,7 +86,7 @@ object ApiClientSttp4 {
       AsyncCallback.pure {
         window.console.log(msg)
         window.location.reload()
-      }
+      },
   ): AsyncCallback[Either[CalibanClientError, A]] = {
     def doCall(tok: String): AsyncCallback[Response[Either[CalibanClientError, A]]] = {
       AsyncCallback.fromFuture {
@@ -105,7 +105,7 @@ object ApiClientSttp4 {
       withRefresh <- responseOpt match {
         case Some(response)
             if response.code == StatusCode.Unauthorized && response.body.left.exists(
-              _.getMessage.contains("token_expired")
+              _.getMessage.contains("token_expired"),
             ) =>
           Callback.log("Refreshing token").asAsyncCallback >>
             // Call refresh endpoint
@@ -116,7 +116,7 @@ object ApiClientSttp4 {
                     .get(uri"/refresh")
                     .response(asString)
                     .readTimeout(2.minutes)
-                    .send(backend)
+                    .send(backend),
                 )
               retried <- refreshResponse.code match {
                 case c if c.isSuccess =>
@@ -128,7 +128,7 @@ object ApiClientSttp4 {
                     case None =>
                       val msg = "Server said refresh was ok, but didn't return a token"
                       onAuthError(msg) >> AsyncCallback.pure(
-                        Left(CalibanClientError.CommunicationError(msg): CalibanClientError)
+                        Left(CalibanClientError.CommunicationError(msg): CalibanClientError),
                       )
                   }
                 case c =>

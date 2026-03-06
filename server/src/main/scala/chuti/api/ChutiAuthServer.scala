@@ -33,7 +33,7 @@ object ChutiAuthServer {
   val live: ZLayer[
     ConfigurationService & Postman & ZIORepository,
     ConfigurationError,
-    AuthServer[User, UserId, ConnectionId]
+    AuthServer[User, UserId, ConnectionId],
   ] = ZLayer.fromZIO {
     for {
       config  <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
@@ -45,7 +45,7 @@ object ChutiAuthServer {
       override def login(
         userName:     String,
         password:     String,
-        connectionId: Option[ConnectionId]
+        connectionId: Option[ConnectionId],
       ): IO[AuthError, Option[User]] =
         repo.login(userName, password).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
 
@@ -54,7 +54,7 @@ object ChutiAuthServer {
 
       override def changePassword(
         userPK:      UserId,
-        newPassword: String
+        newPassword: String,
       ): ZIO[Session[User, ConnectionId], AuthError, Unit] =
         (for {
           userOpt <- repo.get(userPK)
@@ -71,7 +71,7 @@ object ChutiAuthServer {
       override def createUser(
         name:     String,
         email:    String,
-        password: String
+        password: String,
       ): IO[AuthError, User] =
         (for {
           existingByEmail <- repo.userByEmail(email)
@@ -87,7 +87,7 @@ object ChutiAuthServer {
 
           // Create brand new user
           user <- repo.upsert(
-            User(id = UserId.empty, email = email, name = name, created = now, lastUpdated = now, active = false)
+            User(id = UserId.empty, email = email, name = name, created = now, lastUpdated = now, active = false),
           )
           _ <- changePassword(user.id, password)
         } yield user).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
@@ -95,7 +95,7 @@ object ChutiAuthServer {
       override def sendEmail(
         subject: String,
         body:    String,
-        user:    User
+        user:    User,
       ): IO[AuthError, Unit] = {
         val smtpConfig = config.chuti.smtp
         val baseEmail = Envelope
@@ -116,7 +116,7 @@ object ChutiAuthServer {
           _ <- ZIO.logInfo(s"Activating user with PK: ${userPK.value}")
           user <- repo
             .get(userPK).flatMap(
-              ZIO.fromOption(_).orElseFail(AuthBadRequest(s"user ${userPK.value} not found"))
+              ZIO.fromOption(_).orElseFail(AuthBadRequest(s"user ${userPK.value} not found")),
             )
           _ <- ZIO.logInfo(s"Updating user ${user.email} (active=${user.active}) to active=true")
           _ <- repo.upsert(user.copy(active = true))
@@ -129,7 +129,7 @@ object ChutiAuthServer {
       override def getEmailBodyHtml(
         user:    User,
         purpose: UserCodePurpose,
-        url:     String
+        url:     String,
       ): String =
         purpose match {
           case UserCodePurpose.LostPassword =>
@@ -152,17 +152,17 @@ object ChutiAuthServer {
 
       override def userByOAuthProvider(
         provider:   String,
-        providerId: String
+        providerId: String,
       ): IO[AuthError, Option[User]] =
         repo
           .userByOAuthProvider(provider, providerId).provide(ChutiSession.godSession.toLayer).mapError(
-            AuthError(_)
+            AuthError(_),
           )
 
       override def createOAuthUser(
         oauthInfo:    OAuthUserInfo,
         provider:     String,
-        connectionId: Option[ConnectionId]
+        connectionId: Option[ConnectionId],
       ): IO[AuthError, User] =
         (for {
           now <- Clock.instant
@@ -173,7 +173,7 @@ object ChutiAuthServer {
             created = now,
             lastUpdated = now,
             active = oauthInfo.emailVerified, // Auto-activate if email is verified by OAuth provider
-            oauth = Some(OAuthUserData(provider, oauthInfo.providerId, Some(oauthInfo.rawData.toJson)))
+            oauth = Some(OAuthUserData(provider, oauthInfo.providerId, Some(oauthInfo.rawData.toJson))),
           )
           user <- repo.upsert(newUser)
         } yield user).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
@@ -182,11 +182,11 @@ object ChutiAuthServer {
         user:         User,
         provider:     String,
         providerId:   String,
-        providerData: Json
+        providerData: Json,
       ): IO[AuthError, User] =
         repo
           .upsert(
-            user.copy(oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson))))
+            user.copy(oauth = Some(OAuthUserData(provider, providerId, Some(providerData.toJson)))),
           ).provide(ChutiSession.godSession.toLayer).mapError(AuthError(_))
     }
   }

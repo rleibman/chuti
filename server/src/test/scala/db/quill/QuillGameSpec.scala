@@ -67,9 +67,9 @@ object QuillGameSpec extends QuillSpec {
           updated.gameStatus == GameStatus.abandonado,
           updated == gottenUpdated.get,
           deleted,
-          allGamesAfterDelete.size < allGamesAfterInsert.size
+          allGamesAfterDelete.size < allGamesAfterInsert.size,
         )).withClock(fixedClock)
-      }
+      },
     ).provideSomeLayerShared[ChutiEnvironment](godSession)
   //  def getHistoricalUserGames: RepositoryIO[Seq[Game]]
   //  def userInGame(id:      GameId): RepositoryIO[Boolean]

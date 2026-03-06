@@ -31,7 +31,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
 
   case class ChangePasswordRequest(
     currentPassword: String,
-    newPassword:     String
+    newPassword:     String,
   )
 
   object ChangePasswordRequest {
@@ -43,7 +43,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
   override def api: ZIO[
     ChutiEnvironment,
     GameError,
-    Routes[ChutiEnvironment & ChutiSession, GameError]
+    Routes[ChutiEnvironment & ChutiSession, GameError],
   ] =
     GameApi.api.interpreter.mapBoth(
       GameError(_),
@@ -70,7 +70,7 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
                 // Verify current password by attempting to log in
                 loginResult <- authServer
                   .login(user.email, changePasswordRequest.currentPassword, session.connectionId).mapError(e =>
-                    GameError(e)
+                    GameError(e),
                   )
                 _ <- ZIO.when(loginResult.isEmpty)(ZIO.fail(GameError("Current password is incorrect")))
                 // Change the password
@@ -79,9 +79,9 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
               } yield Response.ok).catchAll { error =>
                 ZIO.succeed(Response.text(error.getMessage).status(Status.BadRequest))
               }
-            }
+            },
         )
-      }
+      },
     )
 
   override def unauth: ZIO[ChutiEnvironment, GameError, Routes[ChutiEnvironment, GameError]] =
@@ -92,8 +92,8 @@ object GameRoutes extends AppRoutes[ChutiEnvironment, ChutiSession, GameError] {
         _ =>
           Routes(
             Method.GET / "unauth" / "chuti" / "schema" ->
-              Handler.fromBody(Body.fromCharSequence(GameApi.api.render))
-          )
+              Handler.fromBody(Body.fromCharSequence(GameApi.api.render)),
+          ),
       )
 
 }

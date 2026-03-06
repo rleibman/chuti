@@ -72,7 +72,7 @@ val god: User = User(
   name = "Un-namable",
   created = Instant.ofEpochMilli(0).nn,
   lastUpdated = Instant.ofEpochMilli(0).nn,
-  isAdmin = true
+  isAdmin = true,
 )
 
 // A user who can do some stuff, but not much
@@ -82,7 +82,7 @@ val godless: User = User(
   name = "Nothing",
   created = Instant.ofEpochMilli(0).nn,
   lastUpdated = Instant.ofEpochMilli(0).nn,
-  isAdmin = true
+  isAdmin = true,
 )
 
 private val names = Seq(
@@ -293,7 +293,7 @@ private val names = Seq(
   "Victoria",
   "Violeta",
   "Ximena",
-  "Zoe"
+  "Zoe",
 )
 
 // A bot user
@@ -304,6 +304,6 @@ def hal9000: User = {
     email = s"hal${-id}@chuti.fun",
     name = s"${names(Random.nextInt(names.length))} HAL$id (bot)",
     created = Instant.ofEpochMilli(0).nn,
-    lastUpdated = Instant.ofEpochMilli(0).nn
+    lastUpdated = Instant.ofEpochMilli(0).nn,
   )
 }

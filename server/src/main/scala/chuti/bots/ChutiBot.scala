@@ -26,12 +26,12 @@ trait ChutiBot {
 
   def decideTurn(
     user: User,
-    game: Game
+    game: Game,
   ): IO[GameError, PlayEvent]
 
   // TODO, this is not used by the game, but only by testing, it's probably wrong
   def takeTurn(
-    gameId: GameId
+    gameId: GameId,
   ): ZIO[GameEnvironment & ChutiSession & GameService, GameError, Game] = {
     for {
       userOpt <- ZIO.serviceWith[ChutiSession](_.user)

@@ -54,8 +54,8 @@ object ChutiContainer {
         driver = "org.mariadb.jdbc.Driver",
         url = container.container.getJdbcUrl.nn,
         user = container.container.getUsername.nn,
-        password = container.container.getPassword.nn
-      )
+        password = container.container.getPassword.nn,
+      ),
     )
   }
 
@@ -65,7 +65,7 @@ object ChutiContainer {
         container  <- ZIO.serviceWith[ChutiContainer](_.container)
         baseConfig <- ZIO.serviceWithZIO[ConfigurationService](_.appConfig)
       } yield ConfigurationService.withConfig(
-        baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container)))
+        baseConfig.copy(chuti = baseConfig.chuti.copy(db = getConfig(container))),
       )
     }
 

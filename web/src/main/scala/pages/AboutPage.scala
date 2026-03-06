@@ -44,9 +44,9 @@ object AboutPage extends ChutiPage {
           <.tbody(
             <.tr(<.td("Chuti"), <.td(BuildInfo.version)),
             <.tr(<.td("Scala"), <.td(BuildInfo.scalaVersion)),
-            <.tr(<.td("Sbt"), <.td(BuildInfo.sbtVersion))
-          )
-        )
+            <.tr(<.td("Sbt"), <.td(BuildInfo.sbtVersion)),
+          ),
+        ),
       )
     def renderTechnologiesUsed: VdomElement =
       <.div(
@@ -59,12 +59,12 @@ object AboutPage extends ChutiPage {
                   ^.href := "http://www.scala-lang.org",
                   <.img(
                     ^.src   := "https://www.scala-lang.org/resources/img/scala-logo.png",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("Scala"),
-              <.td("Functional and object oriented language")
+              <.td("Functional and object oriented language"),
             ),
             <.tr(
               <.td(
@@ -72,12 +72,12 @@ object AboutPage extends ChutiPage {
                   ^.href := "http://www.zio.dev",
                   <.img(
                     ^.src   := "https://zio.dev/img/navbar_brand.png",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("ZIO"),
-              <.td("Type-safe, composable asynchronous and concurrent programming for Scala")
+              <.td("Type-safe, composable asynchronous and concurrent programming for Scala"),
             ),
             <.tr(
               <.td(
@@ -85,12 +85,12 @@ object AboutPage extends ChutiPage {
                   ^.href := "https://ghostdogpr.github.io/caliban",
                   <.img(
                     ^.src   := "https://ghostdogpr.github.io/caliban/caliban.svg",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("Caliban"),
-              <.td("Caliban is a purely functional library for creating GraphQL backends in Scala.")
+              <.td("Caliban is a purely functional library for creating GraphQL backends in Scala."),
             ),
             <.tr(
               <.td(
@@ -98,14 +98,14 @@ object AboutPage extends ChutiPage {
                   ^.href := "http://www.scala-js.org",
                   <.img(
                     ^.src   := "https://www.scala-js.org/assets/img/scala-js-logo.svg",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("Scala.js"),
               <.td(
-                "Scala.js is a compiler that compiles Scala source code to equivalent Javascript code"
-              )
+                "Scala.js is a compiler that compiles Scala source code to equivalent Javascript code",
+              ),
             ),
             <.tr(
               <.td(
@@ -113,31 +113,31 @@ object AboutPage extends ChutiPage {
                   ^.href := "https://reactjs.org",
                   <.img(
                     ^.src   := "https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("React.js"),
-              <.td("React is a JavaScript library for building user interfaces.")
+              <.td("React is a JavaScript library for building user interfaces."),
             ),
             <.tr(
               <.td(
                 <.a(
                   ^.href := "https://react.semantic-ui.com",
-                  <.img(^.src := "https://semantic-ui.com/images/logo.png", ^.width := 50.px)
-                )
+                  <.img(^.src := "https://semantic-ui.com/images/logo.png", ^.width := 50.px),
+                ),
               ),
               <.td("Semantic-UI"),
               <.td(
-                "User interface is the language of the web. Good looking web component library."
-              )
+                "User interface is the language of the web. Good looking web component library.",
+              ),
             ),
             <.tr(
               <.td(<.a(^.href := "https://scalablytyped.org/docs/readme.html", "ScalablyTyped")),
               <.td("ScalablyTyped"),
               <.td(
-                "Showcasing the most amazing ScalablyTyped project, with over 8000 Scala.Js wrappers of javascript projects"
-              )
+                "Showcasing the most amazing ScalablyTyped project, with over 8000 Scala.Js wrappers of javascript projects",
+              ),
             ),
             <.tr(
               <.td(
@@ -145,12 +145,12 @@ object AboutPage extends ChutiPage {
                   ^.href := "https://mariadb.org",
                   <.img(
                     ^.src   := "https://mariadb.com/wp-content/uploads/2019/11/mariadb-logo-vert_blue-transparent.png",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("MariaDB"),
-              <.td("Open source relational database, used for game and user data persistence.")
+              <.td("Open source relational database, used for game and user data persistence."),
             ),
             <.tr(
               <.td(
@@ -158,25 +158,25 @@ object AboutPage extends ChutiPage {
                   ^.href := "https://getquill.io",
                   <.img(
                     ^.src   := "https://getquill.io/img/quill.png",
-                    ^.width := 50.px
-                  )
-                )
+                    ^.width := 50.px,
+                  ),
+                ),
               ),
               <.td("Quill"),
-              <.td("Compile-time Language Integrated Queries for Scala.")
+              <.td("Compile-time Language Integrated Queries for Scala."),
             ),
             <.tr(
               <.td(
                 <.a(
                   ^.href := "https://docs.langchain4j.dev",
-                  "LangChain4j"
-                )
+                  "LangChain4j",
+                ),
               ),
               <.td("LangChain4j"),
-              <.td("Java library for integrating large language models, used for AI-powered bots.")
-            )
-          )
-        )
+              <.td("Java library for integrating large language models, used for AI-powered bots."),
+            ),
+          ),
+        ),
       )
 
     def render(): VdomElement = {
@@ -185,7 +185,7 @@ object AboutPage extends ChutiPage {
         <.p("Copyright ©2025, Roberto Leibman"),
         renderBuildInfo,
         renderTechnologiesUsed,
-        <.div(^.dangerouslySetInnerHtml := agradecimientos)
+        <.div(^.dangerouslySetInnerHtml := agradecimientos),
       )
     }
 

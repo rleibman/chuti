@@ -33,7 +33,7 @@ trait Postman {
   // You may want to move these to a different service if you wanted to keep the mechanics of sending and the content separate
   def inviteToPlayByEmail(
     user:    User,
-    invited: User
+    invited: User,
   ): RIO[TokenHolder, Envelope] =
     for {
       token <- ZIO.serviceWithZIO[TokenHolder](_.createToken(invited, TokenPurpose.NewUser, Option(3.days)))
@@ -54,7 +54,7 @@ trait Postman {
   def inviteToGameEmail(
     user:    User,
     invited: User,
-    game:    Game
+    game:    Game,
   ): RIO[TokenHolder, Envelope] =
     ZIO.succeed {
       val linkUrl =
@@ -122,7 +122,7 @@ object CourierPostman {
             .auth(config.auth)
             .as(
               config.user,
-              config.password
+              config.password,
             )
             .startTls(config.startTTLS)()
         else
@@ -133,7 +133,7 @@ object CourierPostman {
         ZIO
           .fromFuture(implicit ec => mailer(email)).tapBoth(
             e => ZIO.logError(s"Error sending email: $e"),
-            msg => ZIO.logDebug(s"Email sent to ${email.to.mkString(", ")}: $msg")
+            msg => ZIO.logDebug(s"Email sent to ${email.to.mkString(", ")}: $msg"),
           ).forkDaemon.unit
 
       override def webHostName: String = config.webHostname

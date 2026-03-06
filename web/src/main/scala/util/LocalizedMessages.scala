@@ -23,15 +23,15 @@ abstract class LocalizedMessages {
 
   case class MessageBundle(
     locale: String,
-    map:    Map[String, String]
+    map:    Map[String, String],
   )
   def bundles: Map[String, MessageBundle]
 
   @nowarn
   def localized(
     key:          String,
-    default:      String = ""
-  )(using locale: Locale = Locale("es", "MX")
+    default:      String = "",
+  )(using locale: Locale = Locale("es", "MX"),
   ): String = {
     println(s"locale $locale, key = $key")
     (for {

@@ -29,23 +29,23 @@ import java.time.temporal.ChronoUnit
 trait ChatService {
 
   def getRecentMessages(
-    channelId: ChannelId
+    channelId: ChannelId,
   ): ZIO[ZIORepository & ChutiSession, GameError, Seq[ChatMessage]]
 
   def say(msg: SayRequest): ZIO[ZIORepository & ChutiSession, GameError, ChatMessage]
 
   def sayAsSystem(
     msg:       String,
-    channelId: ChannelId
+    channelId: ChannelId,
   ): ZIO[ZIORepository, GameError, ChatMessage]
 
   def chatStream(
     channelId:    ChannelId,
-    connectionId: ConnectionId
+    connectionId: ConnectionId,
   ): ZStream[
     ZIORepository & ChutiSession,
     GameError,
-    ChatMessage
+    ChatMessage,
   ]
 
 }
@@ -57,19 +57,19 @@ object ChatService {
   def sendMessage(
     msg:       String,
     channelId: ChannelId,
-    toUser:    Option[User]
+    toUser:    Option[User],
   ): ZIO[ChatService & ZIORepository & ChutiSession, GameError, ChatMessage] =
     ZIO.serviceWithZIO[ChatService](_.say(SayRequest(msg, channelId, toUser)))
 
   case class MessageQueue(
     user:         User,
     connectionId: ConnectionId,
-    queue:        Queue[ChatMessage]
+    queue:        Queue[ChatMessage],
   )
 
   def dateFilter(
     timeAgo: Instant,
-    msg:     ChatMessage
+    msg:     ChatMessage,
   ): Boolean = msg.date.isAfter(timeAgo)
 
   def make(): URLayer[Any, ChatService] =
@@ -81,7 +81,7 @@ object ChatService {
       } yield new ChatService {
 
         def getRecentMessages(
-          channelId: ChannelId
+          channelId: ChannelId,
         ): ZIO[ZIORepository & ChutiSession, GameError, Seq[ChatMessage]] = {
           for {
             now <- Clock.instant
@@ -95,7 +95,7 @@ object ChatService {
         override def say(request: SayRequest): ZIO[
           ZIORepository & ChutiSession,
           GameError,
-          ChatMessage
+          ChatMessage,
         ] =
           for {
             allSubscriptions <- chatMessageQueue.get
@@ -114,12 +114,12 @@ object ChatService {
                   msg = request.msg,
                   channelId = request.channelId,
                   toUser = request.toUser,
-                  date = now
+                  date = now,
                 )
 
               ZIO
                 .foreach(
-                  allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id))
+                  allSubscriptions.filter(subs => request.toUser.fold(true)(_.id == subs.user.id)),
                 )(_.queue.offer(sendMe))
                 .as(sendMe)
             }
@@ -131,7 +131,7 @@ object ChatService {
 
         override def sayAsSystem(
           msg:       String,
-          channelId: ChannelId
+          channelId: ChannelId,
         ): ZIO[ZIORepository, GameError, ChatMessage] =
           for {
             allSubscriptions <- chatMessageQueue.get
@@ -147,7 +147,7 @@ object ChatService {
                 lastUpdated = now,
                 active = true,
                 deleted = false,
-                isAdmin = false
+                isAdmin = false,
               )
 
               val sendMe =
@@ -156,7 +156,7 @@ object ChatService {
                   msg = msg,
                   channelId = channelId,
                   toUser = None,
-                  date = now
+                  date = now,
                 )
 
               ZIO
@@ -171,11 +171,11 @@ object ChatService {
 
         override def chatStream(
           channelId:    ChannelId,
-          connectionId: ConnectionId
+          connectionId: ConnectionId,
         ): ZStream[
           ZIORepository & ChutiSession,
           GameError,
-          ChatMessage
+          ChatMessage,
         ] =
           ZStream.unwrap {
             for {
@@ -202,12 +202,12 @@ object ChatService {
               .ensuring(
                 ZIO.logInfo(s"Chat queue for user ${user.id} shut down") *>
                   queue.shutdown *> chatMessageQueue.update(
-                    _.filterNot(_.connectionId == connectionId)
-                  )
+                    _.filterNot(_.connectionId == connectionId),
+                  ),
               )
               .filter(m =>
                 m.channelId == channelId ||
-                  (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty)
+                  (m.channelId == ChannelId.directChannel && m.toUser.nonEmpty),
               ).catchAllCause { c =>
                 c.prettyPrint
                 ZStream.failCause(c)

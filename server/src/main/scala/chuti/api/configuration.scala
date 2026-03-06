@@ -30,7 +30,7 @@ import java.io.File
 
 case class ConfigurationError(
   override val msg:   String = "",
-  override val cause: Option[Throwable] = None
+  override val cause: Option[Throwable] = None,
 ) extends GameError(msg, cause)
 
 case class DataSourceConfig(
@@ -40,11 +40,11 @@ case class DataSourceConfig(
   password:              String,
   maximumPoolSize:       Int = 20,
   minimumIdle:           Int = 5,
-  connectionTimeoutMins: Long = 5
+  connectionTimeoutMins: Long = 5,
 )
 
 case class DatabaseConfig(
-  dataSource: DataSourceConfig
+  dataSource: DataSourceConfig,
 ) {}
 
 case class SmtpConfig(
@@ -57,19 +57,19 @@ case class SmtpConfig(
   webHostname: String = "www.chuti.fun",
   fromEmail:   String = "administrator@chuti.fun",
   fromName:    String = "Chuti Administrator",
-  bccEmail:    String = "roberto@leibman.net"
+  bccEmail:    String = "roberto@leibman.net",
 )
 
 case class HttpConfig(
   hostName:         String,
   port:             Int,
-  staticContentDir: String
+  staticContentDir: String,
 )
 
 case class RateLimitConfig(
   enabled:               Boolean = true,
   maxRequests:           Int = 100,
-  windowDurationSeconds: Long = 60
+  windowDurationSeconds: Long = 60,
 ) {
 
   def windowDuration: scala.concurrent.duration.Duration =
@@ -86,12 +86,12 @@ case class FlywayConfig(
   target:              String = "",
   baselineOnMigrate:   Boolean = true,
   baselineVersion:     String = "016",
-  baselineDescription: String = "Existing database baseline (V001-V016 already applied)"
+  baselineDescription: String = "Existing database baseline (V001-V016 already applied)",
 )
 
 case class AnalyticsConfig(
   retentionDays:        Int = 7,
-  cleanupIntervalHours: Int = 24
+  cleanupIntervalHours: Int = 24,
 )
 
 case class ChutiConfig(
@@ -103,7 +103,7 @@ case class ChutiConfig(
   flyway:    FlywayConfig,
   oauth:     Map[String, OAuthProviderConfig],
   analytics: AnalyticsConfig,
-  ai:        Option[AIConfig] = None
+  ai:        Option[AIConfig] = None,
 )
 
 object AppConfig {
@@ -121,7 +121,7 @@ object AppConfig {
 }
 
 case class AppConfig(
-  chuti: ChutiConfig
+  chuti: ChutiConfig,
 ) {
 
   lazy val dataSource: HikariDataSource = {
@@ -173,7 +173,7 @@ object ConfigurationService {
         ConfigFactory
           .parseFile(confFile)
           .withFallback(ConfigFactory.load())
-          .resolve()
+          .resolve(),
       )
     }
 

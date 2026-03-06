@@ -59,18 +59,18 @@ object Content extends ChutiComponent with TimerSupport {
         s.copy(chutiState =
           s.chutiState.copy(
             celebration = Some(data),
-            currentDialog = GlobalDialog.celebration
-          )
-        )
+            currentDialog = GlobalDialog.celebration,
+          ),
+        ),
       ) >> Callback {
         scala.scalajs.js.timers.setTimeout(3000) {
           $.modState(s =>
             s.copy(chutiState =
               s.chutiState.copy(
                 celebration = None,
-                currentDialog = GlobalDialog.none
-              )
-            )
+                currentDialog = GlobalDialog.none,
+              ),
+            ),
           ).runNow()
         }
       }
@@ -85,12 +85,12 @@ object Content extends ChutiComponent with TimerSupport {
                 // If it's a future event, which means we missed an event somewhere, we'll need to call for a full refresh
                 true
               case _ => false
-            }
+            },
           )
 
           if (doRefresh)
             Callback.info(
-              "Had to force a refresh because the event index was too far into the future"
+              "Had to force a refresh because the event index was too far into the future",
             ) >> refresh(initial = false)()
           else
             gameEvent.reapplyMode match {
@@ -104,8 +104,8 @@ object Content extends ChutiComponent with TimerSupport {
                     err =>
                       Callback.log(s"reapplyEvent failed (${err.getMessage}), forcing full refresh") >>
                         refresh(initial = false)(),
-                    _ => Callback.empty
-                  )
+                    _ => Callback.empty,
+                  ),
                 )
             }
         }
@@ -122,8 +122,8 @@ object Content extends ChutiComponent with TimerSupport {
                   winner = None,
                   scores = Map.empty,
                   bidResult = None,
-                  statusString = e.gameStatusString
-                )
+                  statusString = e.gameStatusString,
+                ),
               )
             case _: TerminaPartido =>
               $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = GlobalDialog.cuentas)))
@@ -146,8 +146,8 @@ object Content extends ChutiComponent with TimerSupport {
                       CelebrationData(
                         components.CelebrationOverlay.CelebrationType.SpecialEvent(b.borlote),
                         None,
-                        Map.empty
-                      )
+                        Map.empty,
+                      ),
                     )
                 }
             case e: MeRindo =>
@@ -157,8 +157,8 @@ object Content extends ChutiComponent with TimerSupport {
                   winner = None,
                   scores = Map.empty,
                   bidResult = None,
-                  statusString = e.gameStatusString
-                )
+                  statusString = e.gameStatusString,
+                ),
               )
             case _ => Callback.empty
           }
@@ -184,7 +184,9 @@ object Content extends ChutiComponent with TimerSupport {
                   case e: Throwable => Left(e)
                 }
               case Some(index) if index > currentGame.currentEventIndex =>
-                Right(Option(currentGame))
+                // Future event: likely a state-update race condition where a prior modState
+                // hasn't committed yet. Force a full refresh to recover the correct server state.
+                Left(GameError(s"Future event received (index=$index > currentEventIndex=${currentGame.currentEventIndex}), forcing refresh"))
               case Some(index) =>
                 println(s"Ignoring past event: eventIndex = $index, gameIndex = ${currentGame.currentEventIndex}")
                 Right(Option(currentGame))
@@ -203,9 +205,9 @@ object Content extends ChutiComponent with TimerSupport {
                     case event: BorloteEvent => Option(event.borlote)
                     case _:     Pide         => None
                     case _ => s.chutiState.ultimoBorlote
-                  }
-                )
-              )
+                  },
+                ),
+              ),
             )
         }
       }
@@ -233,13 +235,13 @@ object Content extends ChutiComponent with TimerSupport {
               }
               s.copy(chutiState = s.chutiState.copy(isMobile = nowMobile, chatSidebarOpen = newChatOpen))
             }.runNow()
-          }
+          },
         )
       }
 
     def modGameInProgress(
       fn:       Game => Game,
-      callback: Callback
+      callback: Callback,
     ): Callback =
       Callback.log("modGameInProgress") >> (for {
         chutiState <- $.state.map(_.chutiState)
@@ -254,7 +256,7 @@ object Content extends ChutiComponent with TimerSupport {
           else {
             $.modState(
               s => s.copy(chutiState = s.chutiState.copy(gameInProgress = newGameOpt)),
-              callback
+              callback,
             )
           }
         }
@@ -262,19 +264,19 @@ object Content extends ChutiComponent with TimerSupport {
 
     def onSessionChanged(
       userOpt:     Option[User],
-      languageTag: String
+      languageTag: String,
     ): Callback = {
       val async = for {
         user <- AsyncCallback.traverse(userOpt)(user => GameClient.user.upsert(user))
         _ <- AsyncCallback.traverse(user)(user =>
-          GameClient.user.upsert(user.copy(locale = Locale.forLanguageTag(languageTag)))
+          GameClient.user.upsert(user.copy(locale = Locale.forLanguageTag(languageTag))),
         )
       } yield {
         Callback(window.sessionStorage.setItem("languageTag", languageTag)) >>
           $.modState(s =>
             s.copy(
-              chutiState = s.chutiState.copy(user = user.headOption, languageTag = languageTag)
-            )
+              chutiState = s.chutiState.copy(user = user.headOption, languageTag = languageTag),
+            ),
           ) >> Toast.success("Usuario guardado!")
       }
       async.completeWith(_.get)
@@ -311,11 +313,11 @@ object Content extends ChutiComponent with TimerSupport {
                 audioQueue.dequeue()
               }
               playNextSound()
-            }
+            },
           )
 
           audio
-        }
+        },
       )
     }
 
@@ -365,7 +367,7 @@ object Content extends ChutiComponent with TimerSupport {
           ^.height := 100.pct,
           Confirm.render(),
           Toast.render(),
-          AppRouter.router()
+          AppRouter.router(),
         )
       }
 
@@ -375,13 +377,20 @@ object Content extends ChutiComponent with TimerSupport {
         $.modState(s => s.copy(chutiState = s.chutiState.copy(gameViewMode = gameViewMode)))
 
     def showDialog(dlg: GlobalDialog): Callback =
-      $.modState(s => s.copy(chutiState = s.chutiState.copy(currentDialog = dlg)))
+      $.modState(s =>
+        s.copy(chutiState =
+          s.chutiState.copy(
+            currentDialog = dlg,
+            celebration = if (dlg == GlobalDialog.celebration) s.chutiState.celebration else None,
+          ),
+        ),
+      )
 
     def onUserStreamData(
       currentUser:   User,
-      currentGameId: Option[GameId]
+      currentGameId: Option[GameId],
     )(
-      event: UserEvent
+      event: UserEvent,
     ): Callback = {
       import UserEventType.*
       Callback.log(event.toString) >> {
@@ -390,15 +399,15 @@ object Content extends ChutiComponent with TimerSupport {
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
-                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id))
-              )
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id)),
+              ),
             )
           case Connected | Modified =>
             $.modState(s =>
               s.copy(chutiState =
                 s.chutiState
-                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id) :+ event.user)
-              )
+                  .copy(loggedInUsers = s.chutiState.loggedInUsers.filter(_.id != event.user.id) :+ event.user),
+              ),
             )
           case AbandonedGame =>
             // Don't refresh when it's the same user who's joined/abandoned, as there are other game or application events
@@ -440,7 +449,7 @@ object Content extends ChutiComponent with TimerSupport {
         _ <-
           (if (needNewGameStream)
              oldState.chutiState.gameStream.fold(
-               Callback.log("Don't need to close stream, it hasn't been opened yet")
+               Callback.log("Don't need to close stream, it hasn't been opened yet"),
              )(_.close())
            else Callback.log("Don't need new game stream, game hasn't changed")).asAsyncCallback
 
@@ -468,11 +477,11 @@ object Content extends ChutiComponent with TimerSupport {
               userStream = Option(
                 GameClient.gameRepo.makeUserWebSocket { event =>
                   whoami.fold(Callback.empty)(currentUser =>
-                    onUserStreamData(currentUser, gameInProgressOpt.map(_.id))(event)
+                    onUserStreamData(currentUser, gameInProgressOpt.map(_.id))(event),
                   )
-                }
-              )
-            )
+                },
+              ),
+            ),
           )
         } else s
 
@@ -504,15 +513,15 @@ object Content extends ChutiComponent with TimerSupport {
               gameStream =
                 if (!needNewGameStream) copy.chutiState.gameStream
                 else
-                  gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id, onGameEvent))
-            )
+                  gameInProgressOpt.map(game => GameClient.gameRepo.makeGameWebSocket(game.id, onGameEvent)),
+            ),
           )
         }
       }
 
       for {
         _ <- Callback.log(
-          if (initial) "Initializing Content Component" else "Refreshing Content Component"
+          if (initial) "Initializing Content Component" else "Refreshing Content Component",
         )
         modedState <- ajax.completeWith(_.get)
       } yield modedState
@@ -537,8 +546,8 @@ object Content extends ChutiComponent with TimerSupport {
         ChutiState(
           gameViewMode = gameViewMode,
           isMobile = initialMobile,
-          chatSidebarOpen = !initialMobile
-        )
+          chatSidebarOpen = !initialMobile,
+        ),
       )
     }
     .backend[Backend](Backend(_))
@@ -557,7 +566,7 @@ object Content extends ChutiComponent with TimerSupport {
         Callback {
           $.backend.resizeListener.foreach(l => window.removeEventListener("resize", l))
           $.backend.resizeListener = None
-        }
+        },
     )
     .build
 

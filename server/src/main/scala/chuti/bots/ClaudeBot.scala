@@ -27,7 +27,7 @@ case class ClaudeBot() extends ChutiBot {
 
   enum BotPersonality(
     val bidAggression: Int,
-    val riskTolerance: Double
+    val riskTolerance: Double,
   ) {
 
     case VeryConservative extends BotPersonality(-1, 0.0)
@@ -40,7 +40,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def derivePersonality(
     userId: UserId,
-    gameId: GameId
+    gameId: GameId,
   ): BotPersonality = {
     val idx = math.abs((userId.value ^ gameId.value) % 5).toInt
     BotPersonality.values(idx)
@@ -68,12 +68,12 @@ case class ClaudeBot() extends ChutiBot {
     tricksPlayed:         Int,
     myScore:              Int,
     scorePressure:        Double,
-    personality:          BotPersonality
+    personality:          BotPersonality,
   )
 
   private def analyze(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): GameStateAnalysis = {
     val personality = derivePersonality(jugador.id, game.id)
 
@@ -159,7 +159,7 @@ case class ClaudeBot() extends ChutiBot {
       tricksPlayed = tricksPlayed,
       myScore = myScore,
       scorePressure = scorePressure,
-      personality = personality
+      personality = personality,
     )
   }
 
@@ -170,7 +170,7 @@ case class ClaudeBot() extends ChutiBot {
   private def probTileGetsBeaten(
     tile:     Ficha,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Double = {
     val beaters = analysis.unknownTiles.filter(other => game.score(tile, other) >= 1000)
     if (beaters.isEmpty) 0.0
@@ -182,7 +182,7 @@ case class ClaudeBot() extends ChutiBot {
         val pNoneHasBeater = beaters.foldLeft(1.0) {
           (
             acc,
-            _
+            _,
           ) =>
             acc * (1.0 - math.min(1.0, 3.0 / unknownCount))
         }
@@ -193,7 +193,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def lowestValueTile(
     fichas:  List[Ficha],
-    triunfo: Option[Triunfo]
+    triunfo: Option[Triunfo],
   ): Ficha = {
     triunfo match {
       case Some(TriunfoNumero(num)) =>
@@ -201,7 +201,7 @@ case class ClaudeBot() extends ChutiBot {
           if (f.es(num) && f.esMula) 300
           else if (f.es(num)) 200 + f.other(num).value
           else if (f.esMula) 100
-          else f.value
+          else f.value,
         )
       case _ =>
         fichas.minBy(f => if (f.esMula) 100 else f.value)
@@ -213,7 +213,7 @@ case class ClaudeBot() extends ChutiBot {
   private def evaluateTrumps(
     jugador:     Jugador,
     game:        Game,
-    personality: BotPersonality = BotPersonality.Moderate
+    personality: BotPersonality = BotPersonality.Moderate,
   ): Seq[(Triunfo, Int, Double)] = {
     val fichasDeOtros = Game.todaLaFicha.diff(jugador.fichas)
     val numerosQueTengo = jugador.fichas.flatMap(f => Seq(f.arriba, f.abajo)).distinct
@@ -238,7 +238,7 @@ case class ClaudeBot() extends ChutiBot {
       val trumpBonus = myTrumps.filterNot(f => f.esMula).foldLeft(0.0) {
         (
           acc,
-          t
+          t,
         ) =>
           val myValue = t.other(num).value
           val higherNonMula = allOpponentTrumps.count(o => !o.esMula && o.other(num).value > myValue)
@@ -296,7 +296,7 @@ case class ClaudeBot() extends ChutiBot {
 
   def canta(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] =
     ZIO.succeed {
       val analysis = analyze(jugador, game)
@@ -335,8 +335,8 @@ case class ClaudeBot() extends ChutiBot {
           cuantasCantas,
           reasoning = Option(
             s"${cuantasCantas.toString} (${cuantasCantas.numFilas}): $guaranteedTricks guaranteed with trump $bestTrump, " +
-              s"strength ${f"$handStrength%.1f"}, ${analysis.personality} personality ${formatHand(jugador)}"
-          )
+              s"strength ${f"$handStrength%.1f"}, ${analysis.personality} personality ${formatHand(jugador)}",
+          ),
         )
       } else {
         // Compare against the cantante's bid (the highest bid so far), not just the previous player
@@ -365,16 +365,16 @@ case class ClaudeBot() extends ChutiBot {
             reasoning = Option(
               s"${cuantasCantas.toString}: $guaranteedTricks guaranteed with trump $bestTrump, " +
                 s"strength ${f"$handStrength%.1f"}, saving over ${currentMaxBid.toString}. " +
-                s"${analysis.personality} personality ${formatHand(jugador)}"
-            )
+                s"${analysis.personality} personality ${formatHand(jugador)}",
+            ),
           )
         } else {
           Canta(
             Buenas,
             reasoning = Option(
               s"Buenas: $guaranteedTricks guaranteed, strength ${f"$handStrength%.1f"}, " +
-                s"can't outbid ${currentMaxBid.toString} ${formatHand(jugador)}"
-            )
+                s"can't outbid ${currentMaxBid.toString} ${formatHand(jugador)}",
+            ),
           )
         }
       }
@@ -384,7 +384,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def pideInicial(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] =
     ZIO.succeed {
       val personality = derivePersonality(jugador.id, game.id)
@@ -396,8 +396,8 @@ case class ClaudeBot() extends ChutiBot {
         Caete(
           triunfo = Option(bestTrump),
           reasoning = Option(
-            s"Falling on initial: guaranteed all tricks with trump $bestTrump ${formatHand(jugador)}"
-          )
+            s"Falling on initial: guaranteed all tricks with trump $bestTrump ${formatHand(jugador)}",
+          ),
         )
       } else {
         // Use strategic lead selection instead of blindly leading highest trump.
@@ -410,7 +410,7 @@ case class ClaudeBot() extends ChutiBot {
           ficha = ficha,
           triunfo = Option(bestTrump),
           estrictaDerecha = false,
-          reasoning = Option(s"Initial: trump $bestTrump. $reason")
+          reasoning = Option(s"Initial: trump $bestTrump. $reason"),
         )
       }
     }
@@ -419,7 +419,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def pide(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] =
     ZIO.succeed {
       val analysis = analyze(jugador, game)
@@ -427,15 +427,15 @@ case class ClaudeBot() extends ChutiBot {
       if (game.puedesCaerte(jugador)) {
         Caete(
           reasoning = Option(
-            s"Falling: ${jugador.filas.size} tricks won + guaranteed remaining >= bid. ${formatHand(jugador)}"
-          )
+            s"Falling: ${jugador.filas.size} tricks won + guaranteed remaining >= bid. ${formatHand(jugador)}",
+          ),
         )
       } else if (analysis.iAmCantante && shouldSurrender(jugador, game, analysis)) {
         MeRindo(
           reasoning = Option(
             s"Surrendering: ${analysis.myTricksWon} tricks won, need ${analysis.cantanteTricksNeeded} more, " +
-              s"only ${analysis.myTrumps.size} trumps left. ${analysis.personality} personality. ${formatHand(jugador)}"
-          )
+              s"only ${analysis.myTrumps.size} trumps left. ${analysis.personality} personality. ${formatHand(jugador)}",
+          ),
         )
       } else {
         val ficha = chooseLead(jugador, game, analysis)
@@ -444,7 +444,7 @@ case class ClaudeBot() extends ChutiBot {
           ficha = ficha,
           triunfo = None,
           estrictaDerecha = false,
-          reasoning = Option(reason)
+          reasoning = Option(reason),
         )
       }
     }
@@ -452,7 +452,7 @@ case class ClaudeBot() extends ChutiBot {
   private def shouldSurrender(
     jugador:  Jugador,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Boolean = {
     // RULE: Can ONLY surrender before the second trick is played (i.e., at most 1 total
     // trick completed across ALL players, not just this player's won tricks).
@@ -474,7 +474,7 @@ case class ClaudeBot() extends ChutiBot {
           val nonGuaranteedTrumps = jugador.fichas.filter(f => f.es(num) && !f.esMula).foldLeft(0.0) {
             (
               acc,
-              t
+              t,
             ) =>
               val myValue = t.other(num).value
               val higherCount = opponentTrumps.count(o => o.esMula || (!o.esMula && o.other(num).value > myValue))
@@ -513,7 +513,7 @@ case class ClaudeBot() extends ChutiBot {
   private def chooseLead(
     jugador:  Jugador,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Ficha = {
     if (analysis.iAmCantante) {
       chooseLeadAsCantante(jugador, game, analysis)
@@ -528,7 +528,7 @@ case class ClaudeBot() extends ChutiBot {
   private def isMulaTrumpSafe(
     mula:     Ficha,
     trumpNum: Numero,
-    jugador:  Jugador
+    jugador:  Jugador,
   ): Boolean = {
     val dangerTile = Ficha(mula.arriba, trumpNum)
     // Safe if we hold the danger tile ourselves, or it's already been played
@@ -539,7 +539,7 @@ case class ClaudeBot() extends ChutiBot {
   private def chooseLeadAsCantante(
     jugador:  Jugador,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Ficha = {
     game.triunfo match {
       case Some(TriunfoNumero(num)) =>
@@ -548,7 +548,7 @@ case class ClaudeBot() extends ChutiBot {
         // Split mulas into safe (we hold the N:trump tile) and vulnerable
         val safeMulas = nonTrumpMulas.filter(m =>
           isMulaTrumpSafe(m, num, jugador) ||
-            analysis.allPlayedTiles.contains(Ficha(m.arriba, num))
+            analysis.allPlayedTiles.contains(Ficha(m.arriba, num)),
         )
         val vulnerableMulas = nonTrumpMulas.filterNot(safeMulas.contains)
 
@@ -617,7 +617,7 @@ case class ClaudeBot() extends ChutiBot {
   private def chooseLeadAsDefender(
     jugador:  Jugador,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Ficha = {
     game.triunfo match {
       case Some(TriunfoNumero(num)) =>
@@ -653,7 +653,7 @@ case class ClaudeBot() extends ChutiBot {
     ficha:    Ficha,
     jugador:  Jugador,
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): String = {
     val role = if (analysis.iAmCantante) "Cantante" else "Defender"
     val prob = f"${probTileGetsBeaten(ficha, game, analysis) * 100}%.0f"
@@ -671,7 +671,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def da(
     jugador: Jugador,
-    game:    Game
+    game:    Game,
   ): IO[GameError, PlayEvent] = {
     if (game.enJuego.isEmpty) ZIO.fail(GameError("Nuncamente"))
     else
@@ -693,7 +693,7 @@ case class ClaudeBot() extends ChutiBot {
     game:      Game,
     analysis:  GameStateAnalysis,
     pideFicha: Ficha,
-    triunfo:   Triunfo
+    triunfo:   Triunfo,
   ): (Ficha, String) = {
     val hand = jugador.fichas
 
@@ -710,7 +710,7 @@ case class ClaudeBot() extends ChutiBot {
     game:      Game,
     analysis:  GameStateAnalysis,
     pideFicha: Ficha,
-    hand:      List[Ficha]
+    hand:      List[Ficha],
   ): (Ficha, String) = {
     val pideNum = pideFicha.arriba
     val matching = hand.filter(_.es(pideNum)).sortBy(_.other(pideNum).value)
@@ -745,7 +745,7 @@ case class ClaudeBot() extends ChutiBot {
     analysis:  GameStateAnalysis,
     pideFicha: Ficha,
     hand:      List[Ficha],
-    trumpNum:  Numero
+    trumpNum:  Numero,
   ): (Ficha, String) = {
     val pideNum = if (pideFicha.es(trumpNum)) trumpNum else pideFicha.arriba
     val matching = hand.filter(_.es(pideNum)).sortBy(_.other(pideNum).value)
@@ -776,7 +776,7 @@ case class ClaudeBot() extends ChutiBot {
     pideFicha: Ficha,
     matching:  List[Ficha],
     pideNum:   Numero,
-    trumpNum:  Numero
+    trumpNum:  Numero,
   ): (Ficha, String) = {
     val cantanteWinning = isCantanteCurrentlyWinning(game, analysis)
     val isLast = game.enJuego.size == 3 // I'm 4th to play
@@ -817,7 +817,7 @@ case class ClaudeBot() extends ChutiBot {
     game:     Game,
     analysis: GameStateAnalysis,
     myTrumps: List[Ficha],
-    trumpNum: Numero
+    trumpNum: Numero,
   ): (Ficha, String) = {
     val cantanteWinning = isCantanteCurrentlyWinning(game, analysis)
 
@@ -847,7 +847,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def isCantanteCurrentlyWinning(
     game:     Game,
-    analysis: GameStateAnalysis
+    analysis: GameStateAnalysis,
   ): Boolean = {
     if (game.enJuego.size < 2) {
       // Only one tile played, the leader is "winning"
@@ -886,7 +886,7 @@ case class ClaudeBot() extends ChutiBot {
 
   private def wouldBeatCurrentWinner(
     myTile: Ficha,
-    game:   Game
+    game:   Game,
   ): Boolean = {
     getCurrentWinningTile(game).exists { best =>
       val pideFicha = game.enJuego.head._2
@@ -905,7 +905,7 @@ case class ClaudeBot() extends ChutiBot {
 
   override def decideTurn(
     user: User,
-    game: Game
+    game: Game,
   ): IO[GameError, PlayEvent] = {
     val jugador = game.jugador(user.id)
     for {
@@ -917,13 +917,13 @@ case class ClaudeBot() extends ChutiBot {
               pideInicial(jugador, game)
             else if (jugador.mano && game.puedesCaerte(jugador))
               ZIO.succeed(
-                Caete(reasoning = Option(s"Falling: guaranteed remaining tricks. ${formatHand(jugador)}"))
+                Caete(reasoning = Option(s"Falling: guaranteed remaining tricks. ${formatHand(jugador)}")),
               )
             else if (jugador.mano && game.enJuego.isEmpty)
               pide(jugador, game)
             else if (
               game.enJuego.isEmpty && game.jugadores.exists(
-                _.cuantasCantas == Option(CuantasCantas.CantoTodas)
+                _.cuantasCantas == Option(CuantasCantas.CantoTodas),
               )
             )
               ZIO.succeed(NoOpPlay())

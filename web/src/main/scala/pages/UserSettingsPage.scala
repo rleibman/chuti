@@ -39,7 +39,7 @@ object UserSettingsPage extends ChutiPage {
         "es-MX"
       else loc
     },
-    passwordPair: (String, String) = ("", "")
+    passwordPair: (String, String) = ("", ""),
   )
 
   class Backend($ : BackendScope[Unit, State]) {
@@ -51,10 +51,10 @@ object UserSettingsPage extends ChutiPage {
         .completeWith(_.get)
 
     private def onUserInputChange(
-      fn: (User, String) => User
+      fn: (User, String) => User,
     )(
       e:   ReactEventFromInput,
-      obj: InputOnChangeData
+      obj: InputOnChangeData,
     ): Callback = {
       val str = obj.value.get.asInstanceOf[String]
       $.modState(state => state.copy(user = state.user.map(fn(_, str))))
@@ -69,7 +69,7 @@ object UserSettingsPage extends ChutiPage {
          else Nil)
 
     private def validatePassword(
-      state: State
+      state: State,
     ): Seq[String] =
       Seq.empty[String] ++
         (if (state.passwordPair._1.trim.nn.isEmpty) Seq("La contraseña no puede estar vacía") // TODO i8n
@@ -80,7 +80,7 @@ object UserSettingsPage extends ChutiPage {
 
     def doUpdate(
       s:          State,
-      chutiState: ChutiState
+      chutiState: ChutiState,
     ): Callback = {
       val valid: Seq[String] = validate(s)
       if (valid.nonEmpty)
@@ -90,7 +90,7 @@ object UserSettingsPage extends ChutiPage {
     }
 
     def doChangePassword(
-      s: State
+      s: State,
     ): Callback = {
       val valid: Seq[String] = validatePassword(s)
       if (valid.nonEmpty)
@@ -102,7 +102,7 @@ object UserSettingsPage extends ChutiPage {
 
     private def renderUserInfo(
       state:      State,
-      chutiState: ChutiState
+      chutiState: ChutiState,
     ): VdomElement =
       <.div(
         FormGroup()(
@@ -113,12 +113,12 @@ object UserSettingsPage extends ChutiPage {
                 onUserInputChange(
                   (
                     user,
-                    value
-                  ) => user.copy(name = value)
-                )
+                    value,
+                  ) => user.copy(name = value),
+                ),
               )
-              .value(state.user.fold("")(_.name))()
-          )
+              .value(state.user.fold("")(_.name))(),
+          ),
         ),
         FormGroup()(
           FormField().width(SemanticWIDTHS.`6`)(
@@ -129,12 +129,12 @@ object UserSettingsPage extends ChutiPage {
                 onUserInputChange(
                   (
                     user,
-                    value
-                  ) => user.copy(email = value)
-                )
+                    value,
+                  ) => user.copy(email = value),
+                ),
               )
-              .value(state.user.fold("")(_.email))()
-          )
+              .value(state.user.fold("")(_.email))(),
+          ),
         ),
         FormGroup()(
           FormField().width(SemanticWIDTHS.`6`)(
@@ -147,7 +147,7 @@ object UserSettingsPage extends ChutiPage {
               .onChange {
                 (
                   _,
-                  dropDownProps
+                  dropDownProps,
                 ) =>
                   $.modState(_.copy(locale = dropDownProps.value.asInstanceOf[String]))
               }
@@ -160,10 +160,10 @@ object UserSettingsPage extends ChutiPage {
                   DropdownItemProps()
                     .setValue("es-MX")
                     .setFlag("mx")
-                    .setText("Español") // TODO i8n
-                )
-              )()
-          )
+                    .setText("Español"), // TODO i8n
+                ),
+              )(),
+          ),
         ),
         FormGroup()(
           Button()
@@ -172,9 +172,9 @@ object UserSettingsPage extends ChutiPage {
             .onClick(
               (
                 _,
-                _
-              ) => doUpdate(state, chutiState)
-            )("Guardar") // TODO i8n
+                _,
+              ) => doUpdate(state, chutiState),
+            )("Guardar"), // TODO i8n
         ),
         Divider()(),
         FormGroup()(
@@ -188,12 +188,12 @@ object UserSettingsPage extends ChutiPage {
               .onChange {
                 (
                   _,
-                  obj
+                  obj,
                 ) =>
                   $.modState(state =>
-                    state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2))
+                    state.copy(passwordPair = (obj.value.get.asInstanceOf[String], state.passwordPair._2)),
                   )
-              }()
+              }(),
           ),
           FormField().width(SemanticWIDTHS.`3`)(
             Label()("Repite Contraseña"), // TODO i8n
@@ -204,13 +204,13 @@ object UserSettingsPage extends ChutiPage {
               .onChange {
                 (
                   _,
-                  obj
+                  obj,
                 ) =>
                   $.modState(state =>
-                    state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String]))
+                    state.copy(passwordPair = (state.passwordPair._1, obj.value.get.asInstanceOf[String])),
                   )
-              }()
-          )
+              }(),
+          ),
         ),
         FormGroup()(
           Button()
@@ -219,27 +219,27 @@ object UserSettingsPage extends ChutiPage {
             .onClick(
               (
                 _,
-                _
-              ) => doChangePassword(state)
-            )("Cambiar Contraseña") // TODO i8n
+                _,
+              ) => doChangePassword(state),
+            )("Cambiar Contraseña"), // TODO i8n
         ),
         Divider()(),
         <.h2("Cartera"), // TODO i8n
         <.p(
           s"En cartera tienes ${chutiState.wallet.fold("")(_.amount.toString())} satoshi, si quieres cambiar el numero de satoshi que tienes, comunicate con nosotros a ", // TODO i8n
-          <.a(^.href := "mailto:info@chuti.fun", "info@chuti.fun")
-        )
+          <.a(^.href := "mailto:info@chuti.fun", "info@chuti.fun"),
+        ),
       )
 
     def render(
-      state: State
+      state: State,
     ): VdomElement =
       ChutiState.ctx.consume { chutiState =>
         <.div(
           <.h1("Administración de Usuario"), // TODO i8n
           Form()(
-            renderUserInfo(state, chutiState)
-          )
+            renderUserInfo(state, chutiState),
+          ),
         )
       }
 

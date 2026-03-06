@@ -46,8 +46,8 @@ object InMemoryRepository {
           UserId(1) -> user1,
           UserId(2) -> user2,
           UserId(3) -> user3,
-          UserId(4) -> user4
-        )
+          UserId(4) -> user4,
+        ),
       )
       tokens        <- Ref.make(Map.empty[String, Token])
       gameIdCounter <- Ref.make(1L)
@@ -61,8 +61,8 @@ object InMemoryRepository {
         UserId(1) -> user1,
         UserId(2) -> user2,
         UserId(3) -> user3,
-        UserId(4) -> user4
-      )
+        UserId(4) -> user4,
+      ),
     )
     tokens        <- Ref.make(Map.empty[String, Token])
     gameIdCounter <- Ref.make(1L)
@@ -76,7 +76,7 @@ case class InMemoryRepository(
   users:         Ref[Map[UserId, User]],
   tokens:        Ref[Map[String, Token]],
   gameIdCounter: Ref[Long],
-  userIdCounter: Ref[Long]
+  userIdCounter: Ref[Long],
 ) extends ZIORepository {
 
   import InMemoryRepository.*
@@ -102,7 +102,7 @@ case class InMemoryRepository(
 
     override def delete(
       pk:         GameId,
-      softDelete: Boolean
+      softDelete: Boolean,
     ): RepositoryIO[Boolean] = games.update(_ - pk).as(true)
 
     override def search(search: Option[EmptySearch]): RepositoryIO[Seq[Game]] = games.get.map(_.values.toSeq)
@@ -119,14 +119,14 @@ case class InMemoryRepository(
 
     override def login(
       email:    String,
-      password: String
+      password: String,
     ): ZIO[Any, RepositoryError, Option[User]] = ???
 
     override def userByEmail(email: String): RepositoryIO[Option[User]] = ???
 
     override def changePassword(
       user:     User,
-      password: String
+      password: String,
     ): RepositoryIO[Boolean] = ???
 
     override def changePassword(password: String): RepositoryIO[Boolean] = ???
@@ -152,7 +152,7 @@ case class InMemoryRepository(
 
     override def delete(
       pk:         UserId,
-      softDelete: Boolean
+      softDelete: Boolean,
     ): RepositoryIO[Boolean] = ???
 
     override def search(search: Option[PagedStringSearch]): RepositoryIO[Seq[User]] = ???
@@ -167,25 +167,25 @@ case class InMemoryRepository(
 
     override def userByOAuthProvider(
       provider:   String,
-      providerId: String
+      providerId: String,
     ): RepositoryIO[Option[User]] = ???
   }
   override val tokenOperations: TokenOperations[RepositoryIO] = new TokenOperations[RepositoryIO] {
 
     override def validateToken(
       token:   Token,
-      purpose: TokenPurpose
+      purpose: TokenPurpose,
     ): RepositoryIO[Option[User]] = ???
 
     override def createToken(
       user:    User,
       purpose: TokenPurpose,
-      ttl:     Option[ScalaDuration]
+      ttl:     Option[ScalaDuration],
     ): RepositoryIO[Token] = ???
 
     override def peek(
       token:   Token,
-      purpose: TokenPurpose
+      purpose: TokenPurpose,
     ): RepositoryIO[Option[User]] = ???
 
     override def cleanup: RepositoryIO[Boolean] = ???

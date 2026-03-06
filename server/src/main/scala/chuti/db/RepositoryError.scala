@@ -28,7 +28,7 @@ object RepositoryError {
   }
   def apply(
     message: String = "",
-    cause:   Option[Throwable] = None
+    cause:   Option[Throwable] = None,
   ): RepositoryError = {
     new RepositoryError(message, cause)
   }
@@ -38,10 +38,10 @@ object RepositoryError {
 sealed class RepositoryError(
   override val msg:         String = "",
   override val cause:       Option[Throwable] = None,
-  override val isTransient: Boolean = false
+  override val isTransient: Boolean = false,
 ) extends GameError(msg, cause, isTransient)
 
 case class RepositoryPermissionError(
   override val msg:   String = "",
-  override val cause: Option[Throwable] = None
+  override val cause: Option[Throwable] = None,
 ) extends RepositoryError(msg)

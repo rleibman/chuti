@@ -24,7 +24,7 @@ import caliban.client.scalajs.ChatClient.{
   Mutations,
   Queries,
   Subscriptions,
-  User as CalibanUser
+  User as CalibanUser,
 }
 import chat.*
 import chuti.chat.ChannelId.*
@@ -55,7 +55,7 @@ object ChatComponent {
   case class State(
     chatMessages: List[ChatMessage] = Nil,
     msgInFlux:    String = "",
-    ws:           Option[WebSocketHandler] = None
+    ws:           Option[WebSocketHandler] = None,
   )
 
   lazy private val chatId = UUID.randomUUID().toString
@@ -64,30 +64,30 @@ object ChatComponent {
 
     def close(): Callback =
       $.state.flatMap(s =>
-        s.ws.fold(Callback.empty)(handler => Callback.log("Closing chat ws handler") >> handler.close())
+        s.ws.fold(Callback.empty)(handler => Callback.log("Closing chat ws handler") >> handler.close()),
       )
 
     private def onMessageInFluxChange = {
       (
         _:   ReactEventFromTextArea,
-        obj: TextAreaProps
+        obj: TextAreaProps,
       ) =>
         $.modState(_.copy(msgInFlux = obj.value.get.asInstanceOf[String]))
     }
 
     private def onSend(
       p: Props,
-      s: State
+      s: State,
     ): Callback = {
 
       Callback.log(s"Sending msg = ${s.msgInFlux}!") >> $.modState(
-        _.copy(msgInFlux = "")
+        _.copy(msgInFlux = ""),
       ) >> GameClient.chat
         .say(
           SayRequest(
             msg = s.msgInFlux,
-            channelId = p.channel
-          )
+            channelId = p.channel,
+          ),
         )
         .completeWith {
           case Success(response) =>
@@ -103,7 +103,7 @@ object ChatComponent {
 
     def render(
       p: Props,
-      s: State
+      s: State,
     ): VdomNode =
       <.div(
         ^.key       := "chatComponent",
@@ -125,16 +125,16 @@ object ChatComponent {
               if (!isSystemMessage) {
                 VdomArray(
                   <.div(^.className := "sentBy", ^.fontWeight.bold, msg.fromUser.name, " "),
-                  <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date))
+                  <.div(^.className := "sentAt", ^.fontWeight.lighter, df.format(msg.date)),
                 )
               } else EmptyVdom,
-              <.div(^.className := "messageText", msg.msg)
+              <.div(^.className := "messageText", msg.msg),
             )
             if (index == s.chatMessages.size - 1)
               div.withRef(messagesRef)
             else
               div
-          }
+          },
         ),
         <.div(
           ^.className := "sendMessage",
@@ -155,24 +155,24 @@ object ChatComponent {
             .onClick(
               (
                 _,
-                _
-              ) => onSend(p, s)
-            )("Send")
-        )
+                _,
+              ) => onSend(p, s),
+            )("Send"),
+        ),
       )
 
     def init(p: Props): Callback = {
       val chatSelectionBuilder: SelectionBuilder[CalibanChatMessage, ChatMessage] =
         (CalibanChatMessage
           .fromUser(CalibanUser.name) ~ CalibanChatMessage.date ~ CalibanChatMessage.toUser(
-          CalibanUser.name
+          CalibanUser.name,
         ) ~ CalibanChatMessage.msg)
           .mapN(
             (
               fromUsername: String,
               date:         CalibanInstant,
               toUsername:   Option[String],
-              msg:          String
+              msg:          String,
             ) =>
               ChatMessage(
                 fromUser =
@@ -181,9 +181,9 @@ object ChatComponent {
                 channelId = p.channel,
                 date = Instant.parse(date).nn,
                 toUser = toUsername.map(name =>
-                  User(UserId.empty, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn)
-                )
-              )
+                  User(UserId.empty, "", name, created = Instant.now().nn, lastUpdated = Instant.now().nn),
+                ),
+              ),
           )
       (for {
         recentMessages <- GameClient.chat.getRecentMessages(p.channel)
@@ -199,14 +199,14 @@ object ChatComponent {
                   Callback.log(s"got data! $msg") >>
                     msg.toUser.fold(
                       $.props.flatMap(_.onMessage(msg)) >> $.modState(s =>
-                        s.copy(s.chatMessages :+ msg)
-                      ) >> scrollToBottom
+                        s.copy(s.chatMessages :+ msg),
+                      ) >> scrollToBottom,
                     ) { _ =>
                       $.props.flatMap(_.onPrivateMessage(msg))
                     }
-                }
-              )
-            )
+                },
+              ),
+            ),
           )
         } >> scrollToBottom
       }).completeWith(_.get)
@@ -218,7 +218,7 @@ object ChatComponent {
     user:             User,
     channel:          ChannelId,
     onPrivateMessage: ChatMessage => Callback,
-    onMessage:        ChatMessage => Callback
+    onMessage:        ChatMessage => Callback,
   )
 
   import scala.language.unsafeNulls
@@ -232,7 +232,7 @@ object ChatComponent {
     .backend[Backend](Backend(_))
     .renderPS(_.backend.render(_, _))
     .componentDidMount($ =>
-      Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props)
+      Callback.log(s"ChatComponent.componentDidMount ${$.props.channel}") >> $.backend.init($.props),
     )
     .componentWillUnmount($ => $.backend.close())
     .configure(Reusability.shouldComponentUpdate)
@@ -242,10 +242,10 @@ object ChatComponent {
     user:             User,
     channel:          ChannelId,
     onPrivateMessage: ChatMessage => Callback = _ => Callback.empty,
-    onMessage:        ChatMessage => Callback = _ => Callback.empty
+    onMessage:        ChatMessage => Callback = _ => Callback.empty,
   ): Unmounted[Props, State, Backend] =
     component.withKey(s"chatChannel${channel.value}")(
-      Props(user, channel, onPrivateMessage, onMessage)
+      Props(user, channel, onPrivateMessage, onMessage),
     )
 
 }

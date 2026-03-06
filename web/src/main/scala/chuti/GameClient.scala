@@ -21,7 +21,7 @@ import caliban.client.scalajs.GameClient.{
   User as CalibanUser,
   UserEvent as CalibanUserEvent,
   UserEventType as CalibanUserEventType,
-  *
+  *,
 }
 import caliban.client.scalajs.given
 import caliban.{ScalaJSClientAdapter, WebSocketHandler}
@@ -45,7 +45,7 @@ trait ChatOperations[F[_]] {
 
   def makeWebSocket(
     channelId: ChannelId,
-    onData:    ChatMessage => Callback = (_ => Callback.empty)
+    onData:    ChatMessage => Callback = (_ => Callback.empty),
   ): WebSocketHandler
 
 }
@@ -64,7 +64,7 @@ object GameClient {
       email = u.email,
       created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
       lastUpdated = Option(java.time.Instant.parse(u.lastUpdated)).getOrElse(java.time.Instant.now()),
-      active = u.active
+      active = u.active,
     )
   }
 
@@ -111,7 +111,7 @@ object GameClient {
     override def inviteByEmail(
       name:   String,
       email:  String,
-      gameId: GameId
+      gameId: GameId,
     ): AsyncCallback[Boolean] =
       gameClient
         .asyncCalibanCallWithAuth(Mutations.inviteByEmail(name, email, gameId.value))
@@ -124,7 +124,7 @@ object GameClient {
 
     override def inviteToGame(
       userId: UserId,
-      gameId: GameId
+      gameId: GameId,
     ): AsyncCallback[Boolean] =
       gameClient
         .asyncCalibanCallWithAuth(Mutations.inviteToGame(userId.value, gameId.value))
@@ -147,12 +147,12 @@ object GameClient {
 
     override def play(
       gameId:    GameId,
-      gameEvent: PlayEvent
+      gameEvent: PlayEvent,
     ): AsyncCallback[Game] = ??? // We really don't want to get the game every time we play a turn
 
     override def playSilently(
       gameId:    GameId,
-      gameEvent: PlayEvent
+      gameEvent: PlayEvent,
     ): AsyncCallback[Boolean] = {
       val eventJson = gameEvent.toJsonAST match {
         case Right(json) => json
@@ -191,14 +191,14 @@ object GameClient {
 
     override def changePassword(
       user:     chuti.User,
-      password: String
+      password: String,
     ): AsyncCallback[Boolean] = ??? // Not in client
 
     override def get(pk: UserId): AsyncCallback[Option[chuti.User]] = ??? // Not in client
 
     override def delete(
       pk:         UserId,
-      softDelete: Boolean
+      softDelete: Boolean,
     ): AsyncCallback[Boolean] = ??? // Not in client
 
     override def search(search: Option[PagedStringSearch]): AsyncCallback[Seq[chuti.User]] = ??? // Not in client
@@ -207,7 +207,7 @@ object GameClient {
 
     override def login(
       email:    String,
-      password: String
+      password: String,
     ): AsyncCallback[Option[chuti.User]] = ??? // Not directly in clietn
 
     override def userByEmail(email: String): AsyncCallback[Option[chuti.User]] = ??? // Not in client
@@ -218,7 +218,7 @@ object GameClient {
     private val walletSB: SelectionBuilder[UserWallet, chuti.UserWallet] = UserWallet.view.map { w =>
       chuti.UserWallet(
         userId = UserId(w.userId),
-        amount = w.amount
+        amount = w.amount,
       )
     }
 
@@ -231,7 +231,7 @@ object GameClient {
 
     override def userByOAuthProvider(
       provider:   String,
-      providerId: String
+      providerId: String,
     ): AsyncCallback[Option[User]] = ??? // Not in client
   }
 
@@ -240,7 +240,7 @@ object GameClient {
     import caliban.client.scalajs.ChatClient.{
       ChatMessage as CalibanChatMessage,
       Instant as ChatInstant,
-      User as ChatUser
+      User as ChatUser,
     }
 
     private val chatUserSB: SelectionBuilder[ChatUser, chuti.User] = ChatUser.view.map { u =>
@@ -250,7 +250,7 @@ object GameClient {
         email = u.email,
         created = Option(java.time.Instant.parse(u.created)).getOrElse(java.time.Instant.now()),
         lastUpdated = Option(java.time.Instant.parse(u.lastUpdated)).getOrElse(java.time.Instant.now()),
-        active = u.active
+        active = u.active,
       )
     }
 
@@ -265,28 +265,28 @@ object GameClient {
           msg:       String,
           channelId: Long,
           date:      ChatInstant,
-          toUser:    Option[chuti.User]
+          toUser:    Option[chuti.User],
         ) =>
           ChatMessage(
             fromUser = fromUser,
             msg = msg,
             channelId = ChannelId(channelId),
             date = Option(java.time.Instant.parse(date)).getOrElse(java.time.Instant.now()),
-            toUser = toUser
+            toUser = toUser,
           )
       }
 
     override def getRecentMessages(channelId: ChannelId): AsyncCallback[Seq[ChatMessage]] =
       chatClient
         .asyncCalibanCallWithAuth(
-          caliban.client.scalajs.ChatClient.Queries.getRecentMessages(channelId.value)(chatMessageSB)
+          caliban.client.scalajs.ChatClient.Queries.getRecentMessages(channelId.value)(chatMessageSB),
         )
         .map(_.getOrElse(Nil))
 
     override def say(request: SayRequest): AsyncCallback[ChatMessage] =
       chatClient
         .asyncCalibanCallWithAuth(
-          caliban.client.scalajs.ChatClient.Mutations.say(request.msg, request.channelId.value, None)
+          caliban.client.scalajs.ChatClient.Mutations.say(request.msg, request.channelId.value, None),
         )
         .map { _ =>
           // The say mutation returns Boolean, so we construct a minimal ChatMessage as acknowledgment
@@ -296,29 +296,29 @@ object GameClient {
             msg = request.msg,
             channelId = request.channelId,
             date = java.time.Instant.now(),
-            toUser = None
+            toUser = None,
           )
         }
 
     override def makeWebSocket(
       channelId: ChannelId,
-      onData:    ChatMessage => Callback = _ => Callback.empty
+      onData:    ChatMessage => Callback = _ => Callback.empty,
     ): WebSocketHandler =
       chatClient.makeWebSocketClient[Option[ChatMessage]](
         path = "api/chat/ws",
         webSocket = None,
         query =
           caliban.client.scalajs.ChatClient.Subscriptions.chatStream(channelId.value, connectionId.value, getToken)(
-            chatMessageSB
+            chatMessageSB,
           ),
         onData = {
           (
             _,
-            data
+            data,
           ) => data.flatten.fold(Callback.empty)(onData)
         },
         operationId = "-",
-        socketConnectionId = s"${connectionId.value}-${channelId.value}"
+        socketConnectionId = s"${connectionId.value}-${channelId.value}",
       )
 
   }
@@ -346,7 +346,7 @@ object GameClient {
   case class UserEvent(
     user:          chuti.User,
     userEventType: UserEventType,
-    gameId:        Option[GameId]
+    gameId:        Option[GameId],
   )
   object UserEvent {
 
@@ -359,12 +359,12 @@ object GameClient {
     /** Creates a WebSocket for receiving game events */
     def makeGameWebSocket(
       gameId: GameId,
-      onData: GameEvent => Callback
+      onData: GameEvent => Callback,
     ): WebSocketHandler
 
     /** Creates a WebSocket for receiving user events (connected, disconnected, etc.) */
     def makeUserWebSocket(
-      onData: UserEvent => Callback
+      onData: UserEvent => Callback,
     ): WebSocketHandler
 
   }
@@ -431,7 +431,7 @@ object GameClient {
 
     override def delete(
       pk:         GameId,
-      softDelete: Boolean
+      softDelete: Boolean,
     ): AsyncCallback[Boolean] =
       gameClient
         .asyncCalibanCallWithAuth(Mutations.abandonGame(pk.value))
@@ -447,7 +447,7 @@ object GameClient {
 
     override def makeGameWebSocket(
       gameId: GameId,
-      onData: GameEvent => Callback
+      onData: GameEvent => Callback,
     ): WebSocketHandler = {
       gameClient.makeWebSocketClient[Option[Json]](
         path = "api/game/ws",
@@ -456,7 +456,7 @@ object GameClient {
         onData = {
           (
             _,
-            data
+            data,
           ) =>
             data.flatten.fold(Callback.empty) { json =>
               json.as[GameEvent] match {
@@ -467,12 +467,12 @@ object GameClient {
             }
         },
         operationId = "-",
-        socketConnectionId = s"${connectionId.value}-${gameId.value}"
+        socketConnectionId = s"${connectionId.value}-${gameId.value}",
       )
     }
 
     override def makeUserWebSocket(
-      onData: UserEvent => Callback
+      onData: UserEvent => Callback,
     ): WebSocketHandler = {
 
       val userEventSB: SelectionBuilder[CalibanUserEvent, UserEvent] = {
@@ -482,7 +482,7 @@ object GameClient {
           (
             user:      chuti.User,
             eventType: CalibanUserEventType,
-            gameIdOpt: Option[Long]
+            gameIdOpt: Option[Long],
           ) =>
             val userEventType = eventType match {
               case CalibanUserEventType.Connected     => UserEventType.Connected
@@ -502,11 +502,11 @@ object GameClient {
         onData = {
           (
             _,
-            data
+            data,
           ) => data.flatten.fold(Callback.empty)(onData)
         },
         operationId = "-",
-        socketConnectionId = s"${connectionId.value}-user"
+        socketConnectionId = s"${connectionId.value}-user",
       )
     }
 
