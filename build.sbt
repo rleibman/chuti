@@ -12,7 +12,7 @@ lazy val buildTime: SettingKey[String] = SettingKey[String]("buildTime", "time o
 // Global stuff
 ThisBuild / resolvers += Resolver.sonatypeCentralSnapshots
 
-lazy val SCALA = "3.8.2"
+lazy val SCALA = "3.8.3"
 Global / onChangedBuildSource := ReloadOnSourceChanges
 scalaVersion                  := SCALA
 Global / scalaVersion         := SCALA
@@ -61,7 +61,7 @@ val calibanClientVersion = "3.0.0"
 val calibanVersion = "3.0.0"
 val commonsCodecVersion = "1.21.0"
 val courierVersion = "4.0.0-RC1"
-val flywayVersion = "12.0.3"
+val flywayVersion = "12.3.0"
 val izumiReflectVersion = "3.0.9"
 val jsoniterVersion = "2.38.9"
 val justSemverCoreVersion = "1.2.0"
@@ -71,7 +71,7 @@ val langchain4jOllamaVersion = "1.11.0"
 val langchainCoreVersion = "1.11.0"
 val langchainLibrariesVersion = "1.11.0-beta19"
 val logbackVersion = "1.5.32"
-val mariadbVersion = "3.5.7"
+val mariadbVersion = "3.5.8"
 val openPdfVersion = "3.0.0"
 val qdrantVersion = "1.21.4"
 val quillVersion = "4.8.6"
@@ -84,18 +84,18 @@ val scalajsReactVersion = "3.0.0"
 val scalatagsVersion = "0.13.1"
 val scalaXmlVersion = "2.4.0"
 val stlibVersion = "1.0.0"
-val sttpClient4Version = "4.0.19"
+val sttpClient4Version = "4.0.21"
 val testContainerVersion = "0.44.1"
 val zioAuth = "3.1.4"
-val zioCacheVersion = "0.2.7"
-val zioConfigVersion = "4.0.6"
-val zioHttpVersion = "3.9.0"
-val zioJsonVersion = "0.9.0"
+val zioCacheVersion = "0.2.8"
+val zioConfigVersion = "4.0.7"
+val zioHttpVersion = "3.10.1"
+val zioJsonVersion = "0.9.1"
 val zioLoggingSlf4j2Version = "2.5.3"
 val zioNioVersion = "2.0.2"
-val zioPreludeVersion = "1.0.0-RC46"
+val zioPreludeVersion = "1.0.0-RC47"
 val zioSchemaVersion = "1.8.0"
-val zioVersion = "2.1.24"
+val zioVersion = "2.1.25"
 
 lazy val commonSettings = Seq(
   organization       := "net.leibman",
@@ -258,7 +258,7 @@ lazy val server = project
       // Testing
       "dev.zio"       %% "zio-test"     % zioVersion % "test" withSources (),
       "dev.zio"       %% "zio-test-sbt" % zioVersion % "test" withSources (),
-      "org.scalatest" %% "scalatest"    % "3.2.19"   % "test" withSources ()
+      "org.scalatest" %% "scalatest"    % "3.2.20"   % "test" withSources ()
     ),
     Test / fork := true,
     Test / testGrouping := {

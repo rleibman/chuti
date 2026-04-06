@@ -15,7 +15,7 @@ addSbtPlugin("io.spray" % "sbt-revolver" % "0.10.0")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Web client
-addSbtPlugin("org.scala-js"          % "sbt-scalajs"              % "1.20.2")
+addSbtPlugin("org.scala-js"          % "sbt-scalajs"              % "1.21.0")
 addSbtPlugin("com.github.ghostdogpr" % "caliban-codegen-sbt"      % "3.0.0")
 addSbtPlugin("org.portable-scala"    % "sbt-scalajs-crossproject" % "1.3.2")
 addSbtPlugin("ch.epfl.scala"         % "sbt-scalajs-bundler"      % "0.21.1")
@@ -23,7 +23,7 @@ addSbtPlugin("ch.epfl.scala"         % "sbt-scalajs-bundler"      % "0.21.1")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Testing
-addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "0.19.1")
+addSbtPlugin("io.stryker-mutator" % "sbt-stryker4s" % "0.20.3")
 addSbtPlugin("org.scoverage"      % "sbt-scoverage" % "2.4.4")
 
-libraryDependencies ++= Seq("org.eclipse.jgit" % "org.eclipse.jgit" % "7.5.0.202512021534-r")
+libraryDependencies ++= Seq("org.eclipse.jgit" % "org.eclipse.jgit" % "7.6.0.202603022253-r")
