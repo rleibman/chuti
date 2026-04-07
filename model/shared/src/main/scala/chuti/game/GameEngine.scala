@@ -22,6 +22,7 @@ import zio.json.ast.Json
 trait GameEngine[F[_]] {
 
   def newGame(satoshiPerPoint:    Long):   F[Game]
+  def newSolitarioGame():                  F[Game]
   def newGameSameUsers(oldGameId: GameId): F[Game]
   def play(
     gameId:    GameId,
@@ -34,6 +35,8 @@ trait GameEngine[F[_]] {
   ): F[Boolean] // In the cases we don't want to return the whole game object after a play
 
   def joinRandomGame(): F[Game]
+
+  def getHint(gameId: GameId): F[String]
 
   def abandonGame(gameId: GameId): F[Boolean]
 

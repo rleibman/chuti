@@ -159,6 +159,10 @@ object GameClient {
       _root_.caliban.client.SelectionBuilder.Field("getWallet", OptionOf(Obj(innerSelection)))
     def isFirstLoginToday: SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[Boolean]] =
       _root_.caliban.client.SelectionBuilder.Field("isFirstLoginToday", OptionOf(Scalar()))
+    def getHint(value: Long)(implicit encoder0: ArgEncoder[Long])
+      : SelectionBuilder[_root_.caliban.client.Operations.RootQuery, scala.Option[String]] =
+      _root_.caliban.client.SelectionBuilder
+        .Field("getHint", OptionOf(Scalar()), arguments = List(Argument("value", value, "Long!")))
 
   }
 
@@ -169,6 +173,9 @@ object GameClient {
       : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder
         .Field("newGame", OptionOf(Scalar()), arguments = List(Argument("satoshiPerPoint", satoshiPerPoint, "Long!")))
+    def newSolitarioGame
+      : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
+      _root_.caliban.client.SelectionBuilder.Field("newSolitarioGame", OptionOf(Scalar()))
     def newGameSameUsers(value: Long)(implicit encoder0: ArgEncoder[Long])
       : SelectionBuilder[_root_.caliban.client.Operations.RootMutation, scala.Option[zio.json.ast.Json]] =
       _root_.caliban.client.SelectionBuilder

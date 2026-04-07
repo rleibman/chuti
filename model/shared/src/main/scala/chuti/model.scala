@@ -498,6 +498,7 @@ case class Game(
   botDifficultyLevel: BotDifficultyLevel = BotDifficultyLevel.advanced,
   explainReasoning:   Boolean = true, // Show bot reasoning to users
   triggeredBorlotes:  Set[Borlote] = Set.empty, // Track borlotes triggered in current juego
+  solitario:          Boolean = false, // True if this is a single-player game vs bots
 ) derives JsonCodec {
 
   def jugadorState(jugador: Jugador): JugadorState = {

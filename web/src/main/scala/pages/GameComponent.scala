@@ -20,7 +20,7 @@ import _root_.util.LocalizedMessages
 import chuti.*
 import chuti.CuantasCantas.{Canto5, CuantasCantas}
 import chuti.Triunfo.{SinTriunfos, TriunfoNumero}
-import components.Confirm
+import components.{Confirm, Toast}
 import japgolly.scalajs.react.*
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.extra.StateSnapshot
@@ -39,6 +39,7 @@ import net.leibman.chuti.semanticUiReact.semanticUiReactStrings.*
 import org.scalajs.dom
 
 import scala.scalajs.js.JSConverters.*
+import scala.util.{Failure, Success}
 
 object GameComponent {
 
@@ -472,6 +473,28 @@ object GameComponent {
                               onConfirm = play(game.id, MeRindo()),
                             )
                         }("Me Rindo") // TODO i8n
+                    } else
+                      EmptyVdom,
+                    if (game.solitario) {
+                      Button
+                        .compact(true)
+                        .color(SemanticCOLORS.yellow)
+                        .onClick {
+                          (
+                            _,
+                            _,
+                          ) =>
+                            GameClient.game
+                              .getHint(game.id)
+                              .flatMap(hint => Toast.info(hint).asAsyncCallback)
+                              .completeWith {
+                                case Success(_)         => Callback.empty
+                                case Failure(exception) => Callback.throwException(exception)
+                              }
+                        }(
+                          Icon().name(SemanticICONS.lightbulb)(),
+                          "Pista", // TODO i8n
+                        )
                     } else
                       EmptyVdom,
                   )

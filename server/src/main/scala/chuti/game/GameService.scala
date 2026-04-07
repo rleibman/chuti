@@ -188,8 +188,14 @@ object GameService {
             _.gameOperations
               .get(gameId).flatMap(g => ZIO.fromOption(g).orElseFail(RepositoryError("Could not find game", None))),
           )
+          // If only one human player, mark as solitario
+          gameReady <-
+            if (game.jugadores.count(!_.user.isBot) == 1 && !game.solitario)
+              repository.gameOperations.upsert(game.copy(solitario = true)).provideLayer(godLayer)
+            else
+              ZIO.succeed(game)
           gameStarted <-
-            ZIO.foldLeft(game.jugadores.size until game.numPlayers)(game) {
+            ZIO.foldLeft(gameReady.jugadores.size until gameReady.numPlayers)(gameReady) {
               (
                 foldedGame,
                 _,
@@ -413,6 +419,52 @@ object GameService {
           }
           _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, Some(upserted.id)))
         } yield upserted).mapError(GameError.apply)
+
+      override def newSolitarioGame(): ZIO[GameEnvironment & ChutiSession, GameError, Game] =
+        (for {
+          user <- ZIO
+            .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
+          repository <- ZIO.service[ZIORepository]
+          now        <- Clock.instant
+          initial = Game(
+            id = GameId.empty,
+            gameStatus = GameStatus.esperandoJugadoresAzar,
+            satoshiPerPoint = 100L,
+            solitario = true,
+            created = now,
+          )
+          (game1, joinEvent) = initial.applyEvent(user, JoinGame(user, JugadorType.human))
+          saved <- repository.gameOperations.upsert(game1)
+          _     <- repository.gameOperations.updatePlayers(saved)
+          _ <- ZIO.foreachDiscard(saved.jugadores.find(_.user.id == user.id).filter(!_.user.isBot)) { j =>
+            repository.userOperations.upsert(j.user)
+          }
+          _ <- broadcast(userEventQueues, UserEvent(user, UserEventType.JoinedGame, Some(saved.id)))
+          _ <- broadcast(gameEventQueues, joinEvent)
+          _ <- startGame(saved.id)
+        } yield saved).mapError(GameError.apply)
+
+      override def getHint(gameId: GameId): ZIO[ChutiSession & ZIORepository, GameError, String] =
+        (for {
+          user <- ZIO
+            .serviceWith[ChutiSession](_.user).someOrFail(RepositoryError("User is required for this operation"))
+          game <- ZIO
+            .serviceWithZIO[ZIORepository](
+              _.gameOperations
+                .get(gameId).flatMap(g => ZIO.fromOption(g).orElseFail(RepositoryError("Could not find game", None))),
+            )
+          event <- DumbChutiBot.decideTurn(user, game)
+          hint = event match {
+            case e: Canta => s"Canta ${e.cuantasCantas}${e.reasoning.fold("")(r => s": $r")}"
+            case e: Da    => s"Da ${e.ficha}${e.reasoning.fold("")(r => s": $r")}"
+            case e: Pide =>
+              s"Pide ${e.ficha}${e.triunfo.fold("")(t => s" triunfando $t")}${e.reasoning.fold("")(r => s": $r")}"
+            case e: Caete   => s"Cáete${e.reasoning.fold("")(r => s": $r")}"
+            case _: Sopa    => "Haz la sopa"
+            case _: MeRindo => "Ríndete"
+            case e => e.reasoning.getOrElse("No hay acción clara en este momento")
+          }
+        } yield hint).mapError(GameError.apply)
 
       override def getLoggedInUsers: ZIO[ChutiSession, GameError, Seq[User]] =
         userEventQueues.get.map(_.map(_.user).distinctBy(_.id).take(20))

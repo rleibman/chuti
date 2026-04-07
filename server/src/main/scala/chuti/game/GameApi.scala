@@ -80,9 +80,11 @@ object GameApi {
     getHistoricalUserGames: ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
     getWallet:              ZIO[GameService & GameEnvironment & ChutiSession, GameError, Option[UserWallet]],
     isFirstLoginToday:      ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
+    getHint:                GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, String],
   )
   case class Mutations(
     newGame:               NewGameArgs => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
+    newSolitarioGame:      ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
     newGameSameUsers:      GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
     joinRandomGame:        ZIO[GameService & GameEnvironment & ChutiSession, GameError, Json],
     abandonGame:           GameId => ZIO[GameService & GameEnvironment & ChutiSession, GameError, Boolean],
@@ -219,6 +221,7 @@ object GameApi {
           } yield json,
           getWallet = ZIO.serviceWithZIO[ZIORepository](_.userOperations.getWallet),
           isFirstLoginToday = ZIO.serviceWithZIO[ZIORepository](_.userOperations.isFirstLoginToday),
+          getHint = gameId => ZIO.serviceWithZIO[GameService](_.getHint(gameId)),
         ),
         Mutations(
           newGame = newGameArgs =>
@@ -227,6 +230,11 @@ object GameApi {
               sanitized <- sanitizeGame(game)
               jsonOpt   <- ZIO.fromEither(sanitized.toJsonAST).mapError(GameError.apply)
             } yield jsonOpt,
+          newSolitarioGame = for {
+            game      <- ZIO.serviceWithZIO[GameService](_.newSolitarioGame())
+            sanitized <- sanitizeGame(game)
+            json      <- ZIO.fromEither(sanitized.toJsonAST).mapError(GameError.apply)
+          } yield json,
           newGameSameUsers = gameId =>
             for {
               game      <- ZIO.serviceWithZIO[GameService](_.newGameSameUsers(gameId))

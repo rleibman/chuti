@@ -368,6 +368,26 @@ object LobbyComponent extends ChutiPage {
                       )(
                         "Crear Juego Nuevo", // TODO i8n
                       ),
+                    Button()
+                      .compact(true)
+                      .basic(true)
+                      .onClick(
+                        (
+                          _,
+                          _,
+                        ) =>
+                          Callback.log("Creating solitario game") >>
+                            GameClient.game
+                              .newSolitarioGame()
+                              .flatMap { game =>
+                                (p.gameInProgress.setState(Some(game)) >>
+                                  Toast.success("Juego solitario creado!")).asAsyncCallback // TODO i8n
+                              }
+                              .completeWith {
+                                case Success(_)         => Callback.empty
+                                case Failure(exception) => Callback.throwException(exception)
+                              },
+                      )("Solitario"), // TODO i8n
                   ).when(
                     p.gameInProgress.value.fold(true)(_.gameStatus == GameStatus.partidoTerminado),
                   ),

@@ -93,6 +93,11 @@ object GameClient {
         .asyncCalibanCallWithAuth(Mutations.newGame(satoshiPerPoint))
         .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to create new game")))
 
+    override def newSolitarioGame(): AsyncCallback[Game] =
+      gameClient
+        .asyncCalibanCallWithAuth(Mutations.newSolitarioGame)
+        .map(_.map(decodeGame).getOrElse(throw RuntimeException("Failed to create solitario game")))
+
     override def newGameSameUsers(gameId: GameId): AsyncCallback[Game] =
       gameClient
         .asyncCalibanCallWithAuth(Mutations.newGameSameUsers(gameId.value))
@@ -167,6 +172,11 @@ object GameClient {
       gameClient
         .asyncCalibanCallWithAuth(Queries.getLoggedInUsers(userSB))
         .map(_.getOrElse(Nil))
+
+    override def getHint(gameId: GameId): AsyncCallback[String] =
+      gameClient
+        .asyncCalibanCallWithAuth(Queries.getHint(gameId.value))
+        .map(_.getOrElse("No hay pista disponible"))
   }
 
   val user: ExtendedUserOperations = new ExtendedUserOperations {
