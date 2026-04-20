@@ -16,15 +16,14 @@
 
 package chuti.api
 
-import chuti.routes.*
 import auth.{AuthServer, Session}
 import chuti.*
 import chuti.api.token.TokenHolder
 import chuti.chat.ChatService
+import chuti.db.{RepositoryError, ZIORepository}
+import chuti.game.GameService
+import chuti.mail.Postman
 import chuti.routes.{AppRoutes, ChatRoutes, GameRoutes, StaticRoutes}
-import db.{RepositoryError, ZIORepository}
-import game.GameService
-import mail.Postman
 import zio.*
 import zio.http.*
 import zio.logging.backend.SLF4J
