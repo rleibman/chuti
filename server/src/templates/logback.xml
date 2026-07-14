@@ -59,7 +59,9 @@
     <logger name="org.testcontainers" level="OFF"/>
     <logger name="org.mariadb.jdbc.message.server.OkPacket" level="OFF"/>
     <logger name="org.mariadb.jdbc.client.impl.StandardClient" level="OFF"/>
-    <logger name="com.zaxxer.hikari" level="OFF"/>
+    <!-- WARN, not OFF. At OFF the pool cannot tell us anything: not that it is exhausted, and not the
+         stack trace that leakDetectionThresholdSeconds exists to print. -->
+    <logger name="com.zaxxer.hikari" level="WARN"/>
     <logger name="org.flywaydb" level="INFO"/>
 
 </configuration>
