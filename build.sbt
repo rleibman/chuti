@@ -535,6 +535,11 @@ lazy val web: Project = project
   )
   .settings(
     scalacOptions ++= scala3Opts,
+    // scalajs-react's StBuildingComponent is `inline`, so its body -- including a call to the deprecated
+    // scala.scalajs.runtime.linkingInfo -- is reported at every one of our call sites. Nothing here can fix it;
+    // it goes away when scalajs-react stops using the deprecated alias. Narrowly matched so any other
+    // deprecation still warns.
+    scalacOptions += "-Wconf:msg=linkingInfo in package scala.scalajs.runtime is deprecated:s",
     name := "chuti-web",
     libraryDependencies ++= Seq(
       ("dev.zio" %% "zio"      % zioVersion).withSources(),
