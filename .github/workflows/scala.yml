@@ -45,7 +45,11 @@ jobs:
         cd stLib
         sbt publishLocal
         cd ..
-        sbt "compile" "web/webDebugDist"
+        # ONE argument with a semicolon, not two arguments. CI runs sbt through the thin client (sbtn), which
+        # joins multiple argv entries into a single command string -- `sbt compile web/webDebugDist` is parsed
+        # as one command and fails with "Expected whitespace character / Expected '/'". The plain `sbt` script
+        # does not do this, which is why it only ever failed on CI. Reproduced locally with sbtn.
+        sbt "compile; web/webDebugDist"
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
 #    - name: Upload dependency graph
 #      uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91
