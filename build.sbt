@@ -38,13 +38,13 @@ Global / excludeLintKeys ++= Set(
 // stricter evictionErrorLevel still catches anything NEW. The real fix is regenerating stlib against 4.0.0.
 // `%%` would only cover the JVM artifacts, hence the explicit _sjs1_3 names.
 ThisBuild / libraryDependencySchemes ++= Seq(
-  "com.github.japgolly.scalajs-react" % "core_sjs1_3" % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "core_sjs1_3"         % VersionScheme.Always,
   "com.github.japgolly.scalajs-react" % "core-generic_sjs1_3" % VersionScheme.Always,
-  "com.github.japgolly.scalajs-react" % "extra_sjs1_3" % VersionScheme.Always,
-  "com.github.japgolly.scalajs-react" % "facade_sjs1_3" % VersionScheme.Always,
-  "com.github.japgolly.scalajs-react" % "facade-test_sjs1_3" % VersionScheme.Always,
-  "com.github.japgolly.scalajs-react" % "test_sjs1_3" % VersionScheme.Always,
-  "com.github.japgolly.scalajs-react" % "test-macros_sjs1_3" % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "extra_sjs1_3"        % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "facade_sjs1_3"       % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "facade-test_sjs1_3"  % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "test_sjs1_3"         % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "test-macros_sjs1_3"  % VersionScheme.Always,
 )
 
 ThisBuild / resolvers += Resolver.sonatypeCentralSnapshots
@@ -60,10 +60,9 @@ Global / watchAntiEntropy := 1.second
 // `%%` expands to the JVM artifact (zio-json_3) only, so the Scala.js side needs naming explicitly -- there is
 // no `%%%` under sbt 2. sttp-client4 still asks for an older zio-json than this build uses.
 ThisBuild / libraryDependencySchemes ++= Seq(
-  "dev.zio" %% "zio-json" % VersionScheme.Always,
+  "dev.zio" %% "zio-json"        % VersionScheme.Always,
   "dev.zio"  % "zio-json_sjs1_3" % VersionScheme.Always,
 )
-
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Shared settings
@@ -91,11 +90,11 @@ lazy val scala3Opts = Seq(
   //  "-explain-types", // Explain type errors in more detail.
   //  "-explain",
   "-Yexplicit-nulls", // Make reference types non-nullable. Nullable types can be expressed with unions: e.g. String|Null.
-  "-Yretain-trees" // Retain trees for debugging.,
+  "-Yretain-trees", // Retain trees for debugging.,
 )
 
 enablePlugins(
-  com.github.sbt.git.GitVersioning
+  com.github.sbt.git.GitVersioning,
 )
 
 val betterFilesVersion = "3.9.2"
@@ -146,7 +145,7 @@ lazy val commonSettings = Seq(
   git.useGitDescribe := true,
   headerLicense      := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
   scalacOptions ++= scala3Opts,
-  resolvers += Resolver.mavenLocal
+  resolvers += Resolver.mavenLocal,
 )
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +157,7 @@ lazy val model = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(
     AutomateHeaderPlugin,
     com.github.sbt.git.GitVersioning,
-    BuildInfoPlugin
+    BuildInfoPlugin,
   )
   .jvmSettings(scalacOptions ++= scala3Opts :+ "-Werror")
   .jsSettings(scalacOptions ++= scala3Opts)
@@ -167,8 +166,8 @@ lazy val model = crossProject(JSPlatform, JVMPlatform)
     buildInfoPackage := "chuti",
     commonSettings,
     libraryDependencies ++= Seq(
-      ("net.leibman" % "zio-auth_3" % zioAuth).withSources() // I don't know why %% isn't working.
-    )
+      ("net.leibman" % "zio-auth_3" % zioAuth).withSources(), // I don't know why %% isn't working.
+    ),
   )
   .jvmEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
   .jvmSettings(
@@ -181,20 +180,20 @@ lazy val model = crossProject(JSPlatform, JVMPlatform)
       ("dev.zio"     %% "zio-prelude"         % zioPreludeVersion).withSources(),
       ("dev.zio"     %% "zio-http"            % zioHttpVersion).withSources(),
       ("io.getquill" %% "quill-jdbc-zio"      % quillVersion).withSources(),
-      ("io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion).withSources()
-    )
+      ("io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion).withSources(),
+    ),
   )
   .jsEnablePlugins(com.github.sbt.git.GitVersioning, BuildInfoPlugin)
   .jsSettings(
     libraryDependencies ++= Seq(
-      ("net.leibman"               % "zio-auth_sjs1_3" % zioAuth).withSources(), // I don't know why %% isn't working.
-      ("dev.zio" %% "zio"         % zioVersion).withSources(),
-      ("dev.zio" %% "zio-json"    % zioJsonVersion).withSources(),
-      ("dev.zio" %% "zio-prelude" % zioPreludeVersion).withSources(),
-      ("io.kevinlee" %% "just-semver-core"                                % justSemverCoreVersion).withSources(),
+      ("net.leibman"  % "zio-auth_sjs1_3"  % zioAuth).withSources(), // I don't know why %% isn't working.
+      ("dev.zio"     %% "zio"              % zioVersion).withSources(),
+      ("dev.zio"     %% "zio-json"         % zioJsonVersion).withSources(),
+      ("dev.zio"     %% "zio-prelude"      % zioPreludeVersion).withSources(),
+      ("io.kevinlee" %% "just-semver-core" % justSemverCoreVersion).withSources(),
       "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % jsoniterVersion,
-      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % jsoniterVersion
-    )
+      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % jsoniterVersion,
+    ),
   )
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -205,16 +204,16 @@ lazy val analyticsJS = analytics.js
 lazy val analytics = crossProject(JSPlatform, JVMPlatform)
   .enablePlugins(
     // AutomateHeaderPlugin,
-    com.github.sbt.git.GitVersioning
+    com.github.sbt.git.GitVersioning,
   )
   .jvmSettings(scalacOptions ++= scala3Opts :+ "-Werror")
   .jsSettings(scalacOptions ++= scala3Opts)
   .settings(
-    name             := "chuti-analytics",
+    name := "chuti-analytics",
     commonSettings,
     libraryDependencies ++= Seq(
-      ("net.leibman" % "zio-auth_3" % zioAuth).withSources() // I don't know why %% isn't working.
-    )
+      ("net.leibman" % "zio-auth_3" % zioAuth).withSources(), // I don't know why %% isn't working.
+    ),
   )
   .jvmEnablePlugins(com.github.sbt.git.GitVersioning)
   .jvmSettings(
@@ -227,21 +226,21 @@ lazy val analytics = crossProject(JSPlatform, JVMPlatform)
       ("dev.zio"     %% "zio-prelude"         % zioPreludeVersion).withSources(),
       ("dev.zio"     %% "zio-http"            % zioHttpVersion).withSources(),
       ("io.getquill" %% "quill-jdbc-zio"      % quillVersion).withSources(),
-      ("io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion).withSources()
-    )
+      ("io.kevinlee" %% "just-semver-core"    % justSemverCoreVersion).withSources(),
+    ),
   )
   .jvmConfigure(_.dependsOn(modelJVM))
   .jsEnablePlugins(com.github.sbt.git.GitVersioning)
   .jsSettings(
     libraryDependencies ++= Seq(
-      ("net.leibman"               % "zio-auth_sjs1_3" % zioAuth).withSources(), // I don't know why %% isn't working.
-      ("dev.zio" %% "zio"         % zioVersion).withSources(),
-      ("dev.zio" %% "zio-json"    % zioJsonVersion).withSources(),
-      ("dev.zio" %% "zio-prelude" % zioPreludeVersion).withSources(),
-      ("io.kevinlee" %% "just-semver-core"                                % justSemverCoreVersion).withSources(),
+      ("net.leibman"  % "zio-auth_sjs1_3"  % zioAuth).withSources(), // I don't know why %% isn't working.
+      ("dev.zio"     %% "zio"              % zioVersion).withSources(),
+      ("dev.zio"     %% "zio-json"         % zioJsonVersion).withSources(),
+      ("dev.zio"     %% "zio-prelude"      % zioPreludeVersion).withSources(),
+      ("io.kevinlee" %% "just-semver-core" % justSemverCoreVersion).withSources(),
       "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % jsoniterVersion,
-      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % jsoniterVersion
-    )
+      "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % jsoniterVersion,
+    ),
   )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -256,13 +255,13 @@ lazy val server = project
     JavaServerAppPackaging,
     SystemloaderPlugin,
     SystemdPlugin,
-    CalibanPlugin
+    CalibanPlugin,
   )
   .settings(debianSettings, commonSettings)
   .dependsOn(modelJVM, ai, analyticsJVM)
   .settings(
     scalacOptions ++= scala3Opts :+ "-Werror",
-    name             := "chuti-server",
+    name := "chuti-server",
     libraryDependencies ++= Seq(
       // DB
       ("org.mariadb.jdbc" % "mariadb-java-client" % mariadbVersion).withSources(),
@@ -294,13 +293,13 @@ lazy val server = project
       // Other random utilities
       ("com.github.pathikrit"  %% "better-files"                   % betterFilesVersion).withSources(),
       ("com.github.daddykotex" %% "courier"                        % courierVersion).withSources(),
-      "commons-codec"          % "commons-codec"                  % commonsCodecVersion,
+      "commons-codec"           % "commons-codec"                  % commonsCodecVersion,
       ("com.dimafeng"          %% "testcontainers-scala-scalatest" % testContainerVersion).withSources(),
       ("com.dimafeng"          %% "testcontainers-scala-mariadb"   % testContainerVersion).withSources(),
       // Testing
       ("dev.zio"       %% "zio-test"     % zioVersion % "test").withSources(),
       ("dev.zio"       %% "zio-test-sbt" % zioVersion % "test").withSources(),
-      ("org.scalatest" %% "scalatest"    % "3.2.20"   % "test").withSources()
+      ("org.scalatest" %% "scalatest"    % "3.2.20"   % "test").withSources(),
     ),
     Test / fork := true,
     // sbt 2 caches task outputs, and Seq[Tests.Group] has no JsonFormat -- there is nothing to serialise here
@@ -313,9 +312,9 @@ lazy val server = project
       Seq(
         Tests.Group("quill", quillTests, Tests.SubProcess(ForkOptions())),
         Tests.Group("mail", mailTests, Tests.SubProcess(ForkOptions())),
-        Tests.Group("other", otherTests, Tests.SubProcess(ForkOptions()))
+        Tests.Group("other", otherTests, Tests.SubProcess(ForkOptions())),
       )
-    }
+    },
   )
 
 lazy val debianSettings =
@@ -331,7 +330,7 @@ lazy val debianSettings =
     Debian / serverLoading      := Some(ServerLoader.Systemd),
     // Configure JVM to use logback.xml from /etc/chuti-server
     Universal / javaOptions ++= Seq(
-      "-Dlogback.configurationFile=/etc/chuti-server/logback.xml"
+      "-Dlogback.configurationFile=/etc/chuti-server/logback.xml",
     ),
     // Map application.conf template
     Universal / mappings += {
@@ -365,7 +364,7 @@ lazy val debianSettings =
       packageMapping(
         (distDir.allPaths --- distDir).get().map { f =>
           f -> s"/data/www/www.chuti.fun/html/${Path.relativeTo(distDir)(f).get}"
-        }*
+        } *,
       ).withUser("chuti").withGroup("chuti")
     },
     // Install configuration files to /etc/chuti-server/ for easy editing
@@ -375,7 +374,7 @@ lazy val debianSettings =
       val logbackFile = src / "templates" / "logback.xml"
       packageMapping(
         confFile    -> "/etc/chuti-server/application.conf",
-        logbackFile -> "/etc/chuti-server/logback.xml"
+        logbackFile -> "/etc/chuti-server/logback.xml",
       ).withUser("chuti").withGroup("chuti").withPerms("0644").withConfig()
     },
     // Add custom maintainer scripts to create log directory
@@ -389,7 +388,7 @@ lazy val debianSettings =
           Seq(
             "mkdir -p '/var/log/chuti-server'",
             "chown -R chuti:chuti '/var/log/chuti-server'",
-            "chmod 755 '/var/log/chuti-server'"
+            "chmod 755 '/var/log/chuti-server'",
           ).mkString("\n")
         } else {
           line
@@ -397,7 +396,7 @@ lazy val debianSettings =
       }
 
       scripts + ("postinst" -> updatedPostinst)
-    }
+    },
   )
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +404,7 @@ lazy val debianSettings =
 lazy val ai = project
   .enablePlugins(
     // AutomateHeaderPlugin,
-    com.github.sbt.git.GitVersioning
+    com.github.sbt.git.GitVersioning,
   )
   .settings(commonSettings)
   .dependsOn(modelJVM)
@@ -429,8 +428,8 @@ lazy val ai = project
       ("ch.qos.logback"        % "logback-classic" % logbackVersion).withSources(),
       // Testing
       ("dev.zio" %% "zio-test"     % zioVersion % "test").withSources(),
-      ("dev.zio" %% "zio-test-sbt" % zioVersion % "test").withSources()
-    )
+      ("dev.zio" %% "zio-test-sbt" % zioVersion % "test").withSources(),
+    ),
   )
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -448,7 +447,7 @@ def viteDistImpl(
   stagingDir:    File,
   outputFolder:  File,
   mode:          String,
-  log:           Logger
+  log:           Logger,
 ): File = {
   import scala.sys.process.*
 
@@ -463,10 +462,10 @@ def viteDistImpl(
     "VITE_OUT_DIR"       -> stagingDir.getAbsolutePath,
     // Rollup exhausts the default node heap on a bundle this size and dies with
     // "Reached heap limit ... JavaScript heap out of memory" (exit 134), surfacing only as a vite failure.
-    "NODE_OPTIONS"       -> s"${sys.env.getOrElse("NODE_OPTIONS", "")} --max-old-space-size=8192".trim
+    "NODE_OPTIONS" -> s"${sys.env.getOrElse("NODE_OPTIONS", "")} --max-old-space-size=8192".trim,
   )
   log.info(s"vite build --mode $mode (scala.js output: $scalaJSOutput)")
-  val built = Process("npx" :: "vite" :: "build" :: "--mode" :: mode :: Nil, viteRoot, env*).!
+  val built = Process("npx" :: "vite" :: "build" :: "--mode" :: mode :: Nil, viteRoot, env *).!
   if (built != 0) sys.error(s"vite build failed in $viteRoot (exit code $built)")
 
   // Clear ONLY the bundler's output area; the static copy below re-adds anything of ours under assets/.
@@ -486,41 +485,40 @@ def viteDistImpl(
   outputFolder
 }
 
-
 lazy val commonWeb: Project => Project =
   _.settings(
     libraryDependencies ++= Seq(
       // Hand-suffixed: this jar comes from ~/.ivy2/local, where coursier cross-versions the module *directory*
       // to chuti-stlib_sjs1_3 but derives the *jar* name as chuti-stlib_3.jar, which does not exist.
-      ("net.leibman" % "chuti-stlib_sjs1_3"                 % stlibVersion).withSources(),
-      ("com.github.ghostdogpr" %% "caliban-client"    % calibanClientVersion).withSources(),
-      ("dev.zio" %% "zio"                             % zioVersion).withSources(),
-      ("com.softwaremill.sttp.client4" %% "core"      % sttpClient4Version).withSources(),
-      ("com.softwaremill.sttp.client4" %% "zio-json"  % sttpClient4Version).withSources(),
-      ("io.github.cquiroz" %% "scala-java-time"       % scalaJavaTimeVersion).withSources(),
-      ("io.github.cquiroz" %% "scala-java-time-tzdb"  % scalaJavaTimeVersion).withSources(),
-      ("io.github.cquiroz" %% "scala-java-locales"    % scalaJavaLocaleVersion).withSources(),
-      ("org.scala-js" %% "scalajs-dom"                % scalajsDomVersion).withSources(),
-      "com.olvind" %% "scalablytyped-runtime"        % scalablytypedRuntimeVersion,
-      ("com.github.japgolly.scalajs-react" %% "core"  % scalajsReactVersion).withSources(),
-      ("com.github.japgolly.scalajs-react" %% "extra" % scalajsReactVersion).withSources(),
-      ("com.lihaoyi" %% "scalatags"                   % scalatagsVersion).withSources(),
-      ("com.github.japgolly.scalacss" %% "core"       % scalacssVersion).withSources(),
-      ("com.github.japgolly.scalacss" %% "ext-react"  % scalacssVersion).withSources(),
+      ("net.leibman"                        % "chuti-stlib_sjs1_3"    % stlibVersion).withSources(),
+      ("com.github.ghostdogpr"             %% "caliban-client"        % calibanClientVersion).withSources(),
+      ("dev.zio"                           %% "zio"                   % zioVersion).withSources(),
+      ("com.softwaremill.sttp.client4"     %% "core"                  % sttpClient4Version).withSources(),
+      ("com.softwaremill.sttp.client4"     %% "zio-json"              % sttpClient4Version).withSources(),
+      ("io.github.cquiroz"                 %% "scala-java-time"       % scalaJavaTimeVersion).withSources(),
+      ("io.github.cquiroz"                 %% "scala-java-time-tzdb"  % scalaJavaTimeVersion).withSources(),
+      ("io.github.cquiroz"                 %% "scala-java-locales"    % scalaJavaLocaleVersion).withSources(),
+      ("org.scala-js"                      %% "scalajs-dom"           % scalajsDomVersion).withSources(),
+      "com.olvind"                         %% "scalablytyped-runtime" % scalablytypedRuntimeVersion,
+      ("com.github.japgolly.scalajs-react" %% "core"                  % scalajsReactVersion).withSources(),
+      ("com.github.japgolly.scalajs-react" %% "extra"                 % scalajsReactVersion).withSources(),
+      ("com.lihaoyi"                       %% "scalatags"             % scalatagsVersion).withSources(),
+      ("com.github.japgolly.scalacss"      %% "core"                  % scalacssVersion).withSources(),
+      ("com.github.japgolly.scalacss"      %% "ext-react"             % scalacssVersion).withSources(),
       // Testing
-      ("dev.zio" %% "zio-test"                       % zioVersion          % "test").withSources(),
-      ("dev.zio" %% "zio-test-sbt"                   % zioVersion          % "test").withSources(),
-      ("com.github.japgolly.scalajs-react" %% "test" % scalajsReactVersion % "test").withSources()
+      ("dev.zio"                           %% "zio-test"     % zioVersion          % "test").withSources(),
+      ("dev.zio"                           %% "zio-test-sbt" % zioVersion          % "test").withSources(),
+      ("com.github.japgolly.scalajs-react" %% "test"         % scalajsReactVersion % "test").withSources(),
     ),
     dependencyOverrides ++= Seq(
       "com.github.japgolly.scalajs-react" %% "core"  % scalajsReactVersion,
-      "com.github.japgolly.scalajs-react" %% "extra" % scalajsReactVersion
+      "com.github.japgolly.scalajs-react" %% "extra" % scalajsReactVersion,
     ),
     testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
     organizationName                     := "Roberto Leibman",
     startYear                            := Some(2024),
     Compile / unmanagedSourceDirectories := Seq((Compile / scalaSource).value),
-    Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value)
+    Test / unmanagedSourceDirectories    := Seq((Test / scalaSource).value),
     //    webpackDevServerPort                 := 8009
   )
 
@@ -531,7 +529,7 @@ lazy val web: Project = project
   .enablePlugins(
     AutomateHeaderPlugin,
     com.github.sbt.git.GitVersioning,
-    ScalaJSPlugin
+    ScalaJSPlugin,
   )
   .settings(
     scalacOptions ++= scala3Opts,
@@ -543,7 +541,7 @@ lazy val web: Project = project
     name := "chuti-web",
     libraryDependencies ++= Seq(
       ("dev.zio" %% "zio"      % zioVersion).withSources(),
-      ("dev.zio" %% "zio-json" % zioJsonVersion).withSources()
+      ("dev.zio" %% "zio-json" % zioJsonVersion).withSources(),
     ),
     // ES modules, the only module kind vite consumes directly -- this replaces what the bundler plugin set up.
     // SmallModulesFor keeps application code in many small chunks so an incremental fastLinkJS rewrites little.
@@ -565,7 +563,7 @@ lazy val web: Project = project
         stagingDir = target.value / "vite" / "debugDist",
         outputFolder = (ThisBuild / baseDirectory).value / "debugDist",
         mode = "development",
-        log = streams.value.log
+        log = streams.value.log,
       )
     },
     // webDist: minified, but keeps the source map so production stack traces stay decipherable
@@ -577,9 +575,9 @@ lazy val web: Project = project
         stagingDir = target.value / "vite" / "dist",
         outputFolder = (ThisBuild / baseDirectory).value / "dist",
         mode = "production",
-        log = streams.value.log
+        log = streams.value.log,
       )
-    }
+    },
   )
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -591,5 +589,5 @@ lazy val root = project
     name           := "chuti",
     publish / skip := true,
     version        := "0.1.0",
-    headerLicense  := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed))
+    headerLicense  := Some(HeaderLicense.ALv2("2020", "Roberto Leibman", HeaderLicenseStyle.Detailed)),
   )

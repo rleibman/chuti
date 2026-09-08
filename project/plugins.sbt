@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////////
 // Common stuff
-addSbtPlugin("com.github.sbt"    % "sbt-git"                   % "2.1.0")
-addSbtPlugin("com.github.sbt"    % "sbt-header"                % "5.11.0")
-addSbtPlugin("com.github.sbt"    % "sbt-native-packager"       % "1.11.7")
-addSbtPlugin("com.eed3si9n"      % "sbt-buildinfo"             % "0.13.1")
-addSbtPlugin("org.scalameta"     % "sbt-scalafmt"              % "2.6.2")
+addSbtPlugin("com.github.sbt" % "sbt-git"             % "2.1.0")
+addSbtPlugin("com.github.sbt" % "sbt-header"          % "5.11.0")
+addSbtPlugin("com.github.sbt" % "sbt-native-packager" % "1.11.7")
+addSbtPlugin("com.eed3si9n"   % "sbt-buildinfo"       % "0.13.1")
+addSbtPlugin("org.scalameta"  % "sbt-scalafmt"        % "2.6.2")
 // No sbt2 build of sbt-explicit-dependencies.
 // addSbtPlugin("com.github.cb372"  % "sbt-explicit-dependencies" % "0.3.1")
-addSbtPlugin("ch.epfl.scala"     % "sbt-scalafix"              % "0.14.8")
-addSbtPlugin("com.typesafe"      % "sbt-mima-plugin"           % "1.1.6")
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix"    % "0.14.8")
+addSbtPlugin("com.typesafe"  % "sbt-mima-plugin" % "1.1.6")
 
 ////////////////////////////////////////////////////////////////////////////////////
 // Server

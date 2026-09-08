@@ -52,10 +52,9 @@ debugDist
 dist
 /.env
 /.deploy-config
-/.bloop/
+.bloop/
 /.metals/
 /project/metals.sbt
-/project/.bloop/
 
 /tree.txt
 /chuti-stLib
