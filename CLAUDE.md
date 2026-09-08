@@ -33,7 +33,7 @@ sbt --error web/dist
 sbt --error scalafmt
 
 # Build Debian package
-sbt --error server/debian:packageBin
+sbt --error server/Debian/packageBin
 ```
 
 ### First-Time Setup
