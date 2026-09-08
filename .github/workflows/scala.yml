@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: read
+  # Needed to resolve zio-auth from GitHub Packages.
+  packages: read
 
 jobs:
   build:
@@ -41,6 +43,12 @@ jobs:
           ${{ runner.os }}-npm-vite-
     # webDebugDist, not debugDist: sbt-native-packager owns the `dist` name under sbt 2, so ours were renamed.
     - name: Run tests
+      # zio-auth resolves from GitHub Packages, which requires auth even for public packages. build.sbt reads
+      # these two via sys.env; without them the credentials are empty and resolution fails with
+      # "Error downloading net.leibman:zio-auth_3".
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_ACTOR: ${{ github.actor }}
       run: |
         cd stLib
         sbt publishLocal
