@@ -834,12 +834,12 @@ final case class Da(
       throw GameError("Estricta derecha, no te adelantes!")
     val enJuego = game.enJuego :+ (jugador.id, ficha)
     // Si es el cuarto jugador dando la ficha
-    val (modifiedGame, ganador, gameStatusString): (Game, Option[UserId], Option[String]) =
+    val (modifiedGame, ganador, gameStatusString) =
       if (enJuego.size == game.numPlayers) {
         // Al ganador le damos las cuatro fichas, le damos también la mano, empezamos mano nueva
         // Nota, la primera fila se queda abierta, las demas se esconden y ya no importan.
         // could rewrite this using game.fichaGanadora(
-        val (ganadorId, fichaGanadora @ _): (UserId, Ficha) =
+        val (ganadorId, fichaGanadora @ _) =
           Game.calculaJugadorGanador(enJuego, enJuego.head._2, game.triunfo.get)
         val totalFilas = game.jugadores.flatMap(_.filas).size
         // I'm not sure who has it, but the code b

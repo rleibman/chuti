@@ -65,3 +65,6 @@ dist
 *.deb
 /stLib/node_modules/.yarn-integrity
 /landing/build/
+
+# npm project for the vite frontend build
+web/node_modules/

@@ -1,0 +1,15 @@
+{
+  "name": "chuti-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "semantic-ui-react": "^2.1.5",
+    "csstype": "^3.1.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.14"
+  }
+}
