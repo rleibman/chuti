@@ -48,6 +48,16 @@ ThisBuild / libraryDependencySchemes ++= Seq(
 )
 
 ThisBuild / resolvers += Resolver.sonatypeCentralSnapshots
+// zio-auth is published to GitHub Packages, not Maven Central. Without this resolver the build only ever
+// worked where a `publishLocal` had put it in ~/.ivy2/local -- a clean CI checkout failed with
+// "Error downloading net.leibman:zio-auth_3". GitHub Packages requires auth even for public packages.
+ThisBuild / resolvers += "GitHub Packages rleibman/zio-auth" at "https://maven.pkg.github.com/rleibman/zio-auth"
+ThisBuild / credentials += Credentials(
+  "GitHub Package Registry",
+  "maven.pkg.github.com",
+  sys.env.getOrElse("GITHUB_ACTOR", "rleibman"),
+  sys.env.getOrElse("GITHUB_TOKEN", ""),
+)
 
 lazy val SCALA = "3.9.0"
 Global / onChangedBuildSource := ReloadOnSourceChanges
