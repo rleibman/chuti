@@ -13,6 +13,8 @@ on:
 
 permissions:
   contents: read
+  # Needed to resolve zio-auth from GitHub Packages.
+  packages: read
 
 jobs:
   build:
@@ -27,12 +29,35 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: 'sbt'
+    # setup-java's cache: 'sbt' only caches sbt's directories; it does not install sbt, and the runner images
+    # no longer ship it. Without this the job died with exit 127 (command not found) after ~10s -- which is why
+    # this workflow had been red on main since February.
+    - name: Setup sbt
+      uses: sbt/setup-sbt@v1
+    - name: Cache npm dependencies (vite)
+      uses: actions/cache@v4
+      with:
+        path: web/node_modules
+        key: ${{ runner.os }}-npm-vite-${{ hashFiles('web/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-npm-vite-
+    # webDebugDist, not debugDist: sbt-native-packager owns the `dist` name under sbt 2, so ours were renamed.
     - name: Run tests
-      run:
-        cd stLib; 
-        sbt publishLocal;
-        cd ..;
-        sbt compile debugDist;
+      # zio-auth resolves from GitHub Packages, which requires auth even for public packages. build.sbt reads
+      # these two via sys.env; without them the credentials are empty and resolution fails with
+      # "Error downloading net.leibman:zio-auth_3".
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_ACTOR: ${{ github.actor }}
+      run: |
+        cd stLib
+        sbt publishLocal
+        cd ..
+        # ONE argument with a semicolon, not two arguments. CI runs sbt through the thin client (sbtn), which
+        # joins multiple argv entries into a single command string -- `sbt compile web/webDebugDist` is parsed
+        # as one command and fails with "Expected whitespace character / Expected '/'". The plain `sbt` script
+        # does not do this, which is why it only ever failed on CI. Reproduced locally with sbtn.
+        sbt "compile; web/webDebugDist"
       # Optional: This step uploads information to the GitHub dependency graph and unblocking Dependabot alerts for the repository
 #    - name: Upload dependency graph
 #      uses: scalacenter/sbt-dependency-submission@ab086b50c947c9774b70f39fc7f6e20ca2706c91

@@ -52,10 +52,9 @@ debugDist
 dist
 /.env
 /.deploy-config
-/.bloop/
+.bloop/
 /.metals/
 /project/metals.sbt
-/project/.bloop/
 
 /tree.txt
 /chuti-stLib
@@ -65,3 +64,6 @@ dist
 *.deb
 /stLib/node_modules/.yarn-integrity
 /landing/build/
+
+# npm project for the vite frontend build
+web/node_modules/

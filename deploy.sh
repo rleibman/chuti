@@ -181,7 +181,7 @@ echo -e "${BLUE}========================================${NC}"
 
 # Build frontend (dist)
 echo -e "${BLUE}Building frontend (optimized)...${NC}"
-if ! sbt --error web/dist; then
+if ! sbt --error web/webDist; then
     echo -e "${RED}Failed to build frontend${NC}"
     exit 1
 fi
@@ -189,7 +189,7 @@ echo -e "${GREEN}  Frontend built${NC}"
 
 # Create Debian package (includes both server and dist/)
 echo -e "${BLUE}Creating Debian package (server + web content)...${NC}"
-if ! sbt --error server/debian:packageBin; then
+if ! sbt --error server/Debian/packageBin; then
     echo -e "${RED}Failed to create Debian package${NC}"
     exit 1
 fi
