@@ -30,13 +30,14 @@ Global / excludeLintKeys ++= Set(
   name,
 )
 
-// NOT benign: chuti-stlib was generated against scalajs-react 2.1.1 while web asks for 3.0.0 -- a major-version
-// straddle. Declared rather than failing the build, so sbt 2's stricter evictionErrorLevel still catches anything
-// NEW. The real fix is regenerating stlib against 3.0.0. `%%` would only cover the JVM artifact, hence _sjs1_3.
 // NOT benign: chuti-stlib was generated against scalajs-react 3.0.0 while zio-auth 3.1.7 and web pull 4.0.0 --
 // a major-version straddle across every scalajs-react module. Declared rather than failing the build, so sbt 2's
 // stricter evictionErrorLevel still catches anything NEW. The real fix is regenerating stlib against 4.0.0.
 // `%%` would only cover the JVM artifacts, hence the explicit _sjs1_3 names.
+//
+// These schemes are also what hid the break that shipped: web asked for 3.0.0, zio-auth's 4.0.0 silently won,
+// and 4.0.0 is written for React 19 while web/package.json still said React 18. The app crashed right after
+// login. scalajsReactVersion and package.json have to move together.
 ThisBuild / libraryDependencySchemes ++= Seq(
   "com.github.japgolly.scalajs-react" % "core_sjs1_3"         % VersionScheme.Always,
   "com.github.japgolly.scalajs-react" % "core-generic_sjs1_3" % VersionScheme.Always,
@@ -131,7 +132,8 @@ val scalacssVersion = "1.0.0"
 val scalaJavaLocaleVersion = "1.5.4"
 val scalaJavaTimeVersion = "2.7.0"
 val scalajsDomVersion = "2.8.1"
-val scalajsReactVersion = "3.0.0"
+// 4.x requires React 19 (web/package.json). zio-auth 3.1.7 pulls 4.0.0 regardless of what this says.
+val scalajsReactVersion = "4.0.0"
 val scalatagsVersion = "0.13.1"
 val scalaXmlVersion = "2.4.0"
 val stlibVersion = "1.0.0"
