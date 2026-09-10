@@ -189,15 +189,35 @@ echo -e "${GREEN}  Frontend built${NC}"
 
 # Create Debian package (includes both server and dist/)
 echo -e "${BLUE}Creating Debian package (server + web content)...${NC}"
+# Clear stale artifacts from BOTH locations before building: a pre-migration checkout still has a .deb in
+# server/target/, and picking that up is the bug this guards against.
+find "${SCRIPT_DIR}/target/out" -type f -name "*.deb" -delete 2>/dev/null || true
+find "${SCRIPT_DIR}/server/target" -maxdepth 1 -type f -name "*.deb" -delete 2>/dev/null || true
+BUILD_START=$(date +%s)
 if ! sbt --error server/Debian/packageBin; then
     echo -e "${RED}Failed to create Debian package${NC}"
     exit 1
 fi
 
-# Find the package
-PACKAGE=$(ls -t "${SCRIPT_DIR}/server/target/"*.deb 2>/dev/null | head -1)
+# Find the package.
+#
+# Under target/out/<platform>/<scala>/<project>/, NOT server/target/ -- sbt 2 relocated build output. This looked
+# in the old place, where a pre-migration .deb from July was still sitting, so `ls -t` happily found a two-month-old
+# artifact and the deploy "succeeded" while shipping stale code. The scala version is part of the new path, so find
+# the artifact rather than hardcoding it.
+PACKAGE=$(find "${SCRIPT_DIR}/target/out" -type f -name "*.deb" -printf '%T@ %p\n' 2>/dev/null \
+    | sort -rn | head -1 | cut -d' ' -f2-)
 if [ -z "$PACKAGE" ]; then
-    echo -e "${RED}Error: No .deb package found in server/target/${NC}"
+    echo -e "${RED}Error: No .deb package found under target/out/${NC}"
+    echo -e "${RED}(sbt 2 puts it in target/out/<platform>/<scala>/<project>/ -- if that changed again, fix this)${NC}"
+    exit 1
+fi
+
+# The .deb must come from the build above, not be left over from an earlier one -- that is exactly the failure
+# this block was hiding. Modification time, not version: sbt-git appends -SNAPSHOT on a dirty tree, so comparing
+# version strings false-positives.
+if [ "$(stat -c %Y "$PACKAGE")" -lt "$BUILD_START" ]; then
+    echo -e "${RED}$(basename "$PACKAGE") predates this build -- it is a leftover artifact. Refusing to deploy.${NC}"
     exit 1
 fi
 
