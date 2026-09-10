@@ -4,12 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "semantic-ui-react": "^2.1.5",
     "csstype": "^3.1.0"
   },
   "devDependencies": {
     "vite": "^7.1.14"
+  },
+  "overrides": {
+    "semantic-ui-react": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    },
+    "@fluentui/react-component-ref": {
+      "react": "$react",
+      "react-dom": "$react-dom"
+    }
   }
 }

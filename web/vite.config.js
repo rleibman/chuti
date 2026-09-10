@@ -67,6 +67,11 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: [
       { find: /^scalajs$/, replacement: path.resolve(scalaJSOutputDir, "main.js") },
+      // React 19 removed ReactDOM.findDOMNode, and semantic-ui-react's <Ref> still calls it -- see
+      // react-dom-compat.js. The alias rewrites subpaths too, so react-dom/client has to be pointed back at the
+      // real package explicitly.
+      { find: /^react-dom$/, replacement: path.resolve(here, "react-dom-compat.js") },
+      { find: /^react-dom\/client$/, replacement: path.resolve(here, "node_modules/react-dom/client.js") },
     ],
   },
   plugins: [resolveScalaJSImportsFromWeb],
