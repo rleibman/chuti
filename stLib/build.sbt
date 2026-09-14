@@ -18,19 +18,27 @@ startYear        := Some(2024)
 organizationName := "Roberto Leibman"
 headerLicense    := Some(HeaderLicense.MIT("2024", "Roberto Leibman", HeaderLicenseStyle.Detailed))
 name             := "chuti-stlib"
-useYarn          := true
+stUseYarn        := true
 stOutputPackage  := "net.leibman.chuti"
 stFlavour        := Flavour.ScalajsReact
 
+// sbt 2 has cross-platform support built in: `%%` resolves the Scala.js (_sjs1_3) artifacts here.
 libraryDependencies ++= Seq(
-  "com.github.japgolly.scalajs-react" %%% "core"  % scalajsReactVersion,
-  "com.github.japgolly.scalajs-react" %%% "extra" % scalajsReactVersion
+  "com.github.japgolly.scalajs-react" %% "core"  % scalajsReactVersion,
+  "com.github.japgolly.scalajs-react" %% "extra" % scalajsReactVersion
 )
 
-dependencyOverrides += "com.github.japgolly.scalajs-react" %%% "core" % scalajsReactVersion
+dependencyOverrides += "com.github.japgolly.scalajs-react" %% "core" % scalajsReactVersion
+
+// The converter pins scalajs-react 2.1.3 in every generated facade, while we compile against a newer one. sbt 2 turns
+// that major-version eviction into an error (sbt 1 only warned).
+libraryDependencySchemes ++= Seq(
+  "com.github.japgolly.scalajs-react" % "core_sjs1_3"  % VersionScheme.Always,
+  "com.github.japgolly.scalajs-react" % "extra_sjs1_3" % VersionScheme.Always
+)
 
 /* javascript / typescript deps */
-Compile / npmDependencies ++= Seq(
+Compile / stNpmDependencies ++= Seq(
   "@types/react"      -> reactVersion,
   "@types/react-dom"  -> reactVersion,
   "react"             -> reactVersion,
@@ -40,7 +48,7 @@ Compile / npmDependencies ++= Seq(
   "semantic-ui-react" -> "^2.1.5"
 )
 
-Test / npmDependencies ++= Seq(
+Test / stNpmDependencies ++= Seq(
   "react"     -> reactVersion,
   "react-dom" -> reactVersion
 )
@@ -54,6 +62,6 @@ stMinimize := Selection.AllExcept("semantic-ui-react")
 stIgnore ++= List(
 )
 
-licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
+licenses += ("MIT", uri("http://opensource.org/licenses/MIT"))
 
 doc / sources := Nil
