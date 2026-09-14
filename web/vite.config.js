@@ -50,8 +50,12 @@ export default defineConfig(({ mode }) => ({
     // images that are not a build product and must survive.
     emptyOutDir: true,
     minify: mode === "production",
+    // Default is 500 kB, which a Scala.js app trips unconditionally -- the linked application really is a few
+    // megabytes and no chunking changes that. Set just above the current app chunk so the warning goes back to
+    // meaning something: silent today, and it fires if the bundle grows materially.
+    chunkSizeWarningLimit: 3500,
     rollupOptions: {
-      // Dependencies (MUI especially) carry "use client" directives rollup cannot honour when bundling, and ship
+      // Dependencies carry "use client" directives rollup cannot honour when bundling, and ship
       // sourcemaps pointing at paths that do not exist. Both are noise from code we do not control -- drop them
       // for node_modules only, so the same warnings from OUR code still surface.
       onwarn(warning, warn) {
@@ -59,6 +63,15 @@ export default defineConfig(({ mode }) => ({
         if (fromDependency && warning.code === "MODULE_LEVEL_DIRECTIVE") return;
         if (fromDependency && warning.code === "SOURCEMAP_ERROR") return;
         warn(warning);
+      },
+      output: {
+        // Split npm dependencies out of the app bundle. Everything used to land in one 3.5 MB chunk, so any
+        // Scala change invalidated React and semantic-ui-react along with it -- the browser re-downloaded the
+        // lot for a one-line edit. Vendor code changes only when package.json does.
+        manualChunks(id) {
+          if (id.includes("node_modules")) return "vendor";
+          return undefined;
+        },
       },
     },
     // Production stack traces are unreadable without this; forcing it on is what the old esbuild script patch was for.
